@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-# --------------------------------------------------
-# xotl.ql
-# --------------------------------------------------
+#----------------------------------------------------------------------
+# xotl.ql.interfaces
+#----------------------------------------------------------------------
 # Copyright (c) 2012 Merchise Autrement
 # All rights reserved.
 #
@@ -23,24 +23,19 @@
 #
 # Created on May 24, 2012
 
-'''
-A pythonic Query Language (Ql).
+'Interfaces that should be implemented in a query language'
 
-This package provides an abstract query language based on comprehesions. The
-sole goal of this package is to provide the Abstract Synxtax Tree for the
-queries produced using this language.
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        unicode_literals as _py3_unicode,
+                        absolute_import)
 
-The query language is composed by only two modules:
 
-- The :mod:`~xotl.ql.expressions` module that defines the core for defining
-  expressions in this language.
+# TODO: import from xotl.interface
+from zope.interface import Interface, Attribute
 
-- The :mod:`~xotl.ql.these` module defines the entry point for the query
-  language and documents it extensively.
 
-'''
 
-from . import expressions
-from .these import this
+__docstring_format__ = 'rst'
+__author__ = 'manu'
 
-__all__ = (b'this', b'expressions')

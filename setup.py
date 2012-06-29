@@ -56,14 +56,12 @@ setup(name=project_name,
       namespace_packages=['xotl', ],
       include_package_data=True,
       zip_safe=False,
+      setup_requires=['setuptools', 'setuptools-git', ],
       install_requires=[
-          'setuptools',
-          'xoutil',
+          'xoutil>=1.0.30dev',
       ],
       extra_requires={
         # If you really need Xotl it's best to move it to install_requires
-        'xotl2': ['xotl>=2.1.11,<3', ],
-        'xotl3': ['xotl>=3.0.0', ],
         'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', ]
       },
       entry_points="""
