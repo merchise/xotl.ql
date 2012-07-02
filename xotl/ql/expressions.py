@@ -1059,6 +1059,26 @@ class MaxFunction(FunctorOperator):
 
 max_ = MaxFunction
 
+
+
+class InvokeFunction(FunctorOperator):
+    '''
+    A function to allow arbitary function calls to be placed inside
+    expressions. It's up to you that such functions behave as expect since is
+    unlikely anyone translate it::
+
+        >>> ident = lambda who: who
+        >>> expr = call(q(1), ident)
+        >>> str(expr)     # doctest: +ELLIPSIS
+        'call(1, <function <lambda> ...>)'
+    '''
+    _format = 'call({0}, {1})'
+    _arity = BINARY
+    _method_name = b'__call__'
+
+
+invoke = call = InvokeFunction
+
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
 

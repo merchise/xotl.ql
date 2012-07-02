@@ -284,6 +284,14 @@ class TestThisQueries(unittest.TestCase):
 
 
 
+    def test_arbitary_function(self):
+        from xotl.ql.expressions import call
+        postprocess = lambda who: who.age + 10
+        who = query(call(who, postprocess) for who in this('who'))
+        self.assertEqual(str(who), "call(this('who'), %r)" % postprocess)
+
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)

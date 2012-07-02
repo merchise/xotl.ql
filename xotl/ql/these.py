@@ -500,6 +500,13 @@ Some limitations of the language
        "count(this('who').children)"
 
 
+   To ease your anger at this decision, the expression language supports and
+   :class:`~xotl.ql.expressions.call` that allows to express the we should
+   call an arbitary function. But we strongly discourage its use, and is
+   possible that some query translators/executors don't support that feature
+   that always implies post-processing the results.
+
+
 Ideas of expressions/queries inside model descriptions
 ======================================================
 
