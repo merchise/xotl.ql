@@ -250,6 +250,7 @@ included in the "final" release of any query translator, it's not decided.
 
         books = next(book for book in Book if book.age > 50)
 
+
 Some limitations of the language
 ================================
 
@@ -428,6 +429,83 @@ Some limitations of the language
 
         >>> unboxed(book).binding is None
         True
+
+
+6. You can't invoke arbitrary functions inside query comprehensions.
+
+   This has to do with two competing factors: technical difficulty to achieve
+   in a general and portable way; and the expected benefits from doing so.
+
+   The technical difficulty has to do with the way auto-binding of expressions
+   is done in :class:`These` instances.
+
+   We are not hacking the compiler's way of parsing the comprehension, but we
+   use an :mod:`execution context <xoutil.context>` to identify that such
+   binding should happen automatically *whenever* the `These` instance is the
+   "left" (or first) operand in an expression.
+
+   Since calling a function is *not* part of the expression language (unless
+   such a function follows the protocol of
+   :class:`~xotl.ql.expressions.FunctorOperator`) we won't be able to build a
+   expression from that call.
+
+   For such a thing to happen we'd have to get the `code object` that
+   generated the comprehension (for generator expression this is easily
+   accomplished, in CPython at least, but for dict and list comprehensions
+   this not easily done without imposing other constraints that affect other
+   features). After getting the `code object` we could disassemble it and do
+   some (hard to do) transformations to detect calling of a function, etc...
+   All of this would only work reliably for a given implementation of Python
+   (CPython, PyPy, Jython, IronPython, other) because they may use different
+   assembly code or something. So this would hinder portability across the
+   Python ecosystem.
+
+   On the other hand, we strongly believe that allowing to call arbitrary
+   functions inside expressions won't yield a benefit proportional to the
+   amount of work needed. This is not saying that calling function is not
+   useful at all, but that allowing the invocation of *arbitrary* functions is
+   much more costly than the gains obtained.
+
+   If the function is used in the "select" part of the query you may easily
+   post-process the results to apply the function after you get the results
+   from the store. Anyway its likely that your arbitrary function is not
+   translatable to the query language of the real data store, and if we allow
+   you to put it in the query, we would have to do the same: post-process the
+   results obtained from the store and then hand them to you. If the function
+   *is* translatable to the data-store, then is likely that it *is also*
+   possible to express it in the terms of the expression language.
+
+   If the function is used in the "if" part of the query the query the same
+   argument applies: if it's translatable, is likely that it may be put into
+   the terms of the expression language.
+
+   This does not prohibit invoking functions inside query comprehensions, but
+   invoking *arbitrary* functions. Functions that return expressions should be
+   fine most of the time::
+
+       >>> from xotl.ql.expressions import count
+
+       >>> old_enough = lambda who: who.age > 30
+       >>> count_children = lambda who: count(who.children)
+
+       >>> who, children = query((who, count_children(who))
+       ...                         for who in this('who')
+       ...                           if old_enough(who))
+
+       >>> binding = unboxed(who).binding
+       >>> str(binding)
+       "this('who').age > 30"
+
+       >>> str(children)
+       "count(this('who').children)"
+
+
+   To ease your anger at this decision, the expression language supports and
+   :class:`~xotl.ql.expressions.call` that allows to express the we should
+   call an arbitary function. But we strongly discourage its use, and is
+   possible that some query translators/executors don't support that feature
+   that always implies post-processing the results.
+
 
 Ideas of expressions/queries inside model descriptions
 ======================================================

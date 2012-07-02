@@ -257,6 +257,26 @@ class TestThisQueries(unittest.TestCase):
         self.assertIsNone(unboxed(this).binding)
 
 
+    def test_lambda_expression(self):
+        from xotl.ql.expressions import count
+        old_enough = lambda who: who.age > 30
+        count_children = lambda who: count(who.children)
+        who, children = query((who, count_children(who))
+                                for who in this('who') if old_enough(who))
+        binding = unboxed(who).binding
+        self.assertEqual("this('who').age > 30", str(binding))
+        self.assertEqual("count(this('who').children)", str(children))
+
+
+
+    def test_arbitary_function(self):
+        from xotl.ql.expressions import call
+        postprocess = lambda who: who.age + 10
+        who = query(call(who, postprocess) for who in this('who'))
+        self.assertEqual(str(who), "call(this('who'), %r)" % postprocess)
+
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)
