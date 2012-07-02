@@ -785,7 +785,7 @@ class StartsWithOperator(FunctorOperator):
     '''
     The `string.startswith(something)` operator::
 
-         >>> e = startswith('something', 's')
+         >>> e = startswith(q('something'), 's')
          >>> str(e)
          "startswith('something', 's')"
 
@@ -802,7 +802,7 @@ class EndsWithOperator(FunctorOperator):
     '''
     The `string.endswith(something)` operator::
 
-        >>> e = endswith('something', 's')
+        >>> e = endswith(q('something'), 's')
         >>> str(e)
         "endswith('something', 's')"
 
