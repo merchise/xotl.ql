@@ -257,20 +257,6 @@ class TestThisQueries(unittest.TestCase):
         self.assertIsNone(unboxed(this).binding)
 
 
-    def test_traverse(self):
-        from xotl.ql.these import cotraverse_expression
-        from xotl.ql.expressions import is_a, in_, all_
-        who = query(who for who in this('w')
-                        if all_(who.children,
-                                in_(this, query(sub for sub in this('s')
-                                                 if is_a(sub,
-                                                         'Subs')))))
-        is_a_nodes = cotraverse_expression(who,
-                                           yield_node=lambda x: x.op == is_a,
-                                           leave_filter=lambda _x: False)
-        self.assertEquals(["is_a(this('s'), Subs)"],
-                          [str(x) for x in is_a_nodes])
-
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)

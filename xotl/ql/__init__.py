@@ -38,6 +38,10 @@ The query language is composed by only two modules:
 - The :mod:`~xotl.ql.these` module defines the entry point for the query
   language and documents it extensively.
 
+There's third module :mod:`~xotl.ql.translate` that has some tools
+for aiding the translation of queries in to query plans for real data
+stores.
+
 '''
 
 from . import expressions
