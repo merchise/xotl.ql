@@ -271,6 +271,19 @@ class TestThisQueries(unittest.TestCase):
         self.assertEquals(["is_a(this('s'), Subs)"],
                           [str(x) for x in is_a_nodes])
 
+
+    def test_lambda_expression(self):
+        from xotl.ql.expressions import count
+        old_enough = lambda who: who.age > 30
+        count_children = lambda who: count(who.children)
+        who, children = query((who, count_children(who))
+                                for who in this('who') if old_enough(who))
+        binding = unboxed(who).binding
+        self.assertEqual("this('who').age > 30", str(binding))
+        self.assertEqual("count(this('who').children)", str(children))
+
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)
