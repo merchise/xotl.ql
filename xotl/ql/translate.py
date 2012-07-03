@@ -30,21 +30,33 @@ memory.)
 
 The main purporses of this module are two:
 
-- Provide common query/expression translation (co)routines from expressions
+- To provide common query/expression translation (co)routines from expressions
   to data store languages.
 
-- Provides a testing bed for queries to retrieve real objects from somewhere
+- To provide a testing bed for queries to retrieve real objects from somewhere
   (in this case the Python's).
 
 
-Traversing expressions
-----------------------
+Common tools for translating expressions
+----------------------------------------
 
-.. autofunction:: cotraverse_expression(expression, [inspect_node, yield_node, leave_filter])
+The fundamental tool for translating expressions is the function
+:func:`cotraverse_expression`. It's a coroutine that allows to traverse the
+entire expression tree (including bound :class:`~xotl.ql.these.These`
+instances) and yields expression nodes and/or leaves that match a given
+"predicate".
+
+.. autofunction:: cotraverse_expression(expr, [inspect_node, yield_node, leave_filter])
 
 
 Retrieving objects
 ------------------
+
+This module provides a testbed facility to retrieves objects from the Python's
+memory. It's by no means intended to be used in production, and the whole
+point of its existence is to test the common translatations algorithms
+provided, and also it help us in formalizing some concepts that may be useful
+for other (but probably similar) stores.
 
 .. autofunction:: fetch
 
@@ -59,11 +71,14 @@ from __future__ import (division as _py3_division,
 from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
-from .expressions import ExpressionTree
-from .these import These
+from xotl.ql.expressions import ExpressionTree
+from xotl.ql.these import These, query, this
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
+
+
+__all__ = (b'cotraverse_expression', b'fetch', )
 
 
 
@@ -178,11 +193,11 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
 
 
 
-def fetch(query, order=None, partition=None):
+def fetch(expr, order=None, partition=None):
     '''
     Generates all the objects that match a given query.
 
-    :param query: A query comprehesion or the result of calling
+    :param expr: A query comprehesion or the result of calling
                   :func:`~xotl.ql.these.query` over a comprehension.
 
     :param order: Ordering scheme: Either a single expression in which case it
