@@ -836,7 +836,8 @@ _expr_operations.update({operation._method_name:
                         _build_this_binary_op(operation)
                       for operation in OperatorType.operators
                         if getattr(operation, '_arity', None) is BINARY and
-                           operation._method_name not in ('__eq__', '__ne__')})
+                           operation._method_name not in ('__eq__', '__ne__',
+                                                          '__call__')})
 TheseExpressionOperations = type(b'TheseExpressionOperations', (object,),
                                  _expr_operations)
 
