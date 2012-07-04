@@ -110,6 +110,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
       respectively.
 
         >>> from xotl.ql.expressions import is_a, all_, in_
+        >>> from xotl.ql.these import query, this
         >>> who = query(who for who in this('w')
         ...                 if all_(who.children,
         ...                         in_(this, query(sub for sub in this('s')
