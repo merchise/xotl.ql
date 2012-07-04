@@ -615,11 +615,6 @@ since they will not affect our thinking on how to translate a query like::
     >>> str(unboxed(four_stars).binding)  # doctest: +ELLIPSIS
     "(is_a(this('p'), <class '...Product'>)) and (any(this('p').ratings, (this.rating == ****)))"
 
-References
-----------
-
-.. [Meijer2011] Meijer, E. & Bierman, G. "A co-Relational Model of Data for
-                Large Shared Data Banks" Commun. ACM, 2011, (54) pp. 49-58.
 
 Notes
 -----

@@ -8,6 +8,17 @@ Welcome to xotl.ql's documentation!
 
 .. automodule:: xotl.ql
 
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+ 
+   expressions
+   these
+   translate
+   references
+
+
 
 Indices and tables
 ==================
