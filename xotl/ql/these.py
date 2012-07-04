@@ -250,6 +250,7 @@ included in the "final" release of any query translator, it's not decided.
 
         books = next(book for book in Book if book.age > 50)
 
+
 Some limitations of the language
 ================================
 
@@ -429,6 +430,83 @@ Some limitations of the language
         >>> unboxed(book).binding is None
         True
 
+
+6. You can't invoke arbitrary functions inside query comprehensions.
+
+   This has to do with two competing factors: technical difficulty to achieve
+   in a general and portable way; and the expected benefits from doing so.
+
+   The technical difficulty has to do with the way auto-binding of expressions
+   is done in :class:`These` instances.
+
+   We are not hacking the compiler's way of parsing the comprehension, but we
+   use an :mod:`execution context <xoutil.context>` to identify that such
+   binding should happen automatically *whenever* the `These` instance is the
+   "left" (or first) operand in an expression.
+
+   Since calling a function is *not* part of the expression language (unless
+   such a function follows the protocol of
+   :class:`~xotl.ql.expressions.FunctorOperator`) we won't be able to build a
+   expression from that call.
+
+   For such a thing to happen we'd have to get the `code object` that
+   generated the comprehension (for generator expression this is easily
+   accomplished, in CPython at least, but for dict and list comprehensions
+   this not easily done without imposing other constraints that affect other
+   features). After getting the `code object` we could disassemble it and do
+   some (hard to do) transformations to detect calling of a function, etc...
+   All of this would only work reliably for a given implementation of Python
+   (CPython, PyPy, Jython, IronPython, other) because they may use different
+   assembly code or something. So this would hinder portability across the
+   Python ecosystem.
+
+   On the other hand, we strongly believe that allowing to call arbitrary
+   functions inside expressions won't yield a benefit proportional to the
+   amount of work needed. This is not saying that calling function is not
+   useful at all, but that allowing the invocation of *arbitrary* functions is
+   much more costly than the gains obtained.
+
+   If the function is used in the "select" part of the query you may easily
+   post-process the results to apply the function after you get the results
+   from the store. Anyway its likely that your arbitrary function is not
+   translatable to the query language of the real data store, and if we allow
+   you to put it in the query, we would have to do the same: post-process the
+   results obtained from the store and then hand them to you. If the function
+   *is* translatable to the data-store, then is likely that it *is also*
+   possible to express it in the terms of the expression language.
+
+   If the function is used in the "if" part of the query the query the same
+   argument applies: if it's translatable, is likely that it may be put into
+   the terms of the expression language.
+
+   This does not prohibit invoking functions inside query comprehensions, but
+   invoking *arbitrary* functions. Functions that return expressions should be
+   fine most of the time::
+
+       >>> from xotl.ql.expressions import count
+
+       >>> old_enough = lambda who: who.age > 30
+       >>> count_children = lambda who: count(who.children)
+
+       >>> who, children = query((who, count_children(who))
+       ...                         for who in this('who')
+       ...                           if old_enough(who))
+
+       >>> binding = unboxed(who).binding
+       >>> str(binding)
+       "this('who').age > 30"
+
+       >>> str(children)
+       "count(this('who').children)"
+
+
+   To ease your anger at this decision, the expression language supports and
+   :class:`~xotl.ql.expressions.call` that allows to express the we should
+   call an arbitary function. But we strongly discourage its use, and is
+   possible that some query translators/executors don't support that feature
+   that always implies post-processing the results.
+
+
 Ideas of expressions/queries inside model descriptions
 ======================================================
 
@@ -537,11 +615,6 @@ since they will not affect our thinking on how to translate a query like::
     >>> str(unboxed(four_stars).binding)  # doctest: +ELLIPSIS
     "(is_a(this('p'), <class '...Product'>)) and (any(this('p').ratings, (this.rating == ****)))"
 
-References
-----------
-
-.. [Meijer2011] Meijer, E. & Bierman, G. "A co-Relational Model of Data for
-                Large Shared Data Banks" Commun. ACM, 2011, (54) pp. 49-58.
 
 Notes
 -----
@@ -557,12 +630,6 @@ The query function and the `this` object
 
 
 .. autodata:: this
-
-
-Traversing expressions
-----------------------
-
-.. autofunction:: cotraverse_expression(expression, [inspect_node, yield_node, leave_filter])
 
 '''
 
@@ -764,7 +831,8 @@ _expr_operations.update({operation._method_name:
                         _build_this_binary_op(operation)
                       for operation in OperatorType.operators
                         if getattr(operation, '_arity', None) is BINARY and
-                           operation._method_name not in ('__eq__', '__ne__')})
+                           operation._method_name not in ('__eq__', '__ne__',
+                                                          '__call__')})
 TheseExpressionOperations = type(b'TheseExpressionOperations', (object,),
                                  _expr_operations)
 
@@ -1173,112 +1241,32 @@ def query(comprehesion):
 
 
 
-_is_these = lambda who: isinstance(who, These)
-_vrai = lambda _who: True
-_none = lambda _who: False
-
-
-def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
-                          leave_filter=_is_these):
+def thesefy(target):
     '''
-    Traverses an expression and yields nodes that pass `yield_node` and the
-    leaves that pass `leave_filter`.
+    Takes in a class and injects it an `__iter__` method that can be used
+    to form queries::
 
+        >>> @thesefy
+        ... class Person(object):
+        ...    pass
 
-    The first argument must be an instance of
-    :class:`~xotl.ql.expression.ExpressionTree` or an instance of
-    :class:`These`. In the second case, the :attr:`~These.binding` attribute
-    is traversed (if any).
+        >>> q = query(who for who in Person if who.age > 30)
+        >>> unboxed(q).binding    # doctest: +ELLIPSIS
+        <expression '(is_a(this('...'), <class '...Person'>)) and (this('...').age > 30)' ...>
 
-    :param expr: The expression to traverse.
-
-    :param inspect_node: A function receiving a single argument (the current
-                         node) that allows to prun the searching. If this
-                         function returns True for a node in the expression
-                         tree, then the it's child will be inspected.
-
-    :param yield_node: A function that receives a single argument (the current
-                       node) and should return True if we must yield the node.
-                       There's no relation with the `inspect_node` parameter,
-                       you may dissallow traversing through a node, but let
-                       it be yielded to the calling routine.
-
-    :param leave_filter: A function that receives a single argument (the
-                         current non-expression node) and should True if we
-                         must yield the leave to the calling routine.
-
-    This function works as coroutine, i.e, you may send messages to it while
-    its running. The protocol is as follows:
-
-    - After every object received (yielded), you may pass **up to three** new
-      functions to replace `inspect_node`, `yield_node` and `leave_filter`
-      respectively.
-
-        >>> from xotl.ql.expressions import is_a, all_, in_
-        >>> who = query(who for who in this('w')
-        ...                 if all_(who.children,
-        ...                         in_(this, query(sub for sub in this('s')
-        ...                                         if is_a(sub,
-        ...                                                 'Subs')))))
-
-    Everytime we see a new These instance, if it has a binding we traverse it
-    as well.
-
-    Example: one may be interested in `is_a` nodes::
-
-        >>> is_a_nodes = cotraverse_expression(who,
-        ...                  yield_node=lambda x: x.op == is_a,
-        ...                  leave_filter=_none)
-        >>> [str(x) for x in is_a_nodes]
-        ["is_a(this('s'), Subs)"]
-
+    This is only usefull if your real class does not have a metaclass of its
+    own that do that.
     '''
-    import types
-    if isinstance(expr, These):
-        dejavu = [unboxed(expr).root_parent]
-        expr = unboxed(expr).binding
-    else:
-        dejavu = []
-    if expr:
-        assert isinstance(expr, ExpressionTree)
-        queue = [expr]
-        while queue:
-            node = queue.pop(0)
-            message = None
-            with context(UNPROXIFING_CONTEXT):
-                if isinstance(node, ExpressionTree):
-                    if inspect_node(node):
-                        queue.extend(node.children)
-                    if yield_node(node):
-                        message = yield node
-                elif leave_filter(node) and node not in dejavu:
-                    dejavu.append(node)
-                    message = yield node
-                if isinstance(node, These):
-                    parent = node.root_parent
-                    if parent not in dejavu:
-                        dejavu.append(parent)
-                        binding = node.binding
-                        if binding:
-                            queue.append(binding)
-            if message:
-                if not isinstance(message, tuple):
-                    message = (message, None, None)
-                new_inspect_node = message[0]
-                new_yield_node = message[1] if len(message) > 1 else None
-                new_leave_filter = message[2] if len(message) > 2 else None
-                if new_inspect_node:
-                    assert isinstance(new_inspect_node, (types.MethodType,
-                                                         types.FunctionType))
-                    inspect_node = new_inspect_node
-                if new_yield_node:
-                    assert isinstance(new_yield_node, (types.MethodType,
-                                                       types.FunctionType))
-                    yield_node = new_yield_node
-                if new_leave_filter:
-                    assert isinstance(new_leave_filter, (types.MethodType,
-                                                         types.FunctionType))
-                    leave_filter = new_leave_filter
+    from xoutil.objects import nameof
+    class new_meta(type(target)):
+        def __new__(cls, name, bases, attrs):
+            return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
+        def __iter__(self):
+            from xotl.ql.expressions import is_a
+            return iter(next(s for s in this if is_a(s, self)))
+    class new_class(target):
+        __metaclass__ = new_meta
+    return new_class
 
 
 

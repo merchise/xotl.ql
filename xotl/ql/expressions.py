@@ -277,19 +277,6 @@ The ``<operator>`` can be any of the supported operations, i.e:
    :members:
 
 
-References
-----------
-
-.. [Buneman] Peter Buneman, Susan Davidson, Gerd Hillebrand, and Dan Suciu
-             "A Query Language and Optimization Techniques for Unstructured
-             Data".
-
-.. [Meijer2011] Erik Meijer and Gavin Bierman. "A co-Relational Model of Data
-                for Large Shared Data Banks", Comm. ACM, 54(4) April 2011.
-
-.. [Fokkinga2012] Maarten Fokkinga . "SQL versus coSQL — a compendium to Erik
-                  Meijer’s paper", Jan 2012.
-
 .. _CouchDB: http://apache.org/couchdb
 .. _Couchbase: http://www.couchbase.com/
 
@@ -785,7 +772,7 @@ class StartsWithOperator(FunctorOperator):
     '''
     The `string.startswith(something)` operator::
 
-         >>> e = startswith('something', 's')
+         >>> e = startswith(q('something'), 's')
          >>> str(e)
          "startswith('something', 's')"
 
@@ -802,7 +789,7 @@ class EndsWithOperator(FunctorOperator):
     '''
     The `string.endswith(something)` operator::
 
-        >>> e = endswith('something', 's')
+        >>> e = endswith(q('something'), 's')
         >>> str(e)
         "endswith('something', 's')"
 
@@ -1059,6 +1046,26 @@ class MaxFunction(FunctorOperator):
 
 max_ = MaxFunction
 
+
+
+class InvokeFunction(FunctorOperator):
+    '''
+    A function to allow arbitary function calls to be placed inside
+    expressions. It's up to you that such functions behave as expect since is
+    unlikely anyone translate it::
+
+        >>> ident = lambda who: who
+        >>> expr = call(q(1), ident)
+        >>> str(expr)     # doctest: +ELLIPSIS
+        'call(1, <function <lambda> ...>)'
+    '''
+    _format = 'call({0}, {1})'
+    _arity = BINARY
+    _method_name = b'__call__'
+
+
+invoke = call = InvokeFunction
+
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
 
@@ -1148,17 +1155,21 @@ class ExpressionTree(object):
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
 
-    .. attribute:: op
-
-       The operator class of this expression
-
-    .. attribute:: children
-
-        The operands involved in the expression
     '''
     def __init__(self, op, *children):
-        self.op = op
-        self.children = tuple(child for child in children)
+        self._op = op
+        self._children = tuple(child for child in children)
+
+    @property
+    def op(self):
+        'The operator class of this expression.'
+        return self._op
+
+
+    @property
+    def children(self):
+        'The operands involved in the expression.'
+        return self._children[:]
 
 
     def __eq__(self, other):
@@ -1193,19 +1204,6 @@ class ExpressionTree(object):
 
     def __repr__(self):
         return "<expression '%s' at 0x%x>" % (self, id(self))
-
-
-    def __deepcopy__(self, memo=Unset):
-        if memo is Unset:
-            memo = {}
-        d = id(self)
-        y = memo.get(d, Unset)
-        if  y is not Unset:
-            return y
-        with context(UNPROXIFING_CONTEXT):
-            op = self.op
-            children = deepcopy(self.children, memo)
-        return ExpressionTree(op, *children)
 
 
 
