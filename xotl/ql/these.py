@@ -1246,6 +1246,35 @@ def query(comprehesion):
 
 
 
+def thesefy(target):
+    '''
+    Takes in a class and injects it an `__iter__` method that can be used
+    to form queries::
+
+        >>> @thesefy
+        ... class Person(object):
+        ...    pass
+
+        >>> q = query(who for who in Person if who.age > 30)
+        >>> unboxed(q).binding    # doctest: +ELLIPSIS
+        <expression '(is_a(this('...'), <class '...Person'>)) and (this('...').age > 30)' ...>
+
+    This is only usefull if your real class does not have a metaclass of its
+    own that do that.
+    '''
+    from xoutil.objects import nameof
+    class new_meta(type(target)):
+        def __new__(cls, name, bases, attrs):
+            return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
+        def __iter__(self):
+            from xotl.ql.expressions import is_a
+            return iter(next(s for s in this if is_a(s, self)))
+    class new_class(target):
+        __metaclass__ = new_meta
+    return new_class
+
+
+
 # XXX: Util types for bound/unbound and named/unnamed this instances.
 # TODO: Check whether we need this or not.
 
