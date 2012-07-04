@@ -1168,17 +1168,21 @@ class ExpressionTree(object):
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
 
-    .. attribute:: op
-
-       The operator class of this expression
-
-    .. attribute:: children
-
-        The operands involved in the expression
     '''
     def __init__(self, op, *children):
-        self.op = op
-        self.children = tuple(child for child in children)
+        self._op = op
+        self._children = tuple(child for child in children)
+
+    @property
+    def op(self):
+        'The operator class of this expression.'
+        return self._op
+
+
+    @property
+    def children(self):
+        'The operands involved in the expression.'
+        return self._children[:]
 
 
     def __eq__(self, other):
@@ -1213,19 +1217,6 @@ class ExpressionTree(object):
 
     def __repr__(self):
         return "<expression '%s' at 0x%x>" % (self, id(self))
-
-
-    def __deepcopy__(self, memo=Unset):
-        if memo is Unset:
-            memo = {}
-        d = id(self)
-        y = memo.get(d, Unset)
-        if  y is not Unset:
-            return y
-        with context(UNPROXIFING_CONTEXT):
-            op = self.op
-            children = deepcopy(self.children, memo)
-        return ExpressionTree(op, *children)
 
 
 
