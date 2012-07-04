@@ -12,11 +12,12 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
- 
+
    expressions
    these
    translate
    references
+   HISTORY
 
 
 
