@@ -1202,7 +1202,7 @@ def query(comprehesion):
         # We need to ask for the next so the post-yielding code is executed.
         none = next(comprehesion, None)
         assert none is None
-        klass = tuple
+        klass = type(result)
     elif isinstance(comprehesion, list):
         result = comprehesion[0]
         klass = list
@@ -1222,7 +1222,11 @@ def query(comprehesion):
                         instance.previous_bindings.remove(expr)
                     except:
                         pass
-        return klass(_restore_binding(which) for which in result)
+        if klass == tuple:
+            return klass(_restore_binding(which) for which in result)
+        else:
+            # Possibly a namedtuple, but there's no way I can't tell.
+            return klass(*(_restore_binding(which) for which in result))
     elif isinstance(result, dict):
         iterator = result.iteritems()
         key, value = next(iterator)
