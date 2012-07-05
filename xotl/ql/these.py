@@ -402,15 +402,15 @@ Some limitations of the language
         >>> unboxed(person).binding  # doctest: +ELLIPSIS
         <expression 'this('person').age > 18' ...>
 
-   A better key for the previous would be::
+   A better way for the previous would be::
 
-        >>> person_books = query({person: book} for person in this('person')
+        >>> person_books = query({person: book for person in this('person')
         ...                        if person.age > 18
         ...                        for book in this('book')
-        ...                        if book.owner == person)
+        ...                        if book.owner == person})
 
-  When properly, translated this query *should* always return a *grouping*,
-  each group key should be an instance of every object that matches
+  When properly translated this query *should* always return a grouping, each
+  group key should be an instance of every object that matches
   `this('person')`, and the values should be (a list) of that persons books.
 
 
