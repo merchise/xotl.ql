@@ -23,7 +23,7 @@
 #
 # Created on May 24, 2012
 
-'''
+r'''
 Extends the :mod:`~xotl.ql.expressions` language to provide universal
 accessors.
 
