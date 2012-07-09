@@ -28,7 +28,7 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         unicode_literals as _py3_unicode)
                         # XXX: Don't put absolute imports in setup.py
-                        
+
 import os, sys
 from setuptools import setup, find_packages
 
@@ -56,7 +56,7 @@ setup(name=project_name,
       namespace_packages=['xotl', ],
       include_package_data=True,
       zip_safe=False,
-      setup_requires=['setuptools', 'setuptools-git', ],
+      setup_requires=['setuptools', ],
       install_requires=[
           'xoutil>=1.0.30dev',
       ],
