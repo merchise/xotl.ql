@@ -289,6 +289,22 @@ class TestThisQueries(unittest.TestCase):
             self.assertEqual(b, x.b)
 
 
+    def test_simpledicts(self):
+        x = query(dict(a=who.a, b=who.b) for who in this('who'))
+        self.assertIsInstance(x, result)
+        a = this('who').a
+        b = this('who').b
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(a, x['a'])
+            self.assertEqual(b, x['b'])
+
+
+    def test_ranges_with_this(self):
+        queries = [x for y in range(10) for x in this('x')
+                    if y - 1 < x.age <= y]
+
+
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
