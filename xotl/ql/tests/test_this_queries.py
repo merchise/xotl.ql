@@ -36,6 +36,8 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 from xotl.ql import this
 from xotl.ql.these import TheseType, query
 
+from collections import namedtuple
+
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
@@ -274,6 +276,33 @@ class TestThisQueries(unittest.TestCase):
         postprocess = lambda who: who.age + 10
         who = query(call(who, postprocess) for who in this('who'))
         self.assertEqual(str(who), "call(this('who'), %r)" % postprocess)
+
+
+    def test_namedtuples(self):
+        result = namedtuple('result', "a b")
+        x = query(result(a=who.a, b=who.b) for who in this('who'))
+        self.assertIsInstance(x, result)
+        a = this('who').a
+        b = this('who').b
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(a, x.a)
+            self.assertEqual(b, x.b)
+
+
+    def test_simpledicts(self):
+        x = query(dict(a=who.a, b=who.b) for who in this('who'))
+        self.assertIsInstance(x, result)
+        a = this('who').a
+        b = this('who').b
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(a, x['a'])
+            self.assertEqual(b, x['b'])
+
+
+    def test_ranges_with_this(self):
+        queries = [x for y in range(10) for x in this('x')
+                    if y - 1 < x.age <= y]
+
 
 
 

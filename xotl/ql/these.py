@@ -3,27 +3,26 @@
 #----------------------------------------------------------------------
 # xotl.ql.these
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License (GPL) as published by the
-# Free Software Foundation;  either version 2  of  the  License, or (at
-# your option) any later version.
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License (GPL) as published by the Free
+# Software Foundation;  either version 3 of  the  License, or (at your option)
+# any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301, USA.
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Created on May 24, 2012
 
-'''
+r'''
 Extends the :mod:`~xotl.ql.expressions` language to provide universal
 accessors.
 
@@ -402,15 +401,15 @@ Some limitations of the language
         >>> unboxed(person).binding  # doctest: +ELLIPSIS
         <expression 'this('person').age > 18' ...>
 
-   A better key for the previous would be::
+   A better way for the previous would be::
 
-        >>> person_books = query({person: book} for person in this('person')
+        >>> person_books = query({person: book for person in this('person')
         ...                        if person.age > 18
         ...                        for book in this('book')
-        ...                        if book.owner == person)
+        ...                        if book.owner == person})
 
-  When properly, translated this query *should* always return a *grouping*,
-  each group key should be an instance of every object that matches
+  When properly translated this query *should* always return a grouping, each
+  group key should be an instance of every object that matches
   `this('person')`, and the values should be (a list) of that persons books.
 
 
@@ -1202,7 +1201,7 @@ def query(comprehesion):
         # We need to ask for the next so the post-yielding code is executed.
         none = next(comprehesion, None)
         assert none is None
-        klass = tuple
+        klass = type(result)
     elif isinstance(comprehesion, list):
         result = comprehesion[0]
         klass = list
@@ -1222,7 +1221,11 @@ def query(comprehesion):
                         instance.previous_bindings.remove(expr)
                     except:
                         pass
-        return klass(_restore_binding(which) for which in result)
+        if klass == tuple:
+            return klass(_restore_binding(which) for which in result)
+        else:
+            # Possibly a namedtuple, but there's no way I can't tell.
+            return klass(*(_restore_binding(which) for which in result))
     elif isinstance(result, dict):
         iterator = result.iteritems()
         key, value = next(iterator)
