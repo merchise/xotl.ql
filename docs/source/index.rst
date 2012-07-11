@@ -18,6 +18,8 @@ Contents:
    translate
    references
    HISTORY
+   credits
+   license
 
 
 
