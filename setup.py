@@ -46,12 +46,16 @@ setup(name=project_name,
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
         "Programming Language :: Python",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Operating System :: OS Independent",
+        "Topic :: Database"
       ],
       keywords='xotl query-language',
       author='Merchise Autrement',
       author_email='',
       url='http://www.merchise.org',
-      license='GPL',
+      license='GPL v3',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       namespace_packages=['xotl', ],
       include_package_data=True,
@@ -61,7 +65,6 @@ setup(name=project_name,
           'xoutil>=1.0.30dev',
       ],
       extra_requires={
-        # If you really need Xotl it's best to move it to install_requires
         'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', ]
       },
       entry_points="""
