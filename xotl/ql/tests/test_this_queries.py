@@ -291,7 +291,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_simpledicts(self):
         x = these(dict(a=who.a, b=who.b) for who in this('who'))
-        self.assertIsInstance(x, result)
+        self.assertIsInstance(x, dict)
         a = this('who').a
         b = this('who').b
         with context(UNPROXIFING_CONTEXT):
