@@ -39,8 +39,8 @@ expression tree has two core attributes:
 
 Operation classes should have the following attributes:
 
-- `_arity`, which can be any of :py:class:`AT_LEAST_TWO`, :py:class:`BINARY`,
-  or :py:class:`UNARY`.
+- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`,
+  or :class:`UNARY`.
 
 - `_format`, which should be a string that specifies how to format the
   operation when str is invoked to print the expression. The format should
@@ -48,13 +48,10 @@ Operation classes should have the following attributes:
   doc.
 
   For UNARY operations it will be passed a single positional argument. For
-  BINARY two positional arguments will be passed. AT_LEAST_TWO are currently
-  BINARY operations that should have a boolean `_associative` attribute. The
-  `_format` attribute should contains the format for two operands. We will
-  concat the result with or without parenthesis according to the truth value of
-  `_associative`.
-
-- `_associative`, as explained above.
+  BINARY two positional arguments will be passed. N_ARITY is regarded as
+  function on several arguments (passed one after the other separated by
+  commas); `_format` should have a single positional argument that will be
+  replaced by the list of arguments.
 
 - `_method_name`, should contain a string (not unicode unless you're sure) with
   the name of the method that is be invoked on the (first) operand of the
@@ -329,6 +326,18 @@ class BINARY(object):
 
 
 
+class N_ARITY(object):
+    @classmethod
+    def formatter(cls, operation, children):
+        str_format = operation._format
+        args = ', '.join((str(child) if not isinstance(child,
+                                                          ExpressionTree)
+                                        else '(%s)' % child)
+                         for child in children)
+        return str_format.format(args)
+
+
+
 class _boolean(type):
     def __invert__(self):
         """The `~` operator for custom booleans::
@@ -495,7 +504,6 @@ class EqualityOperator(Operator):
 
     '''
     _format = '{0} == {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__eq__'
 
@@ -514,7 +522,6 @@ class NotEqualOperator(Operator):
 
     '''
     _format = '{0} != {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__ne__'
 
@@ -533,7 +540,6 @@ class LogicalAndOperator(Operator):
 
     '''
     _format = '{0} and {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__and__'
 
@@ -550,7 +556,6 @@ class LogicalOrOperator(Operator):
 
     '''
     _format = '{0} or {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__or__'
 
@@ -568,7 +573,6 @@ class LogicalXorOperator(Operator):
 
     '''
     _format = '{0} xor {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__xor__'
 
@@ -604,7 +608,6 @@ class AdditionOperator(Operator):
 
     '''
     _format = '{0} + {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__add__'
 
@@ -644,7 +647,6 @@ class MultiplicationOperator(Operator):
 
     '''
     _format = '{0} * {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__mul__'
 
@@ -662,7 +664,6 @@ class LesserThanOperator(Operator):
 
     '''
     _format = '{0} < {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__lt__'
 
@@ -1084,8 +1085,8 @@ class InvokeFunction(FunctorOperator):
         >>> str(expr)     # doctest: +ELLIPSIS
         'call(1, <function <lambda> ...>)'
     '''
-    _format = 'call({0}, {1})'
-    _arity = BINARY
+    _format = 'call({0})'
+    _arity = N_ARITY
     _method_name = b'__call__'
 
 
