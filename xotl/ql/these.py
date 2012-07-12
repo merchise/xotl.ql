@@ -854,23 +854,14 @@ class These(object):
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
 
-    #: `These` instances may be named in order to be distiguishable from each
-    #: other in a query where two instances may represent different objects.
-    name = None
-
-    #: `These` instances may have a parent `these` instance from which they
-    #: are to be "drawn". If fact, only the pair of attributes
-    #: ``(parent, name)`` allows to distiguish two instances from each other.
-    parent = None
-
 
     def __init__(self, name=None, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self.validate_name(name)
-            self.name = name
-            self.parent = kwargs.get('parent', None)
+            self._name = name
+            self._parent = kwargs.get('parent', None)
             self._binding = []
-            if not self.parent:
+            if not self._parent:
                 self.bind(get_first_of(kwargs,
                                        'binding',
                                        'expression',
@@ -892,6 +883,23 @@ class These(object):
         else:
             return head
 
+    @property
+    def name(self):
+        '''
+        `These` instances may be named in order to be distiguishable from each
+        other in a query where two instances may represent different objects.
+        '''
+        return getattr(self, '_name', None)
+
+
+    @property
+    def parent(self):
+        '''
+        `These` instances may have a parent `these` instance from which they
+        are to be "drawn". If fact, only the pair of attributes ``(parent,
+        name)`` allows to distiguish two instances from each other.
+        '''
+        return getattr(self, '_parent', None)
 
 
     @property
@@ -933,8 +941,9 @@ class These(object):
         '''
         The top-most parent of the instace or self if it has no parent.
         '''
-        if self.parent is not None:
-            return self.parent.root_parent
+        parent = getattr(self, 'parent', None)
+        if parent is not None:
+            return parent.root_parent
         else:
             return self
 
@@ -1151,10 +1160,6 @@ class _AutobindingThese(These):
 
 
     def __getattribute__(self, attr):
-        # Notice we can't use the __getattr__ way because then things like::
-        #   this.name and this.binding
-        # would not work properly.
-
         # TODO: Append the resulting expression as the top of the bindings.
         get = super(These, self).__getattribute__
         if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
