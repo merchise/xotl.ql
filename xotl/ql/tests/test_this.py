@@ -31,7 +31,7 @@ from __future__ import (division as _py3_division,
 import unittest
 
 from xotl.ql.these import this, named, TheseType
-from xotl.ql.expressions import _true, _false, in_, count
+from xotl.ql.expressions import _true, _false, in_, count, ExpressionTree
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -59,10 +59,13 @@ class TestThisExpressions(unittest.TestCase):
         self.assertIsInstance(this, type(this.parent.name))
 
 
-    def test_this_parens(self):
+    def test_calling_functions(self):
+        expression = this.parent.startswith('manu')
+        self.assertIsInstance(expression, ExpressionTree)
+        self.assertEqual("call(this.parent.startswith, manu)",
+                         str(expression))
         with self.assertRaises(TypeError):
-            this.parent('name')
-        self.assertNotIsInstance(this.parent, type(this))
+            this('someone')('cannot', 'call', 'me')
 
 
     def test_named(self):

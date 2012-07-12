@@ -1003,6 +1003,16 @@ class These(object):
             return These(name=attr, parent=self)
 
 
+    def __call__(self, *args):
+        with context(UNPROXIFING_CONTEXT):
+            parent = self.parent
+        if parent is not None:
+            from .expressions import invoke
+            return ExpressionTree(invoke, self, *args)
+        else:
+            raise TypeError()
+
+
     def __deepcopy__(self, memo=None):
         from copy import deepcopy
         with context(UNPROXIFING_CONTEXT):
@@ -1075,8 +1085,7 @@ class These(object):
         elif parent is None and name:
             return "this('{name}')".format(name=name)
         elif parent is not None and name:
-            return "{parent}.{name}".format(parent=str(parent),
-                                              name=name)
+            return "{parent}.{name}".format(parent=str(parent), name=name)
         else:  # parent and not name:
             assert False
 
@@ -1141,13 +1150,32 @@ class _AutobindingThese(These):
     'comprehension'
 
 
+    def __getattribute__(self, attr):
+        # Notice we can't use the __getattr__ way because then things like::
+        #   this.name and this.binding
+        # would not work properly.
+
+        # TODO: Append the resulting expression as the top of the bindings.
+        get = super(These, self).__getattribute__
+        if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
+            return get(attr)
+        else:
+            return _AutobindingThese(name=attr, parent=self)
+
+
+    def __call__(self, *args):
+        with context(UNPROXIFING_CONTEXT):
+            result = super(_AutobindingThese, self).__call__(*args)
+        # TODO: Create the autobindingthese...
+        return result
+
 
 class ThisClass(These):
     '''
     The class for the :obj:`this` object.
 
-    The `this` object is a singleton that behaves like any other :class:`These`
-    instances but also allows the creation of named instances.
+    The `this` object is a singleton that behaves like any other
+    :class:`These` instances but also allows the creation of named instances.
 
     '''
 
