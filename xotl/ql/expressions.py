@@ -1182,6 +1182,9 @@ class ExpressionTree(object):
     operands of the expression.
 
     '''
+    __slots__ = ('_op', '_children', )
+
+
     def __init__(self, op, *children):
         self._op = op
         self._children = tuple(child for child in children)
