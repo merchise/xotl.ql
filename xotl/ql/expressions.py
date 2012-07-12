@@ -1087,7 +1087,7 @@ class InvokeFunction(FunctorOperator):
     '''
     _format = 'call({0})'
     _arity = N_ARITY
-    _method_name = b'__call__'
+    _method_name = b'invoke'
 
 
 invoke = call = InvokeFunction
