@@ -71,7 +71,7 @@ from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.these import These, query, this
+from xotl.ql.these import These, these, this
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -124,10 +124,10 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
       respectively.
 
         >>> from xotl.ql.expressions import is_a, all_, in_
-        >>> from xotl.ql.these import query, this
-        >>> who = query(who for who in this('w')
+        >>> from xotl.ql.these import these, this
+        >>> who = these(who for who in this('w')
         ...                 if all_(who.children,
-        ...                         in_(this, query(sub for sub in this('s')
+        ...                         in_(this, these(sub for sub in this('s')
         ...                                         if is_a(sub,
         ...                                                 'Subs')))))
 
@@ -197,7 +197,7 @@ def fetch(expr, order=None, partition=None):
     Generates all the objects that match a given query.
 
     :param expr: A query comprehesion or the result of calling
-                  :func:`~xotl.ql.these.query` over a comprehension.
+                  :func:`~xotl.ql.these.these` over a comprehension.
 
     :param order: Ordering scheme: Either a single expression in which case it
                   should either: ``+this`` or ``-this``, or a tuple of

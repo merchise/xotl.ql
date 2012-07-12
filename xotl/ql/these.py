@@ -113,7 +113,7 @@ comprehesions, that behaves more like lambdas with a single argument.
 For instance in the query::
 
     >>> from xotl.ql.expressions import all_
-    >>> who = query(who for who in this if all_(who.children, this.age > 5))
+    >>> who = these(who for who in this if all_(who.children, this.age > 5))
 
 that retrieves all object whose children are all beyond 5 years of age.
 
@@ -127,9 +127,9 @@ Subqueries
 
     >>> from xotl.ql.expressions import is_a, all_, in_
 
-    >>> who = query(who for who in this('w')
+    >>> who = these(who for who in this('w')
     ...                if all_(who.children,
-    ...                        in_(this, query(sub for sub in this('s')
+    ...                        in_(this, these(sub for sub in this('s')
     ...                                         if is_a(sub, 'Subscritor')))))
 
     >>> str(unboxed(who).binding)
@@ -192,8 +192,8 @@ simply do::
 
     >>> older = next(some for some in this('any') if some.age > 50)
     >>> from xotl.ql.expressions import is_instance
-    >>> books = query(book for book in older if is_instance(book, Book))
-    >>> people = query(who for who in older if is_instance(who, Person))
+    >>> books = these(book for book in older if is_instance(book, Book))
+    >>> people = these(who for who in older if is_instance(who, Person))
 
 As you may see in this example, you may reuse the ``older`` query to obtain
 the two others, and they won't be confused::
@@ -204,7 +204,7 @@ the two others, and they won't be confused::
     >>> str(unboxed(people).binding)  # doctest: +ELLIPSIS
     "(this('any').age > 50) and (is_a(this('any'), <class '...Person'>))"
 
-.. warning:: You **should** use the function :func:`query` if you want to reuse
+.. warning:: You **should** use the function :func:`these` if you want to reuse
              queries. See the :ref:`note on reusability <reusability>`.
 
 The rules to determine if an instance of :class:`These` is bound to a schema
@@ -279,10 +279,10 @@ Some limitations of the language
         >>> str(unboxed(books).binding)
         "(this('any').age > 10) and (is_a(this('any'), Book))"
 
-   The function :func:`query` takes this step so you don't have to do it
+   The function :func:`these` takes this step so you don't have to do it
    yourself::
 
-        >>> books = query(book for book in older if is_instance(book, 'Book'))
+        >>> books = these(book for book in older if is_instance(book, 'Book'))
         >>> str(unboxed(books).binding)
         "(this('any').age > 10) and (is_a(this('any'), Book))"
 
@@ -294,16 +294,16 @@ Some limitations of the language
         ...                        for parent in this('parent')
         ...                        if parent.age > 32)
 
-   You must use the function :func:`query` to process the query, otherwise
+   You must use the function :func:`these` to process the query, otherwise
    the `parent` instance will have the wrong binding::
 
         >>> unboxed(parent).binding    # doctest: +ELLIPSIS
         <expression 'this('parent').age + 10' ...>
 
-   The function :func:`query` extracts the previous bindings and restores the
+   The function :func:`these` extracts the previous bindings and restores the
    proper one::
 
-        >>> age, parent = query((parent.age + 10, parent)
+        >>> age, parent = these((parent.age + 10, parent)
         ...                        for parent in this('parent')
         ...                        if parent.age > 32)
 
@@ -315,7 +315,7 @@ Some limitations of the language
    instance in several IF clauses::
 
 
-        >>> parent = query(parent for parent in this('parent')
+        >>> parent = these(parent for parent in this('parent')
         ...                    if parent.age > 30
         ...                    if parent.age < 45
         ...                    if parent.first_child.age > 10)
@@ -330,10 +330,10 @@ Some limitations of the language
         >>> age30 = next(parent for parent in this('parent')
         ...                if parent.age > 30)
 
-        # You **must** use query on the following, or use the double-next
+        # You **must** use these on the following, or use the double-next
         # call explained above.
-        >>> age40 = query(parent for parent in age30 if parent.age < 40)
-        >>> parent = query(parent for parent in age40
+        >>> age40 = these(parent for parent in age30 if parent.age < 40)
+        >>> parent = these(parent for parent in age40
         ...                    if parent.first_child.age > 10)
 
         >>> unboxed(parent).binding # doctest: +ELLIPSIS
@@ -341,7 +341,7 @@ Some limitations of the language
 
    or you may, write the whole condition in a single IF::
 
-        >>> parent = query(parent for parent in this('parent')
+        >>> parent = these(parent for parent in this('parent')
         ...                    if (parent.age > 30) & (parent.age < 40) &
         ...                       (parent.first_child.age > 10))
 
@@ -355,7 +355,7 @@ Some limitations of the language
       instance you **must** observe this rule when double-looping over
       instances attributes, like in::
 
-          >>> parent, child = query((parent, child) for parent in this('p')
+          >>> parent, child = these((parent, child) for parent in this('p')
           ...                            if parent.age > 20
           ...                            for child in parent.children
           ...                            if child.age < 10)
@@ -366,7 +366,7 @@ Some limitations of the language
       Like in the other examples, the `parent.age > 20` is lost. The fix is
       simple::
 
-          >>> parent, child = query((parent, child) for parent in this('p')
+          >>> parent, child = these((parent, child) for parent in this('p')
           ...                            for child in parent.children
           ...                            if (parent.age > 20) &
           ...                               (child.age < 10))
@@ -378,7 +378,7 @@ Some limitations of the language
    instances of this. Otherwise, you may get more conditions that those that
    you expect::
 
-        >>> person, book = query((person, book) for person in this('person')
+        >>> person, book = these((person, book) for person in this('person')
         ...                        for book in this('book')
         ...                        if (person.age > 18) &
         ...                           (book.owner == person))
@@ -393,7 +393,7 @@ Some limitations of the language
    matter. They may work, though. Spliting the conditions solves this over-
    conditioning issue::
 
-        >>> person, book = query((person, book) for person in this('person')
+        >>> person, book = these((person, book) for person in this('person')
         ...                        if person.age > 18
         ...                        for book in this('book')
         ...                        if book.owner == person)
@@ -403,7 +403,7 @@ Some limitations of the language
 
    A better way for the previous would be::
 
-        >>> person_books = query({person: book for person in this('person')
+        >>> person_books = these({person: book for person in this('person')
         ...                        if person.age > 18
         ...                        for book in this('book')
         ...                        if book.owner == person})
@@ -418,7 +418,7 @@ Some limitations of the language
    bindings would be done to `person` instead. So::
 
 
-        >>> person, book = query((person, book) for person in this('person')
+        >>> person, book = these((person, book) for person in this('person')
         ...                        for book in this('book')
         ...                        if (person.age > 18) &
         ...                           (person == book.owner))
@@ -487,7 +487,7 @@ Some limitations of the language
        >>> old_enough = lambda who: who.age > 30
        >>> count_children = lambda who: count(who.children)
 
-       >>> who, children = query((who, count_children(who))
+       >>> who, children = these((who, count_children(who))
        ...                         for who in this('who')
        ...                           if old_enough(who))
 
@@ -514,7 +514,7 @@ attribute that is a query::
 
     class Person(SomeSchemaBase):
         name = str
-        books = query(book for book in this
+        books = these(book for book in this
                         if is_instance(book, Book) & (book.owner == this))
 
 In this case (if such thing is ever implemented), the :obj:`this` object
@@ -537,7 +537,7 @@ attribute to work.
 On the processing of these queries
 ==================================
 
-In it's most general form, what you get from calling :func:`query` is either:
+In it's most general form, what you get from calling :func:`these` is either:
 
 - A single instance of a :class:`expressions
   <xotl.ql.expressions.ExpressionTree>` or a single instance of
@@ -606,7 +606,7 @@ In these representation we avoid putting more "database-centric" information
 since they will not affect our thinking on how to translate a query like::
 
     >>> from xotl.ql.expressions import is_instance, any_
-    >>> four_stars = query(product for product in this('p')
+    >>> four_stars = these(product for product in this('p')
     ...                            if is_instance(product, Product) &
     ...                               any_(product.ratings,
     ...                                    this.rating == '****'))
@@ -625,7 +625,7 @@ Notes
 The query function and the `this` object
 ========================================
 
-.. autofunction:: query(expr for expr2 in expr3 if expr4 ...)
+.. autofunction:: these(expr for expr2 in expr3 if expr4 ...)
 
 
 .. autodata:: this
@@ -722,7 +722,7 @@ def _update_autobound_instances(instance, who, expr1, res):
         if autobound.binding:
             # In order to restore previous bindings when there are expressions
             # in the SELECT part of a query, we keep previous bindings of the
-            # instance. See the :func:`query` function.
+            # instance. See the :func:`these` function.
             #
             # But if the previous bindings are the children of the current
             # binding, we just replace them.
@@ -912,7 +912,7 @@ class These(object):
         comprehesion is executed automatically inside the AUTOBINDING_CONTEXT,
         then `parent.age + 10` would be the binding for parent.
 
-        That's why we need both this property and :func:`query` to restore the
+        That's why we need both this property and :func:`these` to restore the
         proper bindings for each instance.
         '''
         current, res = self, None
@@ -1188,7 +1188,7 @@ def _restore_binding(which):
         return which
 
 
-def query(comprehesion):
+def these(comprehesion):
     '''
     Process the result of a comprehension to restore proper bindings if
     expressions are involved in the selection part.
@@ -1253,7 +1253,7 @@ def thesefy(target):
         ... class Person(object):
         ...    pass
 
-        >>> q = query(who for who in Person if who.age > 30)
+        >>> q = these(who for who in Person if who.age > 30)
         >>> unboxed(q).binding    # doctest: +ELLIPSIS
         <expression '(is_a(this('...'), <class '...Person'>)) and (this('...').age > 30)' ...>
 
