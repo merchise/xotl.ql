@@ -31,7 +31,7 @@ from __future__ import (division as _py3_division,
 
 
 import unittest
-from xotl.ql.these import query, this
+from xotl.ql.these import these, this
 
 
 __docstring_format__ = 'rst'
@@ -43,9 +43,9 @@ class TestTranslatorTools(unittest.TestCase):
     def test_traverse(self):
         from xotl.ql.translate import cotraverse_expression
         from xotl.ql.expressions import is_a, in_, all_
-        who = query(who for who in this('w')
+        who = these(who for who in this('w')
                         if all_(who.children,
-                                in_(this, query(sub for sub in this('s')
+                                in_(this, these(sub for sub in this('s')
                                                  if is_a(sub,
                                                          'Subs')))))
         is_a_nodes = cotraverse_expression(who,

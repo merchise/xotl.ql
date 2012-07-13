@@ -3,23 +3,22 @@
 #----------------------------------------------------------------------
 # xotl.ql.translate
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License (GPL) as published by the
-# Free Software Foundation;  either version 2  of  the  License, or (at
-# your option) any later version.
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License (GPL) as published by the Free
+# Software Foundation;  either version 3 of the  License, or (at your option)
+# any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301, USA.
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Created on Jul 2, 2012
 
@@ -72,7 +71,7 @@ from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.these import These, query, this
+from xotl.ql.these import These, these, this
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -125,10 +124,10 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
       respectively.
 
         >>> from xotl.ql.expressions import is_a, all_, in_
-        >>> from xotl.ql.these import query, this
-        >>> who = query(who for who in this('w')
+        >>> from xotl.ql.these import these, this
+        >>> who = these(who for who in this('w')
         ...                 if all_(who.children,
-        ...                         in_(this, query(sub for sub in this('s')
+        ...                         in_(this, these(sub for sub in this('s')
         ...                                         if is_a(sub,
         ...                                                 'Subs')))))
 
@@ -198,7 +197,7 @@ def fetch(expr, order=None, partition=None):
     Generates all the objects that match a given query.
 
     :param expr: A query comprehesion or the result of calling
-                  :func:`~xotl.ql.these.query` over a comprehension.
+                  :func:`~xotl.ql.these.these` over a comprehension.
 
     :param order: Ordering scheme: Either a single expression in which case it
                   should either: ``+this`` or ``-this``, or a tuple of

@@ -34,7 +34,7 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
-from xotl.ql.these import TheseType, query
+from xotl.ql.these import TheseType, these
 
 from collections import namedtuple
 
@@ -118,9 +118,9 @@ class TestThisQueries(unittest.TestCase):
         Book = 'Book'
         Person = 'Person'
         older = next(what for what in this('any') if what.age > 10)
-        books = query(book for book in older if is_instance(book, Book))
-        people = query(who for who in older if is_instance(who, Person))
-        everyone = query(who for who in older)
+        books = these(book for book in older if is_instance(book, Book))
+        people = these(who for who in older if is_instance(who, Person))
+        everyone = these(who for who in older)
         with context(UNPROXIFING_CONTEXT):
             self.assertFalse(people == books)
         books_binding = unboxed(books).binding
@@ -138,7 +138,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_a_single_expression_as_selection1(self):
         from xotl.ql.expressions import ExpressionTree
-        some = query((p.a + p.d) + (p.b + (p.c * -p.x))
+        some = these((p.a + p.d) + (p.b + (p.c * -p.x))
                         for p in this)
         self.assertIsInstance(some, ExpressionTree)
         parent_a = some.children[0].children[0]
@@ -148,7 +148,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_a_single_expression_as_selection2(self):
         from xotl.ql.expressions import ExpressionTree
-        some = query(parent.a + parent.b for parent in this)
+        some = these(parent.a + parent.b for parent in this)
         self.assertIsInstance(some, ExpressionTree)
         parent_a = some.children[0]
         binding_a = unboxed(parent_a).binding
@@ -157,7 +157,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_a_tuple_expression_as_selection(self):
         from xotl.ql.expressions import ExpressionTree
-        a, b = query((parent.a + parent.b, parent.c + parent.a)
+        a, b = these((parent.a + parent.b, parent.c + parent.a)
                         for parent in this)
         self.assertIsInstance(a, ExpressionTree)
         self.assertIsInstance(b, ExpressionTree)
@@ -169,7 +169,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_a_single_expression_as_selection_with_binding(self):
         from xotl.ql.expressions import ExpressionTree
-        some = query(p.a + p.b for p in this('p') if p.a > 20)
+        some = these(p.a + p.b for p in this('p') if p.a > 20)
         self.assertIsInstance(some, ExpressionTree)
         parent_a = some.children[0]
         binding_a = unboxed(parent_a).binding
@@ -180,7 +180,7 @@ class TestThisQueries(unittest.TestCase):
     def test_expression_as_selections(self):
         from xotl.ql.expressions import count, ExpressionTree
         from xotl.ql.these import These
-        some = query((p.age + 10, p,
+        some = these((p.age + 10, p,
                       p.a + (p.b + count(p.x)))
                         for p in this('p')
                         if (p.age > 23) & (p.age < 45))
@@ -194,7 +194,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_expressions_as_selections2(self):
         from xotl.ql.expressions import startswith, ExpressionTree
-        who, book = query((who.age + 10, book.age + 10)
+        who, book = these((who.age + 10, book.age + 10)
                                 for who in this('who')
                                     if who.name == 'Pepe'
                                 for book in this('book')
@@ -210,7 +210,7 @@ class TestThisQueries(unittest.TestCase):
 
 
     def test_expressions_as_selections_with_grouping(self):
-        groups = query({parent.age + 10: (parent, child.x + 4, x)
+        groups = these({parent.age + 10: (parent, child.x + 4, x)
                             for parent in this('parent')
                             for child in parent.children
                                 if (parent.age > 30) & (child.age > 10)
@@ -227,7 +227,7 @@ class TestThisQueries(unittest.TestCase):
 
 
     def test_expressions_as_selections_with_grouping_bad(self):
-        groups = query({parent.age + 10: (parent, child.x + 4, x)
+        groups = these({parent.age + 10: (parent, child.x + 4, x)
                             for parent in this('parent')
                                 if parent.age > 30
                             for child in parent.children
@@ -243,7 +243,7 @@ class TestThisQueries(unittest.TestCase):
 
     def test_with_any_and_this(self):
         from xotl.ql.expressions import is_instance, any_
-        four_stars = query(product for product in this('product')
+        four_stars = these(product for product in this('product')
                                 if is_instance(product, 'Product') &
                                    any_(product.ratings,
                                         this.rating == '****'))
@@ -254,7 +254,7 @@ class TestThisQueries(unittest.TestCase):
 
 
     def test_this_never_gets_bound(self):
-        p = query(p for p in this if this.a > 10)
+        p = these(p for p in this if this.a > 10)
         self.assertIsNone(unboxed(p).binding)
         self.assertIsNone(unboxed(this).binding)
 
@@ -263,7 +263,7 @@ class TestThisQueries(unittest.TestCase):
         from xotl.ql.expressions import count
         old_enough = lambda who: who.age > 30
         count_children = lambda who: count(who.children)
-        who, children = query((who, count_children(who))
+        who, children = these((who, count_children(who))
                                 for who in this('who') if old_enough(who))
         binding = unboxed(who).binding
         self.assertEqual("this('who').age > 30", str(binding))
@@ -274,19 +274,35 @@ class TestThisQueries(unittest.TestCase):
     def test_arbitary_function(self):
         from xotl.ql.expressions import call
         postprocess = lambda who: who.age + 10
-        who = query(call(who, postprocess) for who in this('who'))
+        who = these(call(who, postprocess) for who in this('who'))
         self.assertEqual(str(who), "call(this('who'), %r)" % postprocess)
 
 
     def test_namedtuples(self):
         result = namedtuple('result', "a b")
-        x = query(result(a=who.a, b=who.b) for who in this('who'))
+        x = these(result(a=who.a, b=who.b) for who in this('who'))
         self.assertIsInstance(x, result)
         a = this('who').a
         b = this('who').b
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(a, x.a)
             self.assertEqual(b, x.b)
+
+
+    def test_simpledicts(self):
+        x = these(dict(a=who.a, b=who.b) for who in this('who'))
+        self.assertIsInstance(x, result)
+        a = this('who').a
+        b = this('who').b
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(a, x['a'])
+            self.assertEqual(b, x['b'])
+
+
+    def test_ranges_with_this(self):
+        queries = [x for y in range(10) for x in this('x')
+                    if y - 1 < x.age <= y]
+
 
 
 
