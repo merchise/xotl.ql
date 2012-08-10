@@ -1022,15 +1022,6 @@ class These(object):
             raise TypeError()
 
 
-    def __deepcopy__(self, memo=None):
-        from copy import deepcopy
-        with context(UNPROXIFING_CONTEXT):
-            name = self.name or self._newname()
-            parent = self.parent
-            binding = deepcopy(self.binding, memo)
-        return These(name, parent=parent, filter=binding)
-
-
     def __iter__(self):
         '''
         Yields a single instance of this but wrapped around an object that

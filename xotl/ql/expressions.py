@@ -1345,14 +1345,3 @@ class q(object):
         with context(UNPROXIFING_CONTEXT):
             return str(self.target)
 
-
-    def __deepcopy__(self, memo=Unset):
-        if memo is Unset:
-            memo = {}
-        d = id(self)
-        y = memo.get(d, Unset)
-        if y is not Unset:
-            return y
-        with context(UNPROXIFING_CONTEXT):
-            target = deepcopy(self.target, memo)
-        return q(target)
