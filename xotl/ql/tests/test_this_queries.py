@@ -298,6 +298,10 @@ class TestThisQueries(unittest.TestCase):
             self.assertEqual(a, x['a'])
             self.assertEqual(b, x['b'])
 
+    def test_single_attr_binding(self):
+        q = these(p for p in this('p') if p.valid)
+        self.assertEqual("this('p').valid", unboxed(q).binding)
+
 
     def test_ranges_with_this(self):
         queries = [x for y in range(10) for x in this('x')
