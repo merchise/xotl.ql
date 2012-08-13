@@ -87,6 +87,11 @@ class TestThisExpressions(unittest.TestCase):
             self.assertFalse(expr == expr2)
 
 
+    def test_reverse_expressions(self):
+        expr = 3 > 1 + this.x
+        self.assertEqual("3 > (1 + this.x)", str(expr))
+
+
     def test_str_thisparent(self):
         self.assertEqual("this('parent')", str(this('parent')))
 
