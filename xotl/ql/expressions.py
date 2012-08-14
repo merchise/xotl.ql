@@ -395,7 +395,8 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
-        type(self).operators.append(self)
+        OperatorType.operators.append(self)
+
 
     def __call__(self, *children):
         '''Support for operators classes return expression trees upon
@@ -542,8 +543,10 @@ class LogicalAndOperator(Operator):
     _format = '{0} and {1}'
     _arity = BINARY
     _method_name = b'__and__'
+    _rmethod_name = b'__rand__'
 
 and_ = LogicalAndOperator
+
 
 
 class LogicalOrOperator(Operator):
@@ -558,6 +561,7 @@ class LogicalOrOperator(Operator):
     _format = '{0} or {1}'
     _arity = BINARY
     _method_name = b'__or__'
+    _rmethod_name = b'__ror__'
 
 or_ = LogicalOrOperator
 
@@ -575,9 +579,9 @@ class LogicalXorOperator(Operator):
     _format = '{0} xor {1}'
     _arity = BINARY
     _method_name = b'__xor__'
+    _rmethod_name = b'__rxor__'
 
 xor_ = LogicalXorOperator
-
 
 
 class LogicalNotOperator(Operator):
@@ -610,10 +614,10 @@ class AdditionOperator(Operator):
     _format = '{0} + {1}'
     _arity = BINARY
     _method_name = b'__add__'
+    _rmethod_name = b'__radd__'
 
 
 add = AdditionOperator
-
 
 
 class SubstractionOperator(Operator):
@@ -621,6 +625,7 @@ class SubstractionOperator(Operator):
     _format = '{0} - {1}'
     _arity = BINARY
     _method_name = b'__sub__'
+    _rmethod_name = b'__rsub__'
 
 sub = SubstractionOperator
 
@@ -631,6 +636,7 @@ class DivisionOperator(Operator):
     _format = '{0} / {1}'
     _arity = BINARY
     _method_name = b'__div__'
+    _rmethod_name = b'__rdiv__'
 
 
 truediv = div = DivisionOperator
@@ -649,9 +655,9 @@ class MultiplicationOperator(Operator):
     _format = '{0} * {1}'
     _arity = BINARY
     _method_name = b'__mul__'
+    _rmethod_name = b'__rmul__'
 
 mul = MultiplicationOperator
-
 
 
 class LesserThanOperator(Operator):
@@ -809,6 +815,7 @@ class FloorDivOperator(Operator):
     _format = '{0} // {1}'
     _arity = BINARY
     _method_name = b'__floordiv__'
+    _rmethod_name = b'__rfloordiv__'
 
 
 floordiv = FloorDivOperator
@@ -827,6 +834,7 @@ class ModOperator(Operator):
     _format = '{0} mod {1}'
     _arity = BINARY
     _method_name = b'__mod__'
+    _rmethod_name = b'__rmod__'
 
 
 mod = ModOperator
@@ -844,6 +852,7 @@ class PowOperator(Operator):
     _format = '{0}**{1}'
     _arity = BINARY
     _method_name = b'__pow__'
+    _rmethod_name = b'__rpow__'
 
 
 pow_ = PowOperator
@@ -1159,6 +1168,15 @@ def _build_binary_operator(operation):
     return method
 
 
+def _build_rbinary_operator(operation):
+    method_name = getattr(operation, '_rmethod_name', None)
+    if method_name:
+        def method(self, other):
+            meth = partial(operation, other)
+            return meth(self)
+        method.__name__ = method_name
+        return method
+
 
 _expr_operations = {operation._method_name:
                     _build_unary_operator(operation)
@@ -1168,6 +1186,12 @@ _expr_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
                         if getattr(operation, '_arity', None) is BINARY})
+_expr_operations.update({operation._rmethod_name:
+                        _build_rbinary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, '_arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
 ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
                                 _expr_operations)
 
