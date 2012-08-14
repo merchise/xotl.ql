@@ -854,6 +854,38 @@ class PowOperator(Operator):
 pow_ = PowOperator
 
 
+class LeftShiftOperator(Operator):
+    '''
+    The `2 << 1` operator::
+
+        >>> e = lshift(2, 1)
+        >>> str(e)
+        '2 << 1'
+    '''
+    _format = '{0} << {1}'
+    _arity = BINARY
+    _method_name = b'__lshift__'
+    _rmethod_name = b'__rlshift__'
+
+lshift = LeftShiftOperator
+
+
+class RightShiftOperator(Operator):
+    '''
+    The `2 >> 1` operator::
+
+        >>> e = rshift(2, 1)
+        >>> str(e)
+        '2 >> 1'
+    '''
+    _format = '{0} >> {1}'
+    _arity = BINARY
+    _method_name = b'__rshift__'
+    _rmethod_name = b'__rrshift__'
+
+rshift = RightShiftOperator
+
+
 
 class LengthFunction(FunctorOperator):
     '''
