@@ -30,7 +30,8 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xotl.ql.these import this, named, TheseType
+from xotl.ql.these import this, TheseType
+from xotl.ql.util import named
 from xotl.ql.expressions import _true, _false, in_, count, ExpressionTree
 
 from xoutil.context import context
