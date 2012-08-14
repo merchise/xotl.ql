@@ -658,13 +658,6 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-
-
-class _name(unicode):
-    pass
-
-
-
 class AUTOBINDING_CONTEXT(object):
     '''Context in which every expression involving a `this` instance is
     automatically bound to it.
@@ -983,7 +976,7 @@ class These(object):
 
     @classmethod
     def _newname(cls):
-        return _name('i{count}'.format(count=next(cls._counter)))
+        return 'i{count}'.format(count=next(cls._counter))
 
 
     @classmethod
