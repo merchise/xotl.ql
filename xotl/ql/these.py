@@ -22,6 +22,10 @@
 #
 # Created on May 24, 2012
 
+
+# TODO: Move this extended tutorial to /docs, keep only a very basic doc for
+# the module.
+
 r'''
 Extends the :mod:`~xotl.ql.expressions` language to provide universal
 accessors.
@@ -125,6 +129,7 @@ Subqueries
 
 ::
 
+    >>> from xoutil.proxy import unboxed
     >>> from xotl.ql.expressions import is_a, all_, in_
 
     >>> who = these(who for who in this('w')
@@ -642,12 +647,10 @@ from itertools import count
 
 from xoutil.objects import get_first_of, validate_attrs
 from xoutil.context import context
-from xoutil.decorators import assignment_operator
-from xoutil.aop.basic import contextualized
-from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+from xoutil.proxy import UNPROXIFING_CONTEXT
 
-from xotl.ql.expressions import eq, ne, _true, _false, ExpressionTree
-from xotl.ql.expressions import OperatorType, UNARY, BINARY
+from xotl.ql.expressions import _true, _false, ExpressionTree
+from xotl.ql.expressions import UNARY, BINARY
 
 
 
@@ -664,6 +667,7 @@ class AUTOBINDING_CONTEXT(object):
 
     This context is applied when iterating over `this` instances::
 
+        >>> from xoutil.proxy import unboxed
         >>> from xotl.ql.these import this
         >>> expr = next(parent.age for parent in this('parent')
         ...                    if parent.age > 32)
@@ -700,6 +704,9 @@ class TheseType(type):
                 TheseType._instances[parent, name] = result
             return result
 
+
+#class TheseType(type):
+#    pass
 
 
 def _update_autobound_instances(instance, who, expr1, res):
@@ -814,28 +821,6 @@ def _build_this_binary_op(operation):
     return method
 
 
-
-_expr_operations = {operation._method_name:
-                    _build_this_unary_op(operation)
-                 for operation in OperatorType.operators
-                    if getattr(operation, '_arity', None) == UNARY}
-_expr_operations.update({operation._method_name:
-                        _build_this_binary_op(operation)
-                      for operation in OperatorType.operators
-                        if getattr(operation, '_arity', None) is BINARY and
-                           operation._method_name not in ('__eq__', '__ne__',
-                                                          '__call__')})
-TheseExpressionOperations = type(b'TheseExpressionOperations', (object,),
-                                 _expr_operations)
-
-
-
-_this_eq = _build_this_binary_op(eq)
-_this_ne = _build_this_binary_op(ne)
-
-
-
-@contextualized(context(UNPROXIFING_CONTEXT), TheseExpressionOperations)
 class These(object):
     '''
     The type of :obj:`this` symbol: an unnamed object that may placed in
@@ -843,6 +828,8 @@ class These(object):
     the context in which `this` symbol is used in the query itself.
     '''
     __metaclass__ = TheseType
+
+    __slots__ = ('_name', '_parent', '_binding')
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
@@ -1056,7 +1043,7 @@ class These(object):
             else:
                 current_binding = None
         with context(AUTOBINDING_CONTEXT):
-            instance = These(name, parent=parent)
+            instance = _AutobindingThese(name, parent=parent)
             assert instance is not self
             yield instance
         # If we are iterating over an instance with a binding we *must* respect
@@ -1096,6 +1083,7 @@ class These(object):
             >>> (this('parent') == this('parent')) is _true
             True
         '''
+        from xotl.ql.expressions import eq
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
                 res = validate_attrs(self, other, ('name', 'parent',
@@ -1105,8 +1093,8 @@ class These(object):
         if context[UNPROXIFING_CONTEXT]:
             return res
         else:
-            if self is not other:
-                return _this_eq(self, other)
+            if not res and (self is not other):
+                return eq(self, other)
             else:
                 # In logic A == A is always true so we don't produce nothing
                 # for it.
@@ -1123,6 +1111,7 @@ class These(object):
             >>> (this('parent') != this('parent')) is _false
             True
         '''
+        from xotl.ql.expressions import ne
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
                 res = validate_attrs(self, other, ('name', 'parent',
@@ -1132,15 +1121,302 @@ class These(object):
         if context[UNPROXIFING_CONTEXT]:
             return not res
         else:
-            if self is not other:
-                return _this_ne(self, other)
+            if not res and (self is not other):
+                return ne(self, other)
             else:
                 return _false
+
+
+    def __lt__(self, other):
+        '''
+            >>> this < 1     # doctest: +ELLIPSIS
+            <expression 'this < 1' ...>
+        '''
+        from xotl.ql.expressions import lt
+        return lt(self, other)
+
+    def __gt__(self, other):
+        '''
+            >>> this > 1     # doctest: +ELLIPSIS
+            <expression 'this > 1' ...>
+        '''
+        from xotl.ql.expressions import gt
+        return gt(self, other)
+
+    def __le__(self, other):
+        '''
+            >>> this <= 1     # doctest: +ELLIPSIS
+            <expression 'this <= 1' ...>
+        '''
+        from xotl.ql.expressions import le
+        return le(self, other)
+
+    def __ge__(self, other):
+        '''
+            >>> this >= 1     # doctest: +ELLIPSIS
+            <expression 'this >= 1' ...>
+        '''
+        from xotl.ql.expressions import ge
+        return ge(self, other)
+
+    def __and__(self, other):
+        '''
+            >>> this & 1     # doctest: +ELLIPSIS
+            <expression 'this and 1' ...>
+        '''
+        from xotl.ql.expressions import and_
+        return and_(self, other)
+
+    def __rand__(self, other):
+        '''
+            >>> 1 & this     # doctest: +ELLIPSIS
+            <expression '1 and this' ...>
+        '''
+        from xotl.ql.expressions import and_
+        return and_(other, self)
+
+    def __or__(self, other):
+        '''
+            >>> this | 1     # doctest: +ELLIPSIS
+            <expression 'this or 1' ...>
+        '''
+        from xotl.ql.expressions import or_
+        return or_(self, other)
+
+    def __ror__(self, other):
+        '''
+            >>> 1 | this     # doctest: +ELLIPSIS
+            <expression '1 or this' ...>
+        '''
+        from xotl.ql.expressions import or_
+        return or_(other, self)
+
+    def __xor__(self, other):
+        '''
+            >>> this ^ 1     # doctest: +ELLIPSIS
+            <expression 'this xor 1' ...>
+        '''
+        from xotl.ql.expressions import xor_
+        return xor_(self, other)
+
+    def __rxor__(self, other):
+        '''
+            >>> 1 ^ this     # doctest: +ELLIPSIS
+            <expression '1 xor this' ...>
+        '''
+        from xotl.ql.expressions import xor_
+        return xor_(other, self)
+
+    def __add__(self, other):
+        '''
+            >>> this + 1       # doctest: +ELLIPSIS
+            <expression 'this + 1' ...>
+        '''
+        from xotl.ql.expressions import add
+        return add(self, other)
+
+
+    def __radd__(self, other):
+        '''
+            >>> 1 + this       # doctest: +ELLIPSIS
+            <expression '1 + this' ...>
+        '''
+        from xotl.ql.expressions import add
+        return add(other, self)
+
+
+    def __sub__(self, other):
+        '''
+            >>> this - 1      # doctest: +ELLIPSIS
+            <expression 'this - 1' ...>
+        '''
+        from xotl.ql.expressions import sub
+        return sub(self, other)
+
+
+    def __rsub__(self, other):
+        '''
+            >>> 1 - this      # doctest: +ELLIPSIS
+            <expression '1 - this' ...>
+        '''
+        from xotl.ql.expressions import sub
+        return sub(other, self)
+
+    def __mul__(self, other):
+        '''
+            >>> this * 1    # doctest: +ELLIPSIS
+            <expression 'this * 1' ...>
+        '''
+        from xotl.ql.expressions import mul
+        return mul(self, other)
+
+    def __rmul__(self, other):
+        '''
+            >>> 1 * this    # doctest: +ELLIPSIS
+            <expression '1 * this' ...>
+        '''
+        from xotl.ql.expressions import mul
+        return mul(other, this)
+
+
+    def __div__(self, other):
+        '''
+            >>> this/1    # doctest: +ELLIPSIS
+            <expression 'this / 1' ...>
+        '''
+        from xotl.ql.expressions import div
+        return div(self, other)
+
+    __truediv__ = __div__
+
+    def __rdiv__(self, other):
+        '''
+            >>> 1 / this    # doctest: +ELLIPSIS
+            <expression '1 / this' ...>
+        '''
+        from xotl.ql.expressions import div
+        return div(other, this)
+
+    __rtruediv__ = __rdiv__
+
+    def __floordiv__(self, other):
+        '''
+            >>> this // 1    # doctest: +ELLIPSIS
+            <expression 'this // 1' ...>
+        '''
+        from xotl.ql.expressions import floordiv
+        return floordiv(self, other)
+
+    def __rfloordiv__(self, other):
+        '''
+            >>> 1 // this    # doctest: +ELLIPSIS
+            <expression '1 // this' ...>
+        '''
+        from xotl.ql.expressions import floordiv
+        return floordiv(other, this)
+
+    def __mod__(self, other):
+        '''
+            >>> this % 1    # doctest: +ELLIPSIS
+            <expression 'this % 1' ...>
+        '''
+        from xotl.ql.expressions import mod
+        return mod(self, other)
+
+    def __rmod__(self, other):
+        '''
+            >>> 1 % this    # doctest: +ELLIPSIS
+            <expression '1 % this' ...>
+        '''
+        from xotl.ql.expressions import mod
+        return mod(other, self)
+
+    def __pow__(self, other):
+        '''
+            >>> this**1    # doctest: +ELLIPSIS
+            <expression 'this ** 1' ...>
+        '''
+        from xotl.ql.expressions import pow
+        return pow(self, other)
+
+    def __rpow__(self, other):
+        '''
+            >>> 1 ** this    # doctest: +ELLIPSIS
+            <expression '1 ** this' ...>
+        '''
+        from xotl.ql.expressions import pow
+        return pow(other, self)
+
+
+    def __lshift__(self, other):
+        '''
+            >>> this << 1    # doctest: +ELLIPSIS
+            <expression 'this << 1' ...>
+        '''
+        from xotl.ql.expressions import lshift
+        return lshift(self, other)
+
+    def __rlshift__(self, other):
+        '''
+            >>> 1 << this    # doctest: +ELLIPSIS
+            <expression '1 << this' ...>
+        '''
+        from xotl.ql.expressions import lshift
+        return lshift(other, self)
+
+    def __rshift__(self, other):
+        '''
+            >>> this >> 1    # doctest: +ELLIPSIS
+            <expression 'this >> 1' ...>
+        '''
+        from xotl.ql.expressions import rshift
+        return rshift(self, other)
+
+    def __rrshift__(self, other):
+        '''
+            >>> 1 >> this    # doctest: +ELLIPSIS
+            <expression '1 >> this' ...>
+        '''
+        from xotl.ql.expressions import rshift
+        return rshift(other, self)
+
+
+    def __neg__(self):
+        '''
+            >>> -this         # doctest: +ELLIPSIS
+            <expression '-this' ...>
+        '''
+        from xotl.ql.expressions import neg
+        return neg(self)
+
+    def __abs__(self):
+        '''
+            >>> abs(this)         # doctest: +ELLIPSIS
+            <expression 'abs(this)' ...>
+        '''
+        from xotl.ql.expressions import abs_
+        return abs_(self)
+
+    def __pos__(self):
+        '''
+            >>> +this         # doctest: +ELLIPSIS
+            <expression '+this' ...>
+        '''
+        from xotl.ql.expressions import pos
+        return pos(self)
+
+    def __invert__(self):
+        '''
+            >>> ~this         # doctest: +ELLIPSIS
+            <expression '~this' ...>
+        '''
+        from xotl.ql.expressions import invert
+        return invert(self)
+
+
+class ThisClass(These):
+    '''
+    The class for the :obj:`this` object.
+
+    The `this` object is a singleton that behaves like any other
+    :class:`These` instances but also allows the creation of named instances.
+
+    '''
+
+    def __call__(self, *args, **kwargs):
+        return These(*args, **kwargs)
+
+
+#: The `this` object is a unnamed universal "selector" that may be placed in
+#: expressions and queries.
+this = ThisClass()
 
 
 class _AutobindingThese(These):
     'Marker class for autobinding these instances in expressions inside a '
     'comprehension'
+
+    __slots__ = ('__dict__', )
 
 
     def __getattribute__(self, attr):
@@ -1157,25 +1433,6 @@ class _AutobindingThese(These):
             result = super(_AutobindingThese, self).__call__(*args)
         # TODO: Create the autobindingthese...
         return result
-
-
-class ThisClass(These):
-    '''
-    The class for the :obj:`this` object.
-
-    The `this` object is a singleton that behaves like any other
-    :class:`These` instances but also allows the creation of named instances.
-
-    '''
-
-    def __call__(self, *args, **kwargs):
-        return type(self)(*args, **kwargs)
-
-
-#: The `this` object is a unnamed universal "selector" that may be placed in
-#: expressions and queries.
-this = ThisClass()
-
 
 
 def _restore_binding(which):
@@ -1270,6 +1527,8 @@ def thesefy(target):
         ... class Person(object):
         ...    pass
 
+        >>> from xoutil.proxy import unboxed
+        >>> from xotl.ql.expressions import q
         >>> q = these(who for who in Person if who.age > 30)
         >>> unboxed(q).binding    # doctest: +ELLIPSIS
         <expression '(is_a(this('...'), <class '...Person'>)) and (this('...').age > 30)' ...>
