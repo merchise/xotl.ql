@@ -102,3 +102,9 @@ class TestSimpleExpression(unittest.TestCase):
 
         expr = startswith(Foobar(), 'aaa')
         self.assertIs(1, expr)
+
+
+class RegressionTests(unittest.TestCase):
+    def test_20120814_reversed_ops_should_work(self):
+        expr = 1 + (1 + q(1))
+        self.assertEquals('1 + (1 + 1)', str(expr))

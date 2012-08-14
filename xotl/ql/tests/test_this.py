@@ -91,8 +91,13 @@ class TestThisExpressions(unittest.TestCase):
 
 
     def test_reverse_expressions(self):
-        expr = 3 > 1 + this.x
-        self.assertEqual("3 > (1 + this.x)", str(expr))
+        expr = 3 > "1" + this.x
+        # Since numbers (3) don't implement the __gt__ for expression
+        # expressions, python automatically reverses the expression to:
+        #    ("1" + this.x) < 3
+        # But since we SHOULD NOT reverse the + operator to `this.x + 1`,
+        # since + may not be commutative (like in string concatenation).
+        self.assertEqual("(1 + this.x) < 3", str(expr))
 
 
     def test_str_thisparent(self):
