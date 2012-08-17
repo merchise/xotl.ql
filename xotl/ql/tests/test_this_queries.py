@@ -34,7 +34,7 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
-from xotl.ql.these import TheseType, these
+from xotl.ql.these import TheseType, these, AutobindingThese
 
 from collections import namedtuple
 
@@ -48,14 +48,32 @@ class TestThisQueries(unittest.TestCase):
         TheseType._instances = {}
 
 
-    def test_basic_iter(self):
-        expr = next(parent for parent in this('parent') if parent.age > 32)
+    def test_plain_iter(self):
+        t1 = next(iter(this))
+        self.assertIsInstance(t1, AutobindingThese,
+                              'When itering over a this instance we should '
+                              'get an autobinding these instance')
+
+        t1 = next(parent for parent in this('parent'))
+        self.assertIsInstance(t1, AutobindingThese)
+        self.assertEquals('parent', unboxed(t1).name,
+                          'The name of the autobinding instance should be '
+                          'the same as the name of the actual instance')
+
+
+    def test_basic_iters(self):
+        from xotl.ql.expressions import count
+        ok = self.assertEquals
+        expr = next(parent for parent in this('parent')
+                        if (parent.age > 32) & parent.married)
         self.assertEquals("this('parent')", str(expr))
-        with context(UNPROXIFING_CONTEXT):
-            binding = expr.binding
-            previous_bindings = getattr(expr, 'previous_bindings', [])
-        self.assertEquals("this('parent').age > 32", str(binding))
-        self.assertFalse(bool(previous_bindings))
+        binding = unboxed(expr).binding
+        ok("(this('parent').age > 32) and (this('parent').married)",
+           str(binding))
+        expr = next(parent for parent in this('parent')
+                        if +count(parent.children))
+        binding = unboxed(expr).binding
+        ok("+(count(this('parent').children)", str(binding))
 
 
     def test_complex_iter(self):
@@ -71,23 +89,6 @@ class TestThisQueries(unittest.TestCase):
                   str(parent_binding))
         assert_ok("(this('p').age > 32) and (this('p').children.age < 10)",
                   str(child_binding))
-
-
-    def test_unary_expression_autobinding(self):
-        parent = next(parent.age for parent in this('p')
-                        if +parent.children)
-        with context(UNPROXIFING_CONTEXT):
-            parent_binding = parent.binding
-        self.assertEqual("+this('p').children", str(parent_binding))
-
-
-    def test_unary_expression_autobinding_with_unary_function(self):
-        from xotl.ql.expressions import count
-        parent = next(parent.age for parent in this('p')
-                        if +count(parent.children))
-        with context(UNPROXIFING_CONTEXT):
-            parent_binding = parent.binding
-        self.assertEqual("+(count(this('p').children))", str(parent_binding))
 
 
     def test_other_less_complex_iter(self):
