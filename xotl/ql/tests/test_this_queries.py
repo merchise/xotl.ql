@@ -209,6 +209,12 @@ class TestThisQueries(unittest.TestCase):
         self.assertEqual("startswith(this('book').name, El)", i2_binding)
 
 
+    def test_implicit_calling(self):
+        manus = these(who for who in this('who') if who.name.startswith('manu'))
+        binding = unboxed(manus).binding
+        self.assertEqual("this('who').name.startswith(manu)", str(binding))
+
+
     def test_expressions_as_selections_with_grouping(self):
         groups = these({parent.age + 10: (parent, child.x + 4, x)
                             for parent in this('parent')
