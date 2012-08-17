@@ -116,3 +116,11 @@ class TestThisExpressions(unittest.TestCase):
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))
+
+
+
+    def test_autobindings_are_not_singletons(self):
+        from xotl.ql.these import AutobindingThese
+        t1 = AutobindingThese('a')
+        t2 = AutobindingThese('b')
+        self.assertIsNot(t1, t2)
