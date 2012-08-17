@@ -30,7 +30,7 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xotl.ql.these import this, TheseType
+from xotl.ql.these import this, These, TheseType
 from xotl.ql.util import named
 from xotl.ql.expressions import _true, _false, in_, count, ExpressionTree
 
@@ -124,3 +124,15 @@ class TestThisExpressions(unittest.TestCase):
         t1 = AutobindingThese('a')
         t2 = AutobindingThese('b')
         self.assertIsNot(t1, t2)
+
+
+    def test_init_with_binding(self):
+        from xoutil.proxy import unboxed as u
+        t = this('p', binding=this('p') > 33)
+        binding = u(t).binding
+        self.assertEqual("this('p') > 33", str(binding))
+
+        # But directly calling the constructor won't work, this a feature of
+        # this alone.
+        t = These('p', binding=this('p').age > 78)
+        self.assertEqual("this('p') > 33", str(binding))

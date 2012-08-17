@@ -1404,7 +1404,12 @@ class ThisClass(These):
     '''
 
     def __call__(self, *args, **kwargs):
-        return These(*args, **kwargs)
+        result = These(*args, **kwargs)
+        binding = kwargs.get('binding', None)
+        if binding:
+            with context(UNPROXIFING_CONTEXT):
+                result.bind(binding)
+        return result
 
 
 #: The `this` object is a unnamed universal "selector" that may be placed in
