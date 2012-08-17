@@ -1175,7 +1175,7 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
     '''
-    A representation of a expression.
+    A representation of an expression.
 
     Each expression has an `op` attribute that *should* be a class derived
     from :class:`Operator`, and a `children` attribute that's a tuple of the
