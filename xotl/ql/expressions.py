@@ -443,20 +443,14 @@ class _FunctorOperatorType(OperatorType):
     recursion.
     '''
     def __call__(self, *children):
+        stack = context
         head, tail = children[0], children[1:]
         method = getattr(unboxed(head), self._method_name, None)
-        if method:
-            from xoutil.aop.basic import weaved
+        if method and not stack[(head, method)]:
             func = getattr(method, 'im_func', method)
-            # We weave the head to remove the method temporarily to avoid
-            # infinit recursion if that method invokes this class with itself
-            # as a the first operand.
-            #
-            # Notice that weaved is not thread-safe, since it messes with
-            # head.__class__. But expressions are not thread-safe either. We
-            # think that a expression is probably a very volatile object that
-            # is disposed shortly after it's use.
-            with weaved(head, **{self._method_name: None}) as head:
+            # manu: Don't use weaved since it won't work with These instance
+            #       because of __slots__; use a stack instead.
+            with stack((head, method)):
                 if tail:
                     return func(head, *tail)
                 else:
