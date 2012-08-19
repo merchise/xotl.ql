@@ -60,7 +60,19 @@ else:
 # built documents.
 #
 # The short X.Y version.
-from xotl.ql.release import VERSION
+try:
+    from xotl.ql.release import VERSION
+except ImportError:
+    def up(path, level=1):
+        result = path
+        while level:
+            result = os.path.dirname(result)
+            level -= 1
+        return result
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    _project_dir = os.path.abspath(os.path.join(up(_current_dir, 2)))
+    sys.path.append(_project_dir)
+    from xotl.ql.release import VERSION
 version = VERSION[:VERSION.rfind('.')]
 # The full version, including alpha/beta/rc tags.
 release = VERSION
