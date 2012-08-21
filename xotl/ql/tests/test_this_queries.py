@@ -34,7 +34,7 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
-from xotl.ql.these import TheseType, these, AutobindingThese
+from xotl.ql.these import these, AutobindingThese
 
 from collections import namedtuple
 
@@ -44,10 +44,6 @@ __author__ = 'manu'
 
 
 class TestThisQueries(unittest.TestCase):
-    def setUp(self):
-        TheseType._instances = {}
-
-
     def test_plain_iter(self):
         t1 = next(iter(this))
         self.assertIsInstance(t1, AutobindingThese,
@@ -55,8 +51,12 @@ class TestThisQueries(unittest.TestCase):
                               'get an autobinding these instance')
 
         t1 = next(parent for parent in this('parent'))
-        self.assertIsInstance(t1, AutobindingThese)
         self.assertEquals('parent', unboxed(t1).name,
+                          'The name of the autobinding instance should be '
+                          'the same as the name of the actual instance')
+
+        t1 = next(parent for parent in this('parent').children)
+        self.assertEquals('children', unboxed(t1).name,
                           'The name of the autobinding instance should be '
                           'the same as the name of the actual instance')
 

@@ -30,21 +30,15 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xotl.ql.these import this, These, TheseType
-from xotl.ql.util import named
-from xotl.ql.expressions import _true, _false, in_, count, ExpressionTree
+from xotl.ql.these import this
+from xotl.ql.expressions import _true, _false, ExpressionTree
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
 class TestThisExpressions(unittest.TestCase):
-    def tearDown(self):
-        TheseType._instances = {}
-
     def test_this_anyattribute(self):
         'Tests that an unbound this instance has any attribute'
         self.assert_(this.a.b.c is not None)
@@ -56,24 +50,16 @@ class TestThisExpressions(unittest.TestCase):
         self.assertEquals("this('z').a.b.c", str(this('z').a.b.c))
 
 
-    def test_this_dot_name(self):
-        self.assertIsInstance(this, type(this.parent.name))
-
-
     def test_calling_functions(self):
-        expression = this.parent.startswith('manu')
+        expression = this.startswith('manu')
         self.assertIsInstance(expression, ExpressionTree)
-        self.assertEqual("call(this.parent.startswith, manu)",
+        self.assertEqual("call(this.startswith, manu)",
                          str(expression))
+
+        # But the calling a these instance directly is not supported
+        # (I think is not pretty)
         with self.assertRaises(TypeError):
             this('someone')('cannot', 'call', 'me')
-
-
-    def test_named(self):
-        parent = this.parent
-        child = parent.children
-        self.assert_(isinstance(parent, named))
-        self.assert_(isinstance(child, named))
 
 
     def test_tautology(self):
@@ -81,14 +67,6 @@ class TestThisExpressions(unittest.TestCase):
         self.assertIs(_true, this == this)
         self.assertIs(_false, this != this)
         self.assertIs(_false, this('parent') != this('parent'))
-
-
-    def test_in_clause(self):
-        parent, child = this('parent'), this('child')
-        expr = in_(child, parent.children)
-        expr2 = in_(this, this.children)
-        with context(UNPROXIFING_CONTEXT):
-            self.assertFalse(expr == expr2)
 
 
     def test_reverse_expressions(self):
@@ -101,29 +79,9 @@ class TestThisExpressions(unittest.TestCase):
         self.assertEqual("(1 + this.x) < 3", str(expr))
 
 
-    def test_str_thisparent(self):
-        self.assertEqual("this('parent')", str(this('parent')))
-
-
-    def test_assert_unique_id(self):
-        these = type(this)
-        self.assertIs(this, these())
-        self.assertIs(this('parent'), these('parent'))
-        self.assertIs(this('parent').name, these(b'name',
-                                                 parent=these('parent')))
-
-
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))
-
-
-
-    def test_autobindings_are_not_singletons(self):
-        from xotl.ql.these import AutobindingThese
-        t1 = AutobindingThese('a')
-        t2 = AutobindingThese('b')
-        self.assertIsNot(t1, t2)
 
 
     def test_init_with_binding(self):
@@ -132,8 +90,10 @@ class TestThisExpressions(unittest.TestCase):
         binding = u(t).binding
         self.assertEqual("this('p') > 33", str(binding))
 
-        # But directly calling the constructor won't work, this a feature of
-        # this alone.
-        t = These('p1', binding=this('p1').age > 78)
-        binding = u(t).binding
-        self.assertIsNone(binding)
+
+
+class RegressionTests(unittest.TestCase):
+    def test_this_SHOULD_NOT_be_singletons(self):
+        t1 = this('abc', parent=this('efc'))
+        t2 = this('abc', parent=this('efc'))
+        self.assertIsNot(t1, t2)
