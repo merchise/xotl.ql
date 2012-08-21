@@ -94,6 +94,21 @@ class TestThisExpressions(unittest.TestCase):
 
 class RegressionTests(unittest.TestCase):
     def test_this_SHOULD_NOT_be_singletons(self):
+        # Making this instances singletons leads to subtle bugs in queries
+        # and complicates the code just to avoid such complications:
+        # An instance may be involved in a query::
+        #    query = these(parent for parent in this('parent')
+        #                    if parent.age > 40)
+        #    query2 = these(parent for parent in this('parent')
+        #                    if parent.age < 30)
+        # If this('parent') were to return a singleton then the second
+        # query could have overwritten the previous binding from the first
+        # query; it took a bit of hackerish to avoid this:
+        #    - Create a context and then skip the singleton-making code
+        #      in such a context.
+        # But since this instance are likely to be used always inside queries
+        # the singleton stuff would not make improvement.
+        # So it is best just to remove it.
         t1 = this('abc', parent=this('efc'))
         t2 = this('abc', parent=this('efc'))
         self.assertIsNot(t1, t2)

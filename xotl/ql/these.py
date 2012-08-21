@@ -661,13 +661,12 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-# TODO: Think about this name
+# TODO: Think about this
 class Resource(object):
     __slots__ = ('_name', '_parent')
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
-
 
     def __init__(self, name, **kwargs):
         with context(UNPROXIFING_CONTEXT):
@@ -722,42 +721,12 @@ class Resource(object):
             return self
 
 
-
-
-class TheseType(type):
-    '''
-    The type of the :class:`These` object.
-    '''
-    # TODO: Do we need to use threading.local?
-    _instances = {}
-
-    def __call__(self, name=None, **kwargs):
-        '''
-        Implements the singleton pattern avoiding calling __init__ if the
-        object is reused instead of created.
-        '''
-        parent = kwargs.get('parent', None)
-        if name and parent is None:
-            parent = self()
-        if (parent, name) in TheseType._instances:
-            return TheseType._instances[parent, name]
-        else:
-            result = self.__new__(self, name, **kwargs)
-            with context(UNPROXIFING_CONTEXT):
-                result.__init__(name, **kwargs)
-            TheseType._instances[parent, name] = result
-            return result
-
-
-
 class These(Resource):
     '''
     The type of :obj:`this` symbol: an unnamed object that may placed in
     queries and whose interpretation may be dependant of the query context and
     the context in which `this` symbol is used in the query itself.
     '''
-    __metaclass__ = TheseType
-
     __slots__ = ('_binding')
 
 
@@ -778,6 +747,7 @@ class These(Resource):
 
     def bind(self, expression):
         self.binding = expression
+
 
     @property
     def binding(self):
@@ -878,14 +848,6 @@ class These(Resource):
         instance = AutobindingThese(name, parent=parent,
                                     binding=current_binding)
         yield instance
-#        # If we are iterating over an instance with a binding we *must* respect
-#        # such binding, so we and-it after our own binding (if any).
-#        if current_binding:
-#            with context(UNPROXIFING_CONTEXT):
-#                if instance.binding:
-#                    instance.binding = current_binding & instance.binding
-#                else:
-#                    instance.binding = current_binding
 
 
     def __str__(self):
@@ -900,6 +862,7 @@ class These(Resource):
             return "{parent}.{name}".format(parent=str(parent), name=name)
         else:  # parent and not name:
             assert False
+
 
     def __repr__(self):
         return '<%s at 0x%x>' % (str(self), id(self))
@@ -925,7 +888,7 @@ class These(Resource):
         if context[UNPROXIFING_CONTEXT]:
             return res
         else:
-            if not res and (self is not other):
+            if not res:
                 return eq(self, other)
             else:
                 # In logic A == A is always true so we don't produce nothing
@@ -953,7 +916,7 @@ class These(Resource):
         if context[UNPROXIFING_CONTEXT]:
             return not res
         else:
-            if not res and (self is not other):
+            if not res:
                 return ne(self, other)
             else:
                 return _false
@@ -1258,13 +1221,9 @@ class ThisClass(These):
 
     '''
 
-    def __call__(self, *args, **kwargs):
-        result = These(*args, **kwargs)
-        binding = kwargs.get('binding', None)
-        if binding:
-            with context(UNPROXIFING_CONTEXT):
-                result.bind(binding)
-        return result
+
+    def __call__(self, name, **kwargs):
+        return These(name, **kwargs)
 
 
 #: The `this` object is a unnamed universal "selector" that may be placed in
@@ -1273,19 +1232,9 @@ this = ThisClass()
 
 
 
-class AutobindingTheseType(TheseType):
-    def __call__(self, name=None, **kwargs):
-        result = self.__new__(self, name, **kwargs)
-        with context(UNPROXIFING_CONTEXT):
-            result.__init__(name, **kwargs)
-        return result
-
-
-
-class AutobindingThese(These):
+class AutobindingThese(Resource):
     'Marker class for autobinding these instances in expressions inside a '
     'comprehension'
-    __metaclass__ = AutobindingTheseType
 
     __slots__ = ('_autobinding', '_previous_bindings', )
 
@@ -1382,7 +1331,7 @@ class AutobindingThese(These):
 
 
     def __getattribute__(self, attr):
-        get = super(These, self).__getattribute__
+        get = super(AutobindingThese, self).__getattribute__
         if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
             return get(attr)
         else:
