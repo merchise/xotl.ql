@@ -658,13 +658,6 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-
-
-class _name(unicode):
-    pass
-
-
-
 class AUTOBINDING_CONTEXT(object):
     '''Context in which every expression involving a `this` instance is
     automatically bound to it.
@@ -854,23 +847,14 @@ class These(object):
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
 
-    #: `These` instances may be named in order to be distiguishable from each
-    #: other in a query where two instances may represent different objects.
-    name = None
-
-    #: `These` instances may have a parent `these` instance from which they
-    #: are to be "drawn". If fact, only the pair of attributes
-    #: ``(parent, name)`` allows to distiguish two instances from each other.
-    parent = None
-
 
     def __init__(self, name=None, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self.validate_name(name)
-            self.name = name
-            self.parent = kwargs.get('parent', None)
+            self._name = name
+            self._parent = kwargs.get('parent', None)
             self._binding = []
-            if not self.parent:
+            if not self._parent:
                 self.bind(get_first_of(kwargs,
                                        'binding',
                                        'expression',
@@ -892,6 +876,23 @@ class These(object):
         else:
             return head
 
+    @property
+    def name(self):
+        '''
+        `These` instances may be named in order to be distiguishable from each
+        other in a query where two instances may represent different objects.
+        '''
+        return getattr(self, '_name', None)
+
+
+    @property
+    def parent(self):
+        '''
+        `These` instances may have a parent `these` instance from which they
+        are to be "drawn". If fact, only the pair of attributes ``(parent,
+        name)`` allows to distiguish two instances from each other.
+        '''
+        return getattr(self, '_parent', None)
 
 
     @property
@@ -933,8 +934,9 @@ class These(object):
         '''
         The top-most parent of the instace or self if it has no parent.
         '''
-        if self.parent is not None:
-            return self.parent.root_parent
+        parent = getattr(self, 'parent', None)
+        if parent is not None:
+            return parent.root_parent
         else:
             return self
 
@@ -974,7 +976,7 @@ class These(object):
 
     @classmethod
     def _newname(cls):
-        return _name('i{count}'.format(count=next(cls._counter)))
+        return 'i{count}'.format(count=next(cls._counter))
 
 
     @classmethod
@@ -1003,13 +1005,14 @@ class These(object):
             return These(name=attr, parent=self)
 
 
-    def __deepcopy__(self, memo=None):
-        from copy import deepcopy
+    def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
-            name = self.name or self._newname()
             parent = self.parent
-            binding = deepcopy(self.binding, memo)
-        return These(name, parent=parent, filter=binding)
+        if parent is not None:
+            from .expressions import invoke
+            return ExpressionTree(invoke, self, *args)
+        else:
+            raise TypeError()
 
 
     def __iter__(self):
@@ -1075,8 +1078,7 @@ class These(object):
         elif parent is None and name:
             return "this('{name}')".format(name=name)
         elif parent is not None and name:
-            return "{parent}.{name}".format(parent=str(parent),
-                                              name=name)
+            return "{parent}.{name}".format(parent=str(parent), name=name)
         else:  # parent and not name:
             assert False
 
@@ -1141,13 +1143,28 @@ class _AutobindingThese(These):
     'comprehension'
 
 
+    def __getattribute__(self, attr):
+        # TODO: Append the resulting expression as the top of the bindings.
+        get = super(These, self).__getattribute__
+        if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
+            return get(attr)
+        else:
+            return _AutobindingThese(name=attr, parent=self)
+
+
+    def __call__(self, *args):
+        with context(UNPROXIFING_CONTEXT):
+            result = super(_AutobindingThese, self).__call__(*args)
+        # TODO: Create the autobindingthese...
+        return result
+
 
 class ThisClass(These):
     '''
     The class for the :obj:`this` object.
 
-    The `this` object is a singleton that behaves like any other :class:`These`
-    instances but also allows the creation of named instances.
+    The `this` object is a singleton that behaves like any other
+    :class:`These` instances but also allows the creation of named instances.
 
     '''
 
@@ -1270,67 +1287,3 @@ def thesefy(target):
     class new_class(target):
         __metaclass__ = new_meta
     return new_class
-
-
-
-# XXX: Util types for bound/unbound and named/unnamed this instances.
-# TODO: Check whether we need this or not.
-
-class _complementof(type):
-    def __instancecheck__(self, instance):
-        return not isinstance(instance, self.target)
-
-
-@assignment_operator(maybe_inline=False)
-def complementof(name, typ, doc=None):
-    return _complementof(name,
-                         (object,),
-                         {'target': typ,
-                          '__doc__': doc})
-
-
-class _bound_type(type):
-    def __instancecheck__(self, instance):
-        with context(UNPROXIFING_CONTEXT):
-            return (isinstance(instance, These) and
-                    getattr(instance, 'binding', False))
-
-
-class bound(object):
-    '''
-    Pure type for bound `this` instances::
-
-        >>> isinstance(this, bound)
-        False
-
-        >>> who = next(parent for parent in this if parent.age > 32)
-        >>> isinstance(who, bound)
-        True
-    '''
-    __metaclass__ = _bound_type
-
-
-unbound = complementof(bound)
-
-
-class _named_type(type):
-    def __instancecheck__(self, instance):
-        with context(UNPROXIFING_CONTEXT):
-            return (isinstance(instance, These) and
-                    get_first_of(instance, 'name', '__name__', default=False))
-
-
-class named(object):
-    '''
-    Pure type for named this instances::
-
-        >>> isinstance(this, named)
-        False
-
-        >>> isinstance(this('parent'), named)
-        True
-    '''
-    __metaclass__ = _named_type
-
-
-unnamed = complementof(named)

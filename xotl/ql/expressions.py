@@ -39,8 +39,8 @@ expression tree has two core attributes:
 
 Operation classes should have the following attributes:
 
-- `_arity`, which can be any of :py:class:`AT_LEAST_TWO`, :py:class:`BINARY`,
-  or :py:class:`UNARY`.
+- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`,
+  or :class:`UNARY`.
 
 - `_format`, which should be a string that specifies how to format the
   operation when str is invoked to print the expression. The format should
@@ -48,13 +48,10 @@ Operation classes should have the following attributes:
   doc.
 
   For UNARY operations it will be passed a single positional argument. For
-  BINARY two positional arguments will be passed. AT_LEAST_TWO are currently
-  BINARY operations that should have a boolean `_associative` attribute. The
-  `_format` attribute should contains the format for two operands. We will
-  concat the result with or without parenthesis according to the truth value of
-  `_associative`.
-
-- `_associative`, as explained above.
+  BINARY two positional arguments will be passed. N_ARITY is regarded as
+  function on several arguments (passed one after the other separated by
+  commas); `_format` should have a single positional argument that will be
+  replaced by the list of arguments.
 
 - `_method_name`, should contain a string (not unicode unless you're sure) with
   the name of the method that is be invoked on the (first) operand of the
@@ -329,6 +326,18 @@ class BINARY(object):
 
 
 
+class N_ARITY(object):
+    @classmethod
+    def formatter(cls, operation, children):
+        str_format = operation._format
+        args = ', '.join((str(child) if not isinstance(child,
+                                                          ExpressionTree)
+                                        else '(%s)' % child)
+                         for child in children)
+        return str_format.format(args)
+
+
+
 class _boolean(type):
     def __invert__(self):
         """The `~` operator for custom booleans::
@@ -386,7 +395,8 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
-        type(self).operators.append(self)
+        OperatorType.operators.append(self)
+
 
     def __call__(self, *children):
         '''Support for operators classes return expression trees upon
@@ -443,20 +453,14 @@ class _FunctorOperatorType(OperatorType):
     recursion.
     '''
     def __call__(self, *children):
+        stack = context
         head, tail = children[0], children[1:]
         method = getattr(unboxed(head), self._method_name, None)
-        if method:
-            from xoutil.aop.basic import weaved
+        if method and not stack[(head, method)]:
             func = getattr(method, 'im_func', method)
-            # We weave the head to remove the method temporarily to avoid
-            # infinit recursion if that method invokes this class with itself
-            # as a the first operand.
-            #
-            # Notice that weaved is not thread-safe, since it messes with
-            # head.__class__. But expressions are not thread-safe either. We
-            # think that a expression is probably a very volatile object that
-            # is disposed shortly after it's use.
-            with weaved(head, **{self._method_name: None}) as head:
+            # manu: Don't use weaved since it won't work with These instance
+            #       because of __slots__; use a stack instead.
+            with stack((head, method)):
                 if tail:
                     return func(head, *tail)
                 else:
@@ -501,7 +505,6 @@ class EqualityOperator(Operator):
 
     '''
     _format = '{0} == {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__eq__'
 
@@ -520,7 +523,6 @@ class NotEqualOperator(Operator):
 
     '''
     _format = '{0} != {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__ne__'
 
@@ -539,11 +541,12 @@ class LogicalAndOperator(Operator):
 
     '''
     _format = '{0} and {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__and__'
+    _rmethod_name = b'__rand__'
 
 and_ = LogicalAndOperator
+
 
 
 class LogicalOrOperator(Operator):
@@ -556,9 +559,9 @@ class LogicalOrOperator(Operator):
 
     '''
     _format = '{0} or {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__or__'
+    _rmethod_name = b'__ror__'
 
 or_ = LogicalOrOperator
 
@@ -574,12 +577,11 @@ class LogicalXorOperator(Operator):
 
     '''
     _format = '{0} xor {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__xor__'
+    _rmethod_name = b'__rxor__'
 
 xor_ = LogicalXorOperator
-
 
 
 class LogicalNotOperator(Operator):
@@ -610,13 +612,12 @@ class AdditionOperator(Operator):
 
     '''
     _format = '{0} + {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__add__'
+    _rmethod_name = b'__radd__'
 
 
 add = AdditionOperator
-
 
 
 class SubstractionOperator(Operator):
@@ -624,6 +625,7 @@ class SubstractionOperator(Operator):
     _format = '{0} - {1}'
     _arity = BINARY
     _method_name = b'__sub__'
+    _rmethod_name = b'__rsub__'
 
 sub = SubstractionOperator
 
@@ -634,6 +636,7 @@ class DivisionOperator(Operator):
     _format = '{0} / {1}'
     _arity = BINARY
     _method_name = b'__div__'
+    _rmethod_name = b'__rdiv__'
 
 
 truediv = div = DivisionOperator
@@ -650,12 +653,11 @@ class MultiplicationOperator(Operator):
 
     '''
     _format = '{0} * {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__mul__'
+    _rmethod_name = b'__rmul__'
 
 mul = MultiplicationOperator
-
 
 
 class LesserThanOperator(Operator):
@@ -668,7 +670,6 @@ class LesserThanOperator(Operator):
 
     '''
     _format = '{0} < {1}'
-    _associative = True
     _arity = BINARY
     _method_name = b'__lt__'
 
@@ -814,6 +815,7 @@ class FloorDivOperator(Operator):
     _format = '{0} // {1}'
     _arity = BINARY
     _method_name = b'__floordiv__'
+    _rmethod_name = b'__rfloordiv__'
 
 
 floordiv = FloorDivOperator
@@ -832,6 +834,7 @@ class ModOperator(Operator):
     _format = '{0} mod {1}'
     _arity = BINARY
     _method_name = b'__mod__'
+    _rmethod_name = b'__rmod__'
 
 
 mod = ModOperator
@@ -849,9 +852,42 @@ class PowOperator(Operator):
     _format = '{0}**{1}'
     _arity = BINARY
     _method_name = b'__pow__'
+    _rmethod_name = b'__rpow__'
 
 
 pow_ = PowOperator
+
+
+class LeftShiftOperator(Operator):
+    '''
+    The `2 << 1` operator::
+
+        >>> e = lshift(2, 1)
+        >>> str(e)
+        '2 << 1'
+    '''
+    _format = '{0} << {1}'
+    _arity = BINARY
+    _method_name = b'__lshift__'
+    _rmethod_name = b'__rlshift__'
+
+lshift = LeftShiftOperator
+
+
+class RightShiftOperator(Operator):
+    '''
+    The `2 >> 1` operator::
+
+        >>> e = rshift(2, 1)
+        >>> str(e)
+        '2 >> 1'
+    '''
+    _format = '{0} >> {1}'
+    _arity = BINARY
+    _method_name = b'__rshift__'
+    _rmethod_name = b'__rrshift__'
+
+rshift = RightShiftOperator
 
 
 
@@ -1058,9 +1094,9 @@ class InvokeFunction(FunctorOperator):
         >>> str(expr)     # doctest: +ELLIPSIS
         'call(1, <function <lambda> ...>)'
     '''
-    _format = 'call({0}, {1})'
-    _arity = BINARY
-    _method_name = b'__call__'
+    _format = 'call({0})'
+    _arity = N_ARITY
+    _method_name = b'invoke'
 
 
 invoke = call = InvokeFunction
@@ -1132,6 +1168,15 @@ def _build_binary_operator(operation):
     return method
 
 
+def _build_rbinary_operator(operation):
+    method_name = getattr(operation, '_rmethod_name', None)
+    if method_name:
+        def method(self, other):
+            meth = partial(operation, other)
+            return meth(self)
+        method.__name__ = method_name
+        return method
+
 
 _expr_operations = {operation._method_name:
                     _build_unary_operator(operation)
@@ -1141,6 +1186,12 @@ _expr_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
                         if getattr(operation, '_arity', None) is BINARY})
+_expr_operations.update({operation._rmethod_name:
+                        _build_rbinary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, '_arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
 ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
                                 _expr_operations)
 
@@ -1148,13 +1199,16 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
     '''
-    A representation of a expression.
+    A representation of an expression.
 
     Each expression has an `op` attribute that *should* be a class derived
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
 
     '''
+    __slots__ = ('_op', '_children', )
+
+
     def __init__(self, op, *children):
         self._op = op
         self._children = tuple(child for child in children)
@@ -1315,14 +1369,3 @@ class q(object):
         with context(UNPROXIFING_CONTEXT):
             return str(self.target)
 
-
-    def __deepcopy__(self, memo=Unset):
-        if memo is Unset:
-            memo = {}
-        d = id(self)
-        y = memo.get(d, Unset)
-        if y is not Unset:
-            return y
-        with context(UNPROXIFING_CONTEXT):
-            target = deepcopy(self.target, memo)
-        return q(target)

@@ -30,8 +30,9 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xotl.ql.these import this, named, TheseType
-from xotl.ql.expressions import _true, _false, in_, count
+from xotl.ql.these import this, TheseType
+from xotl.ql.util import named
+from xotl.ql.expressions import _true, _false, in_, count, ExpressionTree
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -59,10 +60,13 @@ class TestThisExpressions(unittest.TestCase):
         self.assertIsInstance(this, type(this.parent.name))
 
 
-    def test_this_parens(self):
+    def test_calling_functions(self):
+        expression = this.parent.startswith('manu')
+        self.assertIsInstance(expression, ExpressionTree)
+        self.assertEqual("call(this.parent.startswith, manu)",
+                         str(expression))
         with self.assertRaises(TypeError):
-            this.parent('name')
-        self.assertNotIsInstance(this.parent, type(this))
+            this('someone')('cannot', 'call', 'me')
 
 
     def test_named(self):
@@ -87,6 +91,16 @@ class TestThisExpressions(unittest.TestCase):
             self.assertFalse(expr == expr2)
 
 
+    def test_reverse_expressions(self):
+        expr = 3 > "1" + this.x
+        # Since numbers (3) don't implement the __gt__ for expression
+        # expressions, python automatically reverses the expression to:
+        #    ("1" + this.x) < 3
+        # But since we SHOULD NOT reverse the + operator to `this.x + 1`,
+        # since + may not be commutative (like in string concatenation).
+        self.assertEqual("(1 + this.x) < 3", str(expr))
+
+
     def test_str_thisparent(self):
         self.assertEqual("this('parent')", str(this('parent')))
 
@@ -102,3 +116,11 @@ class TestThisExpressions(unittest.TestCase):
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))
+
+
+
+    def test_autobindings_are_not_singletons(self):
+        from xotl.ql.these import AutobindingThese
+        t1 = AutobindingThese('a')
+        t2 = AutobindingThese('b')
+        self.assertIsNot(t1, t2)

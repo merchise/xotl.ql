@@ -209,6 +209,12 @@ class TestThisQueries(unittest.TestCase):
         self.assertEqual("startswith(this('book').name, El)", i2_binding)
 
 
+    def test_implicit_calling(self):
+        manus = these(who for who in this('who') if who.name.startswith('manu'))
+        binding = unboxed(manus).binding
+        self.assertEqual("this('who').name.startswith(manu)", str(binding))
+
+
     def test_expressions_as_selections_with_grouping(self):
         groups = these({parent.age + 10: (parent, child.x + 4, x)
                             for parent in this('parent')
@@ -291,12 +297,16 @@ class TestThisQueries(unittest.TestCase):
 
     def test_simpledicts(self):
         x = these(dict(a=who.a, b=who.b) for who in this('who'))
-        self.assertIsInstance(x, result)
+        self.assertIsInstance(x, dict)
         a = this('who').a
         b = this('who').b
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(a, x['a'])
             self.assertEqual(b, x['b'])
+
+    def test_single_attr_binding(self):
+        q = these(p for p in this('p') if p.valid)
+        self.assertEqual("this('p').valid", unboxed(q).binding)
 
 
     def test_ranges_with_this(self):
