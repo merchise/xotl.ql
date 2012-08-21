@@ -1329,23 +1329,26 @@ class q(object):
         def endswith(self, suffix):
             return endswith(self, suffix)
 
+    def r(f):
+        return lambda self, other: f(other, self)
+
     number_like = _build_op_class(b'number_like',
                                   (('__add__', add, True),
-                                   ('__radd__', add, True),
+                                   ('__radd__', r(add), True),
                                    ('__sub__', sub, True),
-                                   ('__rsub__', sub, True),
+                                   ('__rsub__', r(sub), True),
                                    ('__mul__', mul, True),
-                                   ('__rmul__', mul, True),
+                                   ('__rmul__', r(mul), True),
                                    ('__pow__', pow_, True),
-                                   ('__rpow__', pow, True),
+                                   ('__rpow__', r(pow), True),
                                    ('__floordiv__', floordiv, True),
-                                   ('__rfloordiv__', floordiv, True),
+                                   ('__rfloordiv__', r(floordiv), True),
                                    ('__mod__', mod, True),
-                                   ('__rmod__', mod, True),
+                                   ('__rmod__', r(mod), True),
                                    ('__div__', div, True),
-                                   ('__rdiv__', div, True),
+                                   ('__rdiv__', r(div), True),
                                    ('__truediv__', truediv, True),
-                                   ('__rtruediv__', truediv, True),
+                                   ('__rtruediv__', r(truediv), True),
                                    ('__pos__', pos, False),
                                    ('__abs__', abs_, False),
                                    ('__neg__', neg, False),

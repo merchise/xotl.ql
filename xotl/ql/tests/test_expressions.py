@@ -30,81 +30,28 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
-
-from xotl.ql.expressions import q, eq, ne, lt, ExpressionTree
+from xotl.ql.expressions import q
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-class TestSimpleExpression(unittest.TestCase):
-    def test_eq(self):
-        a = eq(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = eq(3, 4)
-        c = eq(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
+class BasicTests(unittest.TestCase):
+    def test_q_should_keep_it_self_in_expressions(self):
+        'When :class:`xotl.ql.expressions.q` is involved in an expression '
+        'it should remove itself from it'
+        expr = q(1) + "1"
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
 
+        expr = 1 + q("1")
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
 
-    def test_un_eq(self):
-        expression = eq(10, 34)
-        self.assertIsNot(True, expression == eq(10, 34))
-        self.assertIsInstance(expression == eq(10, 34), ExpressionTree)
-        with context(UNPROXIFING_CONTEXT):
-            self.assertIs(True, expression == eq(10, 34))
-
-
-    def test_ne(self):
-        a = ne(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = ne(2, 3)
-        c = ne(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
-
-
-    def test_lt(self):
-        a = lt(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = lt(2, 3)
-        c = lt(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
-
-
-    def test_lt3(self):
-        # TODO: [manu] Since we can't actually use the a < b < c,
-        #       can we keep the AT_LEAST_TWO arity?
-        expression = q(1) < q(2) < q(3)
-        import dis
-        dis.dis(self.test_lt3.im_func)
-        self.assertNotEquals('(1 < 2) and (2 < 3)', str(expression))
-        expression = (q(1) < q(2)) & (q(2) < q(3))
-        self.assertEquals('(1 < 2) and (2 < 3)', str(expression))
-
-
-    def test_qobjects(self):
-        age = q(b'age')
-        expr = age + q(10)
-        self.assertEqual([str, int],
-                         [type(child) for child in expr.children])
-
-
-    def test_functors(self):
-        from xotl.ql.expressions import startswith
-        class Foobar(object):
-            def startswith(self, other):
-                return 1
-
-        expr = startswith(q('something'), 'aaa')
-        self.assertIsInstance(expr, ExpressionTree)
-
-        expr = startswith(Foobar(), 'aaa')
-        self.assertIs(1, expr)
+        expr = q(1) + q("1")
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
 
 
 class RegressionTests(unittest.TestCase):
     def test_20120814_reversed_ops_should_work(self):
-        expr = 1 + (1 + q(1))
-        self.assertEquals('1 + (1 + 1)', str(expr))
+        expr = 1 + (2 + q(3))
+        self.assertEquals('1 + (2 + 3)', str(expr))
