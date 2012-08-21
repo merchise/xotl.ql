@@ -134,5 +134,6 @@ class TestThisExpressions(unittest.TestCase):
 
         # But directly calling the constructor won't work, this a feature of
         # this alone.
-        t = These('p', binding=this('p').age > 78)
-        self.assertEqual("this('p') > 33", str(binding))
+        t = These('p1', binding=this('p1').age > 78)
+        binding = u(t).binding
+        self.assertIsNone(binding)

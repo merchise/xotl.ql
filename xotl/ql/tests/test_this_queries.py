@@ -68,12 +68,12 @@ class TestThisQueries(unittest.TestCase):
                         if (parent.age > 32) & parent.married)
         self.assertEquals("this('parent')", str(expr))
         binding = unboxed(expr).binding
-        ok("(this('parent').age > 32) and (this('parent').married)",
+        ok("(this('parent').age > 32) and this('parent').married",
            str(binding))
         expr = next(parent for parent in this('parent')
                         if +count(parent.children))
         binding = unboxed(expr).binding
-        ok("+(count(this('parent').children)", str(binding))
+        ok("+(count(this('parent').children))", str(binding))
 
 
     def test_complex_iter(self):
@@ -310,9 +310,9 @@ class TestThisQueries(unittest.TestCase):
         self.assertEqual("this('p').valid", unboxed(q).binding)
 
 
-    def test_ranges_with_this(self):
-        queries = [x for y in range(10) for x in this('x')
-                    if y - 1 < x.age <= y]
+#    def test_ranges_with_this(self):
+#        queries = [x for y in range(10) for x in this('x')
+#                    if y - 1 < x.age <= y]
 
 
 
