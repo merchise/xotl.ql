@@ -661,207 +661,35 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-class AUTOBINDING_CONTEXT(object):
-    '''Context in which every expression involving a `this` instance is
-    automatically bound to it.
-
-    This context is applied when iterating over `this` instances::
-
-        >>> from xoutil.proxy import unboxed
-        >>> from xotl.ql.these import this
-        >>> expr = next(parent.age for parent in this('parent')
-        ...                    if parent.age > 32)
-        >>> str(unboxed(expr).binding)
-        "this('parent').age > 32"
-    '''
-
-
-class TheseType(type):
-    '''
-    The type of the :class:`These` object.
-    '''
-    # TODO: Do we need to use threading.local?
-    _instances = {}
-
-    def __call__(self, name=None, **kwargs):
-        '''
-        Implements the singleton pattern avoiding calling __init__ if the
-        object is reused instead of created.
-        '''
-        parent = kwargs.get('parent', None)
-        if name and parent is None:
-            parent = self()
-        if (not context[AUTOBINDING_CONTEXT] and
-                (parent, name) in TheseType._instances):
-            return TheseType._instances[parent, name]
-        else:
-            result = self.__new__(self, name, **kwargs)
-            with context(UNPROXIFING_CONTEXT):
-                result.__init__(name, **kwargs)
-            if not context[AUTOBINDING_CONTEXT]:
-                # Do not substitute the singleton instance if we're in a
-                # automutate context.
-                TheseType._instances[parent, name] = result
-            return result
-
-
-#class TheseType(type):
-#    pass
-
-
-def _update_autobound_instances(instance, who, expr1, res):
-    with context(UNPROXIFING_CONTEXT):
-        if isinstance(who, These):
-            autobound = getattr(who, 'autobinding_instance',
-                                None) or who
-        else:
-            assert isinstance(expr1, These)
-            autobound = getattr(expr1, 'autobinding_instance',
-                                None) or expr1
-        instance.autobinding_instance = autobound
-        if autobound.binding:
-            # In order to restore previous bindings when there are expressions
-            # in the SELECT part of a query, we keep previous bindings of the
-            # instance. See the :func:`these` function.
-            #
-            # But if the previous bindings are the children of the current
-            # binding, we just replace them.
-            #
-            # This is tricky to capture correctly, cause some one may do::
-            #
-            #        (1 + (p.age + 10) for p in this if p.age + 10)
-            #
-            # TODO: [URGENT] Rethink!!!
-            previous_bindings = autobound.previous_bindings
-            children = autobound.binding.children
-            if previous_bindings:
-                if autobound.binding.op._arity == UNARY:
-                    if previous_bindings[-1] == children[0]:
-                        previous_bindings.pop()
-                elif autobound.binding.op._arity == BINARY:
-                    if previous_bindings[-1] == children[1]:
-                        previous_bindings.pop()
-                    if (previous_bindings and
-                        previous_bindings[-1] == children[0]):
-                        previous_bindings.pop()
-            autobound.previous_bindings.append(autobound.binding)
-        autobound.binding = res
-        instance.binding = res
-        return autobound
-
-
-
-def _build_this_unary_op(operation):
-    from xotl.ql.expressions import _build_unary_operator
-    _method = _build_unary_operator(operation)
-    def method(self):
-        if not context[AUTOBINDING_CONTEXT]:
-            return _method(self)
-        else:
-            expr1 = self
-            with context(UNPROXIFING_CONTEXT):
-                if isinstance(self, _AutobindingThese):
-                    who = self.binding
-                else:
-                    who = self
-                name = 'autobinding_hack' + self._newname()
-            res = _method(who)
-            # See the note on the binary method
-            instance = _AutobindingThese(name=name, parent=None)
-            _update_autobound_instances(instance, who, expr1, res)
-            return instance
-    method.__name__ = _method.__name__
-    return method
-
-
-def _build_this_binary_op(operation):
-    from xotl.ql.expressions import _build_binary_operator
-    _method = _build_binary_operator(operation)
-    def method(self, other):
-        if not context[AUTOBINDING_CONTEXT]:
-            return _method(self, other)
-        else:
-            expr1 = self
-            expr2 = other
-            with context(UNPROXIFING_CONTEXT):
-                root_parent = self.root_parent
-                if isinstance(self, _AutobindingThese):
-                    who = self.binding
-                else:
-                    who = self
-                name = 'autobinding_hack' + self._newname()
-                if isinstance(other, _AutobindingThese):
-                    expr2 = other.binding or other
-            res = _method(who, expr2)
-            # To correctly implement the (parent.age >30) & (child.age < 5)
-            # stuff, we need to return something different than self with its
-            # binding, something that:
-            #
-            #   1. Behaves like a These instance
-            #   2. Is bound solely to the resultant expression
-            #   3. We can use it for extract the binding but later dispose
-            #      of it.
-            #
-            # So, the solution seems to build a named These instance that is
-            # not related to the real instance that is being changed. But since
-            # the very first time, that instance is the `who` and we modify
-            # `who`'s binding we're getting the expression built right.
-            #
-            # But that expression needs to be bound to the real instance.
-            #
-            # However, if who.root_parent is this, no autobinding should be
-            # done. TODO: Change this type?
-            if root_parent is not this:
-                instance = _AutobindingThese(name=name, parent=None)
-                _update_autobound_instances(instance, who, expr1, res)
-                return instance
-            else:
-                return res
-    method.__name__ = _method.__name__
-    return method
-
-
-class These(object):
-    '''
-    The type of :obj:`this` symbol: an unnamed object that may placed in
-    queries and whose interpretation may be dependant of the query context and
-    the context in which `this` symbol is used in the query itself.
-    '''
-    __metaclass__ = TheseType
-
-    __slots__ = ('_name', '_parent', '_binding')
+# TODO: Think about this name
+class Resource(object):
+    __slots__ = ('_name', '_parent')
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
 
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self.validate_name(name)
             self._name = name
             self._parent = kwargs.get('parent', None)
-            self._binding = []
-            if not self._parent:
-                self.bind(get_first_of(kwargs,
-                                       'binding',
-                                       'expression',
-                                       'condition',
-                                       'filter',
-                                       default=None))
 
 
-    def bind(self, expression):
-        self.binding = expression
+    @classmethod
+    def validate_name(cls, name):
+        '''
+        Checks names of named These instances::
 
+            >>> this('1nvalid')        # doctest: +ELLIPSIS
+            Traceback (most recent call last):
+                ...
+            NameError: Invalid identifier '1nvalid' ...
+        '''
+        if name and not cls.valid_names_regex.match(name):
+            raise NameError('Invalid identifier %r for a named These '
+                            'instance' % name)
 
-    @staticmethod
-    def _compute_binding(res):
-        head, tail = res[0], res[1:]
-        if tail:
-            from .expressions import and_
-            return reduce(and_, tail, head)
-        else:
-            return head
 
     @property
     def name(self):
@@ -883,40 +711,6 @@ class These(object):
 
 
     @property
-    def previous_bindings(self):
-        '''
-        A list of previous bindings.
-
-        When in the AUTOBINDING_CONTEXT, we keep temporarily keep these
-        bindings, so that expressions may appear in the SELECT part of a
-        comprehension.
-
-        In a query like::
-
-            >>> q = ((parent.age + 10, parent) for parent in this
-            ...                if count(parent.children) > 5)
-
-        The first selected element is a expression, but since every
-        comprehesion is executed automatically inside the AUTOBINDING_CONTEXT,
-        then `parent.age + 10` would be the binding for parent.
-
-        That's why we need both this property and :func:`these` to restore the
-        proper bindings for each instance.
-        '''
-        current, res = self, None
-        who = current
-        while current and not res:
-            res = getattr(current, '_previous_bindings', None)
-            current, who = current.parent, current
-        if res is None:
-            res = []
-            setattr(who, '_previous_bindings', res)
-            return res
-        else:
-            return res
-
-
-    @property
     def root_parent(self):
         '''
         The top-most parent of the instace or self if it has no parent.
@@ -928,6 +722,63 @@ class These(object):
             return self
 
 
+
+
+class TheseType(type):
+    '''
+    The type of the :class:`These` object.
+    '''
+    # TODO: Do we need to use threading.local?
+    _instances = {}
+
+    def __call__(self, name=None, **kwargs):
+        '''
+        Implements the singleton pattern avoiding calling __init__ if the
+        object is reused instead of created.
+        '''
+        parent = kwargs.get('parent', None)
+        if name and parent is None:
+            parent = self()
+        if (parent, name) in TheseType._instances:
+            return TheseType._instances[parent, name]
+        else:
+            result = self.__new__(self, name, **kwargs)
+            with context(UNPROXIFING_CONTEXT):
+                result.__init__(name, **kwargs)
+            TheseType._instances[parent, name] = result
+            return result
+
+
+
+class These(Resource):
+    '''
+    The type of :obj:`this` symbol: an unnamed object that may placed in
+    queries and whose interpretation may be dependant of the query context and
+    the context in which `this` symbol is used in the query itself.
+    '''
+    __metaclass__ = TheseType
+
+    __slots__ = ('_binding')
+
+
+    def __init__(self, name=None, **kwargs):
+        with context(UNPROXIFING_CONTEXT):
+            self.validate_name(name)
+            self._name = name
+            self._parent = kwargs.get('parent', None)
+            self._binding = None
+            if not self._parent:
+                self.bind(get_first_of(kwargs,
+                                       'binding',
+                                       'expression',
+                                       'condition',
+                                       'filter',
+                                       default=None))
+
+
+    def bind(self, expression):
+        self.binding = expression
+
     @property
     def binding(self):
         '''
@@ -937,10 +788,7 @@ class These(object):
         while current and not res:
             res = getattr(current, '_binding', None)
             current = current.parent
-        if res:
-            return self._compute_binding(res)
-        else:
-            return None
+        return res if res else None
 
 
     @binding.setter
@@ -949,7 +797,7 @@ class These(object):
         if parent:
             parent.binding = value
         else:
-            self._binding = [value, ]
+            self._binding = value
 
 
     @binding.deleter
@@ -964,21 +812,6 @@ class These(object):
     @classmethod
     def _newname(cls):
         return 'i{count}'.format(count=next(cls._counter))
-
-
-    @classmethod
-    def validate_name(cls, name):
-        '''
-        Checks names of named These instances::
-
-            >>> this('1nvalid')        # doctest: +ELLIPSIS
-            Traceback (most recent call last):
-                ...
-            NameError: Invalid identifier '1nvalid' ...
-        '''
-        if name and not cls.valid_names_regex.match(name):
-            raise NameError('Invalid identifier %r for a named These '
-                            'instance' % name)
 
 
     def __getattribute__(self, attr):
@@ -1042,18 +875,17 @@ class These(object):
                 current_binding = self.binding
             else:
                 current_binding = None
-        with context(AUTOBINDING_CONTEXT):
-            instance = _AutobindingThese(name, parent=parent)
-            assert instance is not self
-            yield instance
-        # If we are iterating over an instance with a binding we *must* respect
-        # such binding, so we and-it after our own binding (if any).
-        if current_binding:
-            with context(UNPROXIFING_CONTEXT):
-                if instance.binding:
-                    instance.binding = current_binding & instance.binding
-                else:
-                    instance.binding = current_binding
+        instance = AutobindingThese(name, parent=parent,
+                                    binding=current_binding)
+        yield instance
+#        # If we are iterating over an instance with a binding we *must* respect
+#        # such binding, so we and-it after our own binding (if any).
+#        if current_binding:
+#            with context(UNPROXIFING_CONTEXT):
+#                if instance.binding:
+#                    instance.binding = current_binding & instance.binding
+#                else:
+#                    instance.binding = current_binding
 
 
     def __str__(self):
@@ -1135,6 +967,7 @@ class These(object):
         from xotl.ql.expressions import lt
         return lt(self, other)
 
+
     def __gt__(self, other):
         '''
             >>> this > 1     # doctest: +ELLIPSIS
@@ -1142,6 +975,7 @@ class These(object):
         '''
         from xotl.ql.expressions import gt
         return gt(self, other)
+
 
     def __le__(self, other):
         '''
@@ -1151,6 +985,7 @@ class These(object):
         from xotl.ql.expressions import le
         return le(self, other)
 
+
     def __ge__(self, other):
         '''
             >>> this >= 1     # doctest: +ELLIPSIS
@@ -1158,6 +993,7 @@ class These(object):
         '''
         from xotl.ql.expressions import ge
         return ge(self, other)
+
 
     def __and__(self, other):
         '''
@@ -1167,6 +1003,7 @@ class These(object):
         from xotl.ql.expressions import and_
         return and_(self, other)
 
+
     def __rand__(self, other):
         '''
             >>> 1 & this     # doctest: +ELLIPSIS
@@ -1174,6 +1011,7 @@ class These(object):
         '''
         from xotl.ql.expressions import and_
         return and_(other, self)
+
 
     def __or__(self, other):
         '''
@@ -1183,6 +1021,7 @@ class These(object):
         from xotl.ql.expressions import or_
         return or_(self, other)
 
+
     def __ror__(self, other):
         '''
             >>> 1 | this     # doctest: +ELLIPSIS
@@ -1190,6 +1029,7 @@ class These(object):
         '''
         from xotl.ql.expressions import or_
         return or_(other, self)
+
 
     def __xor__(self, other):
         '''
@@ -1199,6 +1039,7 @@ class These(object):
         from xotl.ql.expressions import xor_
         return xor_(self, other)
 
+
     def __rxor__(self, other):
         '''
             >>> 1 ^ this     # doctest: +ELLIPSIS
@@ -1206,6 +1047,7 @@ class These(object):
         '''
         from xotl.ql.expressions import xor_
         return xor_(other, self)
+
 
     def __add__(self, other):
         '''
@@ -1242,6 +1084,7 @@ class These(object):
         from xotl.ql.expressions import sub
         return sub(other, self)
 
+
     def __mul__(self, other):
         '''
             >>> this * 1    # doctest: +ELLIPSIS
@@ -1249,6 +1092,7 @@ class These(object):
         '''
         from xotl.ql.expressions import mul
         return mul(self, other)
+
 
     def __rmul__(self, other):
         '''
@@ -1266,8 +1110,8 @@ class These(object):
         '''
         from xotl.ql.expressions import div
         return div(self, other)
-
     __truediv__ = __div__
+
 
     def __rdiv__(self, other):
         '''
@@ -1276,8 +1120,8 @@ class These(object):
         '''
         from xotl.ql.expressions import div
         return div(other, this)
-
     __rtruediv__ = __rdiv__
+
 
     def __floordiv__(self, other):
         '''
@@ -1287,6 +1131,7 @@ class These(object):
         from xotl.ql.expressions import floordiv
         return floordiv(self, other)
 
+
     def __rfloordiv__(self, other):
         '''
             >>> 1 // this    # doctest: +ELLIPSIS
@@ -1294,6 +1139,7 @@ class These(object):
         '''
         from xotl.ql.expressions import floordiv
         return floordiv(other, this)
+
 
     def __mod__(self, other):
         '''
@@ -1303,6 +1149,7 @@ class These(object):
         from xotl.ql.expressions import mod
         return mod(self, other)
 
+
     def __rmod__(self, other):
         '''
             >>> 1 % this    # doctest: +ELLIPSIS
@@ -1311,6 +1158,7 @@ class These(object):
         from xotl.ql.expressions import mod
         return mod(other, self)
 
+
     def __pow__(self, other):
         '''
             >>> this**1    # doctest: +ELLIPSIS
@@ -1318,6 +1166,7 @@ class These(object):
         '''
         from xotl.ql.expressions import pow
         return pow(self, other)
+
 
     def __rpow__(self, other):
         '''
@@ -1336,6 +1185,7 @@ class These(object):
         from xotl.ql.expressions import lshift
         return lshift(self, other)
 
+
     def __rlshift__(self, other):
         '''
             >>> 1 << this    # doctest: +ELLIPSIS
@@ -1344,6 +1194,7 @@ class These(object):
         from xotl.ql.expressions import lshift
         return lshift(other, self)
 
+
     def __rshift__(self, other):
         '''
             >>> this >> 1    # doctest: +ELLIPSIS
@@ -1351,6 +1202,7 @@ class These(object):
         '''
         from xotl.ql.expressions import rshift
         return rshift(self, other)
+
 
     def __rrshift__(self, other):
         '''
@@ -1369,6 +1221,7 @@ class These(object):
         from xotl.ql.expressions import neg
         return neg(self)
 
+
     def __abs__(self):
         '''
             >>> abs(this)         # doctest: +ELLIPSIS
@@ -1377,6 +1230,7 @@ class These(object):
         from xotl.ql.expressions import abs_
         return abs_(self)
 
+
     def __pos__(self):
         '''
             >>> +this         # doctest: +ELLIPSIS
@@ -1384,6 +1238,7 @@ class These(object):
         '''
         from xotl.ql.expressions import pos
         return pos(self)
+
 
     def __invert__(self):
         '''
@@ -1417,35 +1272,541 @@ class ThisClass(These):
 this = ThisClass()
 
 
-class _AutobindingThese(These):
+
+class AutobindingTheseType(TheseType):
+    def __call__(self, name=None, **kwargs):
+        result = self.__new__(self, name, **kwargs)
+        with context(UNPROXIFING_CONTEXT):
+            result.__init__(name, **kwargs)
+        return result
+
+
+
+class AutobindingThese(These):
     'Marker class for autobinding these instances in expressions inside a '
     'comprehension'
+    __metaclass__ = AutobindingTheseType
 
-    __slots__ = ('__dict__', )
+    __slots__ = ('_autobinding', '_previous_bindings', )
+
+
+    def __init__(self, *args, **kwargs):
+        super(AutobindingThese, self).__init__(*args, **kwargs)
+        with context(UNPROXIFING_CONTEXT):
+            self._previous_bindings = []
+
+
+    def __iter__(self):
+        with context(UNPROXIFING_CONTEXT):
+            return iter(self.instance)
+
+
+    @property
+    def previous_bindings(self):
+        '''
+        A list of *stacked* previous bindings for this instance.
+
+        When an autobinding instance is involved in an expression (of which
+        it has control of operators) it doesn't return an expression per se,
+        but itself with the expression automatically bound to itself.
+
+        This property is used to support the case of reutilization of
+        queries::
+
+            a = next(a for a in this('a') if a.age > 20)
+
+        Since `a` is an autobinding these it would have the expression
+        `a.age > 20` bound to it. If now we execute::
+
+            b = next(b for b in a if b.age < 40)
+
+        The should keep the `a.age > 20` stored somewhere and not lost. Witout
+        the postprocessing done by :func:`these`, `b` would end up with:
+
+        - `b.age < 40` as the value of its `binding` property
+        - [`a.age > 20`] as its `previous_bindings` property.
+        '''
+        with context(UNPROXIFING_CONTEXT):
+            if self.parent is None:
+                return self._previous_bindings
+            else:
+                return self.root_parent.previous_bindings
+
+
+    @property
+    def instance(self):
+        with context(UNPROXIFING_CONTEXT):
+            return These(self.name, parent=self.parent, binding=self.binding)
+
+
+    def _update_binding(self, binding):
+        assert UNPROXIFING_CONTEXT in context
+        self._autobinding = binding
+        current_binding = self.binding
+        previous = self.previous_bindings
+        if current_binding is None:
+            self.binding = binding
+        else:
+            if isinstance(binding, These):
+                if binding.parent is not current_binding:
+                    previous.append(current_binding)
+                self.binding = binding
+            else:
+                assert isinstance(binding, ExpressionTree)
+                operation = binding.op
+                arity = getattr(operation, '_arity', None)
+                if arity == UNARY:
+                    if current_binding is not binding.children[0]:
+                        previous.append(current_binding)
+                    self.binding = binding
+                elif arity == BINARY:
+                    # In an expression like: this('p').y > this('p').x
+                    # we get into the following state:
+                    #   1. binding <-- this('p').y
+                    #   2. binding <-- this('p').x and previous <-- this('p').y
+                    # Then binding is the whole expression y > x we should
+                    # check if current op top
+                    if current_binding is binding.children[0]:
+                        self.binding = binding
+                        top = previous[-1] if previous else None
+                        if top and top is binding.children[1]:
+                            previous.pop(-1)
+                    elif current_binding is binding.children[1]:
+                        self.binding = binding
+                        top = previous[-1] if previous else None
+                        if top and top is binding.children[0]:
+                            previous.pop(-1)
+                    else:
+                        previous.append(current_binding)
+                    self.binding = binding
 
 
     def __getattribute__(self, attr):
-        # TODO: Append the resulting expression as the top of the bindings.
         get = super(These, self).__getattribute__
         if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
             return get(attr)
         else:
-            return _AutobindingThese(name=attr, parent=self)
+            result = AutobindingThese(name=attr, parent=self)
+            with context(UNPROXIFING_CONTEXT):
+                self._update_binding(result)
+            return result
 
 
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
-            result = super(_AutobindingThese, self).__call__(*args)
+            result = super(AutobindingThese, self).__call__(*args)
         # TODO: Create the autobindingthese...
         return result
 
 
+    def __eq__(self, other):
+        with context(UNPROXIFING_CONTEXT):
+            super_ = super(AutobindingThese, self).__eq__
+        result = super_(other)
+        if isinstance(result, ExpressionTree):
+            with context(UNPROXIFING_CONTEXT):
+                self._update_binding(result)
+        else:
+            from xotl.ql.expressions import _boolean
+            assert isinstance(result, (bool, _boolean))
+        return result
+
+
+    def __ne__(self, other):
+        with context(UNPROXIFING_CONTEXT):
+            super_ = super(AutobindingThese, self).__ne__
+        result = super_(other)
+        if isinstance(result, ExpressionTree):
+            with context(UNPROXIFING_CONTEXT):
+                self._update_binding(result)
+        else:
+            from xotl.ql.expressions import _boolean
+            assert isinstance(result, (bool, _boolean))
+        return result
+
+
+    def __lt__(self, other):
+        from xotl.ql.expressions import lt
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = lt(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __gt__(self, other):
+        from xotl.ql.expressions import gt
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = gt(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __le__(self, other):
+        from xotl.ql.expressions import le
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = le(who, other)
+            self._update_binding(result)
+        return self
+
+    def __ge__(self, other):
+        from xotl.ql.expressions import ge
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = ge(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __and__(self, other):
+        from xotl.ql.expressions import and_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = and_(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rand__(self, other):
+        from xotl.ql.expressions import and_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = and_(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __or__(self, other):
+        from xotl.ql.expressions import or_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = or_(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __ror__(self, other):
+        from xotl.ql.expressions import or_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = or_(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __xor__(self, other):
+        from xotl.ql.expressions import xor_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = xor_(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rxor__(self, other):
+        from xotl.ql.expressions import xor_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = xor_(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __add__(self, other):
+        from xotl.ql.expressions import add
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = add(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __radd__(self, other):
+        from xotl.ql.expressions import add
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = add(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __sub__(self, other):
+        from xotl.ql.expressions import sub
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = sub(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rsub__(self, other):
+        from xotl.ql.expressions import sub
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = sub(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __mul__(self, other):
+        from xotl.ql.expressions import mul
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = mul(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rmul__(self, other):
+        from xotl.ql.expressions import mul
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = mul(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __div__(self, other):
+        from xotl.ql.expressions import div
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = div(who, other)
+            self._update_binding(result)
+        return self
+    __truediv__ = __div__
+
+
+    def __rdiv__(self, other):
+        from xotl.ql.expressions import div
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = div(other, who)
+            self._update_binding(result)
+        return self
+    __rtruediv__ = __rdiv__
+
+
+    def __floordiv__(self, other):
+        from xotl.ql.expressions import floordiv
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = floordiv(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rfloordiv__(self, other):
+        from xotl.ql.expressions import floordiv
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = floordiv(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __mod__(self, other):
+        from xotl.ql.expressions import mod
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = mod(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def __rmod__(self, other):
+        from xotl.ql.expressions import mod
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = mod(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __pow__(self, other):
+        from xotl.ql.expressions import pow
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = pow(who, other)
+            self._update_binding(result)
+        return self
+
+    def __rpow__(self, other):
+        from xotl.ql.expressions import pow
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = pow(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __lshift__(self, other):
+        from xotl.ql.expressions import lshift
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = lshift(who, other)
+            self._update_binding(result)
+        return self
+
+    def __rlshift__(self, other):
+        from xotl.ql.expressions import lshift
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = lshift(other, who)
+            self._update_binding(result)
+        return self
+
+    def __rshift__(self, other):
+        from xotl.ql.expressions import rshift
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = rshift(who, other)
+            self._update_binding(result)
+        return self
+
+    def __rrshift__(self, other):
+        from xotl.ql.expressions import rshift
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = rshift(other, who)
+            self._update_binding(result)
+        return self
+
+
+    def __neg__(self):
+        from xotl.ql.expressions import neg
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = neg(who)
+            self._update_binding(result)
+        return self
+
+    def __abs__(self):
+        from xotl.ql.expressions import abs_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = abs_(who)
+            self._update_binding(result)
+        return self
+
+    def __pos__(self):
+        from xotl.ql.expressions import pos
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = pos(who)
+            self._update_binding(result)
+        return self
+
+    def __invert__(self):
+        from xotl.ql.expressions import invert
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = invert(who)
+            self._update_binding(result)
+        return self
+
+
+    def count(self):
+        from xotl.ql.expressions import count as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who)
+            self._update_binding(result)
+        return self
+
+
+    def length(self):
+        from xotl.ql.expressions import length as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who)
+            self._update_binding(result)
+        return self
+
+
+    def any_(self, other):
+        from xotl.ql.expressions import any_ as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def all_(self, other):
+        from xotl.ql.expressions import all_ as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who, other)
+            self._update_binding(result)
+        return self
+
+
+    def min_(self):
+        from xotl.ql.expressions import min_ as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who)
+            self._update_binding(result)
+        return self
+
+
+    def max_(self):
+        from xotl.ql.expressions import max_ as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who)
+            self._update_binding(result)
+        return self
+
+
+    def invoke(self, *args):
+        from xotl.ql.expressions import invoke as f_
+        with context(UNPROXIFING_CONTEXT):
+            who = getattr(self, '_autobinding', None) or self
+            result = f_(who, *args)
+            self._update_binding(result)
+        return self
+
+
+
+class Query(object):
+    '''
+    A query representation
+    '''
+
+    def __init__(self, selection, filters=None, ordering=None, partition=None):
+        self._selection = selection
+        self._filters = filters
+        self._ordering = ordering
+        self._partition = partition
+
+
+    @property
+    def selection(self):
+        return self._selection
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @property
+    def ordering(self):
+        return self._ordering
+
+    @property
+    def partition(self):
+        return self._partition
+
+
+
 def _restore_binding(which):
-    if isinstance(which, _AutobindingThese):
+    if isinstance(which, AutobindingThese):
         with context(UNPROXIFING_CONTEXT):
             expression = which.binding
-            instance = which.autobinding_instance
-            previous_bindings = instance.previous_bindings
+            instance = which.instance
+            previous_bindings = which.previous_bindings
         with context(UNPROXIFING_CONTEXT):
             if previous_bindings:
                 children = expression.children
@@ -1489,11 +1850,11 @@ def these(comprehesion):
         result = comprehesion
     if isinstance(result, (tuple, list)):
         with context(UNPROXIFING_CONTEXT):
-            instances_to_restore = {i.autobinding_instance.root_parent
+            instances_to_restore = {i.instance.root_parent
                                     for i in result
-                                    if isinstance(i, _AutobindingThese)}
+                                    if isinstance(i, AutobindingThese)}
             expressions = {i.binding for i in result
-                            if isinstance(i, _AutobindingThese)}
+                            if isinstance(i, AutobindingThese)}
             for instance in instances_to_restore:
                 for expr in expressions:
                     try:
