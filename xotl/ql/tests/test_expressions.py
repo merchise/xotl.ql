@@ -38,6 +38,20 @@ __author__ = 'manu'
 
 
 class BasicTests(unittest.TestCase):
+    def test_expression(self):
+        from xoutil.context import context
+        from xoutil.proxy import UNPROXIFING_CONTEXT
+        from xotl.ql.expressions import (count, ExpressionTree, or_, and_,
+                                         pow_, lt, eq, add)
+        expr = ((q(1) < 3) & (1 == q("1")) |
+                (q("a") + q("b") ** 2 == q("x") + count("y")))
+        expected = or_(and_(lt(1, 3), eq(1, "1")),
+                       eq(add("a", pow_("b", 2)), add("x", count("y"))))
+        self.assertIsInstance(expr, ExpressionTree)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertTrue(expr == expected, "%s ---- %s" % (expected, expr))
+
+
     def test_q_should_keep_it_self_in_expressions(self):
         'When :class:`xotl.ql.expressions.q` is involved in an expression '
         'it should remove itself from it'
@@ -55,3 +69,18 @@ class RegressionTests(unittest.TestCase):
     def test_20120814_reversed_ops_should_work(self):
         expr = 1 + (2 + q(3))
         self.assertEquals('1 + (2 + 3)', str(expr))
+
+
+    def test_20120822_reversed_eq_and_ne_should_compare_equal(self):
+        from xoutil.context import context
+        from xoutil.proxy import UNPROXIFING_CONTEXT
+        expr = 1 == q("2")
+        expr2 = q(1) == "2"
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expr, expr2)
+
+        # But we have not a reversing equality stuff.
+        expr = 1 < q(2)
+        expr2 = q(2) > 1
+        with context(UNPROXIFING_CONTEXT):
+            self.assertNotEqual(expr, expr2)

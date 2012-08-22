@@ -495,7 +495,43 @@ class FunctorOperator(Operator):
 
 
 
-class EqualityOperator(Operator):
+class BinaryCommutativeOperatorMixin(object):
+    '''
+    Mixin for *syntactically* commutative operators.
+
+    Both the `==` and the `!=` operators are *always* commutative: i.e:
+    `a == b` if and only if `b == a` no matter the types/domain of `a` and
+    `b`.
+
+    That's why Python does not have neither a `__req__` nor a `__rne__`
+    protocols to implement the "reverse" of `__eq__` and `__ne__`.
+
+    This mixin allows that we can compare for (syntactical) equivalence of
+    `==` and `!=` in expressions::
+
+        >>> e1 = 1 == q("2")
+        >>> e2 = "2" == q(1)
+        >>> with context(UNPROXIFING_CONTEXT):
+        ...    e1 == e2
+        True
+
+    This is useful because the first expressions gets inverted cause `int`
+    doesn't implement the `==` with q-objects::
+
+        >>> e1                                        # doctest: +ELLIPSIS
+        <expression '2 == 1' ...>
+    '''
+    _arity = BINARY
+
+
+    @staticmethod
+    def equivalence_test(children1, children2):
+        res = children1 == children2
+        return res or (children1 == tuple(reversed(children2)))
+
+
+
+class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     The class of a == b [== c], expressions::
 
@@ -505,7 +541,6 @@ class EqualityOperator(Operator):
 
     '''
     _format = '{0} == {1}'
-    _arity = BINARY
     _method_name = b'__eq__'
 
 
@@ -513,7 +548,7 @@ eq = EqualityOperator
 
 
 
-class NotEqualOperator(Operator):
+class NotEqualOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     The expression `a != b`::
 
@@ -523,7 +558,6 @@ class NotEqualOperator(Operator):
 
     '''
     _format = '{0} != {1}'
-    _arity = BINARY
     _method_name = b'__ne__'
 
 
@@ -1237,10 +1271,15 @@ class ExpressionTree(object):
             ...    expression == eq(10, 34)
             True
         '''
+        from operator import eq as builtin_eq
         if context[UNPROXIFING_CONTEXT]:
             if isinstance(other, ExpressionTree):
-                from xoutil.objects import validate_attrs
-                return validate_attrs(self, other, ('op', 'children'))
+                if self.op == other.op:
+                    test = getattr(self.op, 'equivalence_test',
+                                   builtin_eq)
+                    return test(self.children, other.children)
+                else:
+                    return False
         else:
             result = eq(self, other)
             return result
