@@ -286,14 +286,10 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         unicode_literals as _py3_unicode)
 
-from copy import deepcopy
-
 from functools import partial
 
-from xoutil.types import Unset
 from xoutil.context import context
 from xoutil.aop import complementor
-
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
 
 
