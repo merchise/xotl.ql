@@ -1341,11 +1341,16 @@ class q(object):
         [<type 'str'>, <type 'int'>]
 
     '''
+    def r(f):
+        return lambda self, other: f(other, self)
+
     query_fragment = _build_op_class(b'query_fragment',
                                      (('__and__', and_, True),
                                       ('__or__', or_, True),
-                                      ('__rand__', and_, True),
-                                      ('__ror__', or_, True)))
+                                      ('__rand__', r(and_), True),
+                                      ('__ror__', r(or_), True),
+                                      ('__xor__', xor_, True),
+                                      ('__rxor__', r(xor_), True)))
 
     comparable_for_equalitity = _build_op_class(b'comparable_for_equalitity',
                                                 (('__eq__', eq, True),
@@ -1364,9 +1369,6 @@ class q(object):
         def endswith(self, suffix):
             return endswith(self, suffix)
 
-    def r(f):
-        return lambda self, other: f(other, self)
-
     number_like = _build_op_class(b'number_like',
                                   (('__add__', add, True),
                                    ('__radd__', r(add), True),
@@ -1384,6 +1386,10 @@ class q(object):
                                    ('__rdiv__', r(div), True),
                                    ('__truediv__', truediv, True),
                                    ('__rtruediv__', r(truediv), True),
+                                   ('__lshift__', lshift, True),
+                                   ('__rlshift__', r(lshift), True),
+                                   ('__rshift__', rshift, True),
+                                   ('__rrshift__', r(rshift), True),
                                    ('__pos__', pos, False),
                                    ('__abs__', abs_, False),
                                    ('__neg__', neg, False),

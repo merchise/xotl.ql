@@ -65,6 +65,43 @@ class BasicTests(unittest.TestCase):
         self.assertEqual([int, unicode], [type(c) for c in expr.children])
 
 
+    def test_all_ops(self):
+        ok = self.assertEqual
+        from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
+                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              rshift, neg, abs, pos, invert)
+        binary_tests = [(eq, '{0} == {1}'),
+                        (ne, '{0} != {1}'),
+                        (lt, '{0} < {1}'),
+                        (gt, '{0} > {1}'),
+                        (le, '{0} <= {1}'),
+                        (ge, '{0} >= {1}'),
+                        (and_, '{0} and {1}'),
+                        (or_, '{0} or {1}'),
+                        (xor, '{0} xor {1}'),
+                        (add, '{0} + {1}'),
+                        (sub, '{0} - {1}'),
+                        (mul, '{0} * {1}'),
+                        (div, '{0} / {1}'),
+                        (truediv, '{0} / {1}'),
+                        (floordiv, '{0} // {1}'),
+                        (mod, '{0} mod {1}'),
+                        (pow, '{0}**{1}'),
+                        (lshift, '{0} << {1}'),
+                        (rshift, '{0} >> {1}')]
+        unary_tests = [(neg, '-{0}'),
+                       (abs, 'abs({0})'),
+                       (pos, '+{0}'),
+                       (invert, '~{0}')]
+        for test, fmt in binary_tests:
+            ok(fmt.format("a", "b"),
+               str(test(q('a'), 'b')))
+
+        for test, fmt in unary_tests:
+            ok(fmt.format("age"),
+               str(test(q('age'))))
+
+
 class RegressionTests(unittest.TestCase):
     def test_20120814_reversed_ops_should_work(self):
         expr = 1 + (2 + q(3))
