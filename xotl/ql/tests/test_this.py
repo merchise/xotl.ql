@@ -91,6 +91,44 @@ class TestThisExpressions(unittest.TestCase):
         self.assertEqual("this('p') > 33", str(binding))
 
 
+    def test_all_ops(self):
+        ok = self.assertEqual
+        from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
+                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              rshift, neg, abs, pos, invert)
+        binary_tests = [(eq, '{0} == {1}'),
+                        (ne, '{0} != {1}'),
+                        (lt, '{0} < {1}'),
+                        (gt, '{0} > {1}'),
+                        (le, '{0} <= {1}'),
+                        (ge, '{0} >= {1}'),
+                        (and_, '{0} and {1}'),
+                        (or_, '{0} or {1}'),
+                        (xor, '{0} xor {1}'),
+                        (add, '{0} + {1}'),
+                        (sub, '{0} - {1}'),
+                        (mul, '{0} * {1}'),
+                        (div, '{0} / {1}'),
+                        (truediv, '{0} / {1}'),
+                        (floordiv, '{0} // {1}'),
+                        (mod, '{0} mod {1}'),
+                        (pow, '{0}**{1}'),
+                        (lshift, '{0} << {1}'),
+                        (rshift, '{0} >> {1}')]
+        unary_tests = [(neg, '-{0}'),
+                       (abs, 'abs({0})'),
+                       (pos, '+{0}'),
+                       (invert, '~{0}')]
+        for test, fmt in binary_tests:
+            ok(fmt.format("this('p').age", "this('p').count"),
+               str(test(this('p').age, this('p').count)))
+
+        for test, fmt in unary_tests:
+            ok(fmt.format("this('p').age"),
+               str(test(this('p').age)))
+
+
+
 
 class RegressionTests(unittest.TestCase):
     def test_this_SHOULD_NOT_be_singletons(self):
