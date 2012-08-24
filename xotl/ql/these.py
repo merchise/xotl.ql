@@ -142,14 +142,14 @@ Subqueries
 
 .. _binding:
 
-The intended meaning of bound `this` instances
-----------------------------------------------
+The intended meaning of bound `These` instances
+-----------------------------------------------
 
-In a comprehension what is actually return is a (tuple of) named :class:`These`
-instances; probably related through it's `parent` attribute, and probably
-*bound* to the expressions in the IF part of the comprehension. If the filters
-of a comprehensions involve a `These` instance, then it gets automatically
-bound to the resulting expression.
+In a comprehension what is actually returned is a (tuple of) named
+:class:`These` instances; probably related through it's `parent` attribute,
+and probably *bound* to the expressions in the IF part of the comprehension.
+If the filters of a comprehensions involve a `These` instance, then it gets
+automatically bound to the resulting expression.
 
 When an instance of :class:`!These` is bound, query builders **should** yield
 only those objects that satisfy the bound expression as substitutes for the
@@ -647,11 +647,15 @@ from itertools import count
 
 from xoutil.objects import get_first_of, validate_attrs
 from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
+from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+
+from zope.interface import implements, directlyProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree
-from xotl.ql.expressions import UNARY, BINARY
-
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY
+from xotl.ql.interfaces import (IThese, IQuery, IQueryPart, IExpressionTree,
+                                IExpressionCapable, IQueryPartContainer,
+                                IBoundThese)
 
 
 __docstring_format__ = 'rst'
@@ -661,9 +665,14 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
+class ResourceType(type):
+    pass
+
+
 # TODO: Think about this
 class Resource(object):
     __slots__ = ('_name', '_parent')
+    __metaclass__ = ResourceType
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
@@ -727,6 +736,8 @@ class These(Resource):
     queries and whose interpretation may be dependant of the query context and
     the context in which `this` symbol is used in the query itself.
     '''
+    implements(IThese)
+
     __slots__ = ('_binding')
 
 
@@ -763,6 +774,8 @@ class These(Resource):
 
     @binding.setter
     def binding(self, value):
+#        if value is not None:
+#            directlyProvides(self, IBoundThese)
         parent = getattr(self, 'parent', None)
         if parent:
             parent.binding = value
@@ -808,7 +821,7 @@ class These(Resource):
     def __iter__(self):
         '''
         Yields a single instance of this but wrapped around an object that
-        allows for conditions to be expressed upon this instance::
+        allows for conditions to be bound this instance::
 
             >>> tuple(parent.age for parent in this)  # doctest: +ELLIPSIS
             (<this('i...').age at 0x...>,)
@@ -832,21 +845,8 @@ class These(Resource):
             ...        if parent.age > 32)
             <this('parent') ...>
         '''
-        with context(UNPROXIFING_CONTEXT):
-            name = self.name or self._newname()
-            parent = self.parent
-            # TODO: Think if this necessary. The idea: In a query like:
-            #            ((p, c) for p in this
-            #                        if p.age > 30
-            #                    for c in p.children)
-            # In the second iter: does p.age > 30 is already bound to p (and
-            # thus to p.children)?
-            if parent is None:
-                current_binding = self.binding
-            else:
-                current_binding = None
-        instance = AutobindingThese(name, parent=parent,
-                                    binding=current_binding)
+        query = Query(self)
+        instance = QueryPart(instance=self, query=query)
         yield instance
 
 
@@ -1063,7 +1063,7 @@ class These(Resource):
             <expression '1 * this' ...>
         '''
         from xotl.ql.expressions import mul
-        return mul(other, this)
+        return mul(other, self)
 
 
     def __div__(self, other):
@@ -1082,7 +1082,7 @@ class These(Resource):
             <expression '1 / this' ...>
         '''
         from xotl.ql.expressions import div
-        return div(other, this)
+        return div(other, self)
     __rtruediv__ = __rdiv__
 
 
@@ -1101,7 +1101,7 @@ class These(Resource):
             <expression '1 // this' ...>
         '''
         from xotl.ql.expressions import floordiv
-        return floordiv(other, this)
+        return floordiv(other, self)
 
 
     def __mod__(self, other):
@@ -1125,19 +1125,19 @@ class These(Resource):
     def __pow__(self, other):
         '''
             >>> this**1    # doctest: +ELLIPSIS
-            <expression 'this ** 1' ...>
+            <expression 'this**1' ...>
         '''
-        from xotl.ql.expressions import pow
-        return pow(self, other)
+        from xotl.ql.expressions import pow_
+        return pow_(self, other)
 
 
     def __rpow__(self, other):
         '''
             >>> 1 ** this    # doctest: +ELLIPSIS
-            <expression '1 ** this' ...>
+            <expression '1**this' ...>
         '''
-        from xotl.ql.expressions import pow
-        return pow(other, self)
+        from xotl.ql.expressions import pow_
+        return pow_(other, self)
 
 
     def __lshift__(self, other):
@@ -1212,6 +1212,12 @@ class These(Resource):
         return invert(self)
 
 
+
+class ThisClassType(ResourceType):
+    pass
+
+
+
 class ThisClass(These):
     '''
     The class for the :obj:`this` object.
@@ -1220,6 +1226,7 @@ class ThisClass(These):
     :class:`These` instances but also allows the creation of named instances.
 
     '''
+    __metaclass__ = ThisClassType
 
 
     def __call__(self, name, **kwargs):
@@ -1232,434 +1239,651 @@ this = ThisClass()
 
 
 
-class AutobindingThese(Resource):
-    'Marker class for autobinding these instances in expressions inside a '
-    'comprehension'
-
-    __slots__ = ('_autobinding', '_previous_bindings', )
+def provides_any(which, *interfaces):
+    with context(UNPROXIFING_CONTEXT):
+        return any(interface.providedBy(which) for interface in interfaces)
 
 
-    def __init__(self, *args, **kwargs):
-        super(AutobindingThese, self).__init__(*args, **kwargs)
+
+def provides_all(which, *interfaces):
+    with context(UNPROXIFING_CONTEXT):
+        return all(interface.providedBy(which) for interface in interfaces)
+
+
+
+class Query(object):
+    implements(IQuery, IQueryPartContainer)
+
+    __slots__ = ('_selection', '_filters', '_ordering', '_partition', '_parts')
+
+    # TODO: Representation of grouping with dicts.
+    def __init__(self, selection, **kwargs):
+        self.selection = selection
+        self.filters = kwargs.get('filters', None)
+        self.ordering = kwargs.get('ordering', None)
+        self.partition = kwargs.get('partition', None)
+        self._parts = []
+
+
+    @property
+    def selection(self):
+        return self._selection
+
+
+    @selection.setter
+    def selection(self, value):
+        ok = lambda v: isinstance(v, (ExpressionTree, These))
+        if ok(value):
+            self._selection = (value, )
+        elif isinstance(value, tuple) and all(ok(v) for v in value):
+            self._selection = value
+        # TODO: Include dict
+        else:
+            raise TypeError('The SELECT part of query should a valid '
+                            'expression type, not %r' % value)
+
+    @property
+    def filters(self):
+        return self._filters
+
+
+    @filters.setter
+    def filters(self, value):
+        # TODO: Validate
+        self._filters = value
+
+
+    @property
+    def ordering(self):
+        return self._ordering
+
+    @ordering.setter
+    def ordering(self, value):
+        from xotl.ql.expressions import pos, neg
+        if value:
+            ok = lambda v: (isinstance(v, ExpressionTree) and
+                            value.op in (pos, neg))
+            if ok(value):
+                self._ordering = (value, )
+            elif isinstance(value, tuple) and all(ok(v) for v in value):
+                self._ordering = value
+            else:
+                raise TypeError('Expected a [tuple of] unary expressions; '
+                                'got %r' % value)
+        else:
+            self._ordering = None
+
+    @property
+    def partition(self):
+        return self._partition
+
+
+    @partition.setter
+    def partition(self, value):
+        if not value or isinstance(value, slice):
+            self._partition = value
+        else:
+            raise TypeError('Expected a slice; not a %r' % value)
+
+
+    @property
+    def offset(self):
+        return self._partition.start
+
+
+    @property
+    def limit(self):
+        return self._partition.stop
+
+
+    def created_query_part(self, part):
+        assert unboxed(part).query is self
+        if isinstance(part, QueryPart):
+            expression = unboxed(part).expression
+            self._parts.append(expression)
+        else:
+            assert False
+
+
+
+class QueryPart(object):
+    '''A class that wraps :class:`These` instances to build queries
+
+    When iterating over this instance, this token is used to catch all
+    expressions and build a :class:`Query` from it. This class is mostly
+    internal and does not belongs to the Query Language API.
+    '''
+    implements(IQueryPart, )
+
+    __slots__ = ('_query', '_expression')
+
+
+    def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
-            self._previous_bindings = []
+            self._expression = get_first_of(kwargs,
+                                            'instance',
+                                            'expression',
+                                            'binding')
+            # TODO: assert that expression is ExpressionCapable
+            self.query = kwargs.get('query')
+            # TODO: assert self._query implements IQuery and
+            #       IQueryPartContainer
 
 
+    @property
+    def query(self):
+        return self._query
+
+
+    @query.setter
+    def query(self, value):
+        if provides_any(value, IQuery):
+            self._query = value
+        else:
+            raise TypeError('`query` attribute only accepts IQuery objects')
+
+
+    @property
+    def expression(self):
+        return self._expression
+
+
+    @expression.setter
+    def expression(self, value):
+        if provides_any(value, IExpressionCapable):
+            self._expression = value
+        else:
+            raise TypeError('QueryParts wraps IExpressionCapable objects only')
+
+
+    # TODO: Declare in which the interface?
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
             return iter(self.instance)
 
 
-    @property
-    def previous_bindings(self):
-        '''
-        A list of *stacked* previous bindings for this instance.
-
-        When an autobinding instance is involved in an expression (of which
-        it has control of operators) it doesn't return an expression per se,
-        but itself with the expression automatically bound to itself.
-
-        This property is used to support the case of reutilization of
-        queries::
-
-            a = next(a for a in this('a') if a.age > 20)
-
-        Since `a` is an autobinding these it would have the expression
-        `a.age > 20` bound to it. If now we execute::
-
-            b = next(b for b in a if b.age < 40)
-
-        The should keep the `a.age > 20` stored somewhere and not lost. Witout
-        the postprocessing done by :func:`these`, `b` would end up with:
-
-        - `b.age < 40` as the value of its `binding` property
-        - [`a.age > 20`] as its `previous_bindings` property.
-        '''
+    def __str__(self):
         with context(UNPROXIFING_CONTEXT):
-            if self.parent is None:
-                return self._previous_bindings
-            else:
-                return self.root_parent.previous_bindings
+            instance = self.expression
+            query = self.query
+            result = str(instance)
+        return '<qp: %s; for %s>' % (result, query)
+    __repr__ = __str__
 
 
-    @property
-    def instance(self):
-        with context(UNPROXIFING_CONTEXT):
-            return These(self.name, parent=self.parent, binding=self.binding)
-
-
-    def _update_binding(self, binding):
-        assert UNPROXIFING_CONTEXT in context
-        self._autobinding = binding
-        current_binding = self.binding
-        previous = self.previous_bindings
-        if current_binding is None:
-            self.binding = binding
-        else:
-            if isinstance(binding, These):
-                if binding.parent is not current_binding:
-                    previous.append(current_binding)
-                self.binding = binding
-            else:
-                assert isinstance(binding, ExpressionTree)
-                operation = binding.op
-                arity = getattr(operation, '_arity', None)
-                if arity == UNARY:
-                    if current_binding is not binding.children[0]:
-                        previous.append(current_binding)
-                    self.binding = binding
-                elif arity == BINARY:
-                    # In an expression like: this('p').y > this('p').x
-                    # we get into the following state:
-                    #   1. binding <-- this('p').y
-                    #   2. binding <-- this('p').x and previous <-- this('p').y
-                    # Then binding is the whole expression y > x we should
-                    # check if current op top
-                    if current_binding is binding.children[0]:
-                        self.binding = binding
-                        top = previous[-1] if previous else None
-                        if top and top is binding.children[1]:
-                            previous.pop(-1)
-                    elif current_binding is binding.children[1]:
-                        self.binding = binding
-                        top = previous[-1] if previous else None
-                        if top and top is binding.children[0]:
-                            previous.pop(-1)
-                    else:
-                        previous.append(current_binding)
-                    self.binding = binding
-
-
+    # TODO: In which interface?
     def __getattribute__(self, attr):
-        get = super(AutobindingThese, self).__getattribute__
-        if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
+        get = super(QueryPart, self).__getattribute__
+        if context[UNPROXIFING_CONTEXT]:
             return get(attr)
         else:
-            result = AutobindingThese(name=attr, parent=self)
             with context(UNPROXIFING_CONTEXT):
-                self._update_binding(result)
+                instance = get('expression')
+                query = get('query')
+            result = QueryPart(instance=getattr(instance, attr),
+                               query=query)
+            query.created_query_part(result)
             return result
 
 
+    # TODO: Again, in which interface?
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
-            result = super(AutobindingThese, self).__call__(*args)
-        # TODO: Create the autobindingthese...
+            instance = self._instance
+            query = self.query
+        result = QueryPart(instance=instance(*args),
+                           query=query)
+        query.created_query_part(result)
         return result
 
 
     def __eq__(self, other):
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            super_ = super(AutobindingThese, self).__eq__
-        result = super_(other)
-        if isinstance(result, ExpressionTree):
-            with context(UNPROXIFING_CONTEXT):
-                self._update_binding(result)
-        else:
-            from xotl.ql.expressions import _boolean
-            assert isinstance(result, (bool, _boolean))
+            instance = self.expression
+            query = self.query
+        result = instance == other
+        if provides_any(result, IExpressionTree, IThese):
+            result = QueryPart(instance=result,
+                               query=query)
+            query.created_query_part(result)
         return result
 
 
     def __ne__(self, other):
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            super_ = super(AutobindingThese, self).__ne__
-        result = super_(other)
-        if isinstance(result, ExpressionTree):
-            with context(UNPROXIFING_CONTEXT):
-                self._update_binding(result)
-        else:
-            from xotl.ql.expressions import _boolean
-            assert isinstance(result, (bool, _boolean))
+            instance = self.expression
+            query = self.query
+        result = instance != other
+        if provides_any(result, IExpressionTree, IThese):
+            result = QueryPart(instance=result,
+                               query=query)
+            query.created_query_part(result)
         return result
 
 
     def __lt__(self, other):
-        from xotl.ql.expressions import lt
+        from operator import lt
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = lt(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=lt(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __gt__(self, other):
-        from xotl.ql.expressions import gt
+        from operator import gt
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = gt(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=gt(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __le__(self, other):
-        from xotl.ql.expressions import le
+        from operator import le
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = le(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=le(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __ge__(self, other):
-        from xotl.ql.expressions import ge
+        from operator import ge
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = ge(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=ge(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __and__(self, other):
-        from xotl.ql.expressions import and_
+        from operator import and_
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = and_(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=and_(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __rand__(self, other):
-        from xotl.ql.expressions import and_
+        from operator import and_
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = and_(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=and_(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __or__(self, other):
-        from xotl.ql.expressions import or_
+        from operator import or_
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = or_(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=or_(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __ror__(self, other):
-        from xotl.ql.expressions import or_
+        from operator import or_
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = or_(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=or_(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __xor__(self, other):
-        from xotl.ql.expressions import xor_
+        from operator import xor
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = xor_(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=xor(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __rxor__(self, other):
-        from xotl.ql.expressions import xor_
+        from operator import xor
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = xor_(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=xor(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __add__(self, other):
-        from xotl.ql.expressions import add
+        from operator import add
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = add(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=add(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __radd__(self, other):
-        from xotl.ql.expressions import add
+        from operator import add
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = add(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=add(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __sub__(self, other):
-        from xotl.ql.expressions import sub
+        from operator import sub
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = sub(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=sub(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __rsub__(self, other):
-        from xotl.ql.expressions import sub
+        from operator import sub
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = sub(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=sub(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __mul__(self, other):
-        from xotl.ql.expressions import mul
+        from operator import mul
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = mul(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=mul(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __rmul__(self, other):
-        from xotl.ql.expressions import mul
+        from operator import mul
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = mul(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=mul(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
     def __div__(self, other):
-        from xotl.ql.expressions import div
+        from operator import div
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = div(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=div(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
     __truediv__ = __div__
 
 
     def __rdiv__(self, other):
-        from xotl.ql.expressions import div
+        from operator import div
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = div(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=div(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
     __rtruediv__ = __rdiv__
 
 
     def __floordiv__(self, other):
-        from xotl.ql.expressions import floordiv
+        from operator import floordiv
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = floordiv(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=floordiv(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __rfloordiv__(self, other):
-        from xotl.ql.expressions import floordiv
+        from operator import floordiv
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = floordiv(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=floordiv(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __mod__(self, other):
-        from xotl.ql.expressions import mod
+        from operator import mod
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = mod(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=mod(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __rmod__(self, other):
-        from xotl.ql.expressions import mod
+        from operator import mod
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = mod(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=mod(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __pow__(self, other):
-        from xotl.ql.expressions import pow
+        from operator import pow
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = pow(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=pow(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __rpow__(self, other):
-        from xotl.ql.expressions import pow
+        from operator import pow
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = pow(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=pow(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __lshift__(self, other):
-        from xotl.ql.expressions import lshift
+        from operator import lshift
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = lshift(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=lshift(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __rlshift__(self, other):
-        from xotl.ql.expressions import lshift
+        from operator import lshift
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = lshift(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=lshift(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __rshift__(self, other):
-        from xotl.ql.expressions import rshift
+        from operator import rshift
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = rshift(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=rshift(instance, other),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __rrshift__(self, other):
-        from xotl.ql.expressions import rshift
+        from operator import rshift
+        if isinstance(other, QueryPart):
+            other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = rshift(other, who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=rshift(other, instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def __neg__(self):
-        from xotl.ql.expressions import neg
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = neg(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=-instance,
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __abs__(self):
-        from xotl.ql.expressions import abs_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = abs_(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=abs(instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __pos__(self):
-        from xotl.ql.expressions import pos
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = pos(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=+instance,
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
     def __invert__(self):
-        from xotl.ql.expressions import invert
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
-            result = invert(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(instance=~instance,
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def count(self):
         from xotl.ql.expressions import count as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who)
             self._update_binding(result)
         return self
@@ -1668,7 +1892,7 @@ class AutobindingThese(Resource):
     def length(self):
         from xotl.ql.expressions import length as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who)
             self._update_binding(result)
         return self
@@ -1677,7 +1901,7 @@ class AutobindingThese(Resource):
     def any_(self, other):
         from xotl.ql.expressions import any_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who, other)
             self._update_binding(result)
         return self
@@ -1686,7 +1910,7 @@ class AutobindingThese(Resource):
     def all_(self, other):
         from xotl.ql.expressions import all_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who, other)
             self._update_binding(result)
         return self
@@ -1695,7 +1919,7 @@ class AutobindingThese(Resource):
     def min_(self):
         from xotl.ql.expressions import min_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who)
             self._update_binding(result)
         return self
@@ -1704,7 +1928,7 @@ class AutobindingThese(Resource):
     def max_(self):
         from xotl.ql.expressions import max_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who)
             self._update_binding(result)
         return self
@@ -1713,45 +1937,15 @@ class AutobindingThese(Resource):
     def invoke(self, *args):
         from xotl.ql.expressions import invoke as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, '_autobinding', None) or self
+            who = getattr(self, 'binding', None) or self._instance
             result = f_(who, *args)
             self._update_binding(result)
         return self
 
 
 
-class Query(object):
-    '''
-    A query representation
-    '''
-
-    def __init__(self, selection, filters=None, ordering=None, partition=None):
-        self._selection = selection
-        self._filters = filters
-        self._ordering = ordering
-        self._partition = partition
-
-
-    @property
-    def selection(self):
-        return self._selection
-
-    @property
-    def filters(self):
-        return self._filters
-
-    @property
-    def ordering(self):
-        return self._ordering
-
-    @property
-    def partition(self):
-        return self._partition
-
-
-
 def _restore_binding(which):
-    if isinstance(which, AutobindingThese):
+    if isinstance(which, QueryPart):
         with context(UNPROXIFING_CONTEXT):
             expression = which.binding
             instance = which.instance
@@ -1801,9 +1995,9 @@ def these(comprehesion):
         with context(UNPROXIFING_CONTEXT):
             instances_to_restore = {i.instance.root_parent
                                     for i in result
-                                    if isinstance(i, AutobindingThese)}
+                                    if isinstance(i, QueryPart)}
             expressions = {i.binding for i in result
-                            if isinstance(i, AutobindingThese)}
+                            if isinstance(i, QueryPart)}
             for instance in instances_to_restore:
                 for expr in expressions:
                     try:

@@ -27,6 +27,14 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+__all__ = ('IOperator', 'IExpressionCapable',
+           'ISyntacticallyReversibleOperation',
+           'ISynctacticallyCommutativeOperation',
+           'IExpressionTree', 'IQueryPart', 'IThese', 'IBoundThese',
+           'ICallableThese', 'IQueryPartContainer', 'IQuery')
+
+
+
 class IOperator(Interface):
     '''
     A description of an operator

@@ -34,7 +34,7 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
-from xotl.ql.these import these, AutobindingThese
+from xotl.ql.these import these, QueryPart
 
 from collections import namedtuple
 
@@ -42,41 +42,72 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+# This flag
+__TEST_DESIGN_DECISIONS = True
+
+
+if __TEST_DESIGN_DECISIONS:
+    from xotl.ql.interfaces import IQueryPart
+
+    class DesignDecisionTests(unittest.TestCase):
+        '''
+            Tests that are not functional. This suite only tests design
+            decisions that may change over time; but which should not affect
+            the result of ``these(<comprehension>)`` syntax *unless* there's
+            a change in Query Language API.
+
+            For instance, we test that comprehensions return always a
+            :class:`xotl.ql.these.QueryPart` (or a tuple/dict of them).
+        '''
+
+        def test_plain_iter(self):
+            t1 = next(iter(this))
+            with context(UNPROXIFING_CONTEXT):
+                self.assertTrue(IQueryPart.providedBy(t1),
+                                      'When itering over a this instance we '
+                                      'should get an IQueryPart object')
+
+            t1 = next(parent for parent in this('parent'))
+            self.assertEquals('parent', unboxed(unboxed(t1)._expression).name,
+                              'The name of the QueryBuilderToken should be '
+                              'the same as the name of the actual instance')
+
+            t1 = next(parent for parent in this('parent').children)
+            self.assertEquals('children', unboxed(unboxed(t1)._expression).name,
+                              'The name of the QueryBuilderToken should be '
+                              'the same as the name of the actual instance')
+
+
+        def test_basic_queries_building(self):
+            ok = self.assertEquals
+            expr = next(parent for parent in this('parent')
+                            if (parent.age > 32) & parent.married &
+                               parent.spouse.alive)
+            with context(UNPROXIFING_CONTEXT):
+                query = expr.query
+            parts = query._parts
+            expression = parts[-1]
+            ok("((this('parent').age > 32) and this('parent').married) and "
+               "this('parent').spouse.alive", str(expression))
+            ok("this('parent').spouse.alive", str(parts[-2]))
+            ok("this('parent').spouse", str(parts[-3]))
+            ok("(this('parent').age > 32) and this('parent').married",
+               str(parts[-4]))
+            ok("this('parent').married", str(parts[-5]))
+            ok("this('parent').age > 32", str(parts[-6]))
+            ok("this('parent').age", str(parts[-7]))
+            with self.assertRaises(IndexError):
+                print(str(parts[-8]))
+
 
 class TestThisQueries(unittest.TestCase):
-    def test_plain_iter(self):
-        t1 = next(iter(this))
-        self.assertIsInstance(t1, AutobindingThese,
-                              'When itering over a this instance we should '
-                              'get an autobinding these instance')
-
-        t1 = next(parent for parent in this('parent'))
-        self.assertEquals('parent', unboxed(t1).name,
-                          'The name of the autobinding instance should be '
-                          'the same as the name of the actual instance')
-
-        t1 = next(parent for parent in this('parent').children)
-        self.assertEquals('children', unboxed(t1).name,
-                          'The name of the autobinding instance should be '
-                          'the same as the name of the actual instance')
+    def test_qbuilder_relations(self):
+        a, b = next((p, p.age) for p in this('parent'))
+        self.assertIs(unboxed(a)._instance,
+                      unboxed(unboxed(b)._instance).parent)
 
 
-    def test_basic_iters(self):
-        from xotl.ql.expressions import count
-        ok = self.assertEquals
-        expr = next(parent for parent in this('parent')
-                        if (parent.age > 32) & parent.married)
-        self.assertEquals("this('parent')", str(expr))
-        binding = unboxed(expr).binding
-        ok("(this('parent').age > 32) and this('parent').married",
-           str(binding))
-        expr = next(parent for parent in this('parent')
-                        if +count(parent.children))
-        binding = unboxed(expr).binding
-        ok("+(count(this('parent').children))", str(binding))
-
-
-    def test_complex_iter(self):
+    def test_subqueries(self):
         parent_age, children = next((parent.age, child) for parent in this('p')
                                     for child in parent.children
                                     if (parent.age > 32) & (child.age < 10))
