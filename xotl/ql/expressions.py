@@ -292,9 +292,16 @@ from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
 
+from zope.interface import implements, directlyProvides
+
+from xotl.ql.interfaces import (IOperator, IExpressionTree,
+                                ISyntacticallyReversibleOperation,
+                                ISynctacticallyCommutativeOperation)
+
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
+
 
 
 class UNARY(object):
@@ -392,6 +399,12 @@ class OperatorType(type):
 
     def __init__(self, name, bases, attrs):
         OperatorType.operators.append(self)
+        interfaces = (IOperator, )
+        if getattr(self, '_rmethod_name', False):
+            interfaces += (ISyntacticallyReversibleOperation, )
+        if getattr(self, 'equivalence_test', False):
+            interfaces += (ISynctacticallyCommutativeOperation, )
+        directlyProvides(self, *interfaces)
 
 
     def __call__(self, *children):
@@ -439,14 +452,22 @@ class Operator(object):
 
 class _FunctorOperatorType(OperatorType):
     '''
-    A meta class for :class:`FunctorOperator`.
+    A metaclass for :class:`FunctorOperator`.
 
-    This provides operators that are function with a dual behavior upon
-    instantiantion. To allow operands to customize how to place themselves in
-    the operation, the "protocol" of calling the operand's method is
-    implemented here, but if the operand just wants to build the `op(self,
-    *others)` expression, we weave the first operand to avoid infinit
-    recursion.
+    This provides operators that are called as functions with a dual behavior
+    upon instantiantion. To allow operands to customize how to place
+    themselves in the operation, the "protocol" of calling the operand's
+    method is implemented here, but if the operand just wants to build the
+    `op(self, *others)` expression, we stack the first operand to avoid
+    infinit recursion.
+
+    This means that if you have an `opfunction` class that inherits from
+    :class:`FunctorOperator` (or otherwise is an instance of this metaclass),
+    when you call: ``opfunction(arg1, arg2, ...)``; will check if `arg1` has
+    implemented the method in `_method_name` if so, we then call
+    ``arg1._method_name(arg2, ...)``. If `arg1` just returns
+    ``opfunction(self, arg2, ...)``, we stop recursing a provide the standard
+    implementation: creating an expression of the type `(opfunction, *args)`.
     '''
     def __call__(self, *children):
         stack = context
@@ -576,6 +597,7 @@ class LogicalAndOperator(Operator):
     _rmethod_name = b'__rand__'
 
 and_ = LogicalAndOperator
+directlyProvides(and_, ISyntacticallyReversibleOperation)
 
 
 
@@ -594,7 +616,6 @@ class LogicalOrOperator(Operator):
     _rmethod_name = b'__ror__'
 
 or_ = LogicalOrOperator
-
 
 
 class LogicalXorOperator(Operator):
@@ -1236,6 +1257,8 @@ class ExpressionTree(object):
     operands of the expression.
 
     '''
+    implements(IExpressionTree)
+
     __slots__ = ('_op', '_children', )
 
 
