@@ -3,36 +3,26 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to xotl.ql's documentation!
+Welcome to `xotl.ql` documentation!
 ===================================
 
-.. automodule:: xotl.ql
+The word "xotl" is a Nahuatl word that means foundation, base. The
+`xotl` package comprises the foundation for building reliable systems:
+both frameworks, libraries and an object model that allows to build
+complex systems.
 
-.. warning::
-
-   We're still working to improve this language. In particular we're
-   trying to simplify it's current implementation by using more
-   granular types instead of context of executions.
-
-   We believe however, that "esence" is already achieve. Here are some
-   TODOs:
-
-   1. Eliminate the :class:`~xotl.ql.these.AUTOBINDING_CONTEXT` by
-      yielding a different type in the `__iter__` method, and possibly
-      implement the `next` protocol ourselves.
-
-   2. It's been suggested to change the name of
-      :func:`~xotl.ql.these.query` to `these`.
-
-   3. Allow operation-less conditions like::
-
-	valid = (who for who in this if who.valid)
+This package `xotl.ql` implements a query language for python, that is
+intended to be used in `xotl` to express the semantics for retrieving
+objects. It's distributed independently to allow other to use this
+language in their own projects. It's expected that many pieces of
+`xotl` may be distributed this way.
 
 
 Contents:
+---------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    expressions
    these
@@ -50,4 +40,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+* :ref:`glossary`
 
