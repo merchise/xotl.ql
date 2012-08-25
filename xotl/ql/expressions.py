@@ -1055,44 +1055,70 @@ class InvertUnaryOperator(Operator):
 invert = InvertUnaryOperator
 
 
+
 # TODO: Review any_ and all_
+class AllFunction(FunctorOperator):
+    '''
+    The representation of the `all` function.
+
+    There are three possible interpretations/syntaxis for `all_`:
+
+    1. It takes an expression (probably a subquery) and returns true only if
+       every object is true::
+
+            >>> ages = [1, 2, 3, 4, 5]
+            >>> expr = all_(age > 10 for age in ages)
+            >>> str(expr)        # doctest: +ELLIPSIS
+            'all(<generator object...>)'
+
+    2. takes several objects and evaluates them all (no subqueries)::
+
+            >>> ages = (1, 2, 3, 4, 5)
+            >>> expr = all_(*ages)
+            >>> str(expr)
+            'all(1, 2, 3, 4, 5)'
+
+    3. takes two arguments: the first is a "generator" (see the
+       :mod:`xotl.ql.these` module) and the second a predicate::
+
+            >>> from xotl.ql.these import this
+            >>> expr = all_(this.children, this.age > 10)
+            >>> str(expr)
+            'all(this.children, this.age > 10)'
+
+    .. warning:: There's no way to syntactically (at the level on which one
+                 could do normally in Python) to distiguish from the last two
+                 elements: so VMs that evaluate `all_` expressions may further
+                 restrict the interpretation.
+    '''
+
+    _format = 'all({0})'
+    _arity = N_ARITY
+    _method_name = b'all_'
+
+
+all_ = AllFunction
+
+
+
 class AnyFunction(FunctorOperator):
     '''
-    A function that takes in a generator and an expression that must be proven
-    True for at least a single element of the generator::
+    The representation of the `any` function. As with :class:`all_` three
+    interpretations are possible::
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = any_(q('locals.age'), q('locals.age') > 3)
-        >>> str(expr)
-        'any(locals.age, (locals.age > 3))'
+        >>> ages = [1, 2, 3, 4, 5]
+        >>> expr = any_(age > 10 for age in ages)
+        >>> str(expr)        # doctest: +ELLIPSIS
+        'any(<generator object...>)'
     '''
 
-    _format = 'any({0}, {1})'
-    _arity = BINARY
+    _format = 'any({0})'
+    _arity = N_ARITY
     _method_name = b'any_'
 
 
 any_ = AnyFunction
 
-
-
-class AllFunction(FunctorOperator):
-    '''
-    A function that takes in a generator and an expression that must be proven
-    True for every single element of the generator::
-
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = all_(q('locals.age'), q('locals.age') > 1)
-        >>> str(expr)
-        'all(locals.age, (locals.age > 1))'
-    '''
-
-    _format = 'all({0}, {1})'
-    _arity = BINARY
-    _method_name = b'all_'
-
-
-all_ = AllFunction
 
 
 class MinFunction(FunctorOperator):
