@@ -157,7 +157,7 @@ Thougths on Query Languages
 
 Expressions are the core for query languages and many of it's design decisions
 are strongly biased for query languages needs. But they purpose is more
-general. Notice that :py:class:`this objects <xotl.ql.these.These>` are
+general. Notice that :py:class:`this objects <xotl.ql.core.These>` are
 they way to specify the selected data in queries.
 
 The ultimate goal of expressions is to be *compiled* into forms feasible to the
@@ -238,7 +238,7 @@ of expressions using an natural (or idiomatic) form, so::
     expression <operator> object
 
 are the *suggested* form for constructing expressions. Doing so, allows other
-objects (see the :mod:`~xotl.ql.these` module for example) to engage
+objects (see the :mod:`~xotl.ql.core` module for example) to engage
 into expressions and keeps the feeling of naturality.
 
 The ``<operator>`` can be any of the supported operations, i.e:
@@ -1079,9 +1079,9 @@ class AllFunction(FunctorOperator):
             'all(1, 2, 3, 4, 5)'
 
     3. takes two arguments: the first is a "generator" (see the
-       :mod:`xotl.ql.these` module) and the second a predicate::
+       :mod:`xotl.ql.core` module) and the second a predicate::
 
-            >>> from xotl.ql.these import this
+            >>> from xotl.ql.core import this
             >>> expr = all_(this.children, this.age > 10)
             >>> str(expr)
             'all(this.children, this.age > 10)'

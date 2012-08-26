@@ -31,7 +31,7 @@ from __future__ import (division as _py3_division,
 
 
 import unittest
-from xotl.ql.these import these, this
+from xotl.ql.core import these, this
 
 
 __docstring_format__ = 'rst'

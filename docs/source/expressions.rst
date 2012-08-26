@@ -1,3 +1,5 @@
+.. _expression-lang:
+
 ========================
 The Expressions Language
 ========================

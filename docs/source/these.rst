@@ -1,6 +1,8 @@
-==================
-The `this` objects
-==================
+.. _query-lang:
 
-.. automodule:: xotl.ql.these
+========================================
+The query language and the `this` object
+========================================
+
+.. automodule:: xotl.ql.core
    :members:

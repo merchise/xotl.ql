@@ -41,7 +41,7 @@ Common tools for translating expressions
 
 The fundamental tool for translating expressions is the function
 :func:`cotraverse_expression`. It's a coroutine that allows to traverse the
-entire expression tree (including bound :class:`~xotl.ql.these.These`
+entire expression tree (including bound :class:`~xotl.ql.core.These`
 instances) and yields expression nodes and/or leaves that match a given
 "predicate".
 
@@ -71,7 +71,7 @@ from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.these import These, these, this
+from xotl.ql.core import These, these, this
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -124,7 +124,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
       respectively.
 
         >>> from xotl.ql.expressions import is_a, all_, in_
-        >>> from xotl.ql.these import these, this
+        >>> from xotl.ql.core import these, this
         >>> who = these(who for who in this('w')
         ...                 if all_(who.children,
         ...                         in_(this, these(sub for sub in this('s')
@@ -204,7 +204,7 @@ def fetch(expr, order=None, partition=None):
     Generates all the objects that match a given query.
 
     :param expr: A query comprehesion or the result of calling
-                  :func:`~xotl.ql.these.these` over a comprehension.
+                  :func:`~xotl.ql.core.these` over a comprehension.
 
     :param order: Ordering scheme: Either a single expression in which case it
                   should either: ``+this`` or ``-this``, or a tuple of
