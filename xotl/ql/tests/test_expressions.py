@@ -102,6 +102,33 @@ class BasicTests(unittest.TestCase):
                str(test(q('age'))))
 
 
+
+class ExtensibilityTests(unittest.TestCase):
+    def test_new_function(self):
+        from xotl.ql.expressions import FunctorOperator, N_ARITY
+
+        class AverageFunction(FunctorOperator):
+            '''
+            The ``avg(*args)`` operation.
+            '''
+            _format = 'avg({0})'
+            _arity = N_ARITY
+            _method_name = b'_avg'
+        avg = AverageFunction
+
+        class ZeroObject(object):
+            def _avg(self, *others):
+                return avg(*others)
+
+        expr = avg(0, 1, 2, 3, 4, 5)
+        self.assertEquals("avg(0, 1, 2, 3, 4, 5)", str(expr))
+
+        zero = ZeroObject()
+        expr = avg(zero, 1, 2, 3)
+        self.assertEquals("avg(1, 2, 3)", str(expr))
+
+
+
 class RegressionTests(unittest.TestCase):
     def test_20120814_reversed_ops_should_work(self):
         expr = 1 + (2 + q(3))
