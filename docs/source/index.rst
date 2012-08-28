@@ -30,7 +30,7 @@ Contents:
 
    overview
    expressions
-   these
+   core
    query-api
    translate
    references

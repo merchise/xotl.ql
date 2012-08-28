@@ -109,6 +109,11 @@ if __TEST_DESIGN_DECISIONS:
                 self.assertNotEqual(p1, p2)
 
 
+        def test_is_a_customization(self):
+            from xotl.ql.expressions import is_a
+            expr = next(t for t in this('t') if is_a(t, 'Something'))
+
+
 class TestThisQueries(unittest.TestCase):
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent'))
@@ -116,6 +121,7 @@ class TestThisQueries(unittest.TestCase):
         (p, ) = query.selection
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(p, this('parent'))
+
 
     def test_basic_queries(self):
         query = these(parent for parent in this('parent')

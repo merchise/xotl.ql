@@ -191,12 +191,14 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
                     leave_filter = new_leave_filter
 
 
+
 def replace_known_functions(expr):
     '''
     Traverses the expression and replaces all calls to known functions to the
     expressions that directly use the function:
     '''
     pass
+
 
 
 def fetch(expr, order=None, partition=None):

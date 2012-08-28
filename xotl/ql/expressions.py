@@ -8,13 +8,13 @@
 #
 # This is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 3 of  the  License, or (at your option)
-# any later version.
+# Software Foundation; either version 3 of the License, or (at your option) any
+# later version.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51
@@ -39,8 +39,8 @@ expression tree has two core attributes:
 
 Operation classes should have the following attributes:
 
-- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`,
-  or :class:`UNARY`.
+- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`, or
+  :class:`UNARY`.
 
 - `_format`, which should be a string that specifies how to format the
   operation when str is invoked to print the expression. The format should
@@ -105,12 +105,13 @@ as shown with::
 
 it's difficult to test whether or not two expressions are equivalent, meaning
 only that they represent the same AST and not its semantics. We use the simple
-contexts of execution provided by :py:mod:`!xoutil.context` to enter
-"special" modes of execution in which we change the semantic of an operation.
+contexts of execution provided by :mod:`!xoutil.context` to enter "special"
+modes of execution in which we change the semantic of an operation.
 
-Since, :py:class:`q` is based on :py:mod:`xoutil.proxy`, and it's
-likely that expressions contains `q`-objects, we use the same context name, the
-proxy uses for similar purposes, i.e, :class:`~xotl.ql.proxy.UNPROXIFING_CONTEXT`::
+Since, :class:`q` is based on :mod:`!xoutil.proxy` we use the same context name
+the proxy module uses for similar purposes, i.e, to enter a special context in
+which operation don't create new expression but try to evaluate themselve; such
+a context is the object :class:`~xotl.ql.proxy.UNPROXIFING_CONTEXT`::
 
     >>> from xoutil.context import context
     >>> from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -805,9 +806,9 @@ class IsInstanceOperator(FunctorOperator):
     '''
     The `a is_a B` operator::
 
-         >>> e = is_a(1, 2)
+         >>> e = is_a(1, int)
          >>> str(e)
-         'is_a(1, 2)'
+         "is_a(1, <type 'int'>)"
 
     '''
     _format = 'is_a({0}, {1})'
@@ -943,16 +944,21 @@ rshift = RightShiftOperator
 
 
 class LengthFunction(FunctorOperator):
-    '''
-    The `length(something)` operator::
+    '''The `length(something)` operator::
 
         >>> e = length(487873)
         >>> str(e)
         'length(487873)'
 
-    :class:`length` is intended to be applied to non-collection values that
-    have a magnitude, like strings. It's not intended to be applied to
-    collection of objects; use :class:`count` for those cases.
+    .. note::
+    
+       :class:`length` is intended to be applied to non-collection values that
+       have kind of a magnitude, like strings. It's not intended to be applied
+       to collection of objects; use :class:`count` for those cases.
+
+       :term:`Translators <query translator>` may rely on this rule to infer
+       the type of the argument passed to either :class:`!length` or
+       :class:`!count`.
 
     '''
     _format = 'length({0})'
@@ -964,16 +970,22 @@ length = LengthFunction
 
 
 class CountFunction(FunctorOperator):
-    '''
-    The `count(something)` operator::
+    '''The `count(something)` operator::
 
         >>> e = count((4, 8, 7, 8, 73))
         >>> str(e)
         'count((4, 8, 7, 8, 73))'
 
-    :class:`count` is intended to be applied to collections. It's not supposed
-    to be applied to non-collection values like strings; use :class:`length`
-    for those cases.
+    .. note::
+    
+       :class:`count` is intended to be applied to collections. It's not
+       supposed to be applied to non-collection values like strings; use
+       :class:`length` for those cases.
+
+       :term:`Translators <query translator>` may rely on this rule to infer
+       the type the argument passed to either :class:`!length` or
+       :class:`!count`.
+
     '''
     _format = 'count({0})'
     _arity = UNARY
@@ -1161,15 +1173,16 @@ max_ = MaxFunction
 
 
 class InvokeFunction(FunctorOperator):
-    '''
-    A function to allow arbitary function calls to be placed inside
+    '''A function to allow arbitary function calls to be placed inside
     expressions. It's up to you that such functions behave as expect since is
-    unlikely anyone translate it::
+    unlikely that they can be :term:`translated <query translator>`. For
+    instance::
 
         >>> ident = lambda who: who
-        >>> expr = call(q(1), ident)
+        >>> expr = call(ident, 1)
         >>> str(expr)     # doctest: +ELLIPSIS
-        'call(1, <function <lambda> ...>)'
+        'call(<function <lambda> ...>, 1)'
+
     '''
     _format = 'call({0})'
     _arity = N_ARITY

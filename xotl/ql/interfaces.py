@@ -223,13 +223,12 @@ class IExpressionCapable(Interface):
 
 
 class IExpressionTree(IExpressionCapable):
-    '''
-    A representation of an expression tree.
+    '''A representation of an expression tree.
 
-    It resembles a reduced AST for simple expressions. The expression
-    tree has an `operation` attribute that holds a instance that describes
-    the operation between the `children` of this expression. For instance,
-    the expression: `3 + 4**2 < 18983` would be encoded in a tree like::
+    It resembles a reduced AST for simple expressions. The expression tree has
+    an `operation` attribute that holds a instance that describes the operation
+    between the `children` of this expression. For instance, the expression: `3
+    + 4**2 < 18983` would be encoded in a tree like::
 
        {operation: [<]        -- An object that represents the "<" operation
         children: (           -- children is always a tuple of "literals" or
@@ -241,6 +240,7 @@ class IExpressionTree(IExpressionCapable):
                  children: (4, 2)}
             )}
         )}
+
     '''
 
     operation = Attribute('An object that implements the :class:IOperator '
@@ -251,9 +251,8 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''
-    Represents a partial (but probably sound) expression that is been attached
-    somehow to a query.
+    '''Represents a partial (but probably sound) expression that is been
+    attached somehow to a query.
 
     When `these(<comprehension>)` an IQueryPartContainer object is generated
     internally to hold the query, but since we don't have the control of how
@@ -262,6 +261,7 @@ class IQueryPart(IExpressionCapable):
 
     A query part behave as an expression but everytime a new query part is
     created the attached `query` object gets notified.
+
     '''
     query = Attribute('A reference to the query instance this part has been '
                       'attached to.',
@@ -280,6 +280,7 @@ class IThese(IExpressionCapable):
     objects, such as::
 
         (this.age > 30) & (this.age < 40)
+
     '''
 
     def __iter__():
@@ -322,6 +323,62 @@ class IQueryPartContainer(Interface):
 class IQuery(Interface):
     selection = Attribute('Either a tuple/dict of IThese/IExpressionTree '
                           'instances or single instance.')
+    generator = Attribute('The instance from which this query was '
+                          'created. Usually a These instance.')
     ordering = Attribute('A tuple of ordering expressions.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
+
+
+
+class IQueryTranslator(Interface):
+    '''
+    A :term:`query translator`.
+    '''
+
+    def build_plan(query, **kwargs):
+        '''Builds a query plan for a query. Returns an IQueryExecutionPlan.'''
+
+
+
+class IQueryExecutionPlan(Interface):
+    '''Represents the execution plan for a query.'''
+
+    query = Attribute('The query for which is the plan.')
+
+    def __call__():
+        '''Executes the plan an retrieves a IDataCursor'''
+
+
+
+class IDataCursor(Interface):
+    def next():
+        '''Returns the object at the cursor position and moves the cursor
+        forward. If the cursor is out of objects raises `StopIteration`.
+
+        '''
+
+
+
+class IQueryConfiguration(Interface):
+    '''A configuration object.'''
+
+    default_translator_name = Attribute('The name to lookup in the components registry for a IQueryTranslator')
+
+    def get_translator_for(**predicates):
+        '''Get's the configured translator for a set of *predicates*
+
+
+        :param app: A string that represents an application (or site)
+                    within your system. You may need to merge several
+                    applications within a system; each with it's own
+                    database and query translator. Use this argument
+                    to explicitly ask for the translator for a given
+                    application.
+
+        :param kind: A fully-qualified class name that uniquely
+                     identify some object kind in your system and for
+                     which you may need to specify a different translator.
+
+        '''
+

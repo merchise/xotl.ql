@@ -8,13 +8,13 @@
 #
 # This is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 3 of  the  License, or (at your option)
-# any later version.
+# Software Foundation; either version 3 of the License, or (at your option) any
+# later version.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51
@@ -26,8 +26,7 @@
 # TODO: Move this extended tutorial to /docs, keep only a very basic doc for
 # the module.
 
-r'''
-Extends the :mod:`~xotl.ql.expressions` language to provide universal
+r'''Extends the :mod:`~xotl.ql.expressions` language to provide universal
 accessors.
 
 The :obj:`this` object stands for every object in the "universe" (e.g. the
@@ -69,14 +68,13 @@ readable::
     ...                if all_(child.age > 10 for child in parent.children))
 
 
-.. warning:: It's up to the `Query Translators <query translator>` to make any
-             sense of this query. Some translator may reject the query because
-             it's not *computable* to the target storage system or just
+.. warning:: It's up to the :term:`Query Translators <query translator>` to make
+             any sense of this query. Some translator may reject the query
+             because it's not *computable* to the target storage system or just
              because it's some operation is not supported.
 
              So when writing queries you should check the translators available
              to you and their documentation.
-
 
 
 :class:`!These` instances may be *named*, thus allowing to select different
@@ -137,13 +135,15 @@ from xoutil.objects import get_first_of, validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
+from zope.component import getUtility
 from zope.interface import implements, directlyProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IQuery, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
-                                IBoundThese)
+                                IBoundThese, IQueryTranslator,
+                                IQueryConfiguration)
 
 
 __docstring_format__ = 'rst'
@@ -239,11 +239,7 @@ class These(Resource):
             self._parent = kwargs.get('parent', None)
             self._binding = None
             if not self._parent:
-                self.bind(get_first_of(kwargs,
-                                       'binding',
-                                       'expression',
-                                       'condition',
-                                       'filter',
+                self.bind(get_first_of(kwargs, 'binding', 'filter',
                                        default=None))
 
 
@@ -265,8 +261,11 @@ class These(Resource):
 
     @binding.setter
     def binding(self, value):
-#        if value is not None:
-#            directlyProvides(self, IBoundThese)
+        # This causes errors with objects that have __slots__, do we
+        # really need slots, or do we really need IBoundThese
+        #
+        # if value is not None:
+        #     directlyProvides(self, IBoundThese)
         parent = getattr(self, 'parent', None)
         if parent:
             parent.binding = value
@@ -340,11 +339,11 @@ class These(Resource):
             name = self.name
             parent = self.parent
         if name:
-            query = Query(self)
+            query = Query(instance=self)
             instance = QueryPart(instance=self, query=query)
             yield instance
         else:
-            # We should generate a new-name, that's
+            # We should generate a new-name
             with context(UNPROXIFING_CONTEXT), context('_INVALID_THESE_NAME'):
                 instance = type(self)(self._newname(), parent=parent)
             yield next(iter(instance))
@@ -753,11 +752,14 @@ def provides_all(which, *interfaces):
 class Query(object):
     implements(IQuery, IQueryPartContainer)
 
-    __slots__ = ('_selection', '_filters', '_ordering', '_partition', '_parts')
+    __slots__ = ('instance', '_selection', '_filters',
+                 '_ordering', '_partition', '_parts',
+                 '_query_state')
 
     # TODO: Representation of grouping with dicts.
-    def __init__(self, selection, **kwargs):
-        self.selection = selection
+    def __init__(self, **kwargs):
+        self.instance = instance = kwargs.get('instance')
+        self.selection = kwargs.get('selection', instance)
         self.filters = kwargs.get('filters', None)
         self.ordering = kwargs.get('ordering', None)
         self.partition = kwargs.get('partition', None)
@@ -844,9 +846,29 @@ class Query(object):
             assert False
 
 
+    def next(self):
+        '''Support for retrieving objects directly from the query object. Of
+        course this requires that an IQueryTranslator is configured.
+        '''
+        if not self._query_state:
+            name = getUtility(IQueryConfiguration).query_translator_name
+            translator = getUtility(IQueryTranslator,
+                                    name if name else b'default')
+            query_plan = translator.build_plan(self, order=self.ordering,
+                                               partition=self.partition)
+            self._query_state = query_plan()
+        result, _state = next(self._query_state, (None, None))
+        if result:
+            self._query_state = _state
+            return result
+        else:
+            self._query_state = None
+            raise StopIteration
+
+
     def __iter__(self):
         'Creates a subquery'
-        pass
+        raise NotImplemented
 
 
 
@@ -856,6 +878,7 @@ class QueryPart(object):
     When iterating over this instance, this token is used to catch all
     expressions and build a :class:`Query` from it. This class is mostly
     internal and does not belongs to the Query Language API.
+
     '''
     implements(IQueryPart, )
 
@@ -939,6 +962,19 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
+
+
+    # This hooks into is_a expression to allow restricting queries to types
+    # more easily.
+    def _is_a(self, kind):
+        if isinstance(kind, QueryPart):
+            kind = unboxed(kind).expression
+        with context(UNPROXIFING_CONTEXT):
+            instance = self.expression
+            query = self.query
+            query.generator_kind = kind
+        from xotl.ql.expressions import is_a
+        return is_a(instance, kind)
 
 
     def __eq__(self, other):
