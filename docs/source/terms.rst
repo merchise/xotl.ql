@@ -45,9 +45,9 @@ Terms and glossary
 
        .. doctest::
 
-      >>> from xotl.ql.expressions import add
-      >>> add(1, 2)                 # doctest: +ELLIPSIS
-      <expression '1 + 2' ...>
+	  >>> from xotl.ql.expressions import add
+	  >>> add(1, 2)                 # doctest: +ELLIPSIS
+	  <expression '1 + 2' ...>
 
        However it's more natural to encode such expressions with the
        usual plus sign, like this:
@@ -55,8 +55,8 @@ Terms and glossary
        .. doctest::
 
           >>> from xotl.ql.expressions import q
-      >>> q(1) + 2              # doctest: +ELLIPSIS
-      <expression '1 + 2' ...>
+          >>> q(1) + 2              # doctest: +ELLIPSIS
+          <expression '1 + 2' ...>
 
    query
 
@@ -64,11 +64,14 @@ Terms and glossary
        meanings that depend on the context:
 
        a) The comprehension as seen in the code that express what is
-      intended to fetch from the storage(s).
+	  intended to fetch from the storage(s).
 
        b) The (internal) data structure that represents the query (as
-      in item a) to the program.
+          in item a) to the program.
 
+       Most of the time we talk about type-a queries, but in the internal API
+       documentation it's necessary to distinguish between the type-a query and
+       it's structure.
 
    query translator
    translator
