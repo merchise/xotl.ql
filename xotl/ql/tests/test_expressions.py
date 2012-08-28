@@ -120,7 +120,11 @@ class ExtensibilityTests(unittest.TestCase):
 
         class ZeroObject(object):
             def _avg(self, *others):
-                return avg(*others)
+                if others:
+                    return avg(*others)
+                else:
+                    from xotl.ql.expressions import q
+                    return q(0)
 
         expr = avg(0, 1, 2, 3, 4, 5)
         self.assertEquals("avg(0, 1, 2, 3, 4, 5)", str(expr))
@@ -128,6 +132,7 @@ class ExtensibilityTests(unittest.TestCase):
         zero = ZeroObject()
         expr = avg(zero, 1, 2, 3)
         self.assertEquals("avg(1, 2, 3)", str(expr))
+        self.assertEqual('0', str(avg(zero)))
 
 
 
