@@ -967,9 +967,9 @@ class CountFunction(FunctorOperator):
     '''
     The `count(something)` operator::
 
-        >>> e = count(487873)
+        >>> e = count((4, 8, 7, 8, 73))
         >>> str(e)
-        'count(487873)'
+        'count((4, 8, 7, 8, 73))'
 
     :class:`count` is intended to be applied to collections. It's not supposed
     to be applied to non-collection values like strings; use :class:`length`
@@ -977,7 +977,7 @@ class CountFunction(FunctorOperator):
     '''
     _format = 'count({0})'
     _arity = UNARY
-    _method_name = b'count'
+    _method_name = b'_count'
 
 
 count = CountFunction
