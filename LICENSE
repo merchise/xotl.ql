@@ -1,6 +1,6 @@
-=======================================================
-Licence: :abbr:`GNU` General Public License version 3
-=======================================================
+=======================================================================
+Licence: :abbr:`GNU (GNU is Not Unix)` General Public License version 3
+=======================================================================
 
 Version 3, 29 June 2007
 
@@ -13,15 +13,15 @@ document, but changing it is not allowed.
 Preamble
 --------
 
-The :abbr:`GNU` General Public License is a free, copyleft
-license for software and other kinds of works.
+The :abbr:`GNU (GNU is Not Unix)` General Public License is a free, copyleft license for
+software and other kinds of works.
 
 The licenses for most software and other practical works are designed to
 take away your freedom to share and change the works.  By contrast, the
-:abbr:`GNU` General Public License is intended to guarantee your
+:abbr:`GNU (GNU is Not Unix)` General Public License is intended to guarantee your
 freedom to share and change all versions of a program -to make sure it
 remains free software for all its users.  We, the Free Software Foundation,
-use the :abbr:`GNU` General Public License for most of our
+use the :abbr:`GNU (GNU is Not Unix)` General Public License for most of our
 software; it applies also to any other work released this way by its
 authors.  You can apply it to your programs, too.
 
@@ -42,35 +42,38 @@ for a fee, you must pass on to the recipients the same freedoms that you
 received.  You must make sure that they, too, receive or can get the source
 code.  And you must show them these terms so they know their rights.
 
-Developers that use the :abbr:`GNU` :abbr:`GPL`
-protect your rights with two steps: (1) assert copyright on the software,
-and (2) offer you this License giving you legal permission to copy,
-distribute and/or modify it.
+Developers that use the :abbr:`GNU (GNU is Not Unix)` :abbr:`GPL
+(General Public License)` protect your rights with two steps: (1)
+assert copyright on the software, and (2) offer you this License
+giving you legal permission to copy, distribute and/or modify it.
 
-For the developers' and authors' protection, the
-:abbr:`GPL` clearly explains that there is no warranty for this
-free software.  For both users' and authors' sake, the
-:abbr:`GPL` requires that modified versions be marked as changed,
-so that their problems will not be attributed erroneously to authors of
-previous versions.
+For the developers' and authors' protection, the :abbr:`GPL (General
+Public License)` clearly explains that there is no warranty for this
+free software.  For both users' and authors' sake, the :abbr:`GPL
+(General Public License)` requires that modified versions be marked as
+changed, so that their problems will not be attributed erroneously to
+authors of previous versions.
 
-Some devices are designed to deny users access to install or run modified
-versions of the software inside them, although the manufacturer can do so.
-This is fundamentally incompatible with the aim of protecting users'
-freedom to change the software.  The systematic pattern of such abuse occurs
-in the area of products for individuals to use, which is precisely where it
-is most unacceptable.  Therefore, we have designed this version of the
-:abbr:`GPL` to prohibit the practice for those products.  If such
-problems arise substantially in other domains, we stand ready to extend this
-provision to those domains in future versions of the :abbr:`GPL`,
-as needed to protect the freedom of users.
+Some devices are designed to deny users access to install or run
+modified versions of the software inside them, although the
+manufacturer can do so.  This is fundamentally incompatible with the
+aim of protecting users' freedom to change the software.  The
+systematic pattern of such abuse occurs in the area of products for
+individuals to use, which is precisely where it is most unacceptable.
+Therefore, we have designed this version of the :abbr:`GPL (General
+Public License)` to prohibit the practice for those products.  If such
+problems arise substantially in other domains, we stand ready to
+extend this provision to those domains in future versions of the
+:abbr:`GPL (General Public License)`, as needed to protect the freedom
+of users.
 
-Finally, every program is threatened constantly by software patents.  States
-should not allow patents to restrict development and use of software on
-general-purpose computers, but in those that do, we wish to avoid the
-special danger that patents applied to a free program could make it
-effectively proprietary.  To prevent this, the :abbr:`GPL`
-assures that patents cannot be used to render the program non-free.
+Finally, every program is threatened constantly by software patents.
+States should not allow patents to restrict development and use of
+software on general-purpose computers, but in those that do, we wish
+to avoid the special danger that patents applied to a free program
+could make it effectively proprietary.  To prevent this, the
+:abbr:`GPL (General Public License)` assures that patents cannot be
+used to render the program non-free.
 
 The precise terms and conditions for copying, distribution and modification
 follow.
@@ -81,7 +84,7 @@ TERMS AND CONDITIONS
 0. Definitions.
 ~~~~~~~~~~~~~~~
 
-"This License" refers to version 3 of the :abbr:`GNU`
+"This License" refers to version 3 of the :abbr:`GNU (GNU is Not Unix)`
 General Public License.
 
 "Copyright" also means copyright-like laws that apply to other
@@ -566,93 +569,95 @@ to collect a royalty for further conveying from those to whom you convey the
 Program, the only way you could satisfy both those terms and this License
 would be to refrain entirely from conveying the Program.
 
-13. Use with the :abbr:`GNU` Affero General Public License.
+13. Use with the :abbr:`GNU (GNU is Not Unix)` Affero General Public License.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Notwithstanding any other provision of this License, you have permission to
 link or combine any covered work with a work licensed under version 3 of the
-:abbr:`GNU` Affero General Public License into a single combined
+:abbr:`GNU (GNU is Not Unix)` Affero General Public License into a single combined
 work, and to convey the resulting work.  The terms of this License will
 continue to apply to the part which is the covered work, but the special
-requirements of the :abbr:`GNU` Affero General Public License,
+requirements of the :abbr:`GNU (GNU is Not Unix)` Affero General Public License,
 section 13, concerning interaction through a network will apply to the
 combination as such.
 
 14. Revised Versions of this License.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Free Software Foundation may publish revised and/or new versions of the
-:abbr:`GNU` General Public License from time to time.  Such new
-versions will be similar in spirit to the present version, but may differ in
-detail to address new problems or concerns.
+The Free Software Foundation may publish revised and/or new versions
+of the :abbr:`GNU (GNU is Not Unix)` General Public License from time
+to time.  Such new versions will be similar in spirit to the present
+version, but may differ in detail to address new problems or concerns.
 
 Each version is given a distinguishing version number.  If the Program
-specifies that a certain numbered version of the :abbr:`GNU`
-General Public License "or any later version" applies to it, you
-have the option of following the terms and conditions either of that
-numbered version or of any later version published by the Free Software
-Foundation.  If the Program does not specify a version number of the
-:abbr:`GNU` General Public License, you may choose any version
-ever published by the Free Software Foundation.
+specifies that a certain numbered version of the :abbr:`GNU (GNU is
+Not Unix)` General Public License "or any later version" applies to
+it, you have the option of following the terms and conditions either
+of that numbered version or of any later version published by the Free
+Software Foundation.  If the Program does not specify a version number
+of the :abbr:`GNU (GNU is Not Unix)` General Public License, you may
+choose any version ever published by the Free Software Foundation.
 
-If the Program specifies that a proxy can decide which future versions of
-the :abbr:`GNU` General Public License can be used, that
-proxy's public statement of acceptance of a version permanently
-authorizes you to choose that version for the Program.
+If the Program specifies that a proxy can decide which future versions
+of the :abbr:`GNU (GNU is Not Unix)` General Public License can be
+used, that proxy's public statement of acceptance of a version
+permanently authorizes you to choose that version for the Program.
 
-Later license versions may give you additional or different permissions.
-However, no additional obligations are imposed on any author or copyright
-holder as a result of your choosing to follow a later version.
+Later license versions may give you additional or different
+permissions.  However, no additional obligations are imposed on any
+author or copyright holder as a result of your choosing to follow a
+later version.
 
 15. Disclaimer of Warranty.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE
-LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR
-OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY OF
-ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH
-YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL
-NECESSARY SERVICING, REPAIR OR CORRECTION.
+THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT
+WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND
+PERFORMANCE OF THE PROGRAM IS WITH YOU.  SHOULD THE PROGRAM PROVE
+DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR
+CORRECTION.
 
 16. Limitation of Liability.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL
-ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS THE
-PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE
-OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF DATA
-OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
-PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
-EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGES.
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR
+CONVEYS THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES,
+INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT
+NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR
+LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM
+TO OPERATE WITH ANY OTHER PROGRAMS), EVEN IF SUCH HOLDER OR OTHER
+PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 17. Interpretation of Sections 15 and 16.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If the disclaimer of warranty and limitation of liability provided above
-cannot be given local legal effect according to their terms, reviewing
-courts shall apply local law that most closely approximates an absolute
-waiver of all civil liability in connection with the Program, unless a
-warranty or assumption of liability accompanies a copy of the Program in
-return for a fee.
+If the disclaimer of warranty and limitation of liability provided
+above cannot be given local legal effect according to their terms,
+reviewing courts shall apply local law that most closely approximates
+an absolute waiver of all civil liability in connection with the
+Program, unless a warranty or assumption of liability accompanies a
+copy of the Program in return for a fee.
 
 END OF TERMS AND CONDITIONS
 ---------------------------
 
 How to Apply These Terms to Your New Programs
 
-If you develop a new program, and you want it to be of the greatest possible
-use to the public, the best way to achieve this is to make it free software
-which everyone can redistribute and change under these terms.
+If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these
+terms.
 
-To do so, attach the following notices to the program.  It is safest to
-attach them to the start of each source file to most effectively state the
-exclusion of warranty; and each file should have at least the
-"copyright" line and a pointer to where the full notice is
-found.
+To do so, attach the following notices to the program.  It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
 
 ::
 
@@ -660,17 +665,18 @@ found.
     Copyright (C) year name of author
 
     This program is free software: you can redistribute it and/or
-    modify it under the terms of the :abbr:`GNU` General Public
-    License as published by the Free Software Foundation, either
-    version 3 of the License, or (at your option) any later version.
+    modify it under the terms of the :abbr:`GNU (GNU is Not Unix)`
+    General Public License as published by the Free Software
+    Foundation, either version 3 of the License, or (at your option)
+    any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
-    the:abbr:`GNU` General Public License for more details.  You
-    should have received a copy of the :abbr:`GNU` General Public
-    License along with this program.  If not, see
-    http://www.gnu.org/licenses/.
+    the:abbr:`GNU (GNU is Not Unix)` General Public License for more
+    details.  You should have received a copy of the :abbr:`GNU (GNU
+    is Not Unix)` General Public License along with this program.  If
+    not, see http://www.gnu.org/licenses/.
 
 Also add information on how to contact you by electronic and paper
 mail.
@@ -695,13 +701,14 @@ use an "about box".
 You should also get your employer (if you work as a programmer) or
 school, if any, to sign a "copyright disclaimer" for the program, if
 necessary.  For more information on this, and how to apply and follow
-the :abbr:`GNU` :abbr:`GPL`, see http://www.gnu.org/licenses/.
+the :abbr:`GNU (GNU is Not Unix)` :abbr:`GPL (General Public
+License)`, see http://www.gnu.org/licenses/.
 
-The :abbr:`GNU` General Public License does not permit incorporating
-your program into proprietary programs.  If your program is a
-subroutine library, you may consider it more useful to permit linking
-proprietary applications with the library.  If this is what you want
-to do, use the :abbr:`GNU` Lesser General Public License instead of
-this License.  But first, please read
-http://www.gnu.org/philosophy/why-not-lgpl.html.
+The :abbr:`GNU (GNU is Not Unix)` General Public License does not
+permit incorporating your program into proprietary programs.  If your
+program is a subroutine library, you may consider it more useful to
+permit linking proprietary applications with the library.  If this is
+what you want to do, use the :abbr:`GNU (GNU is Not Unix)` Lesser
+General Public License instead of this License.  But first, please
+read http://www.gnu.org/philosophy/why-not-lgpl.html.
 
