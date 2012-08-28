@@ -650,7 +650,7 @@ class LogicalNotOperator(Operator):
     _method_name = b'__invert__'
 
 
-not_ = LogicalNotOperator
+invert = not_ = LogicalNotOperator
 
 
 
@@ -1049,25 +1049,6 @@ class AbsoluteValueUnaryFunction(Operator):
 abs_ = AbsoluteValueUnaryFunction
 
 
-
-class InvertUnaryOperator(Operator):
-    '''
-    The `~56` unary operator::
-
-        >>> e = invert(34)
-        >>> str(e)
-        '~34'
-
-    '''
-    _format = '~{0}'
-    _arity = UNARY
-    _method_name = b'__invert__'
-
-
-invert = InvertUnaryOperator
-
-
-
 # TODO: Review any_ and all_
 class AllFunction(FunctorOperator):
     '''
@@ -1455,7 +1436,7 @@ class q(object):
                                    ('__pos__', pos, False),
                                    ('__abs__', abs_, False),
                                    ('__neg__', neg, False),
-                                   ('__invert__', invert, False)))
+                                   ('__invert__', not_, False)))
 
     behaves = [query_fragment, comparable, comparable_for_equalitity,
                number_like, string_like]

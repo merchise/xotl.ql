@@ -70,6 +70,7 @@ class BasicTests(unittest.TestCase):
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
                               mul, div, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
                         (lt, '{0} < {1}'),
@@ -92,7 +93,8 @@ class BasicTests(unittest.TestCase):
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
-                       (invert, '~{0}')]
+                       (invert, 'not {0}'),
+                       (not_, 'not {0}')]
         for test, fmt in binary_tests:
             ok(fmt.format("a", "b"),
                str(test(q('a'), 'b')))
