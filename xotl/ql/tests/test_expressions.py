@@ -68,7 +68,7 @@ class BasicTests(unittest.TestCase):
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
-                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              mul, div, floordiv, mod, truediv, pow_, lshift,
                               rshift, neg, abs, pos, invert)
         from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
@@ -87,7 +87,7 @@ class BasicTests(unittest.TestCase):
                         (truediv, '{0} / {1}'),
                         (floordiv, '{0} // {1}'),
                         (mod, '{0} mod {1}'),
-                        (pow, '{0}**{1}'),
+                        (pow_, '{0}**{1}'),
                         (lshift, '{0} << {1}'),
                         (rshift, '{0} >> {1}')]
         unary_tests = [(neg, '-{0}'),
