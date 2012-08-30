@@ -21,7 +21,7 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_imports)
 
-from zope.interface import Interface, Attribute
+from zope.interface import Interface, Attribute, invariant
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -61,9 +61,9 @@ class IOperator(Interface):
                              ':class:`IExpressionTree`), this method *may* '
                              'be called on the first operand to allow '
                              'customization of how the expression is built. '
-                             'If the first operand does not ahve this method '
-                             'then instantion should build an expression tree '
-                             'with this operation and all operands.')
+                             'If the first operand does not have this method '
+                             'then an expression with this operator and all '
+                             'operands should be returned.')
 
 
 
@@ -73,13 +73,26 @@ class ISyntacticallyReversibleOperation(Interface):
                               'the "reversed" operation.',
                               'This allows to implement some operation when '
                               'the first operand does not support it because '
-                              'TypeError, but the second operand does., i.e: '
-                              '`__radd__` for `1 + q("3")`.')
+                              'of TypeError, but the second operand does, '
+                              'i.e: `__radd__` for `1 + q("3")`.')
 
 
 
 class ISynctacticallyCommutativeOperation(Interface):
-    pass
+    '''
+    Marks :class:`IOperator` instances that are *syntactically* commutative.
+
+    Usually this mark operators which Python itself treats commutatively, like
+    `==` and `!=`.
+    '''
+    def equivalence_test(ones, another):
+        '''
+        Should return True if `operation(ones)` is equivalent to
+        `operation(another)`.
+
+        Operations like `==` use this method to ascertain that asking `a == b`
+        is the same as asking `b == a`.
+        '''
 
 
 class IExpressionCapable(Interface):
@@ -243,8 +256,8 @@ class IExpressionTree(IExpressionCapable):
 
     '''
 
-    operation = Attribute('An object that implements the :class:IOperator '
-                          'interface')
+    operation = Attribute('An object that implements the '
+                          ':class:`~xotl.ql.interfaces.IOperator` interface.')
     children = Attribute('A tuple that contains the operands. Operands may '
                          'be themselves other expressions')
 
@@ -271,13 +284,38 @@ class IQueryPart(IExpressionCapable):
                       'the :meth:`IQueryPartContainer.created_query_part` '
                       'to allow the query object to be notified.')
 
+    expression = Attribute('The expression that this part stands for.'
+                           'This expression should not be a query part '
+                           'itself. The intension of this attribute '
+                           'is to allow clients extract cleaned-up '
+                           'versions of the expression without '
+                           'the query-related stuff.')
+
+
+
+def _proper_generating_expression(part):
+    if not IThese.providedBy(part.expression):
+        raise TypeError('GeneratingQuery parts allows only IThese instances.')
+
+
+
+class IGeneratingQueryPart(IQueryPart):
+    '''
+    A GeneratingQuery part is a query part that is used as an argument to the
+    built-in `iter()` function, i.e. a generator expression iterates over it.
+
+    GeneratingQuery parts just need to stand for expressions which are IThese
+    instances.
+    '''
+    invariant(_proper_generating_expression)
+
 
 
 class IThese(IExpressionCapable):
     '''IThese instances are meant to represent the *whole* universe of objects.
 
     These instances take place in expressions to create predicates about
-    objects, such as::
+    objects, such as the `this` object in the following expression::
 
         (this.age > 30) & (this.age < 40)
 
@@ -307,7 +345,8 @@ class IBoundThese(IThese):
 class ICallableThese(IThese):
     '''Some instances of IThese may actually represent a callable.
 
-    For example, all attribute from this are callable these instances.
+    For example, all attributes drawn from the `this` object are
+    ICallableThese instances.
     '''
     def __call__(*args):
         'Support for callable these instances'
@@ -363,7 +402,8 @@ class IDataCursor(Interface):
 class IQueryConfiguration(Interface):
     '''A configuration object.'''
 
-    default_translator_name = Attribute('The name to lookup in the components registry for a IQueryTranslator')
+    default_translator_name = Attribute('The name to lookup in the components '
+                                        'registry for a IQueryTranslator')
 
     def get_translator_for(**predicates):
         '''Get's the configured translator for a set of *predicates*
@@ -381,4 +421,3 @@ class IQueryConfiguration(Interface):
                      which you may need to specify a different translator.
 
         '''
-
