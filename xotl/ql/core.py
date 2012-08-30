@@ -23,9 +23,6 @@
 # Created on May 24, 2012
 
 
-# TODO: Move this extended tutorial to /docs, keep only a very basic doc for
-# the module.
-
 '''Extends the :mod:`~xotl.ql.expressions` language to provide universal
 accessors.
 
