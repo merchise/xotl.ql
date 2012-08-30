@@ -47,14 +47,13 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from zope.component import getUtility
-from zope.interface import implements, directlyProvides
+from zope.interface import implements
 
 from xotl.ql.expressions import _true, _false, ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IQuery, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
-                                IBoundThese, IQueryTranslator,
-                                IQueryConfiguration)
+                                IQueryTranslator, IQueryConfiguration)
 
 
 __docstring_format__ = 'rst'
@@ -64,11 +63,15 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-class ResourceType(type):
-    pass
+class ExpressionError(Exception):
+    '''Base class for expressions related errors'''
+
+class ResourceType(type): pass
 
 
-# TODO: Think about this
+# TODO: Think about this name, also if we really need the __slots__ stuff. We
+# must stress the inmutability of some structures, but __slots__ does not
+# enforce inmutability, just disables the __dict__ in objects.
 class Resource(object):
     __slots__ = ('_name', '_parent')
     __metaclass__ = ResourceType
@@ -91,7 +94,7 @@ class Resource(object):
             >>> this('::1nvalid')        # doctest: +ELLIPSIS
             Traceback (most recent call last):
                 ...
-            NameError: Invalid identifier '1nvalid' ...
+            NameError: Invalid identifier '::1nvalid' ...
         '''
         regexp = cls.valid_names_regex
         if context['_INVALID_THESE_NAME']:
@@ -221,30 +224,41 @@ class These(Resource):
 
     def __iter__(self):
         '''
-        Yields a single instance of this but wrapped around an object that
-        allows for conditions to be bound this instance::
+        Yields a single instance of `self` but wrapped around a query part.
 
-            >>> tuple(parent.age for parent in this)  # doctest: +ELLIPSIS
-            (<this('i...').age at 0x...>,)
+        This allows an idiomatic way to express queries::
 
+            >>> parent, child = next((parent, child)
+            ...                            for parent in this('parent')
+            ...                            for child in parent.children)
+            >>> (parent, child)    # doctest: +ELLIPSIS
+            (<...this('parent')...>, <...this('parent').children...>)
 
-        This allows an idiomatic way to express retrievals from several types
-        of models::
+        A `query` object is attached to each part::
 
-            >>> fetch = next    # Just to show off the idiom
-            >>> fetch((parent, child)   # doctest: +ELLIPSIS
-            ...            for parent in this('parent')
-            ...            for child in parent.children)
-            (<this('parent') ...>, <this('parent').children ...>)
+            >>> unboxed(parent).query        # doctest: +ELLIPSIS
+            <...Query object at 0x...>
 
+        In the case of subqueries, the attached `query` object is different
+        for each part created::
 
-        Furthermore, if should be natural to introduce conditions over the
-        results. But the support for this to happen cannot be realiably
-        introduced in here::
+            >>> unboxed(parent).query is not unboxed(child).query
+            True
 
-            >>> fetch(parent for parent in this('parent')  # doctest: +ELLIPSIS
-            ...        if parent.age > 32)
-            <this('parent') ...>
+        However, in a query with a single iteration (only one `for`) `query`
+        object is shared::
+
+            >>> parent, children = next((parent, parent.children)
+            ...                            for parent in this('parent'))
+            >>> unboxed(parent).query is unboxed(children).query
+            True
+
+        .. warning::
+
+           We have used `next` here directly over the comprehensions, but the
+           query language *does not* support this kind of construction.
+           Queries must be built by calling the :func:`these` passing the
+           comprehesion as its first argument.
         '''
         with context(UNPROXIFING_CONTEXT):
             name = self.name
@@ -516,7 +530,7 @@ class These(Resource):
     def __mod__(self, other):
         '''
             >>> this % 1    # doctest: +ELLIPSIS
-            <expression 'this % 1' ...>
+            <expression 'this mod 1' ...>
         '''
         from xotl.ql.expressions import mod
         return mod(self, other)
@@ -525,7 +539,7 @@ class These(Resource):
     def __rmod__(self, other):
         '''
             >>> 1 % this    # doctest: +ELLIPSIS
-            <expression '1 % this' ...>
+            <expression '1 mod this' ...>
         '''
         from xotl.ql.expressions import mod
         return mod(other, self)
@@ -615,7 +629,7 @@ class These(Resource):
     def __invert__(self):
         '''
             >>> ~this         # doctest: +ELLIPSIS
-            <expression '~this' ...>
+            <expression 'not this' ...>
         '''
         from xotl.ql.expressions import invert
         return invert(self)
@@ -666,6 +680,7 @@ class Query(object):
     __slots__ = ('instance', '_selection', '_filters',
                  '_ordering', '_partition', '_parts',
                  '_query_state')
+
 
     # TODO: Representation of grouping with dicts.
     def __init__(self, **kwargs):
@@ -791,7 +806,7 @@ class QueryPart(object):
     internal and does not belongs to the Query Language API.
 
     '''
-    implements(IQueryPart, )
+    implements(IQueryPart)
 
     __slots__ = ('_query', '_expression')
 
@@ -870,19 +885,6 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
-
-
-    # This hooks into is_a expression to allow restricting queries to types
-    # more easily.
-    def _is_a(self, kind):
-        if isinstance(kind, QueryPart):
-            kind = unboxed(kind).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-            query.generator_kind = kind
-        from xotl.ql.expressions import is_a
-        return is_a(instance, kind)
 
 
     def __eq__(self, other):
