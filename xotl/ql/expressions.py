@@ -220,7 +220,8 @@ class _FunctorOperatorType(OperatorType):
     def __call__(self, *children):
         stack = context
         head, tail = children[0], children[1:]
-        method = getattr(unboxed(head), self._method_name, None)
+        name = getattr(self, '_method_name', None)
+        method = getattr(unboxed(head), name, None) if name else None
         if method and not stack[(head, method)]:
             func = getattr(method, 'im_func', method)
             # manu: Don't use weaved since it won't work with These instance
