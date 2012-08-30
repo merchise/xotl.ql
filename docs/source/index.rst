@@ -32,6 +32,7 @@ Contents:
    expressions
    core
    query-api
+   interfaces
    translate
    references
    HISTORY
