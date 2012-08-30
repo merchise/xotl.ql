@@ -765,7 +765,7 @@ class Query(object):
 
     def created_query_part(self, part):
         assert unboxed(part).query is self
-        if isinstance(part, QueryPart):
+        if IQueryPart.providedBy(part):
             expression = unboxed(part).expression
             self._parts.append(expression)
         else:
