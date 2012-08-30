@@ -136,80 +136,7 @@ module.
 .. autoclass:: q
    :members:
 
-
-Thougths on Query Languages
----------------------------
-
-Expressions are the core for query languages and many of it's design decisions
-are strongly biased for query languages needs. But they purpose is more
-general. Notice that :class:`this objects <xotl.ql.core.These>` are
-they way to specify the selected data in queries.
-
-The ultimate goal of expressions is to be *compiled* into forms feasible to the
-current database (either relational or not) management systems. For instance,
-it would be desirable that on top of CouchDB_ (or Couchbase_) expressions would
-be *translated* to Couch's views if possible.
-
-There's a good article [Buneman]_ that describe several features of a UnQL
-(Unstructured Query Language), that are of interest to this module. Another
-article exposes the relation between NoSQL and SQL, and renames the former as
-coSQL following the categorical tradition since NoSQL is *dual* to SQL
-[Meijer2011]_ [Fokkinga2012]_.
-
-In this article [Meijer2011]_, the authors only focused on key-value stores for
-noSQL databases. Although they claim that:
-
-    While we don’t often think of it this way, the RAM for storing object
-    graphs is actually a key-value store where keys are addresses (l-values)
-    and values are the data stored at some address in memory
-    (r-values). Languages such as C# and Java make no distinction between
-    r-values and l-values, unlike C or C++, where the distinction is
-    explicit. In C, the pointer dereference operator ``*p`` retrieves the value
-    stored at address ``p`` in the implicit global store.
-
-Just as LINQ does for C#, one of the goals of the expression language its to
-allow the construction of "natural" or better, idiomatic queries. Here the term
-idiomatic, it's best cast a the natural idiom for the Object Model Canonical
-Form (OMCaF) we're developing in :mod:`xotl.models`.
-
-But the expression language cannot express the whole of queries. Real queries
-require of:
-
-- The SELECTION part, that identifies the data we want to retrieve. Sometimes,
-  this part also transforms the data.
-
-- And the SOURCE, that identifies the datastore we want to query.
-
-- Optionally, a FILTER may be given to only retrieve data that match a
-  criterion.
-
-In addition, we often find:
-
-- ORDER instructions to retrieve data in a given orden.
-- OFFSET and LIMIT bounds to retrieve just a portion of the data.
-
-The natural fit for expressions is the FILTER part. But we can also use the
-same underlying AST mechanism to:
-
-- Express the SELECTION part: `this.age` is a valid expression but is also a
-  valid selector, and `count(1) + 100` is also a valid transform-making
-  selector and a well-formed expression::
-
-      >>> count(1) + 100    # doctest: +ELLIPSIS
-      <expression '(count(1)) + 100' at 0x...>
-
-- Express the ORDER part. This can be done with unary operators::
-
-      >>> (+q('age'), -count(q('children')))    # doctest: +ELLIPSIS
-      (<expression '+age'...>, <expression '-(count(children))...>)
-
-.. note::
-
-    Since `this` objects may have schemas bound to them, it's possible to bias
-    the compiled expression to a given target. In fact, `this` instances may
-    have whole expressions as bindings (constrains) and the fact the it refers
-    to a given *kind* of object (and that the given kind has a schema
-    associated to it) it's merely eventual.
+   This class implements :class:`xotl.ql.interfaces.IExpressionCapable`.
 
 
 About the operations supported in expression
@@ -245,9 +172,15 @@ The ``<operator>`` can be any of the supported operations, i.e:
 .. autoclass:: OperatorType(type)
    :members:
 
+   Instances of this class should provide the interface
+   :class:`xotl.ql.interfaces.IOperator`.
+
 
 .. autoclass:: Operator
    :members:
+
+   Classes derived from this class should provide directly the interface
+   :class:`xotl.ql.interfaces.IOperator`.
 
 
 .. autoclass:: FunctorOperator
@@ -256,14 +189,14 @@ The ``<operator>`` can be any of the supported operations, i.e:
 .. autoclass:: ExpressionTree
    :members: operation, children
 
+   This class implements the interface
+   :class:`xotl.ql.interfaces.IExpressionTree`.
 
-.. _CouchDB: http://apache.org/couchdb
-.. _Couchbase: http://www.couchbase.com/
 
 Included operations
 -------------------
 
-.. autoclass:: EqualityOpertor
+.. autoclass:: EqualityOperator
 
 .. autoclass:: eq
 
