@@ -169,7 +169,8 @@ class OperatorType(type):
                 doc += ('\n\n    - **{attr}:** {v}'.format(attr=attr,
                                                            v=v))
         if doc:
-            self.__doc__ += '\n\n    **Attributes**:' + doc
+            self.__doc__ = ((self.__doc__ if self.__doc__ else '') +
+                            '\n\n    **Attributes**:' + doc)
         doc = ''
         interfaces = (IOperator, )
         if getattr(self, '_rmethod_name', False):
@@ -906,35 +907,60 @@ any_ = AnyFunction
 class MinFunction(FunctorOperator):
     '''
     A function that takes an expression and represents the minimun of such
-    values over the collection::
+    values over the collection.
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = min_(q(age))
-        >>> str(expr)
-        'min([1, 2, 3, 4, 5])'
+    There are two possible syntaxes/interpretations for :func:`min_`:
+
+    - A single argument is passed and it represents a collection::
+
+            >>> age = [1, 2, 3, 4, 5]
+            >>> min_(age)        # doctest: +ELLIPSIS
+            <expression 'min([1, 2, 3, 4, 5])' ...>
+
+    - Several arguments are passed and the minimum of all is returned::
+
+            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
+            <expression 'min(1, 2, 3, 4, 5)' ...>
+
+      This syntax allows complex expressions like::
+
+            >>> from xotl.ql.core import this
+            >>> min_(child.age for child in this) > 5    # doctest: +ELLIPSIS
+            <expression '(min(...)) > 5' ...>
+
+    .. note::
+
+       :term:`Translators <query translator>` may take the use of either
+       :func:`min_` or :func:`max_` functions over a single argument as a hint
+       to the type of the argument (in this case a collection of other stuff
+       according to the first interpretation).
+
+       Such an assumption *should* be noted in the documentation of the
+       translator.
+
     '''
 
     _format = 'min({0})'
-    _arity = UNARY
+    _arity = N_ARITY
     _method_name = b'min_'
 
 
 min_ = MinFunction
 
 
+
 class MaxFunction(FunctorOperator):
     '''
     A function that takes an expression and represents the maximum of such
-    values over the collection::
+    values over the collection.
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = max_(q(age))
-        >>> str(expr)
-        'max([1, 2, 3, 4, 5])'
+    Like :func:`min_` there are two possible interpretations for :func:`max_`,
+    they are analogous.
+
     '''
 
     _format = 'max({0})'
-    _arity = UNARY
+    _arity = N_ARITY
     _method_name = b'max_'
 
 
