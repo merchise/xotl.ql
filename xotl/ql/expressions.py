@@ -85,10 +85,10 @@ class N_ARITY(object):
         ...    _format = 'print({0})'
         ...    _arity = N_ARITY
 
-        >>> print_()
+        >>> print_()            # doctest: +ELLIPSIS
         <expression 'print()' ...>
 
-        >>> print_(1, 2)
+        >>> print_(1, 2)        # doctest: +ELLIPSIS
         <expression 'print(1, 2)' ...>
     '''
     @classmethod
@@ -159,12 +159,36 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
+        from xoutil.objects import nameof
         OperatorType.operators.append(self)
+        doc = ''
+        for attr, trans in (('_arity', nameof), ('_method_name', repr), ('_format', repr)):
+            value = getattr(self, attr, None)
+            if value:
+                v = trans(value).replace('_', r'\_')
+                doc += ('\n\n    - **{attr}:** {v}'.format(attr=attr,
+                                                           v=v))
+        if doc:
+            self.__doc__ += '\n\n    **Attributes**:' + doc
+        doc = ''
         interfaces = (IOperator, )
         if getattr(self, '_rmethod_name', False):
             interfaces += (ISyntacticallyReversibleOperation, )
+            if 'ISyntacticallyReversibleOperation' not in self.__doc__:
+                doc += ('\n    This class directly provides '
+                        ':class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation`.'
+                        '\n\n'
+                        '        >>> ISyntacticallyReversibleOperation.providedBy({name})\n        True'.format(name=name))
         if getattr(self, 'equivalence_test', False):
             interfaces += (ISynctacticallyCommutativeOperation, )
+            if 'ISynctacticallyCommutativeOperation' not in self.__doc__:
+                doc += ('\n    This class directly provides '
+                        ':class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`::'
+                        '\n\n'
+                        '        >>> ISynctacticallyCommutativeOperation.providedBy({name})\n        True'.format(name=name))
+        if doc:
+            self.__doc__ += '\n\n    **Interface(s)**:\n\n' + doc
+
         directlyProvides(self, *interfaces)
 
 
@@ -204,8 +228,8 @@ class Operator(object):
     The base class of every operation that may involved in a expression.
 
     Subclasses of this class are *rarely* instantiated, instead they are used
-    in :attr:`ExpressionTree.op` to indicate the operation that is perform to
-    the :attr:`operands <ExpressionTree.children>`.
+    in :attr:`ExpressionTree.operation` to indicate the operation that is
+    perform to the :attr:`operands <ExpressionTree.children>`.
     '''
     __metaclass__ = OperatorType
 
@@ -231,19 +255,22 @@ class _FunctorOperatorType(OperatorType):
     implementation: creating an expression of the type `(opfunction, *args)`.
     '''
     def __call__(self, *children):
-        stack = context
-        head, tail = children[0], children[1:]
-        name = getattr(self, '_method_name', None)
-        method = getattr(unboxed(head), name, None) if name else None
-        if method and not stack[(head, method)]:
-            func = getattr(method, 'im_func', method)
-            # manu: Don't use weaved since it won't work with These instance
-            #       because of __slots__; use a stack instead.
-            with stack((head, method)):
-                if tail:
-                    return func(head, *tail)
-                else:
-                    return func(head)
+        if children:
+            stack = context
+            head, tail = children[0], children[1:]
+            name = getattr(self, '_method_name', None)
+            method = getattr(unboxed(head), name, None) if name else None
+            if method and not stack[(head, method)]:
+                func = getattr(method, 'im_func', method)
+                # manu: Don't use weaved since it won't work with These instance
+                #       because of __slots__; use a stack instead.
+                with stack((head, method)):
+                    if tail:
+                        return func(head, *tail)
+                    else:
+                        return func(head)
+            else:
+                return super(_FunctorOperatorType, self).__call__(*children)
         else:
             return super(_FunctorOperatorType, self).__call__(*children)
 
@@ -321,7 +348,6 @@ class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     _format = '{0} == {1}'
     _method_name = b'__eq__'
-
 
 eq = EqualityOperator
 
@@ -815,7 +841,7 @@ class AllFunction(FunctorOperator):
     '''
     The representation of the `all` function.
 
-    There are three possible interpretations/syntaxis for `all_`:
+    There are three possible interpretations/syntaxis for :func:`all_`:
 
     1. It takes an expression (probably a subquery) and returns true only if
        every object is true::
@@ -840,10 +866,12 @@ class AllFunction(FunctorOperator):
             >>> str(expr)
             'all(this.children, this.age > 10)'
 
-    .. warning:: There's no way to syntactically (at the level on which one
-                 could do normally in Python) to distiguish from the last two
-                 elements: so VMs that evaluate `all_` expressions may further
-                 restrict the interpretation.
+    .. warning::
+
+       There's no way to syntactically (at the level on which one
+       could do normally in Python) to distiguish from the last two
+       elements: so VMs that evaluate `all_` expressions may further
+       restrict the interpretation.
     '''
 
     _format = 'all({0})'
