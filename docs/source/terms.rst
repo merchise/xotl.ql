@@ -89,13 +89,22 @@ Terms and glossary
 
    query execution plan
 
-       When a :term:`query` is processed (by a :term:`query
-       translator`) it produces an execution plan. The execution plan
-       should relate how to retrieve the objects expected; an
-       execution plan may be as simple as "just execute the SQL query
-       ``SELECT * FROM objects ...`` against the default relational
-       database", to another plan that checks an SQL index and the
-       fetches objects from a REST interface.
+       When a :term:`query` is processed by a :term:`query translator` it
+       produces an execution plan. Such a plan is a sort of *compiled form* of
+       the query.
+
+       The execution plan should include instructions to retrieve the objects
+       expected. An execution plan may be as simple as:
+
+           just execute the SQL query ``SELECT * FROM sometable [WHERE ... ]
+	   [ORDER BY ...] [OFFSET ...]`` against the default relational
+	   database;
+
+	   then, return an iterator for instances of those objects created by
+	   the factory class ``ISomeModel``.
+
+       to another plan that checks an SQL index and the fetches objects from a
+       REST interface.
 
        The execution plan in this package is not subject to any design
        restrictions, is just noted that it may be a good
