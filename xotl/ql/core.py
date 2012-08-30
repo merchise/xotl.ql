@@ -879,7 +879,7 @@ class QueryPart(object):
     # TODO: Again, in which interface?
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
-            instance = self._instance
+            instance = self.expression
             query = self.query
         result = QueryPart(expression=instance(*args),
                            query=query)
@@ -1333,64 +1333,79 @@ class QueryPart(object):
     def count(self):
         from xotl.ql.expressions import count as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def length(self):
         from xotl.ql.expressions import length as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
-    def any_(self, other):
+    def any_(self, *args):
         from xotl.ql.expressions import any_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance, *args),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def all_(self, other):
         from xotl.ql.expressions import all_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who, other)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance, *args),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
-    def min_(self):
+    def min_(self, *args):
         from xotl.ql.expressions import min_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance, *args),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
-    def max_(self):
+    def max_(self, *args):
         from xotl.ql.expressions import max_ as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance, *args),
+                           query=query)
+        query.created_query_part(result)
+        return result
 
 
     def invoke(self, *args):
         from xotl.ql.expressions import invoke as f_
         with context(UNPROXIFING_CONTEXT):
-            who = getattr(self, 'binding', None) or self._instance
-            result = f_(who, *args)
-            self._update_binding(result)
-        return self
+            instance = self.expression
+            query = self.query
+        result = QueryPart(expression=f_(instance, *args),
+                           query=query)
+        query.created_query_part(result)
+        return result
+
 
 
 def these(comprehesion):
