@@ -351,7 +351,7 @@ Included operations
 
 .. autoclass:: PowOperator
 
-.. autoclass:: pow
+.. autoclass:: pow_
 
 .. autoclass:: LeftShiftOperator
 
