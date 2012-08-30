@@ -51,7 +51,7 @@ readable::
 .. warning:: It's up to the :term:`Query Translators <query translator>` to
              make any sense of this query. Some translator may reject the query
              because it's not *computable* to the target storage system or just
-             because it has some operation that is not supported. 
+             because it has some operation that is not supported.
 
 	     For instance: if the target is a CouchDB_ database, the
 	     :class:`is_instance <xotl.ql.expressions.IsInstanceOperator>`
@@ -125,6 +125,14 @@ type is a subclass of the `These`. The following describe both objects:
 .. autoclass:: These
    :members:
 
+
+Implementation
+==============
+
+.. autoclass:: These
+   :members: name, parent, binding, __iter__
+
+   This class implements :class:`xotl.ql.interfaces.IThese`
 
 
 .. _CouchDB: http://couchdb.apache.org/
