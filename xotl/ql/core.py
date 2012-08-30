@@ -251,7 +251,7 @@ class These(Resource):
             parent = self.parent
         if name:
             query = Query(instance=self)
-            instance = QueryPart(instance=self, query=query)
+            instance = QueryPart(expression=self, query=query)
             yield instance
         else:
             # We should generate a new-name
@@ -798,10 +798,7 @@ class QueryPart(object):
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
-            self._expression = get_first_of(kwargs,
-                                            'instance',
-                                            'expression',
-                                            'binding')
+            self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
             self.query = kwargs.get('query')
             # TODO: assert self._query implements IQuery and
@@ -858,7 +855,7 @@ class QueryPart(object):
             with context(UNPROXIFING_CONTEXT):
                 instance = get('expression')
                 query = get('query')
-            result = QueryPart(instance=getattr(instance, attr),
+            result = QueryPart(expression=getattr(instance, attr),
                                query=query)
             query.created_query_part(result)
             return result
@@ -869,7 +866,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self._instance
             query = self.query
-        result = QueryPart(instance=instance(*args),
+        result = QueryPart(expression=instance(*args),
                            query=query)
         query.created_query_part(result)
         return result
@@ -896,7 +893,7 @@ class QueryPart(object):
             query = self.query
         result = instance == other
         if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(instance=result,
+            result = QueryPart(expression=result,
                                query=query)
             query.created_query_part(result)
         return result
@@ -910,7 +907,7 @@ class QueryPart(object):
             query = self.query
         result = instance != other
         if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(instance=result,
+            result = QueryPart(expression=result,
                                query=query)
             query.created_query_part(result)
         return result
@@ -923,7 +920,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=lt(instance, other),
+        result = QueryPart(expression=lt(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -936,7 +933,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=gt(instance, other),
+        result = QueryPart(expression=gt(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -949,7 +946,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=le(instance, other),
+        result = QueryPart(expression=le(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -962,7 +959,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=ge(instance, other),
+        result = QueryPart(expression=ge(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -975,7 +972,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=and_(instance, other),
+        result = QueryPart(expression=and_(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -988,7 +985,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=and_(other, instance),
+        result = QueryPart(expression=and_(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1001,7 +998,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=or_(instance, other),
+        result = QueryPart(expression=or_(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1014,7 +1011,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=or_(other, instance),
+        result = QueryPart(expression=or_(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1028,7 +1025,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=xor(instance, other),
+        result = QueryPart(expression=xor(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1042,7 +1039,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=xor(other, instance),
+        result = QueryPart(expression=xor(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1056,7 +1053,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=add(instance, other),
+        result = QueryPart(expression=add(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1070,7 +1067,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=add(other, instance),
+        result = QueryPart(expression=add(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1084,7 +1081,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=sub(instance, other),
+        result = QueryPart(expression=sub(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1098,7 +1095,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=sub(other, instance),
+        result = QueryPart(expression=sub(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1112,7 +1109,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=mul(instance, other),
+        result = QueryPart(expression=mul(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1126,7 +1123,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=mul(other, instance),
+        result = QueryPart(expression=mul(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1140,7 +1137,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=div(instance, other),
+        result = QueryPart(expression=div(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1154,7 +1151,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=div(other, instance),
+        result = QueryPart(expression=div(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1168,7 +1165,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=floordiv(instance, other),
+        result = QueryPart(expression=floordiv(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1181,7 +1178,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=floordiv(other, instance),
+        result = QueryPart(expression=floordiv(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1194,7 +1191,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=mod(instance, other),
+        result = QueryPart(expression=mod(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1207,7 +1204,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=mod(other, instance),
+        result = QueryPart(expression=mod(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1220,7 +1217,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=pow_(instance, other),
+        result = QueryPart(expression=pow_(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1233,7 +1230,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=pow_(other, instance),
+        result = QueryPart(expression=pow_(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1246,7 +1243,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=lshift(instance, other),
+        result = QueryPart(expression=lshift(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1259,7 +1256,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=lshift(other, instance),
+        result = QueryPart(expression=lshift(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1272,7 +1269,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=rshift(instance, other),
+        result = QueryPart(expression=rshift(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1285,7 +1282,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=rshift(other, instance),
+        result = QueryPart(expression=rshift(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1295,7 +1292,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=-instance,
+        result = QueryPart(expression=-instance,
                            query=query)
         query.created_query_part(result)
         return result
@@ -1305,7 +1302,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=abs(instance),
+        result = QueryPart(expression=abs(instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1315,7 +1312,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=+instance,
+        result = QueryPart(expression=+instance,
                            query=query)
         query.created_query_part(result)
         return result
@@ -1325,7 +1322,7 @@ class QueryPart(object):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(instance=~instance,
+        result = QueryPart(expression=~instance,
                            query=query)
         query.created_query_part(result)
         return result
