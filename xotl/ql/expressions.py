@@ -78,6 +78,19 @@ class BINARY(object):
 
 
 class N_ARITY(object):
+    '''
+    The arity of operations with a variable number or arguments::
+
+        >>> class print_(FunctorOperator):
+        ...    _format = 'print({0})'
+        ...    _arity = N_ARITY
+
+        >>> print_()
+        <expression 'print()' ...>
+
+        >>> print_(1, 2)
+        <expression 'print(1, 2)' ...>
+    '''
     @classmethod
     def formatter(cls, operation, children):
         str_format = operation._format
