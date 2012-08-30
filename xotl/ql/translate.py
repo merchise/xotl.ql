@@ -71,7 +71,7 @@ from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.core import These, these, this
+from xotl.ql.interfaces import IQueryExecutionPlan, IThese, IQuery
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -81,7 +81,7 @@ __all__ = (b'cotraverse_expression', b'fetch', )
 
 
 
-_is_these = lambda who: isinstance(who, These)
+_is_these = lambda who: IThese.providedBy(who)
 _vrai = lambda _who: True
 _none = lambda _who: False
 
@@ -219,3 +219,30 @@ def fetch(expr, order=None, partition=None):
                       interpretation for slices applies.
     '''
     pass
+
+
+
+def init(conf=''):
+    '''Registers this module as an IQueryTranslator.
+
+    .. warning::
+
+       Don't call this method in your own code, since it will override all
+       of your query-related configuration.
+
+       This is only intended to allow testing of the translation common
+       framework by installing query translator that searches over Python's VM
+       memory.
+
+    '''
+    import sys
+    from zope.component import getGlobalSiteManager
+    from .interfaces import IQueryConfiguration, IQueryTranslator
+    self = sys.modules[__name__]
+    manager = getGlobalSiteManager()
+    configurator = manager.queryUtility(IQueryConfiguration)
+    if configurator:
+        pass
+    else:
+        manager.registerUtility(self, IQueryConfiguration)
+    manager.registerUtility(self, IQueryTranslator)
