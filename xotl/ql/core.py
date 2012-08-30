@@ -763,13 +763,31 @@ class Query(object):
         return self._partition.stop
 
 
-    def created_query_part(self, part):
-        assert unboxed(part).query is self
-        if IQueryPart.providedBy(part):
-            expression = unboxed(part).expression
-            self._parts.append(expression)
+    @staticmethod
+    def mergable(parts, expression):
+        assert context[UNPROXIFING_CONTEXT]
+        top = parts[-1]
+        if IExpressionTree.providedBy(expression):
+            return top in expression.children
+        elif IThese.providedBy(expression):
+            return expression.parent is top
         else:
-            assert False
+            raise TypeError('Parts should be either these instance or '
+                            'expression trees; not %s' % type(expression))
+
+
+    def created_query_part(self, part):
+        with context(UNPROXIFING_CONTEXT):
+            assert part.query is self
+            if provides_all(part, IQueryPart):
+                expression = part.expression
+                parts = self._parts
+                if parts:
+                    while parts and self.mergable(parts, expression):
+                        parts.pop()
+                self._parts.append(expression)
+            else:
+                assert False
 
 
     def next(self):
