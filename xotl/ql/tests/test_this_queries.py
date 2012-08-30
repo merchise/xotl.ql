@@ -124,7 +124,8 @@ class TestThisQueries(unittest.TestCase):
 
 
     def test_basic_queries(self):
-        query = these(parent for parent in this('parent')
+        query = these((parent.title + parent.name, parent.age)
+                        for parent in this('parent')
                         if parent.age < 40)
         self.assertTrue(provides_any(query, IQuery))
         (p, ) = query.selection
@@ -133,6 +134,7 @@ class TestThisQueries(unittest.TestCase):
             binding = p.binding
             self.assertIsNotNone(binding)
             self.assertEquals(binding, this('parent').age < 40)
+
 
 
 #    def test_qbuilder_relations(self):
