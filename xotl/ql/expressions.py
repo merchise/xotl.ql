@@ -987,6 +987,34 @@ class InvokeFunction(FunctorOperator):
 
 invoke = call = InvokeFunction
 
+
+class StringFormatFunction(FunctorOperator):
+    '''
+    A function to apply formatting.
+
+    .. note::
+
+       This function is distinct in signature/purpose to the builtin `format`
+       function. It resembles more to the `format` method of string objects,
+       but is a standalone operation.
+
+    The purpose of this function is provide an easy replacement for the case
+    of formatting several expression tokens. It's not possible to use the mod
+    (`%`) operator to express the expression "format a tuple of ..." like in::
+
+        "%s aka %" % (name, alias)
+
+    Example::
+
+        >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
+        <expression 'strformat({0} alas {1}, 1, 2)' ...>
+    '''
+    _arity = N_ARITY
+    _format = 'strformat({0})'
+
+
+strformat = StringFormatFunction
+
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
 

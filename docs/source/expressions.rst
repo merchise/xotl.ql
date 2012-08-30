@@ -330,6 +330,10 @@ Included operations
 
 .. autoclass:: max_
 
+.. autoclass:: StringFormatFunction
+
+.. autoclass:: strformat
+
 .. autoclass:: InvokeFunction
 
 .. autoclass:: call
