@@ -834,7 +834,7 @@ class QueryPart(object):
     # TODO: Declare in which the interface?
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
-            return iter(self.instance)
+            return iter(self.expression)
 
 
     def __str__(self):
