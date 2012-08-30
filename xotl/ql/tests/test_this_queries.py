@@ -81,24 +81,47 @@ if __TEST_DESIGN_DECISIONS:
 
         def test_basic_queries_building(self):
             ok = self.assertEquals
-            expr = next(parent for parent in this('parent')
+            expr = next(parent.title + parent.name
+                            for parent in this('parent')
                             if (parent.age > 32) & parent.married &
                                parent.spouse.alive)
             with context(UNPROXIFING_CONTEXT):
                 query = expr.query
             parts = query._parts
-            expression = parts[-1]
+            # The select part is at the top
+            ok("this('parent').title + this('parent').name", str(parts[-1]))
+            # Then the binding
             ok("((this('parent').age > 32) and this('parent').married) and "
-               "this('parent').spouse.alive", str(expression))
-            ok("this('parent').spouse.alive", str(parts[-2]))
-            ok("this('parent').spouse", str(parts[-3]))
-            ok("(this('parent').age > 32) and this('parent').married",
-               str(parts[-4]))
-            ok("this('parent').married", str(parts[-5]))
-            ok("this('parent').age > 32", str(parts[-6]))
-            ok("this('parent').age", str(parts[-7]))
+               "this('parent').spouse.alive", str(parts[-2]))
             with self.assertRaises(IndexError):
-                print(str(parts[-8]))
+                print(str(parts[-3]))
+
+
+        def test_complex_query_building(self):
+            ok = self.assertEquals
+            parent, child = next((parent.title + parent.name,
+                                  child.name + child.nick)
+                                 for parent in this('parent')
+                                    if (parent.age > 32) & parent.children
+                                 for child in parent.children
+                                    if child.age < 5)
+
+            with context(UNPROXIFING_CONTEXT):
+                pquery, cquery = parent.query, child.query
+            pparts = pquery._parts
+            ok("this('parent').title + this('parent').name",
+               str(pparts[-1]))
+            ok("(this('parent').age > 32) and this('parent').children",
+               str(pparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(pparts[-3]))
+
+            cparts = cquery._parts
+            ok("this('parent').children.name + this('parent').children.nick",
+               str(cparts[-1]))
+            ok("this('parent').children.age < 5", str(cparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(cparts[-3]))
 
 
         def test_iters_produce_a_single_name(self):

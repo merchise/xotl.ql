@@ -864,10 +864,23 @@ class QueryPart(object):
             raise TypeError('QueryParts wraps IExpressionCapable objects only')
 
 
-    # TODO: Declare in which the interface?
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
-            return iter(self.expression)
+            expression = self.expression
+            # This kind of a hack: since in queries like::
+            #     ((parent, child) for parent in this
+            #                      for child in parent.children)
+            # The `parent.children` will generate a part and push it to the
+            # query; but this part should be there; so we need to remove it
+            #
+            # Review note: Maybe we could this part but wrapped inside an
+            # `iter` mark to easy the detection of subqueries that are not
+            # in the selection.
+            if IThese.providedBy(expression):
+                parts = self.query._parts
+                if parts and parts[-1] is expression:
+                    parts.pop(-1)
+            return iter(expression)
 
 
     def __str__(self):
