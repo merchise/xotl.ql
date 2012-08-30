@@ -118,7 +118,7 @@ class TestThisExpressions(unittest.TestCase):
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
-                       (invert, '~{0}')]
+                       (invert, 'not {0}')]
         for test, fmt in binary_tests:
             ok(fmt.format("this('p').age", "this('p').count"),
                str(test(this('p').age, this('p').count)))
@@ -126,7 +126,6 @@ class TestThisExpressions(unittest.TestCase):
         for test, fmt in unary_tests:
             ok(fmt.format("this('p').age"),
                str(test(this('p').age)))
-
 
 
 
