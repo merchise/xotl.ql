@@ -98,14 +98,13 @@ if __TEST_DESIGN_DECISIONS:
 
 
         def test_complex_query_building(self):
-            ok = self.assertEquals
             parent, child = next((parent.title + parent.name,
                                   child.name + child.nick)
                                  for parent in this('parent')
                                     if (parent.age > 32) & parent.children
                                  for child in parent.children
                                     if child.age < 5)
-
+            ok = self.assertEquals
             with context(UNPROXIFING_CONTEXT):
                 pquery, cquery = parent.query, child.query
             pparts = pquery._parts
@@ -124,6 +123,83 @@ if __TEST_DESIGN_DECISIONS:
                 print(str(cparts[-3]))
 
 
+        def test_complex_intermingled_query(self):
+            parent, child = next((parent.title + parent.name,
+                                  child.name + child.nick)
+                                    for parent in this('parent')
+                                    for child in parent.children
+                                    if (parent.age > 32) & (child.age < 5))
+            ok = self.assertEquals
+            with context(UNPROXIFING_CONTEXT):
+                pquery, cquery = parent.query, child.query
+            pparts = pquery._parts
+            print(pparts)
+            ok("this('parent').title + this('parent').name",
+               str(pparts[-1]))
+            # Notice that the second part is also present in the children.
+            ok("(this('parent').age > 32) and (this('parent').children.age < 5)",
+               str(pparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(pparts[-3]))
+
+            cparts = cquery._parts
+            print(cparts)
+            ok("this('parent').children.name + this('parent').children.nick",
+               str(cparts[-1]))
+            ok("this('parent').children.age < 5", str(cparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(cparts[-3]))
+
+
+
+        def test_complex_query_building_with_dict(self):
+            from xotl.ql.expressions import min_, max_
+            ok = self.assertEquals
+            d = {parent.age: (min_(child.age), max_(child.age))
+                    for parent in this('parent')
+                        if (parent.age > 32) & parent.children
+                    for child in parent.children if child.age < 5}
+
+            parent, (min_child, max_child) = d.popitem()
+            with context(UNPROXIFING_CONTEXT):
+                pquery = parent.query
+                parent = parent.expression
+                minc_query = min_child.query
+                min_child = min_child.expression
+                maxc_query = max_child.query
+                max_child = max_child.expression
+            self.assertIs(maxc_query, minc_query)
+            self.assertIsNot(pquery, maxc_query)
+            ok("this('parent').age", str(parent))
+            parts = pquery._parts
+            ok("(this('parent').age > 32) and this('parent').children",
+               str(parts[-2]))  # the selected `parent.age` was the last
+            with self.assertRaises(IndexError):
+                print(parts[-3])
+
+            parts = maxc_query._parts
+            top = parts.pop()
+            ok("max(this('parent').children.age)", str(top))
+            top = parts.pop()
+            ok("min(this('parent').children.age)", str(top))
+            top = parts.pop()
+            ok("this('parent').children.age < 5", str(top))
+            with self.assertRaises(IndexError):
+                print(parts.pop())
+
+
+        def test_query_reutilization_design(self):
+            from xotl.ql.expressions import is_a
+            Person = "Person"
+            token = next(parent for parent in this('parent')
+                                if is_a(parent, Person))
+            query = unboxed(token).query
+
+            young_parents = next(parent for parent in query
+                                        if (parent.age < 35) &
+                                            parent.children)
+
+
         def test_iters_produce_a_single_name(self):
             a1, a2 = next((p, p) for p in this)
             p1, p2 = next((p, t) for p in this for t in this)
@@ -131,10 +207,6 @@ if __TEST_DESIGN_DECISIONS:
                 self.assertEqual(a1, a2)
                 self.assertNotEqual(p1, p2)
 
-
-        def test_is_a_customization(self):
-            from xotl.ql.expressions import is_a
-            expr = next(t for t in this('t') if is_a(t, 'Something'))
 
 
 class TestThisQueries(unittest.TestCase):
