@@ -34,6 +34,7 @@ Contents:
    query-api
    interfaces
    translate
+   thoughts
    references
    HISTORY
    credits
