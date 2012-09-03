@@ -273,6 +273,7 @@ class These(Resource):
                 instance = type(self)(self._newname(), parent=parent)
             yield next(iter(instance))
 
+
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
