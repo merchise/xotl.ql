@@ -1244,26 +1244,26 @@ class QueryPart(object):
 
 
     def __pow__(self, other):
-        from operator import pow_
+        from operator import pow
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=pow_(instance, other),
+        result = QueryPart(expression=pow(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rpow__(self, other):
-        from operator import pow_
+        from operator import pow
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=pow_(other, instance),
+        result = QueryPart(expression=pow(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
