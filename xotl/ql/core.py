@@ -768,7 +768,8 @@ class Query(object):
         assert context[UNPROXIFING_CONTEXT]
         top = parts[-1]
         if IExpressionTree.providedBy(expression):
-            return top in expression.children
+            return any(child is top for child in expression.children)
+#            return top in expression.children
         elif IThese.providedBy(expression):
             return expression.parent is top
         else:
