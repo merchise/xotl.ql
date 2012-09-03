@@ -50,7 +50,7 @@ class IOperator(Interface):
                         'number of arguments, it should contain only one '
                         'positional argument that will be filled with all '
                         'arguments separated by commas.')
-    _arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`, '
+    arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`, '
                        ':class:`~xotl.ql.expressions.BINARY`, or '
                        ':class:`~xotl.ql.expressions.N_ARITY`')
     _method_name = Attribute('Name of the method that should be called upon '

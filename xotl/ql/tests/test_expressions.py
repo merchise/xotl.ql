@@ -114,7 +114,7 @@ class ExtensibilityTests(unittest.TestCase):
             The ``avg(*args)`` operation.
             '''
             _format = 'avg({0})'
-            _arity = N_ARITY
+            arity = N_ARITY
             _method_name = b'_avg'
         avg = AverageFunction
 

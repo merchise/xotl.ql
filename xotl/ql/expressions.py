@@ -83,7 +83,7 @@ class N_ARITY(object):
 
         >>> class print_(FunctorOperator):
         ...    _format = 'print({0})'
-        ...    _arity = N_ARITY
+        ...    arity = N_ARITY
 
         >>> print_()            # doctest: +ELLIPSIS
         <expression 'print()' ...>
@@ -162,7 +162,7 @@ class OperatorType(type):
         from xoutil.objects import nameof
         OperatorType.operators.append(self)
         doc = ''
-        for attr, trans in (('_arity', nameof), ('_method_name', repr), ('_format', repr)):
+        for attr, trans in (('arity', nameof), ('_method_name', repr), ('_format', repr)):
             value = getattr(self, attr, None)
             if value:
                 v = trans(value).replace('_', r'\_')
@@ -328,7 +328,7 @@ class BinaryCommutativeOperatorMixin(object):
         >>> e1                                        # doctest: +ELLIPSIS
         <expression '2 == 1' ...>
     '''
-    _arity = BINARY
+    arity = BINARY
 
 
     @staticmethod
@@ -381,7 +381,7 @@ class LogicalAndOperator(Operator):
 
     '''
     _format = '{0} and {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__and__'
     _rmethod_name = b'__rand__'
 
@@ -400,7 +400,7 @@ class LogicalOrOperator(Operator):
 
     '''
     _format = '{0} or {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__or__'
     _rmethod_name = b'__ror__'
 
@@ -417,7 +417,7 @@ class LogicalXorOperator(Operator):
 
     '''
     _format = '{0} xor {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__xor__'
     _rmethod_name = b'__rxor__'
 
@@ -434,7 +434,7 @@ class LogicalNotOperator(Operator):
 
     '''
     _format = 'not {0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__invert__'
 
 
@@ -452,7 +452,7 @@ class AdditionOperator(Operator):
 
     '''
     _format = '{0} + {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__add__'
     _rmethod_name = b'__radd__'
 
@@ -463,7 +463,7 @@ add = AdditionOperator
 class SubstractionOperator(Operator):
     '''The expression `a - b`.'''
     _format = '{0} - {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__sub__'
     _rmethod_name = b'__rsub__'
 
@@ -474,7 +474,7 @@ sub = SubstractionOperator
 class DivisionOperator(Operator):
     '''The expression `a / b`.'''
     _format = '{0} / {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__div__'
     _rmethod_name = b'__rdiv__'
 
@@ -493,7 +493,7 @@ class MultiplicationOperator(Operator):
 
     '''
     _format = '{0} * {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__mul__'
     _rmethod_name = b'__rmul__'
 
@@ -510,7 +510,7 @@ class LesserThanOperator(Operator):
 
     '''
     _format = '{0} < {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__lt__'
 
 lt = LesserThanOperator
@@ -528,7 +528,7 @@ class LesserOrEqualThanOperator(Operator):
     '''
     _format = '{0} <= {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__le__'
 
 
@@ -547,7 +547,7 @@ class GreaterThanOperator(Operator):
     '''
     _format = '{0} > {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__gt__'
 
 gt = GreaterThanOperator
@@ -565,7 +565,7 @@ class GreaterOrEqualThanOperator(Operator):
     '''
     _format = '{0} >= {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__ge__'
 
 
@@ -582,7 +582,7 @@ class InExpressionOperator(Operator):
 
     '''
     _format = 'in({0}, {1})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__contains__'
 
 
@@ -600,7 +600,7 @@ class IsInstanceOperator(FunctorOperator):
 
     '''
     _format = 'is_a({0}, {1})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'_is_a'
 
 
@@ -618,7 +618,7 @@ class StartsWithOperator(FunctorOperator):
 
     '''
     _format = 'startswith({0!r}, {1!r})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'startswith'
 
 
@@ -635,7 +635,7 @@ class EndsWithOperator(FunctorOperator):
 
     '''
     _format = 'endswith({0!r}, {1!r})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'endswith'
 
 
@@ -653,7 +653,7 @@ class FloorDivOperator(Operator):
 
     '''
     _format = '{0} // {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__floordiv__'
     _rmethod_name = b'__rfloordiv__'
 
@@ -672,7 +672,7 @@ class ModOperator(Operator):
 
     '''
     _format = '{0} mod {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__mod__'
     _rmethod_name = b'__rmod__'
 
@@ -690,7 +690,7 @@ class PowOperator(Operator):
 
     '''
     _format = '{0}**{1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__pow__'
     _rmethod_name = b'__rpow__'
 
@@ -707,7 +707,7 @@ class LeftShiftOperator(Operator):
         '2 << 1'
     '''
     _format = '{0} << {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__lshift__'
     _rmethod_name = b'__rlshift__'
 
@@ -723,7 +723,7 @@ class RightShiftOperator(Operator):
         '2 >> 1'
     '''
     _format = '{0} >> {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__rshift__'
     _rmethod_name = b'__rrshift__'
 
@@ -750,7 +750,7 @@ class LengthFunction(FunctorOperator):
 
     '''
     _format = 'length({0})'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'length'
 
 
@@ -776,7 +776,7 @@ class CountFunction(FunctorOperator):
 
     '''
     _format = 'count({0})'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'_count'
 
 
@@ -794,7 +794,7 @@ class PositiveUnaryOperator(Operator):
 
     '''
     _format = '+{0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__pos__'
 
 
@@ -812,7 +812,7 @@ class NegateUnaryOperator(Operator):
 
     '''
     _format = '-{0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__neg__'
 
 
@@ -830,7 +830,7 @@ class AbsoluteValueUnaryFunction(Operator):
 
     '''
     _format = 'abs({0})'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__abs__'
 
 
@@ -876,7 +876,7 @@ class AllFunction(FunctorOperator):
     '''
 
     _format = 'all({0})'
-    _arity = N_ARITY
+    arity = N_ARITY
     _method_name = b'all_'
 
 
@@ -896,7 +896,7 @@ class AnyFunction(FunctorOperator):
     '''
 
     _format = 'any({0})'
-    _arity = N_ARITY
+    arity = N_ARITY
     _method_name = b'any_'
 
 
@@ -941,7 +941,7 @@ class MinFunction(FunctorOperator):
     '''
 
     _format = 'min({0})'
-    _arity = N_ARITY
+    arity = N_ARITY
     _method_name = b'min_'
 
 
@@ -960,7 +960,7 @@ class MaxFunction(FunctorOperator):
     '''
 
     _format = 'max({0})'
-    _arity = N_ARITY
+    arity = N_ARITY
     _method_name = b'max_'
 
 
@@ -981,7 +981,7 @@ class InvokeFunction(FunctorOperator):
 
     '''
     _format = 'call({0})'
-    _arity = N_ARITY
+    arity = N_ARITY
     _method_name = b'invoke'
 
 
@@ -1009,7 +1009,7 @@ class StringFormatFunction(FunctorOperator):
         >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
         <expression 'strformat({0} alas {1}, 1, 2)' ...>
     '''
-    _arity = N_ARITY
+    arity = N_ARITY
     _format = 'strformat({0})'
 
 
@@ -1095,15 +1095,15 @@ def _build_rbinary_operator(operation):
 _expr_operations = {operation._method_name:
                     _build_unary_operator(operation)
                  for operation in OperatorType.operators
-                    if getattr(operation, '_arity', None) == UNARY}
+                    if getattr(operation, 'arity', None) == UNARY}
 _expr_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
-                        if getattr(operation, '_arity', None) is BINARY})
+                        if getattr(operation, 'arity', None) is BINARY})
 _expr_operations.update({operation._rmethod_name:
                         _build_rbinary_operator(operation)
                       for operation in OperatorType.operators
-                        if getattr(operation, '_arity', None) is BINARY and
+                        if getattr(operation, 'arity', None) is BINARY and
                            getattr(operation, '_rmethod_name', None)})
 
 ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
@@ -1169,7 +1169,7 @@ class ExpressionTree(object):
 
 
     def __str__(self):
-        arity_class = self.op._arity
+        arity_class = self.op.arity
         formatter = getattr(arity_class, 'formatter', None)
         if formatter:
             return formatter(self.op, self.children)
