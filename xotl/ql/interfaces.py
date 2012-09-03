@@ -259,7 +259,7 @@ class IExpressionTree(IExpressionCapable):
     operation = Attribute('An object that implements the '
                           ':class:`~xotl.ql.interfaces.IOperator` interface.')
     children = Attribute('A tuple that contains the operands. Operands may '
-                         'be themselves other expressions')
+                         'be themselves other expression trees.')
 
 
 
