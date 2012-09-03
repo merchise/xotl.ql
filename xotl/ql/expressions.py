@@ -386,7 +386,6 @@ class LogicalAndOperator(Operator):
     _rmethod_name = b'__rand__'
 
 and_ = LogicalAndOperator
-directlyProvides(and_, ISyntacticallyReversibleOperation)
 
 
 
