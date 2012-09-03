@@ -1394,7 +1394,7 @@ class QueryPart(object):
         return result
 
 
-    def all_(self, other):
+    def all_(self, *args):
         from xotl.ql.expressions import all_ as f_
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
