@@ -813,7 +813,7 @@ class Query(object):
 
     def __iter__(self):
         'Creates a subquery'
-        raise NotImplemented
+        raise NotImplementedError
 
 
 
