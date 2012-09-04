@@ -949,104 +949,104 @@ class QueryPart(object):
 
 
     def __lt__(self, other):
-        from operator import lt
+        from operator import lt as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=lt(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __gt__(self, other):
-        from operator import gt
+        from operator import gt as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=gt(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __le__(self, other):
-        from operator import le
+        from operator import le as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=le(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __ge__(self, other):
-        from operator import ge
+        from operator import ge as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=ge(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __and__(self, other):
-        from operator import and_
+        from operator import and_ as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=and_(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rand__(self, other):
-        from operator import and_
+        from operator import and_ as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=and_(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __or__(self, other):
-        from operator import or_
+        from operator import or_ as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=or_(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __ror__(self, other):
-        from operator import or_
+        from operator import or_ as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=or_(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1054,13 +1054,13 @@ class QueryPart(object):
 
 
     def __xor__(self, other):
-        from operator import xor
+        from operator import xor as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=xor(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1068,13 +1068,13 @@ class QueryPart(object):
 
 
     def __rxor__(self, other):
-        from operator import xor
+        from operator import xor as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=xor(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1082,13 +1082,13 @@ class QueryPart(object):
 
 
     def __add__(self, other):
-        from operator import add
+        from operator import add as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=add(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1096,13 +1096,13 @@ class QueryPart(object):
 
 
     def __radd__(self, other):
-        from operator import add
+        from operator import add as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=add(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1110,13 +1110,13 @@ class QueryPart(object):
 
 
     def __sub__(self, other):
-        from operator import sub
+        from operator import sub as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=sub(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1124,13 +1124,13 @@ class QueryPart(object):
 
 
     def __rsub__(self, other):
-        from operator import sub
+        from operator import sub as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=sub(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1138,13 +1138,13 @@ class QueryPart(object):
 
 
     def __mul__(self, other):
-        from operator import mul
+        from operator import mul as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=mul(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1152,13 +1152,13 @@ class QueryPart(object):
 
 
     def __rmul__(self, other):
-        from operator import mul
+        from operator import mul as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=mul(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1166,13 +1166,13 @@ class QueryPart(object):
 
 
     def __div__(self, other):
-        from operator import div
+        from operator import div as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=div(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1180,13 +1180,13 @@ class QueryPart(object):
 
 
     def __rdiv__(self, other):
-        from operator import div
+        from operator import div as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=div(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1194,130 +1194,130 @@ class QueryPart(object):
 
 
     def __floordiv__(self, other):
-        from operator import floordiv
+        from operator import floordiv as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=floordiv(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rfloordiv__(self, other):
-        from operator import floordiv
+        from operator import floordiv as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=floordiv(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __mod__(self, other):
-        from operator import mod
+        from operator import mod as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=mod(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rmod__(self, other):
-        from operator import mod
+        from operator import mod as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=mod(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __pow__(self, other):
-        from operator import pow
+        from operator import pow as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=pow(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rpow__(self, other):
-        from operator import pow
+        from operator import pow as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=pow(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __lshift__(self, other):
-        from operator import lshift
+        from operator import lshift as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=lshift(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rlshift__(self, other):
-        from operator import lshift
+        from operator import lshift as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=lshift(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rshift__(self, other):
-        from operator import rshift
+        from operator import rshift as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=rshift(instance, other),
+        result = QueryPart(expression=f(instance, other),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def __rrshift__(self, other):
-        from operator import rshift
+        from operator import rshift as f
         if isinstance(other, QueryPart):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=rshift(other, instance),
+        result = QueryPart(expression=f(other, instance),
                            query=query)
         query.created_query_part(result)
         return result
@@ -1364,77 +1364,77 @@ class QueryPart(object):
 
 
     def count(self):
-        from xotl.ql.expressions import count as f_
+        from xotl.ql.expressions import count as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance),
+        result = QueryPart(expression=f(instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def length(self):
-        from xotl.ql.expressions import length as f_
+        from xotl.ql.expressions import length as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance),
+        result = QueryPart(expression=f(instance),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def any_(self, *args):
-        from xotl.ql.expressions import any_ as f_
+        from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance, *args),
+        result = QueryPart(expression=f(instance, *args),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def all_(self, *args):
-        from xotl.ql.expressions import all_ as f_
+        from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance, *args),
+        result = QueryPart(expression=f(instance, *args),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def min_(self, *args):
-        from xotl.ql.expressions import min_ as f_
+        from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance, *args),
+        result = QueryPart(expression=f(instance, *args),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def max_(self, *args):
-        from xotl.ql.expressions import max_ as f_
+        from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance, *args),
+        result = QueryPart(expression=f(instance, *args),
                            query=query)
         query.created_query_part(result)
         return result
 
 
     def invoke(self, *args):
-        from xotl.ql.expressions import invoke as f_
+        from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             query = self.query
-        result = QueryPart(expression=f_(instance, *args),
+        result = QueryPart(expression=f(instance, *args),
                            query=query)
         query.created_query_part(result)
         return result
