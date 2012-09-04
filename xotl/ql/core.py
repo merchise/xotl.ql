@@ -1445,13 +1445,14 @@ def these(comprehesion):
     '''
     Post-process the query comprehension to build a Query.
     '''
-    import types
-    assert isinstance(comprehesion, (types.GeneratorType, dict))
-    if isinstance(comprehesion, types.GeneratorType):
+    from xoutil.types import Unset, GeneratorType
+    assert isinstance(comprehesion, (GeneratorType, dict))
+    if isinstance(comprehesion, GeneratorType):
         preselection = next(comprehesion)
+        assert next(comprehesion, Unset) is Unset
         if not isinstance(preselection, tuple):
             preselection = (preselection, )
-        for qp in preselection:
+        for qp in reversed(preselection):
             with context(UNPROXIFING_CONTEXT):
                 query = qp.query
                 sel = qp.expression
