@@ -58,6 +58,12 @@ Terms and glossary
           >>> q(1) + 2              # doctest: +ELLIPSIS
           <expression '1 + 2' ...>
 
+   OMCaF
+   Objects Model Canonical Form
+
+       An ongoing effort to build a model for object-oriented systems with
+       semantics included. Part of the (yet unreleased) `xotl.model` package.
+
    query
 
        The term `query` is used in this documentation with two
