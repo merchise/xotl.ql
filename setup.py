@@ -64,6 +64,7 @@ setup(name=project_name,
       setup_requires=['setuptools', ],
       install_requires=[
           'xoutil>=1.0.30dev',
+          'zope.interface',
       ],
       extra_requires={
         'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', ]
