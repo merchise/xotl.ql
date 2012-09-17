@@ -10,8 +10,7 @@ to be used in `xotl` to express the semantics for retrieving objects. It's
 distributed independently to allow other to use this language in their own
 projects. It's expected that many pieces of `xotl` may be distributed this
 way. The only external dependency of `xotl.ql` (aside from python's standard
-library) is the xoutil_ package.
+library) is the `xoutil <https://github.com/merchise-autrement/xoutil.git>`_
+package.
 
-Documentation kept at `Read the doc <rtd>`_.
-
-.. _rtd: http://readthedocs.org/projects/xotlql/
+Documentation kept at `Read the doc <http://readthedocs.org/projects/xotl-ql/>`_.
