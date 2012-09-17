@@ -41,7 +41,7 @@ Common tools for translating expressions
 
 The fundamental tool for translating expressions is the function
 :func:`cotraverse_expression`. It's a coroutine that allows to traverse the
-entire expression tree (including bound :class:`~xotl.ql.these.These`
+entire expression tree (including bound :class:`~xotl.ql.core.These`
 instances) and yields expression nodes and/or leaves that match a given
 "predicate".
 
@@ -71,7 +71,7 @@ from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.these import These, query, this
+from xotl.ql.interfaces import IQueryExecutionPlan, IThese, IQuery
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -81,7 +81,7 @@ __all__ = (b'cotraverse_expression', b'fetch', )
 
 
 
-_is_these = lambda who: isinstance(who, These)
+_is_these = lambda who: IThese.providedBy(who)
 _vrai = lambda _who: True
 _none = lambda _who: False
 
@@ -124,10 +124,10 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
       respectively.
 
         >>> from xotl.ql.expressions import is_a, all_, in_
-        >>> from xotl.ql.these import query, this
-        >>> who = query(who for who in this('w')
+        >>> from xotl.ql.core import these, this
+        >>> who = these(who for who in this('w')
         ...                 if all_(who.children,
-        ...                         in_(this, query(sub for sub in this('s')
+        ...                         in_(this, these(sub for sub in this('s')
         ...                                         if is_a(sub,
         ...                                                 'Subs')))))
 
@@ -192,12 +192,21 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
 
 
 
+def replace_known_functions(expr):
+    '''
+    Traverses the expression and replaces all calls to known functions to the
+    expressions that directly use the function:
+    '''
+    pass
+
+
+
 def fetch(expr, order=None, partition=None):
     '''
     Generates all the objects that match a given query.
 
     :param expr: A query comprehesion or the result of calling
-                  :func:`~xotl.ql.these.query` over a comprehension.
+                  :func:`~xotl.ql.core.these` over a comprehension.
 
     :param order: Ordering scheme: Either a single expression in which case it
                   should either: ``+this`` or ``-this``, or a tuple of
@@ -210,3 +219,30 @@ def fetch(expr, order=None, partition=None):
                       interpretation for slices applies.
     '''
     pass
+
+
+
+def init(conf=''):
+    '''Registers this module as an IQueryTranslator.
+
+    .. warning::
+
+       Don't call this method in your own code, since it will override all
+       of your query-related configuration.
+
+       This is only intended to allow testing of the translation common
+       framework by installing query translator that searches over Python's VM
+       memory.
+
+    '''
+    import sys
+    from zope.component import getGlobalSiteManager
+    from .interfaces import IQueryConfiguration, IQueryTranslator
+    self = sys.modules[__name__]
+    manager = getGlobalSiteManager()
+    configurator = manager.queryUtility(IQueryConfiguration)
+    if configurator:
+        pass
+    else:
+        manager.registerUtility(self, IQueryConfiguration)
+    manager.registerUtility(self, IQueryTranslator)

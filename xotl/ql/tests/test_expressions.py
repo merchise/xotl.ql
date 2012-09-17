@@ -30,75 +30,128 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
-
-from xotl.ql.expressions import q, eq, ne, lt, ExpressionTree
+from xotl.ql.expressions import q
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-class TestSimpleExpression(unittest.TestCase):
-    def test_eq(self):
-        a = eq(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = eq(3, 4)
-        c = eq(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
-
-
-    def test_un_eq(self):
-        expression = eq(10, 34)
-        self.assertIsNot(True, expression == eq(10, 34))
-        self.assertIsInstance(expression == eq(10, 34), ExpressionTree)
-        with context(UNPROXIFING_CONTEXT):
-            self.assertIs(True, expression == eq(10, 34))
-
-
-    def test_ne(self):
-        a = ne(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = ne(2, 3)
-        c = ne(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
-
-
-    def test_lt(self):
-        a = lt(1, 2)
-        self.assertSetEqual(set([1, 2]), set(a.children))
-        b = lt(2, 3)
-        c = lt(a, b)
-        self.assertSetEqual(set(c.children), set([a, b]))
-
-
-    def test_lt3(self):
-        # TODO: [manu] Since we can't actually use the a < b < c,
-        #       can we keep the AT_LEAST_TWO arity?
-        expression = q(1) < q(2) < q(3)
-        import dis
-        dis.dis(self.test_lt3.im_func)
-        self.assertNotEquals('(1 < 2) and (2 < 3)', str(expression))
-        expression = (q(1) < q(2)) & (q(2) < q(3))
-        self.assertEquals('(1 < 2) and (2 < 3)', str(expression))
-
-
-    def test_qobjects(self):
-        age = q(b'age')
-        expr = age + q(10)
-        self.assertEqual([str, int],
-                         [type(child) for child in expr.children])
-
-
-    def test_functors(self):
-        from xotl.ql.expressions import startswith
-        class Foobar(object):
-            def startswith(self, other):
-                return 1
-
-        expr = startswith(q('something'), 'aaa')
+class BasicTests(unittest.TestCase):
+    def test_expression(self):
+        from xoutil.context import context
+        from xoutil.proxy import UNPROXIFING_CONTEXT
+        from xotl.ql.expressions import (count, ExpressionTree, or_, and_,
+                                         pow_, lt, eq, add)
+        expr = ((q(1) < 3) & (1 == q("1")) |
+                (q("a") + q("b") ** 2 == q("x") + count("y")))
+        expected = or_(and_(lt(1, 3), eq(1, "1")),
+                       eq(add("a", pow_("b", 2)), add("x", count("y"))))
         self.assertIsInstance(expr, ExpressionTree)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertTrue(expr == expected, "%s ---- %s" % (expected, expr))
 
-        expr = startswith(Foobar(), 'aaa')
-        self.assertIs(1, expr)
+
+    def test_q_should_keep_it_self_in_expressions(self):
+        'When :class:`xotl.ql.expressions.q` is involved in an expression '
+        'it should remove itself from it'
+        expr = q(1) + "1"
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+
+        expr = 1 + q("1")
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+
+        expr = q(1) + q("1")
+        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+
+
+    def test_all_ops(self):
+        ok = self.assertEqual
+        from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
+                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              rshift, neg, abs, pos, invert)
+        from xotl.ql.expressions import not_
+        binary_tests = [(eq, '{0} == {1}'),
+                        (ne, '{0} != {1}'),
+                        (lt, '{0} < {1}'),
+                        (gt, '{0} > {1}'),
+                        (le, '{0} <= {1}'),
+                        (ge, '{0} >= {1}'),
+                        (and_, '{0} and {1}'),
+                        (or_, '{0} or {1}'),
+                        (xor, '{0} xor {1}'),
+                        (add, '{0} + {1}'),
+                        (sub, '{0} - {1}'),
+                        (mul, '{0} * {1}'),
+                        (div, '{0} / {1}'),
+                        (truediv, '{0} / {1}'),
+                        (floordiv, '{0} // {1}'),
+                        (mod, '{0} mod {1}'),
+                        (pow, '{0}**{1}'),
+                        (lshift, '{0} << {1}'),
+                        (rshift, '{0} >> {1}')]
+        unary_tests = [(neg, '-{0}'),
+                       (abs, 'abs({0})'),
+                       (pos, '+{0}'),
+                       (invert, 'not {0}'),
+                       (not_, 'not {0}')]
+        for test, fmt in binary_tests:
+            ok(fmt.format("a", "b"),
+               str(test(q('a'), 'b')))
+
+        for test, fmt in unary_tests:
+            ok(fmt.format("age"),
+               str(test(q('age'))))
+
+
+
+class ExtensibilityTests(unittest.TestCase):
+    def test_new_function(self):
+        from xotl.ql.expressions import FunctorOperator, N_ARITY
+
+        class AverageFunction(FunctorOperator):
+            '''
+            The ``avg(*args)`` operation.
+            '''
+            _format = 'avg({0})'
+            arity = N_ARITY
+            _method_name = b'_avg'
+        avg = AverageFunction
+
+        class ZeroObject(object):
+            def _avg(self, *others):
+                if others:
+                    return avg(*others)
+                else:
+                    from xotl.ql.expressions import q
+                    return q(0)
+
+        expr = avg(0, 1, 2, 3, 4, 5)
+        self.assertEquals("avg(0, 1, 2, 3, 4, 5)", str(expr))
+
+        zero = ZeroObject()
+        expr = avg(zero, 1, 2, 3)
+        self.assertEquals("avg(1, 2, 3)", str(expr))
+        self.assertEqual('0', str(avg(zero)))
+
+
+
+class RegressionTests(unittest.TestCase):
+    def test_20120814_reversed_ops_should_work(self):
+        expr = 1 + (2 + q(3))
+        self.assertEquals('1 + (2 + 3)', str(expr))
+
+
+    def test_20120822_reversed_eq_and_ne_should_compare_equal(self):
+        from xoutil.context import context
+        from xoutil.proxy import UNPROXIFING_CONTEXT
+        expr = 1 == q("2")
+        expr2 = q(1) == "2"
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expr, expr2)
+
+        # But we have not a reversing equality stuff.
+        expr = 1 < q(2)
+        expr2 = q(2) > 1
+        with context(UNPROXIFING_CONTEXT):
+            self.assertNotEqual(expr, expr2)

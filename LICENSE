@@ -570,7 +570,7 @@ Program, the only way you could satisfy both those terms and this License
 would be to refrain entirely from conveying the Program.
 
 13. Use with the :abbr:`GNU (GNU is Not Unix)` Affero General Public License.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Notwithstanding any other provision of this License, you have permission to
 link or combine any covered work with a work licensed under version 3 of the
@@ -687,7 +687,7 @@ notice like this when it starts in an interactive mode:
 ::
 
     program Copyright (C) year name of author
-
+    
     This program comes with ABSOLUTELY NO WARRANTY; for details type
     'show w'.  This is free software, and you are welcome to
     redistribute it under certain conditions; type 'show c' for

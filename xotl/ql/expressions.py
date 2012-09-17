@@ -8,13 +8,13 @@
 #
 # This is free software; you can redistribute it and/or modify it under the
 # terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 3 of  the  License, or (at your option)
-# any later version.
+# Software Foundation; either version 3 of the License, or (at your option) any
+# later version.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51
@@ -22,286 +22,34 @@
 #
 # Created on May 24, 2012
 
-'''This module provides the building blocks for query expressions.
+'''
+This module provides the building blocks for query expressions.
 
 This module provides several classes that represent the operations themselves,
 this classes does not attempt to provide anything else than what it's deem
 needed to have an Abstract Syntax Tree (AST).
-
-Each expression is represented by an instance of an ExpressionTree. An
-expression tree has two core attributes:
-
-- The :py:attr:`~ExpressionTree.op` attribute contains a reference to the any
-  of the classes that derive from :class:`Operator`.
-
-- The :py:attr:`~ExpressionTree.children` attribute always contains a tuple
-  with objects to which the operation is applied.
-
-Operation classes should have the following attributes:
-
-- `_arity`, which can be any of :py:class:`AT_LEAST_TWO`, :py:class:`BINARY`,
-  or :py:class:`UNARY`.
-
-- `_format`, which should be a string that specifies how to format the
-  operation when str is invoked to print the expression. The format should
-  conform to the format mini-language as specified in Python's string module
-  doc.
-
-  For UNARY operations it will be passed a single positional argument. For
-  BINARY two positional arguments will be passed. AT_LEAST_TWO are currently
-  BINARY operations that should have a boolean `_associative` attribute. The
-  `_format` attribute should contains the format for two operands. We will
-  concat the result with or without parenthesis according to the truth value of
-  `_associative`.
-
-- `_associative`, as explained above.
-
-- `_method_name`, should contain a string (not unicode unless you're sure) with
-  the name of the method that is be invoked on the (first) operand of the
-  expression when this operation is used.
-
-  This attribute simply maps operations to methods. This allows us to make
-  expressions "composable", since expression trees will always have a "default"
-  implementation of those methods, that normaly just buils another expression
-  tree with it's `op` set to the operation.
-
-This module provides operations for several of the commonly used in expression:
-arithmetical, testing for containment, and others. So, expression are
-composable::
-
-    >>> expr1 = eq(1, 2) & eq(2, 3)
-    >>> str(expr1)
-    '(1 == 2) and (2 == 3)'
-
-.. note:: We use `&` for the `and` operation, and `|` for the `or` operation.
-          The "real" interpretation of "and" and "or" is not given in this
-          module, but is left to the "compilation" phase. They may be regarded
-          as logical or bitwise operations as well.
-
-
-
-Objects in expressions
-----------------------
-
-In order to have any kind of objects in expressions, we provide a very ligth-
-weight transparent wrapper :py:class:`q`. This simple receives an object as
-it's wrapped, and pass every attribute lookup to is wrapped object but also
-implements the creation of expressions with the supported operations. The
-expression above could be constructed like::
-
-    >>> expr2 = (q(1) == q(2)) & (q(2) == q(3))
-    >>> str(expr2)
-    '(1 == 2) and (2 == 3)'
-
-
-The class :py:class:`q` contains more detailed information.
-
-
-Contexts of execution
----------------------
-
-Since the default operations of Python are "trapped" to build other expressions
-as shown with::
-
-    >>> expr1 == expr2    # doctest: +ELLIPSIS
-    <expression '...' at 0x...>
-
-it's difficult to test whether or not two expressions are equivalent, meaning
-only that they represent the same AST and not its semantics. We use the simple
-contexts of execution provided by :py:mod:`!xoutil.context` to enter
-"special" modes of execution in which we change the semantic of an operation.
-
-Since, :py:class:`q` is based on :py:mod:`xoutil.proxy`, and it's
-likely that expressions contains `q`-objects, we use the same context name, the
-proxy uses for similar purposes, i.e, :class:`~xotl.ql.proxy.UNPROXIFING_CONTEXT`::
-
-    >>> from xoutil.context import context
-    >>> from xoutil.proxy import UNPROXIFING_CONTEXT
-    >>> with context(UNPROXIFING_CONTEXT):
-    ...    expr1 == expr2
-    True
-
-.. warning::
-
-   We only provide implementations for `__eq__` and `__ne__`, other operations
-   will *probably* (but not always) fail in this context::
-
-        >>> with context(UNPROXIFING_CONTEXT):    # doctest: +ELLIPSIS
-        ...    q(1) + q(2) + expr1
-        Traceback (most recent call last):
-            ...
-        RuntimeError: ...
-
-   Only use `==` or `!=` in this context!
-
-
-The case for `q`-objects
-------------------------
-
-`q`-objects are just meant to provide a simple wrapper for objects that don't
-support the operations of expressions directly. They are not meant to be used
-everywhere. Notice that expressions support most common operations and their
-"reverses", so sometimes `q`-objects are not required::
-
-    >>> 1 + q(1)  # doctest: +ELLIPSIS
-    <expression '1 + 1' at 0x...>
-
-For the time being, we keep the q-objects and they allows to test our
-expression language. But, in time, we may refactor this class out of this
-module.
-
-
-.. autoclass:: q
-   :members:
-
-
-Thougths on Query Languages
----------------------------
-
-Expressions are the core for query languages and many of it's design decisions
-are strongly biased for query languages needs. But they purpose is more
-general. Notice that :py:class:`this objects <xotl.ql.these.These>` are
-they way to specify the selected data in queries.
-
-The ultimate goal of expressions is to be *compiled* into forms feasible to the
-current database (either relational or not) management systems. For instance,
-it would be desirable that on top of CouchDB_ (or Couchbase_) expressions would
-be *translated* to Couch's views if possible.
-
-There's a good article [Buneman]_ that describe several features of a UnQL
-(Unstructured Query Language), that are of interest to this module. Another
-article exposes the relation between NoSQL and SQL, and renames the former as
-coSQL following the categorical tradition since NoSQL is *dual* to SQL
-[Meijer2011]_ [Fokkinga2012]_.
-
-In this article [Meijer2011]_, the authors only focused on key-value stores for
-noSQL databases. Although they claim that:
-
-    While we don’t often think of it this way, the RAM for storing
-    object graphs is actually a key-value store where keys are
-    addresses (l-values) and values are the data stored at some
-    address in memory (r-values). Languages such as C# and Java
-    make no distinction between r-values and l-values, unlike C or
-    C++, where the distinction is explicit. In C, the pointer
-    dereference operator ``\*p`` retrieves the value stored at address ``p`` in
-    the implicit global store.
-
-Just as LINQ does for C#, one of the goals of the expression language its to
-allow the construction of "natural" or better, idiomatic queries. Here the term
-idiomatic, it's best cast a the natural idiom for the Object Model Canonical
-Form (OMCaF) we're developing in :py:mod:`xotl.models`.
-
-But the expression language cannot express the whole of queries. Real queries
-require of:
-
-- The SELECTION part, that identifies the data we want to retrieve. Sometimes,
-  this part also transforms the data.
-
-- And the SOURCE, that identifies the datastore we want to query.
-
-- Optionally, a FILTER may be given to only retrieve data that match a
-  criterion.
-
-In addition, we often find:
-
-- ORDER instructions to retrieve data in a given orden.
-- OFFSET and LIMIT bounds to retrieve just a portion of the data.
-
-The natural fit for expressions is the FILTER part. But we can also use the
-same underlying AST mechanism to:
-
-- Express the SELECTION part: `this.age` is a valid expression but is also a
-  valid selector, and `count(1) + 100` is also a valid transform-making
-  selector and a well-formed expression::
-
-      >>> count(1) + 100    # doctest: +ELLIPSIS
-      <expression '(count(1)) + 100' at 0x...>
-
-- Express the ORDER part. This can be done with unary operators::
-
-      >>> (+q('age'), -count(q('children')))    # doctest: +ELLIPSIS
-      (<expression '+age'...>, <expression '-(count(children))...>)
-
-.. note::
-
-    Since `this` objects may have schemas bound to them, it's possible to bias
-    the compiled expression to a given target. In fact, `this` instances may
-    have whole expressions as bindings (constrains) and the fact the it refers
-    to a given *kind* of object (and that the given kind has a schema
-    associated to it) it's merely eventual.
-
-
-About the operations supported in expression
---------------------------------------------
-
-Almost any operation is supported by expressions. :class:`ExpressionTree`
-uses the known :ref:`python protocols <py:datamodel>` to allow the composition
-of expressions using an natural (or idiomatic) form, so::
-
-    expression <operator> object
-
-are the *suggested* form for constructing expressions. Doing so, allows other
-objects (see the :mod:`~xotl.ql.these` module for example) to engage
-into expressions and keeps the feeling of naturality.
-
-The ``<operator>`` can be any of the supported operations, i.e:
-
-- All the arithmetical operations, except `pow(a, b, modulus)` with a non-None
-  `modulus`, but `a ** b` **is** supported.
-
-- The ``&``, ``|``, and ``^`` operations. This are proposed to replace the
-  `and`, `or`, and `xor` logical operations; but it's true meaning is dependant
-  of the *expression compiler*.
-
-- All the comparation operations: ``<``, ``>``, ``<=``, ``>=``, ``==``, and
-  ``!=``.
-
-- The unary operators for ``abs``, ``+``, ``-``, and ``~``. We **don't**
-  support ``len``.
-
-- The operators for testing containment ``__contains__``.
-
-.. autoclass:: OperatorType(type)
-   :members:
-
-
-.. autoclass:: Operator
-   :members:
-
-
-.. autoclass:: FunctorOperator
-   :members:
-
-.. autoclass:: ExpressionTree
-   :members:
-
-
-.. _CouchDB: http://apache.org/couchdb
-.. _Couchbase: http://www.couchbase.com/
-
-
-Implementation
---------------
-
 '''
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         unicode_literals as _py3_unicode)
 
-from copy import deepcopy
-
 from functools import partial
 
-from xoutil.types import Unset
 from xoutil.context import context
 from xoutil.aop import complementor
-
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
+
+from zope.interface import implements, directlyProvides
+
+from xotl.ql.interfaces import (IOperator, IExpressionTree,
+                                ISyntacticallyReversibleOperation,
+                                ISynctacticallyCommutativeOperation)
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
+
 
 
 class UNARY(object):
@@ -326,6 +74,31 @@ class BINARY(object):
                             str(child2) if not isinstance(child2,
                                                           ExpressionTree)
                                         else '(%s)' % child2)
+
+
+
+class N_ARITY(object):
+    '''
+    The arity of operations with a variable number or arguments::
+
+        >>> class print_(FunctorOperator):
+        ...    _format = 'print({0})'
+        ...    arity = N_ARITY
+
+        >>> print_()            # doctest: +ELLIPSIS
+        <expression 'print()' ...>
+
+        >>> print_(1, 2)        # doctest: +ELLIPSIS
+        <expression 'print(1, 2)' ...>
+    '''
+    @classmethod
+    def formatter(cls, operation, children):
+        str_format = operation._format
+        args = ', '.join((str(child) if not isinstance(child,
+                                                          ExpressionTree)
+                                        else '(%s)' % child)
+                         for child in children)
+        return str_format.format(args)
 
 
 
@@ -386,7 +159,39 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
-        type(self).operators.append(self)
+        from xoutil.objects import nameof
+        OperatorType.operators.append(self)
+        doc = ''
+        for attr, trans in (('arity', nameof), ('_method_name', repr), ('_format', repr)):
+            value = getattr(self, attr, None)
+            if value:
+                v = trans(value).replace('_', r'\_')
+                doc += ('\n\n    - **{attr}:** {v}'.format(attr=attr,
+                                                           v=v))
+        if doc:
+            self.__doc__ = ((self.__doc__ if self.__doc__ else '') +
+                            '\n\n    **Attributes**:' + doc)
+        doc = ''
+        interfaces = (IOperator, )
+        if getattr(self, '_rmethod_name', False):
+            interfaces += (ISyntacticallyReversibleOperation, )
+            if 'ISyntacticallyReversibleOperation' not in self.__doc__:
+                doc += ('\n    This class directly provides '
+                        ':class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation`.'
+                        '\n\n'
+                        '        >>> ISyntacticallyReversibleOperation.providedBy({name})\n        True'.format(name=name))
+        if getattr(self, 'equivalence_test', False):
+            interfaces += (ISynctacticallyCommutativeOperation, )
+            if 'ISynctacticallyCommutativeOperation' not in self.__doc__:
+                doc += ('\n    This class directly provides '
+                        ':class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`::'
+                        '\n\n'
+                        '        >>> ISynctacticallyCommutativeOperation.providedBy({name})\n        True'.format(name=name))
+        if doc:
+            self.__doc__ += '\n\n    **Interface(s)**:\n\n' + doc
+
+        directlyProvides(self, *interfaces)
+
 
     def __call__(self, *children):
         '''Support for operators classes return expression trees upon
@@ -424,8 +229,8 @@ class Operator(object):
     The base class of every operation that may involved in a expression.
 
     Subclasses of this class are *rarely* instantiated, instead they are used
-    in :attr:`ExpressionTree.op` to indicate the operation that is perform to
-    the :attr:`operands <ExpressionTree.children>`.
+    in :attr:`ExpressionTree.operation` to indicate the operation that is
+    perform to the :attr:`operands <ExpressionTree.children>`.
     '''
     __metaclass__ = OperatorType
 
@@ -433,34 +238,40 @@ class Operator(object):
 
 class _FunctorOperatorType(OperatorType):
     '''
-    A meta class for :class:`FunctorOperator`.
+    A metaclass for :class:`FunctorOperator`.
 
-    This provides operators that are function with a dual behavior upon
-    instantiantion. To allow operands to customize how to place themselves in
-    the operation, the "protocol" of calling the operand's method is
-    implemented here, but if the operand just wants to build the `op(self,
-    *others)` expression, we weave the first operand to avoid infinit
-    recursion.
+    This provides operators that are called as functions with a dual behavior
+    upon instantiantion. To allow operands to customize how to place
+    themselves in the operation, the "protocol" of calling the operand's
+    method is implemented here, but if the operand just wants to build the
+    `op(self, *others)` expression, we stack the first operand to avoid
+    infinit recursion.
+
+    This means that if you have an `opfunction` class that inherits from
+    :class:`FunctorOperator` (or otherwise is an instance of this metaclass),
+    when you call: ``opfunction(arg1, arg2, ...)``; will check if `arg1` has
+    implemented the method in `_method_name` if so, we then call
+    ``arg1._method_name(arg2, ...)``. If `arg1` just returns
+    ``opfunction(self, arg2, ...)``, we stop recursing a provide the standard
+    implementation: creating an expression of the type `(opfunction, *args)`.
     '''
     def __call__(self, *children):
-        head, tail = children[0], children[1:]
-        method = getattr(unboxed(head), self._method_name, None)
-        if method:
-            from xoutil.aop.basic import weaved
-            func = getattr(method, 'im_func', method)
-            # We weave the head to remove the method temporarily to avoid
-            # infinit recursion if that method invokes this class with itself
-            # as a the first operand.
-            #
-            # Notice that weaved is not thread-safe, since it messes with
-            # head.__class__. But expressions are not thread-safe either. We
-            # think that a expression is probably a very volatile object that
-            # is disposed shortly after it's use.
-            with weaved(head, **{self._method_name: None}) as head:
-                if tail:
-                    return func(head, *tail)
-                else:
-                    return func(head)
+        if children:
+            stack = context
+            head, tail = children[0], children[1:]
+            name = getattr(self, '_method_name', None)
+            method = getattr(unboxed(head), name, None) if name else None
+            if method and not stack[(head, method)]:
+                func = getattr(method, 'im_func', method)
+                # manu: Don't use weaved since it won't work with These instance
+                #       because of __slots__; use a stack instead.
+                with stack((head, method)):
+                    if tail:
+                        return func(head, *tail)
+                    else:
+                        return func(head)
+            else:
+                return super(_FunctorOperatorType, self).__call__(*children)
         else:
             return super(_FunctorOperatorType, self).__call__(*children)
 
@@ -491,7 +302,43 @@ class FunctorOperator(Operator):
 
 
 
-class EqualityOperator(Operator):
+class BinaryCommutativeOperatorMixin(object):
+    '''
+    Mixin for *syntactically* commutative operators.
+
+    Both the `==` and the `!=` operators are *always* commutative: i.e:
+    `a == b` if and only if `b == a` no matter the types/domain of `a` and
+    `b`.
+
+    That's why Python does not have neither a `__req__` nor a `__rne__`
+    protocols to implement the "reverse" of `__eq__` and `__ne__`.
+
+    This mixin allows that we can compare for (syntactical) equivalence of
+    `==` and `!=` in expressions::
+
+        >>> e1 = 1 == q("2")
+        >>> e2 = "2" == q(1)
+        >>> with context(UNPROXIFING_CONTEXT):
+        ...    e1 == e2
+        True
+
+    This is useful because the first expressions gets inverted cause `int`
+    doesn't implement the `==` with q-objects::
+
+        >>> e1                                        # doctest: +ELLIPSIS
+        <expression '2 == 1' ...>
+    '''
+    arity = BINARY
+
+
+    @staticmethod
+    def equivalence_test(children1, children2):
+        res = children1 == children2
+        return res or (children1 == tuple(reversed(children2)))
+
+
+
+class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     The class of a == b [== c], expressions::
 
@@ -501,16 +348,13 @@ class EqualityOperator(Operator):
 
     '''
     _format = '{0} == {1}'
-    _associative = True
-    _arity = BINARY
     _method_name = b'__eq__'
-
 
 eq = EqualityOperator
 
 
 
-class NotEqualOperator(Operator):
+class NotEqualOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     The expression `a != b`::
 
@@ -520,8 +364,6 @@ class NotEqualOperator(Operator):
 
     '''
     _format = '{0} != {1}'
-    _associative = True
-    _arity = BINARY
     _method_name = b'__ne__'
 
 
@@ -539,11 +381,12 @@ class LogicalAndOperator(Operator):
 
     '''
     _format = '{0} and {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__and__'
+    _rmethod_name = b'__rand__'
 
 and_ = LogicalAndOperator
+
 
 
 class LogicalOrOperator(Operator):
@@ -556,12 +399,11 @@ class LogicalOrOperator(Operator):
 
     '''
     _format = '{0} or {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__or__'
+    _rmethod_name = b'__ror__'
 
 or_ = LogicalOrOperator
-
 
 
 class LogicalXorOperator(Operator):
@@ -574,12 +416,11 @@ class LogicalXorOperator(Operator):
 
     '''
     _format = '{0} xor {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__xor__'
+    _rmethod_name = b'__rxor__'
 
 xor_ = LogicalXorOperator
-
 
 
 class LogicalNotOperator(Operator):
@@ -592,11 +433,11 @@ class LogicalNotOperator(Operator):
 
     '''
     _format = 'not {0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__invert__'
 
 
-not_ = LogicalNotOperator
+invert = not_ = LogicalNotOperator
 
 
 
@@ -610,20 +451,20 @@ class AdditionOperator(Operator):
 
     '''
     _format = '{0} + {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__add__'
+    _rmethod_name = b'__radd__'
 
 
 add = AdditionOperator
 
 
-
 class SubstractionOperator(Operator):
     '''The expression `a - b`.'''
     _format = '{0} - {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__sub__'
+    _rmethod_name = b'__rsub__'
 
 sub = SubstractionOperator
 
@@ -632,8 +473,9 @@ sub = SubstractionOperator
 class DivisionOperator(Operator):
     '''The expression `a / b`.'''
     _format = '{0} / {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__div__'
+    _rmethod_name = b'__rdiv__'
 
 
 truediv = div = DivisionOperator
@@ -650,12 +492,11 @@ class MultiplicationOperator(Operator):
 
     '''
     _format = '{0} * {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__mul__'
+    _rmethod_name = b'__rmul__'
 
 mul = MultiplicationOperator
-
 
 
 class LesserThanOperator(Operator):
@@ -668,8 +509,7 @@ class LesserThanOperator(Operator):
 
     '''
     _format = '{0} < {1}'
-    _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__lt__'
 
 lt = LesserThanOperator
@@ -687,7 +527,7 @@ class LesserOrEqualThanOperator(Operator):
     '''
     _format = '{0} <= {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__le__'
 
 
@@ -706,7 +546,7 @@ class GreaterThanOperator(Operator):
     '''
     _format = '{0} > {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__gt__'
 
 gt = GreaterThanOperator
@@ -724,7 +564,7 @@ class GreaterOrEqualThanOperator(Operator):
     '''
     _format = '{0} >= {1}'
     _associative = True
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__ge__'
 
 
@@ -741,7 +581,7 @@ class InExpressionOperator(Operator):
 
     '''
     _format = 'in({0}, {1})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__contains__'
 
 
@@ -753,13 +593,13 @@ class IsInstanceOperator(FunctorOperator):
     '''
     The `a is_a B` operator::
 
-         >>> e = is_a(1, 2)
+         >>> e = is_a(1, int)
          >>> str(e)
-         'is_a(1, 2)'
+         "is_a(1, <type 'int'>)"
 
     '''
     _format = 'is_a({0}, {1})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'_is_a'
 
 
@@ -777,7 +617,7 @@ class StartsWithOperator(FunctorOperator):
 
     '''
     _format = 'startswith({0!r}, {1!r})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'startswith'
 
 
@@ -794,7 +634,7 @@ class EndsWithOperator(FunctorOperator):
 
     '''
     _format = 'endswith({0!r}, {1!r})'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'endswith'
 
 
@@ -812,8 +652,9 @@ class FloorDivOperator(Operator):
 
     '''
     _format = '{0} // {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__floordiv__'
+    _rmethod_name = b'__rfloordiv__'
 
 
 floordiv = FloorDivOperator
@@ -830,8 +671,9 @@ class ModOperator(Operator):
 
     '''
     _format = '{0} mod {1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__mod__'
+    _rmethod_name = b'__rmod__'
 
 
 mod = ModOperator
@@ -847,29 +689,67 @@ class PowOperator(Operator):
 
     '''
     _format = '{0}**{1}'
-    _arity = BINARY
+    arity = BINARY
     _method_name = b'__pow__'
+    _rmethod_name = b'__rpow__'
 
 
 pow_ = PowOperator
 
 
+class LeftShiftOperator(Operator):
+    '''
+    The `2 << 1` operator::
+
+        >>> e = lshift(2, 1)
+        >>> str(e)
+        '2 << 1'
+    '''
+    _format = '{0} << {1}'
+    arity = BINARY
+    _method_name = b'__lshift__'
+    _rmethod_name = b'__rlshift__'
+
+lshift = LeftShiftOperator
+
+
+class RightShiftOperator(Operator):
+    '''
+    The `2 >> 1` operator::
+
+        >>> e = rshift(2, 1)
+        >>> str(e)
+        '2 >> 1'
+    '''
+    _format = '{0} >> {1}'
+    arity = BINARY
+    _method_name = b'__rshift__'
+    _rmethod_name = b'__rrshift__'
+
+rshift = RightShiftOperator
+
+
 
 class LengthFunction(FunctorOperator):
-    '''
-    The `length(something)` operator::
+    '''The `length(something)` operator::
 
         >>> e = length(487873)
         >>> str(e)
         'length(487873)'
 
-    :class:`length` is intended to be applied to non-collection values that
-    have a magnitude, like strings. It's not intended to be applied to
-    collection of objects; use :class:`count` for those cases.
+    .. note::
+
+       :class:`length` is intended to be applied to non-collection values that
+       have kind of a magnitude, like strings. It's not intended to be applied
+       to collection of objects; use :class:`count` for those cases.
+
+       :term:`Translators <query translator>` may rely on this rule to infer
+       the type of the argument passed to either :class:`!length` or
+       :class:`!count`.
 
     '''
     _format = 'length({0})'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'length'
 
 
@@ -877,20 +757,26 @@ length = LengthFunction
 
 
 class CountFunction(FunctorOperator):
-    '''
-    The `count(something)` operator::
+    '''The `count(something)` operator::
 
-        >>> e = count(487873)
+        >>> e = count((4, 8, 7, 8, 73))
         >>> str(e)
-        'count(487873)'
+        'count((4, 8, 7, 8, 73))'
 
-    :class:`count` is intended to be applied to collections. It's not supposed
-    to be applied to non-collection values like strings; use :class:`length`
-    for those cases.
+    .. note::
+
+       :class:`count` is intended to be applied to collections. It's not
+       supposed to be applied to non-collection values like strings; use
+       :class:`length` for those cases.
+
+       :term:`Translators <query translator>` may rely on this rule to infer
+       the type the argument passed to either :class:`!length` or
+       :class:`!count`.
+
     '''
     _format = 'count({0})'
-    _arity = UNARY
-    _method_name = b'count'
+    arity = UNARY
+    _method_name = b'_count'
 
 
 count = CountFunction
@@ -907,7 +793,7 @@ class PositiveUnaryOperator(Operator):
 
     '''
     _format = '+{0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__pos__'
 
 
@@ -925,7 +811,7 @@ class NegateUnaryOperator(Operator):
 
     '''
     _format = '-{0}'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__neg__'
 
 
@@ -943,45 +829,73 @@ class AbsoluteValueUnaryFunction(Operator):
 
     '''
     _format = 'abs({0})'
-    _arity = UNARY
+    arity = UNARY
     _method_name = b'__abs__'
 
 
 abs_ = AbsoluteValueUnaryFunction
 
 
-
-class InvertUnaryOperator(Operator):
-    '''
-    The `~56` unary operator::
-
-        >>> e = invert(34)
-        >>> str(e)
-        '~34'
-
-    '''
-    _format = '~{0}'
-    _arity = UNARY
-    _method_name = b'__invert__'
-
-
-invert = InvertUnaryOperator
-
-
 # TODO: Review any_ and all_
+class AllFunction(FunctorOperator):
+    '''
+    The representation of the `all` function.
+
+    There are three possible interpretations/syntaxis for :func:`all_`:
+
+    1. It takes an expression (probably a subquery) and returns true only if
+       every object is true::
+
+            >>> ages = [1, 2, 3, 4, 5]
+            >>> expr = all_(age > 10 for age in ages)
+            >>> str(expr)        # doctest: +ELLIPSIS
+            'all(<generator object...>)'
+
+    2. takes several objects and evaluates them all (no subqueries)::
+
+            >>> ages = (1, 2, 3, 4, 5)
+            >>> expr = all_(*ages)
+            >>> str(expr)
+            'all(1, 2, 3, 4, 5)'
+
+    3. takes two arguments: the first is a "generator" (see the
+       :mod:`xotl.ql.core` module) and the second a predicate::
+
+            >>> from xotl.ql.core import this
+            >>> expr = all_(this.children, this.age > 10)
+            >>> str(expr)
+            'all(this.children, this.age > 10)'
+
+    .. warning::
+
+       There's no way to syntactically (at the level on which one
+       could do normally in Python) to distiguish from the last two
+       elements: so VMs that evaluate `all_` expressions may further
+       restrict the interpretation.
+    '''
+
+    _format = 'all({0})'
+    arity = N_ARITY
+    _method_name = b'all_'
+
+
+all_ = AllFunction
+
+
+
 class AnyFunction(FunctorOperator):
     '''
-    A function that takes in a generator and an expression that must be proven
-    True for at least a single element of the generator::
+    The representation of the `any` function. As with :class:`all_` three
+    interpretations are possible::
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = any_(q('locals.age'), q('locals.age') > 3)
-        >>> str(expr)
-        'any(locals.age, (locals.age > 3))'
+        >>> ages = [1, 2, 3, 4, 5]
+        >>> expr = any_(age > 10 for age in ages)
+        >>> str(expr)        # doctest: +ELLIPSIS
+        'any(<generator object...>)'
     '''
 
-    _format = 'any({0}, {1})'
-    _arity = BINARY
+    _format = 'any({0})'
+    arity = N_ARITY
     _method_name = b'any_'
 
 
@@ -989,57 +903,63 @@ any_ = AnyFunction
 
 
 
-class AllFunction(FunctorOperator):
-    '''
-    A function that takes in a generator and an expression that must be proven
-    True for every single element of the generator::
-
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = all_(q('locals.age'), q('locals.age') > 1)
-        >>> str(expr)
-        'all(locals.age, (locals.age > 1))'
-    '''
-
-    _format = 'all({0}, {1})'
-    _arity = BINARY
-    _method_name = b'all_'
-
-
-all_ = AllFunction
-
-
 class MinFunction(FunctorOperator):
     '''
     A function that takes an expression and represents the minimun of such
-    values over the collection::
+    values over the collection.
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = min_(q(age))
-        >>> str(expr)
-        'min([1, 2, 3, 4, 5])'
+    There are two possible syntaxes/interpretations for :func:`min_`:
+
+    - A single argument is passed and it represents a collection::
+
+            >>> age = [1, 2, 3, 4, 5]
+            >>> min_(age)        # doctest: +ELLIPSIS
+            <expression 'min([1, 2, 3, 4, 5])' ...>
+
+    - Several arguments are passed and the minimum of all is returned::
+
+            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
+            <expression 'min(1, 2, 3, 4, 5)' ...>
+
+      This syntax allows complex expressions like::
+
+            >>> from xotl.ql.core import this
+            >>> min_(child.age for child in this) > 5    # doctest: +ELLIPSIS
+            <expression '(min(...)) > 5' ...>
+
+    .. note::
+
+       :term:`Translators <query translator>` may take the use of either
+       :func:`min_` or :func:`max_` functions over a single argument as a hint
+       to the type of the argument (in this case a collection of other stuff
+       according to the first interpretation).
+
+       Such an assumption *should* be noted in the documentation of the
+       translator.
+
     '''
 
     _format = 'min({0})'
-    _arity = UNARY
+    arity = N_ARITY
     _method_name = b'min_'
 
 
 min_ = MinFunction
 
 
+
 class MaxFunction(FunctorOperator):
     '''
     A function that takes an expression and represents the maximum of such
-    values over the collection::
+    values over the collection.
 
-        >>> age = [1, 2, 3, 4, 5]
-        >>> expr = max_(q(age))
-        >>> str(expr)
-        'max([1, 2, 3, 4, 5])'
+    Like :func:`min_` there are two possible interpretations for :func:`max_`,
+    they are analogous.
+
     '''
 
     _format = 'max({0})'
-    _arity = UNARY
+    arity = N_ARITY
     _method_name = b'max_'
 
 
@@ -1048,22 +968,51 @@ max_ = MaxFunction
 
 
 class InvokeFunction(FunctorOperator):
-    '''
-    A function to allow arbitary function calls to be placed inside
+    '''A function to allow arbitary function calls to be placed inside
     expressions. It's up to you that such functions behave as expect since is
-    unlikely anyone translate it::
+    unlikely that they can be :term:`translated <query translator>`. For
+    instance::
 
         >>> ident = lambda who: who
-        >>> expr = call(q(1), ident)
+        >>> expr = call(ident, 1)
         >>> str(expr)     # doctest: +ELLIPSIS
-        'call(1, <function <lambda> ...>)'
+        'call(<function <lambda> ...>, 1)'
+
     '''
-    _format = 'call({0}, {1})'
-    _arity = BINARY
-    _method_name = b'__call__'
+    _format = 'call({0})'
+    arity = N_ARITY
+    _method_name = b'invoke'
 
 
 invoke = call = InvokeFunction
+
+
+class StringFormatFunction(FunctorOperator):
+    '''
+    A function to apply formatting.
+
+    .. note::
+
+       This function is distinct in signature/purpose to the builtin `format`
+       function. It resembles more to the `format` method of string objects,
+       but is a standalone operation.
+
+    The purpose of this function is provide an easy replacement for the case
+    of formatting several expression tokens. It's not possible to use the mod
+    (`%`) operator to express the expression "format a tuple of ..." like in::
+
+        "%s aka %" % (name, alias)
+
+    Example::
+
+        >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
+        <expression 'strformat({0} alas {1}, 1, 2)' ...>
+    '''
+    arity = N_ARITY
+    _format = 'strformat({0})'
+
+
+strformat = StringFormatFunction
 
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
@@ -1132,15 +1081,30 @@ def _build_binary_operator(operation):
     return method
 
 
+def _build_rbinary_operator(operation):
+    method_name = getattr(operation, '_rmethod_name', None)
+    if method_name:
+        def method(self, other):
+            meth = partial(operation, other)
+            return meth(self)
+        method.__name__ = method_name
+        return method
+
 
 _expr_operations = {operation._method_name:
                     _build_unary_operator(operation)
                  for operation in OperatorType.operators
-                    if getattr(operation, '_arity', None) == UNARY}
+                    if getattr(operation, 'arity', None) == UNARY}
 _expr_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
-                        if getattr(operation, '_arity', None) is BINARY})
+                        if getattr(operation, 'arity', None) is BINARY})
+_expr_operations.update({operation._rmethod_name:
+                        _build_rbinary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
 ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
                                 _expr_operations)
 
@@ -1148,26 +1112,32 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
     '''
-    A representation of a expression.
+    A representation of an expression.
 
     Each expression has an `op` attribute that *should* be a class derived
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
 
     '''
+    implements(IExpressionTree)
+
+    __slots__ = ('_op', '_children', )
+
+
     def __init__(self, op, *children):
         self._op = op
         self._children = tuple(child for child in children)
 
     @property
     def op(self):
-        'The operator class of this expression.'
+        'The operator class of this expression. It should be a subclass of :class:`Operator`'
         return self._op
+    operation = op
 
 
     @property
     def children(self):
-        'The operands involved in the expression.'
+        'A tuple that contains the operands involved in the expression.'
         return self._children[:]
 
 
@@ -1183,17 +1153,22 @@ class ExpressionTree(object):
             ...    expression == eq(10, 34)
             True
         '''
+        from operator import eq as builtin_eq
         if context[UNPROXIFING_CONTEXT]:
             if isinstance(other, ExpressionTree):
-                from xoutil.objects import validate_attrs
-                return validate_attrs(self, other, ('op', 'children'))
+                if self.op == other.op:
+                    test = getattr(self.op, 'equivalence_test',
+                                   builtin_eq)
+                    return test(self.children, other.children)
+                else:
+                    return False
         else:
             result = eq(self, other)
             return result
 
 
     def __str__(self):
-        arity_class = self.op._arity
+        arity_class = self.op.arity
         formatter = getattr(arity_class, 'formatter', None)
         if formatter:
             return formatter(self.op, self.children)
@@ -1252,11 +1227,16 @@ class q(object):
         [<type 'str'>, <type 'int'>]
 
     '''
+    def r(f):
+        return lambda self, other: f(other, self)
+
     query_fragment = _build_op_class(b'query_fragment',
                                      (('__and__', and_, True),
                                       ('__or__', or_, True),
-                                      ('__rand__', and_, True),
-                                      ('__ror__', or_, True)))
+                                      ('__rand__', r(and_), True),
+                                      ('__ror__', r(or_), True),
+                                      ('__xor__', xor_, True),
+                                      ('__rxor__', r(xor_), True)))
 
     comparable_for_equalitity = _build_op_class(b'comparable_for_equalitity',
                                                 (('__eq__', eq, True),
@@ -1277,25 +1257,29 @@ class q(object):
 
     number_like = _build_op_class(b'number_like',
                                   (('__add__', add, True),
-                                   ('__radd__', add, True),
+                                   ('__radd__', r(add), True),
                                    ('__sub__', sub, True),
-                                   ('__rsub__', sub, True),
+                                   ('__rsub__', r(sub), True),
                                    ('__mul__', mul, True),
-                                   ('__rmul__', mul, True),
+                                   ('__rmul__', r(mul), True),
                                    ('__pow__', pow_, True),
-                                   ('__rpow__', pow, True),
+                                   ('__rpow__', r(pow_), True),
                                    ('__floordiv__', floordiv, True),
-                                   ('__rfloordiv__', floordiv, True),
+                                   ('__rfloordiv__', r(floordiv), True),
                                    ('__mod__', mod, True),
-                                   ('__rmod__', mod, True),
+                                   ('__rmod__', r(mod), True),
                                    ('__div__', div, True),
-                                   ('__rdiv__', div, True),
+                                   ('__rdiv__', r(div), True),
                                    ('__truediv__', truediv, True),
-                                   ('__rtruediv__', truediv, True),
+                                   ('__rtruediv__', r(truediv), True),
+                                   ('__lshift__', lshift, True),
+                                   ('__rlshift__', r(lshift), True),
+                                   ('__rshift__', rshift, True),
+                                   ('__rrshift__', r(rshift), True),
                                    ('__pos__', pos, False),
                                    ('__abs__', abs_, False),
                                    ('__neg__', neg, False),
-                                   ('__invert__', invert, False)))
+                                   ('__invert__', not_, False)))
 
     behaves = [query_fragment, comparable, comparable_for_equalitity,
                number_like, string_like]
@@ -1314,15 +1298,3 @@ class q(object):
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             return str(self.target)
-
-
-    def __deepcopy__(self, memo=Unset):
-        if memo is Unset:
-            memo = {}
-        d = id(self)
-        y = memo.get(d, Unset)
-        if y is not Unset:
-            return y
-        with context(UNPROXIFING_CONTEXT):
-            target = deepcopy(self.target, memo)
-        return q(target)

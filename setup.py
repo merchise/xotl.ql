@@ -6,20 +6,19 @@
 # Copyright (c) 2012 Merchise Autrement
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License (GPL) as published by the
-# Free Software Foundation;  either version 2  of  the  License, or (at
-# your option) any later version.
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License (GPL) as published by the Free
+# Software Foundation; either version 2 of the License, or (at your option) any
+# later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301, USA.
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Created on 2012-06-29
 
@@ -46,12 +45,18 @@ setup(name=project_name,
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
         "Programming Language :: Python",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "Operating System :: OS Independent",
+        "Topic :: Database",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
       ],
       keywords='xotl query-language',
       author='Merchise Autrement',
       author_email='',
       url='http://www.merchise.org',
-      license='GPL',
+      license='GNU General Public License version 3 or later (GPLv3+)',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       namespace_packages=['xotl', ],
       include_package_data=True,
@@ -61,7 +66,6 @@ setup(name=project_name,
           'xoutil>=1.0.30dev',
       ],
       extra_requires={
-        # If you really need Xotl it's best to move it to install_requires
         'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', ]
       },
       entry_points="""

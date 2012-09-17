@@ -31,11 +31,18 @@ from __future__ import (division as _py3_division,
 
 
 import unittest
-from xotl.ql.these import query, this
+from xotl.ql.core import these, this
+from xotl.ql.translate import init
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
+
+
+# Initialize and configure the query translation components provided by the
+# translate module. DON'T REMOVE since, some tests actually test this kind of
+# facility.
+init()
 
 
 
@@ -43,9 +50,9 @@ class TestTranslatorTools(unittest.TestCase):
     def test_traverse(self):
         from xotl.ql.translate import cotraverse_expression
         from xotl.ql.expressions import is_a, in_, all_
-        who = query(who for who in this('w')
+        who = these(who for who in this('w')
                         if all_(who.children,
-                                in_(this, query(sub for sub in this('s')
+                                in_(this, these(sub for sub in this('s')
                                                  if is_a(sub,
                                                          'Subs')))))
         is_a_nodes = cotraverse_expression(who,
@@ -54,6 +61,30 @@ class TestTranslatorTools(unittest.TestCase):
         self.assertEquals(["is_a(this('s'), Subs)"],
                           [str(x) for x in is_a_nodes])
 
+
+    def test_query(self):
+        class Foo(object):
+            def __init__(self, age):
+                self.name = type(self).__name__.lower() + str(age)
+                self.age = age + 10
+
+        class Bar(Foo):
+            pass
+
+        class Baz(Foo):
+            pass
+
+        class Egg(Bar):
+            pass
+
+        _f = [Foo(i) for i in range(5)]  # 5 Foo objects
+        _bs = [Bar(i) for i in range(1)]  # 6 Foo objects, 1 bar
+        _bzs = [Baz(i) for i in range(3)]  # 9 Foo objects, 3 bazs
+        _es = [Egg(i) for i in range(3)]  # 12 Foo objects, 4 bars, and 3 eggs
+
+        from xotl.ql.expressions import is_a
+        query = list(these(foo for foo in this if is_a(foo, Foo)))
+        self.assertEqual(12, len(query))
 
 
 if __name__ == "__main__":
