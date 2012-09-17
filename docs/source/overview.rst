@@ -131,7 +131,10 @@ function to retrieve the objects that matches your query::
   >>> next(somequery)    # doctest: +SKIP
   <SOME OBJECT>
 
-If no translator is configured an exception is raised upon calling `next`.
+If no translator is configured an exception is raised upon calling `next`. This
+allows to keep things simple at the data-consuming level. However, this by no
+means the only way to retrieve data from a query. See
+:class:`xotl.ql.interfaces.IQuery` for more information.
 
 
 Footnotes

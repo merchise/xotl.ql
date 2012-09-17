@@ -7,13 +7,13 @@ The query language and the `this` object
 .. module:: xotl.ql.core
 
 Extends the :mod:`~xotl.ql.expressions` language to provide universal
-accessors.
+selectors.
 
 The :obj:`this` object stands for every object in the "universe" (e.g. the
-index, the storage, etc.) :obj:`this` eases the construction of expressions
-directly, and also provides a query language by means of Python's syntax for
-:ref:`generator expressions <py:generator-expressions>` and list, and dict
-comprehensions (we shall call them comprehensions).
+index, the storage, etc.) The :obj:`this` object eases the construction of
+expressions directly, and also provides a query language by means of Python's
+syntax for :ref:`generator expressions <py:term-generator-expression>` and
+list, and dict comprehensions (we shall call them comprehensions).
 
 
 An overview of the Query Language
@@ -48,21 +48,22 @@ readable::
     ...                if all_(child.age > 10 for child in parent.children))
 
 
-.. warning:: It's up to the :term:`Query Translators <query translator>` to
-             make any sense of this query. Some translator may reject the query
-             because it's not *computable* to the target storage system or just
-             because it has some operation that is not supported.
+.. warning::
 
-	     For instance: if the target is a CouchDB_ database, the
-	     :class:`is_instance <xotl.ql.expressions.IsInstanceOperator>`
-	     operation might be rejected because CouchDB lacks types. Of
-	     course, a query translator for CouchDB *should* be configurable to
-	     translate this operation to a ``document._type == type``; where
-	     `_type` is the name of the attribute that is by convention used in
-	     CouchDB to store the objects' types.
+   It's up to the :term:`Query Translators <query translator>` to make any
+   sense of this query. Some translator may reject the query because it's not
+   *computable* to the target storage system or just because it has some
+   operation that is not supported.
 
-             So when writing queries you should check the translators available
-             to you and their documentation.
+   For instance: if the target is a CouchDB_ database, the :class:`is_instance
+   <xotl.ql.expressions.IsInstanceOperator>` operation might be rejected
+   because CouchDB lacks types. Of course, a query translator for CouchDB
+   *should* be configurable to translate this operation to a ``document._type
+   == type``; where `_type` is the name of the attribute that is by convention
+   used in CouchDB to store the objects' types.
+
+   So when writing queries you should check the translators available to you
+   and their documentation.
 
 
 :class:`!These` instances may be *named*, thus allowing to select different
