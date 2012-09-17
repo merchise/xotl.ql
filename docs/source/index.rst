@@ -14,8 +14,7 @@ This package `xotl.ql` implements a query language for python that is intended
 to be used in `xotl` to express the semantics for retrieving objects. It's
 distributed independently to allow other to use this language in their own
 projects. It's expected that many pieces of `xotl` may be distributed this
-way. The only external dependency of `xotl.ql` (aside from python's standard
-library) is the xoutil_ package.
+way.
 
 .. warning::
 
@@ -54,4 +53,3 @@ Indices and tables
 * :ref:`search`
 * :ref:`glossary`
 
-.. _xoutil: https://github.com/merchise-autrement/xoutil

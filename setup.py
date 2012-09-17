@@ -65,9 +65,13 @@ setup(name=project_name,
       install_requires=[
           'xoutil>=1.0.30dev',
           'zope.interface',
+          'zope.component',
+
+          # For documentation only. But it may be needed for ReadTheDocs
+          'repoze.sphinx.autointerface',
       ],
       extra_requires={
-        'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', ]
+        'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', 'repoze.sphinx.autointerface',]
       },
       entry_points="""
 
