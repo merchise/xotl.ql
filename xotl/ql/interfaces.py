@@ -31,7 +31,7 @@ __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
            'IExpressionTree', 'IQueryPart', 'IThese', 'IBoundThese',
-           'ICallableThese', 'IQueryPartContainer', 'IQuery')
+           'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
 
@@ -359,14 +359,48 @@ class IQueryPartContainer(Interface):
 
 
 
-class IQuery(Interface):
-    selection = Attribute('Either a tuple/dict of IThese/IExpressionTree '
-                          'instances or single instance.')
+class IGeneratorToken(Interface):
+    '''
+    In the Query AST represents an object that is used as a source of objects.
+
+    This would represent any object whose `__iter__` method is called inside
+    a query to fetch is parts::
+
+        ((parent, child) for parent in this for child in parent.children)
+
+    In the query shown above there are two IGeneratorToken instances in its AST: the
+    first relates to the `this` object and the second relates to the
+    `parent.children` object.
+    '''
     generator = Attribute('The instance from which this query was '
                           'created. Usually a These instance.')
+
+
+
+class IQuery(Interface):
+    'Represents a query.'
+    selection = Attribute('Either a tuple/dict of IThese/IExpressionTree '
+                          'instances or single instance.')
+    filters = Attribute('A tuple of IExpressionTree instances '
+                        'that represent the where clauses. They are logically '
+                        'and-ed.')
     ordering = Attribute('A tuple of ordering expressions.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
+
+
+    def __iter__():
+        'Queries are iterable, but they **must** return self in this method'
+
+
+    def next():
+        '''
+        Returns the next object in the cursor.
+
+        Internally this should get the configure IQueryTranslator and build
+        the execution plan, then execute the plan to get the IDataCursor from
+        which it can drawn objects from.
+        '''
 
 
 

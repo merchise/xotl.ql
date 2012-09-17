@@ -51,7 +51,7 @@ from zope.interface import implements
 
 from xotl.ql.expressions import _true, _false, ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
-from xotl.ql.interfaces import (IThese, IQuery, IQueryPart, IExpressionTree,
+from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
                                 IQueryTranslator, IQueryConfiguration)
 
@@ -237,7 +237,7 @@ class These(Resource):
         A `query` object is attached to each part::
 
             >>> unboxed(parent).query        # doctest: +ELLIPSIS
-            <...Query object at 0x...>
+            <...FromToken object at 0x...>
 
         In the case of subqueries, the attached `query` object is different
         for each part created::
@@ -264,7 +264,7 @@ class These(Resource):
             name = self.name
             parent = self.parent
         if name:
-            query = Query(instance=self)
+            query = FromToken(instance=self)
             instance = QueryPart(expression=self, query=query)
             yield instance
         else:
@@ -675,8 +675,10 @@ def provides_all(which, *interfaces):
 
 
 
-class Query(object):
-    implements(IQuery, IQueryPartContainer)
+class FromToken(object):
+    '''
+    '''
+    implements(IGeneratorToken, IQueryPartContainer)
 
     __slots__ = ('instance', '_selection', '_filters',
                  '_ordering', '_partition', '_parts',
@@ -822,8 +824,8 @@ class QueryPart(object):
     '''A class that wraps :class:`These` instances to build queries
 
     When iterating over this instance, this token is used to catch all
-    expressions and build a :class:`Query` from it. This class is mostly
-    internal and does not belongs to the Query Language API.
+    expressions and build a :class:`FromToken` from it. This class is mostly
+    internal and does not belongs to the FromToken Language API.
 
     '''
     implements(IQueryPart)
@@ -836,7 +838,7 @@ class QueryPart(object):
             self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
             self.query = kwargs.get('query')
-            # TODO: assert self._query implements IQuery and
+            # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
 
@@ -847,10 +849,10 @@ class QueryPart(object):
 
     @query.setter
     def query(self, value):
-        if provides_any(value, IQuery):
+        if provides_any(value, IGeneratorToken):
             self._query = value
         else:
-            raise TypeError('`query` attribute only accepts IQuery objects')
+            raise TypeError('`query` attribute only accepts IGeneratorToken objects')
 
 
     @property
@@ -1052,7 +1054,6 @@ class QueryPart(object):
         return result
 
 
-
     def __xor__(self, other):
         from operator import xor as f
         if isinstance(other, QueryPart):
@@ -1064,7 +1065,6 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
-
 
 
     def __rxor__(self, other):
@@ -1080,7 +1080,6 @@ class QueryPart(object):
         return result
 
 
-
     def __add__(self, other):
         from operator import add as f
         if isinstance(other, QueryPart):
@@ -1092,7 +1091,6 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
-
 
 
     def __radd__(self, other):
@@ -1108,7 +1106,6 @@ class QueryPart(object):
         return result
 
 
-
     def __sub__(self, other):
         from operator import sub as f
         if isinstance(other, QueryPart):
@@ -1120,7 +1117,6 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
-
 
 
     def __rsub__(self, other):
@@ -1136,7 +1132,6 @@ class QueryPart(object):
         return result
 
 
-
     def __mul__(self, other):
         from operator import mul as f
         if isinstance(other, QueryPart):
@@ -1150,7 +1145,6 @@ class QueryPart(object):
         return result
 
 
-
     def __rmul__(self, other):
         from operator import mul as f
         if isinstance(other, QueryPart):
@@ -1162,7 +1156,6 @@ class QueryPart(object):
                            query=query)
         query.created_query_part(result)
         return result
-
 
 
     def __div__(self, other):
@@ -1443,7 +1436,7 @@ class QueryPart(object):
 
 def these(comprehesion):
     '''
-    Post-process the query comprehension to build a Query.
+    Post-process the query comprehension to build a FromToken.
     '''
     from xoutil.types import Unset, GeneratorType
     assert isinstance(comprehesion, (GeneratorType, dict))

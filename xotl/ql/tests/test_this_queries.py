@@ -35,7 +35,7 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
 from xotl.ql.core import these, provides_all, provides_any
-from xotl.ql.interfaces import IQuery
+from xotl.ql.interfaces import IGeneratorToken
 
 from collections import namedtuple
 
@@ -212,7 +212,7 @@ if __TEST_DESIGN_DECISIONS:
 class TestThisQueries(unittest.TestCase):
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent'))
-        self.assertTrue(provides_any(query, IQuery))
+        self.assertTrue(provides_any(query, IGeneratorToken))
         (p, ) = query.selection
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(p, this('parent'))
@@ -222,7 +222,7 @@ class TestThisQueries(unittest.TestCase):
         query = these((parent.title + parent.name, parent.age)
                         for parent in this('parent')
                         if parent.age < 40)
-        self.assertTrue(provides_any(query, IQuery))
+        self.assertTrue(provides_any(query, IGeneratorToken))
         (p, ) = query.selection
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(p, this('parent'))
