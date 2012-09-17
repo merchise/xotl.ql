@@ -312,7 +312,7 @@ Included operations
 
 .. autoclass:: AbsoluteValueUnaryFunction
 
-.. autoclass:: abs
+.. autoclass:: abs_
 
 .. autoclass:: AllFunction
 
