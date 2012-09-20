@@ -372,8 +372,8 @@ class IGeneratorToken(Interface):
     first relates to the `this` object and the second relates to the
     `parent.children` object.
     '''
-    generator = Attribute('The instance from which this query was '
-                          'created. Usually a These instance.')
+    token = Attribute('The instance from which this query was created. Usually '
+                      'a These instance.')
 
 
 
