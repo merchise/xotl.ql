@@ -124,13 +124,6 @@ type is a subclass of the `These`. The following describe both objects:
 .. autodata:: this
 
 .. autoclass:: These
-   :members:
-
-
-Implementation
-==============
-
-.. autoclass:: These
    :members: name, parent, binding, __iter__
 
    This class implements :class:`xotl.ql.interfaces.IThese`
