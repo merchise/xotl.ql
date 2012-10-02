@@ -1109,6 +1109,14 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
                                 _expr_operations)
 
 
+
+# The _target_ protocol for expressions.
+def _extract_target(which):
+    target = getattr(type(which), '_target_', lambda x: x)
+    return target(which)
+
+
+
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
     '''
@@ -1124,9 +1132,21 @@ class ExpressionTree(object):
     __slots__ = ('_op', '_children', )
 
 
-    def __init__(self, op, *children):
-        self._op = op
-        self._children = tuple(child for child in children)
+    def __init__(self, operation, *children):
+        '''
+        Creates an expression tree with operatiorn `operator`.
+
+            >>> class X(object):
+            ...    @staticmethod
+            ...    def _target_(self):
+            ...        return 1
+
+            >>> add(X(), 1978)    # doctest: +ELLIPSIS
+            <expression '1 + 1978' at 0x...>
+        '''
+        self._op = operation
+        self._children = tuple(_extract_target(child) for child in children)
+
 
     @property
     def op(self):
@@ -1184,8 +1204,6 @@ class ExpressionTree(object):
 def _build_op_class(name, methods_spec):
     def build_meth(func, binary=True):
         def binary_meth(self, other):
-            if isinstance(other, q):
-                other = unboxed(other).target
             return func(unboxed(self).target, other)
 
         def unary_meth(self):
@@ -1205,11 +1223,11 @@ def _build_op_class(name, methods_spec):
 class q(object):
     '''A light-weight wrapper for objects in an expression::
 
-        >>> print(str(q('parent')))
-        parent
+        >>> print(repr(1 + q(1)))           # doctest: +ELLIPSIS
+        <expression '1 + 1' at 0x...>
 
-    `q` wrappers are quite transparent, meaning, that they will proxy
-    every supported operation to its wrapped object.
+    `q` wrappers are quite transparent, meaning that they will proxy every
+    supported operation to its wrapped object.
 
     `q`-objects are based upon xoutil's :mod:`proxy module
     <xoutil:xoutil.proxy>`; so you should read its documentation.
@@ -1283,6 +1301,13 @@ class q(object):
 
     behaves = [query_fragment, comparable, comparable_for_equalitity,
                number_like, string_like]
+
+
+    @classmethod
+    def _target_(cls, self):
+        'Supports the target protocol for expressions'
+        with context(UNPROXIFING_CONTEXT):
+            return self.target
 
 
     def __init__(self, target):

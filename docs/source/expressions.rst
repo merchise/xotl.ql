@@ -139,6 +139,25 @@ module.
    This class implements :class:`xotl.ql.interfaces.IExpressionCapable`.
 
 
+The `_target_` protocol for expressions
+---------------------------------------
+
+Expression trees support a custom protocol for placing operands inside
+expressions. If any operand implements a static method `_target_(self)` it will
+be called with the operand as its unique argument, and use its result in place
+of the operand::
+
+  >>> class X(object):
+  ...    @staticmethod
+  ...    def _target_(self)
+  ...        return 1
+
+  >>> q(1) + X()  # doctest: +ELLIPSIS
+  <expression '1 + 1' at 0x...>
+
+This is the protocol used by `q`-objects to let themselves out of expressions.
+
+
 About the operations supported in expression
 --------------------------------------------
 

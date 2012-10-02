@@ -52,6 +52,18 @@ class BasicTests(unittest.TestCase):
             self.assertTrue(expr == expected, "%s ---- %s" % (expected, expr))
 
 
+    def test_target_procotol(self):
+        class X(object):
+            @staticmethod
+            def _target_(self):
+                return 1978
+
+        x = X()
+        expr = q(1) + x
+        self.assertEqual((1, 1978), expr.children)
+        self.assertEqual('1 + 1978', str(expr))
+
+
     def test_q_should_keep_it_self_in_expressions(self):
         'When :class:`xotl.ql.expressions.q` is involved in an expression '
         'it should remove itself from it'
