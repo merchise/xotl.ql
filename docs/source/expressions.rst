@@ -359,6 +359,9 @@ Included operations
 
 .. autoclass:: invoke
 
+.. autoclass:: AverageFunction
+
+.. autoclass:: avg
 
 
 .. _extending-expressions-lang:
@@ -368,37 +371,30 @@ Extending the expressions language
 
 The expression language may be extended by introducing new
 :term:`function object operators <function object operator>`. For
-instance, one may need an average function::
+instance, one may need an `sin` function::
 
    >>> from xotl.ql.expressions import FunctorOperator
-   >>> class AverageFunction(FunctorOperator):
+   >>> class SinFunction(FunctorOperator):
    ...     '''
-   ...     The ``avg(*args)`` operation.
+   ...     The ``sin(arg)`` operation.
    ...     '''
-   ...     _format = 'avg({0})'
-   ...     _arity = N_ARITY
-   ...     _method_name = b'_avg'
-   >>> avg = Average Function
+   ...     _format = 'sin({0})'
+   ...     _arity = UNARY
+   ...     _method_name = b'_sin'
+   >>> sin = SinFunction
 
-Given such a definition, now the `avg` callable produces expressions::
+Given such a definition, now the `sin` callable produces expressions::
 
-  >>> avg(0, 1, 2, 3, 4)    # doctest: +ELLIPSIS
-  <expression 'avg(0, 1, 2, 3, 4)' ...>
+  >>> sin(0)    # doctest: +ELLIPSIS
+  <expression 'sin(0)' ...>
 
 Furthermore, you can even customize the way the expression is built by
-implementing the `_avg` method on some specially averaged object::
+implementing the `_sin` method on some special object::
 
   >>> class ZeroObject(object):
-  ...    def _avg(self, *others):
-  ...        if others:
-  ...            return avg(*others)
-  ...        else:
-  ...            from xotl.ql.expressions import q
-  ...            return q(0)
+  ...    def _sin(self):
+  ...        return sin(360)
 
   >>> zero = ZeroObject()
-  >>> avg(zero, 1, 2, 3)     # doctest: +ELLIPSIS
-  <expression 'avg(1, 2, 3)' ...>
-
-  >>> avg(zero)
-  '0'
+  >>> sin(zero)     # doctest: +ELLIPSIS
+  <expression 'sin(360)' ...>

@@ -119,32 +119,24 @@ class BasicTests(unittest.TestCase):
 
 class ExtensibilityTests(unittest.TestCase):
     def test_new_function(self):
-        from xotl.ql.expressions import FunctorOperator, N_ARITY
+        from xotl.ql.expressions import FunctorOperator, UNARY
 
-        class AverageFunction(FunctorOperator):
+        class SinFunction(FunctorOperator):
             '''
-            The ``avg(*args)`` operation.
+            The ``sin(arg)`` operation.
             '''
-            _format = 'avg({0})'
-            arity = N_ARITY
-            _method_name = b'_avg'
-        avg = AverageFunction
+            _format = 'sin({0})'
+            arity = UNARY
+            _method_name = b'_sin'
+        sin = SinFunction
 
         class ZeroObject(object):
-            def _avg(self, *others):
-                if others:
-                    return avg(*others)
-                else:
-                    from xotl.ql.expressions import q
-                    return q(0)
-
-        expr = avg(0, 1, 2, 3, 4, 5)
-        self.assertEquals("avg(0, 1, 2, 3, 4, 5)", str(expr))
+            def _sin(self):
+                return sin(360)
 
         zero = ZeroObject()
-        expr = avg(zero, 1, 2, 3)
-        self.assertEquals("avg(1, 2, 3)", str(expr))
-        self.assertEqual('0', str(avg(zero)))
+        expr = sin(zero)
+        self.assertEquals("sin(360)", str(expr))
 
 
 

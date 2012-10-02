@@ -1035,6 +1035,28 @@ class StringFormatFunction(FunctorOperator):
 
 strformat = StringFormatFunction
 
+
+
+class AverageFunction(FunctorOperator):
+    '''
+    The ``avg(*args)`` operation. There're two possible interpretations:
+
+    - A single argument (a collection) is passed and the average for each
+      element is computed::
+
+        avg(person.age for person in this)
+
+    - Several arguments are passed::
+
+        avg(1, 2, 3, 5)
+    '''
+    _format = 'avg({0})'
+    arity = N_ARITY
+    _method_name = b'_avg'
+
+
+avg = AverageFunction
+
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
 
