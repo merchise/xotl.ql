@@ -39,6 +39,7 @@ from functools import partial
 from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
+from xoutil.deprecation import deprecated
 
 from zope.interface import implements, directlyProvides
 
@@ -607,41 +608,6 @@ is_a = is_instance = IsInstanceOperator
 
 
 
-class StartsWithOperator(FunctorOperator):
-    '''
-    The `string.startswith(something)` operator::
-
-         >>> e = startswith(q('something'), 's')
-         >>> str(e)
-         "startswith('something', 's')"
-
-    '''
-    _format = 'startswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = b'startswith'
-
-
-startswith = StartsWithOperator
-
-
-class EndsWithOperator(FunctorOperator):
-    '''
-    The `string.endswith(something)` operator::
-
-        >>> e = endswith(q('something'), 's')
-        >>> str(e)
-        "endswith('something', 's')"
-
-    '''
-    _format = 'endswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = b'endswith'
-
-
-endswith = EndsWithOperator
-
-
-
 class FloorDivOperator(Operator):
     '''
     The `1 // 2` operator where `//` is always the floordiv operator::
@@ -985,6 +951,47 @@ class InvokeFunction(FunctorOperator):
 
 
 invoke = call = InvokeFunction
+
+
+#@deprecated(call)
+class StartsWithOperator(FunctorOperator):
+    '''
+    The `startswith(string, prefix)` operator::
+
+         >>> e = startswith(q('something'), 's')
+         >>> str(e)
+         "startswith('something', 's')"
+
+    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
+    '''
+    _format = 'startswith({0!r}, {1!r})'
+    arity = BINARY
+    _method_name = b'startswith'
+
+
+startswith = StartsWithOperator
+
+
+
+#@deprecated(call)
+class EndsWithOperator(FunctorOperator):
+    '''
+    The `endswith(string, suffix)` operator::
+
+        >>> e = endswith(q('something'), 's')
+        >>> str(e)
+        "endswith('something', 's')"
+
+
+    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
+    '''
+    _format = 'endswith({0!r}, {1!r})'
+    arity = BINARY
+    _method_name = b'endswith'
+
+
+endswith = EndsWithOperator
+
 
 
 class StringFormatFunction(FunctorOperator):
