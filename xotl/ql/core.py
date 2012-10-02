@@ -137,9 +137,9 @@ class Resource(object):
 
 class These(Resource):
     '''
-    The type of :obj:`this` symbol: an unnamed object that may placed in
-    queries and whose interpretation may be dependant of the query context and
-    the context in which `this` symbol is used in the query itself.
+    The type of the :obj:`this` symbol: an unnamed object that may placed in
+    queries and whose interpretation depends on the query context and the
+    context in which `this` symbol is used inside the query itself.
     '''
     implements(IThese)
 
@@ -224,7 +224,8 @@ class These(Resource):
 
     def __iter__(self):
         '''
-        Yields a single instance of `self` but wrapped around a query part.
+        Yields a single instance of :class:`query part
+        <xotl.ql.interfaces.IQueryPart>` that wraps `self`.
 
         This allows an idiomatic way to express queries::
 
