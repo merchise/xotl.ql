@@ -736,7 +736,7 @@ class CountFunction(FunctorOperator):
        :class:`length` for those cases.
 
        :term:`Translators <query translator>` may rely on this rule to infer
-       the type the argument passed to either :class:`!length` or
+       the type of the argument passed to either :class:`!length` or
        :class:`!count`.
 
     '''
@@ -834,10 +834,9 @@ class AllFunction(FunctorOperator):
 
     .. warning::
 
-       There's no way to syntactically (at the level on which one
-       could do normally in Python) to distiguish from the last two
-       elements: so VMs that evaluate `all_` expressions may further
-       restrict the interpretation.
+       There's no way to syntactically (at the level on which one could do
+       normally in Python) to distiguish the last two elements from each other;
+       so translators may further restrict these interpretations.
     '''
 
     _format = 'all({0})'
@@ -852,7 +851,7 @@ all_ = AllFunction
 class AnyFunction(FunctorOperator):
     '''
     The representation of the `any` function. As with :class:`all_` three
-    interpretations are possible::
+    analogous interpretations are possible. For instance::
 
         >>> ages = [1, 2, 3, 4, 5]
         >>> expr = any_(age > 10 for age in ages)
@@ -876,7 +875,7 @@ class MinFunction(FunctorOperator):
 
     There are two possible syntaxes/interpretations for :func:`min_`:
 
-    - A single argument is passed and it represents a collection::
+    - A single argument is passed which represents a collection::
 
             >>> age = [1, 2, 3, 4, 5]
             >>> min_(age)        # doctest: +ELLIPSIS
