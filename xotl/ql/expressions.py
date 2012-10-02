@@ -881,16 +881,16 @@ class MinFunction(FunctorOperator):
             >>> min_(age)        # doctest: +ELLIPSIS
             <expression 'min([1, 2, 3, 4, 5])' ...>
 
-    - Several arguments are passed and the minimum of all is returned::
-
-            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
-            <expression 'min(1, 2, 3, 4, 5)' ...>
-
       This syntax allows complex expressions like::
 
             >>> from xotl.ql.core import this
             >>> min_(child.age for child in this) > 5    # doctest: +ELLIPSIS
             <expression '(min(...)) > 5' ...>
+
+    - Several arguments are passed and the minimum of all is returned::
+
+            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
+            <expression 'min(1, 2, 3, 4, 5)' ...>
 
     .. note::
 
