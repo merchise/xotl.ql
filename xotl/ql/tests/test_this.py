@@ -30,6 +30,9 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
+
 from xotl.ql.core import this
 from xotl.ql.expressions import _true, _false, ExpressionTree
 
@@ -51,10 +54,14 @@ class TestThisExpressions(unittest.TestCase):
 
 
     def test_calling_functions(self):
+        from xotl.ql.expressions import call
         expression = this.startswith('manu')
         self.assertIsInstance(expression, ExpressionTree)
         self.assertEqual("call(this.startswith, manu)",
                          str(expression))
+        equiv_expr = call(this.startswith, 'manu')
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(equiv_expr, expression)
 
         # But the calling a these instance directly is not supported
         # (I think is not pretty)
