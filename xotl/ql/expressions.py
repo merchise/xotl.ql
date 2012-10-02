@@ -55,7 +55,7 @@ __author__ = 'manu'
 
 class UNARY(object):
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kw=None):
         str_format = operation._format
         child = children[0]
         return str_format.format(str(child) if not isinstance(child,
@@ -66,7 +66,7 @@ class UNARY(object):
 
 class BINARY(object):
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kw=None):
         str_format = operation._format
         child1, child2 = children[:2]
         return str_format.format(str(child1) if not isinstance(child1,
@@ -93,13 +93,24 @@ class N_ARITY(object):
         <expression 'print(1, 2)' ...>
     '''
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kwargs=None):
         str_format = operation._format
         args = ', '.join((str(child) if not isinstance(child,
                                                           ExpressionTree)
                                         else '(%s)' % child)
                          for child in children)
-        return str_format.format(args)
+        if '{1}' in str_format:
+            kwargs = {} if kwargs is None else kwargs
+            if kwargs:
+                kwargs = ", " + ', '.join("%s=%s" % (k, v)
+                                          for k, v in kwargs.items())
+                return str_format.format(args, kwargs)
+            else:
+                return str_format.format(args, '')
+        else:
+            return str_format.format(args)
+
+
 
 
 
@@ -194,7 +205,7 @@ class OperatorType(type):
         directlyProvides(self, *interfaces)
 
 
-    def __call__(self, *children):
+    def __call__(self, *children, **named):
         '''Support for operators classes return expression trees upon
         "instantiation"::
 
@@ -203,7 +214,7 @@ class OperatorType(type):
             True
 
         '''
-        return ExpressionTree(self, *children)
+        return ExpressionTree(self, *children, **named)
 
 
     @property
@@ -256,7 +267,7 @@ class _FunctorOperatorType(OperatorType):
     ``opfunction(self, arg2, ...)``, we stop recursing a provide the standard
     implementation: creating an expression of the type `(opfunction, *args)`.
     '''
-    def __call__(self, *children):
+    def __call__(self, *children, **named):
         if children:
             stack = context
             head, tail = children[0], children[1:]
@@ -268,13 +279,13 @@ class _FunctorOperatorType(OperatorType):
                 #       because of __slots__; use a stack instead.
                 with stack((head, method)):
                     if tail:
-                        return func(head, *tail)
+                        return func(head, *tail, **named)
                     else:
                         return func(head)
             else:
-                return super(_FunctorOperatorType, self).__call__(*children)
+                return super(_FunctorOperatorType, self).__call__(*children, **named)
         else:
-            return super(_FunctorOperatorType, self).__call__(*children)
+            return super(_FunctorOperatorType, self).__call__(*children, **named)
 
 
 
@@ -1050,12 +1061,26 @@ class AverageFunction(FunctorOperator):
 
         avg(1, 2, 3, 5)
     '''
-    _format = 'avg({0})'
     arity = N_ARITY
+    _format = 'avg({0})'
     _method_name = b'_avg'
 
-
 avg = AverageFunction
+
+
+
+class NewObjectFunction(FunctorOperator):
+    '''
+    The expression for building a new object.
+
+       >>> new(object, a=1, b=2)          # doctest: +ELLIPSIS
+       <expression 'new(<type 'object'>, a=1, b=2)' ...>
+    '''
+    arity = N_ARITY
+    _format = 'new({0}{1})'
+
+new = NewObjectFunction
+
 
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
@@ -1172,10 +1197,10 @@ class ExpressionTree(object):
     '''
     implements(IExpressionTree)
 
-    __slots__ = ('_op', '_children', )
+    __slots__ = ('_op', '_children', '_named_children')
 
 
-    def __init__(self, operation, *children):
+    def __init__(self, operation, *children, **named_children):
         '''
         Creates an expression tree with operatiorn `operator`.
 
@@ -1189,6 +1214,7 @@ class ExpressionTree(object):
         '''
         self._op = operation
         self._children = tuple(_extract_target(child) for child in children)
+        self._named_children = {name: _extract_target(value) for name, value in named_children.items()}
 
 
     @property
@@ -1202,6 +1228,11 @@ class ExpressionTree(object):
     def children(self):
         'A tuple that contains the operands involved in the expression.'
         return self._children[:]
+
+
+    @property
+    def named_children(self):
+        return dict(self._named_children)
 
 
     def __eq__(self, other):
@@ -1222,7 +1253,9 @@ class ExpressionTree(object):
                 if self.op == other.op:
                     test = getattr(self.op, 'equivalence_test',
                                    builtin_eq)
-                    return test(self.children, other.children)
+                    return (test(self.children, other.children) and
+                            builtin_eq(self.named_children,
+                                       other.named_children))
                 else:
                     return False
         else:
@@ -1234,7 +1267,7 @@ class ExpressionTree(object):
         arity_class = self.op.arity
         formatter = getattr(arity_class, 'formatter', None)
         if formatter:
-            return formatter(self.op, self.children)
+            return formatter(self.op, self.children, self.named_children)
         else:
             return super(ExpressionTree, self).__str__()
 

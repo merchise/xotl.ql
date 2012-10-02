@@ -30,6 +30,9 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
+
 from xotl.ql.expressions import q
 
 
@@ -115,6 +118,20 @@ class BasicTests(unittest.TestCase):
             ok(fmt.format("age"),
                str(test(q('age'))))
 
+
+    def test_named_children(self):
+        from xotl.ql.expressions import new
+        self.assertEqual("new(object, a=1)", str(new('object', a=1)))
+
+
+    def test_named_children_equivalence(self):
+        from xotl.ql.expressions import new
+        expr1 = new(object, a=1, b=3)
+        expr2 = new(object, b=3, a=1)
+        expr3 = new(object, b=1)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expr1, expr2)
+            self.assertNotEqual(expr1, expr3)
 
 
 class ExtensibilityTests(unittest.TestCase):
