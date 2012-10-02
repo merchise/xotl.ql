@@ -74,6 +74,8 @@ This would retrieve every "parent" whose children are all more than 10 years
 
 
 
+.. _role-of-query-translator:
+
 The role of the query language and query translators
 ====================================================
 

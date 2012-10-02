@@ -64,8 +64,8 @@ composable::
 Objects in expressions
 ----------------------
 
-In order to have any kind of objects in expressions, we provide a very ligth-
-weight transparent wrapper :class:`q`. This simple receives an object as
+In order to have any kind of objects in expressions, we provide a very
+ligth-weight transparent wrapper :class:`q`. This simple receives an object as
 it's wrapped, and pass every attribute lookup to is wrapped object but also
 implements the creation of expressions with the supported operations. The
 expression above could be constructed like::
@@ -92,7 +92,7 @@ only that they represent the same AST and not its semantics. We use the simple
 contexts of execution provided by :mod:`!xoutil.context` to enter "special"
 modes of execution in which we change the semantic of an operation.
 
-Since, :class:`q` is based on :mod:`!xoutil.proxy` we use the same context name
+Since :class:`q` is based on :mod:`!xoutil.proxy` we use the same context name
 the proxy module uses for similar purposes, i.e, to enter a special context in
 which operation don't create new expression but try to evaluate themselve; such
 a context is the object :class:`~xotl.ql.proxy.UNPROXIFING_CONTEXT`::
@@ -128,9 +128,8 @@ everywhere. Notice that expressions support most common operations and their
     >>> 1 + q(1)  # doctest: +ELLIPSIS
     <expression '1 + 1' at 0x...>
 
-For the time being, we keep the q-objects and they allows to test our
-expression language. But, in time, we may refactor this class out of this
-module.
+For the time being, we keep the q-objects as they allows to test our expression
+language. But, in time, we may refactor this class out of this module.
 
 
 .. autoclass:: q
@@ -161,9 +160,10 @@ This is the protocol used by `q`-objects to let themselves out of expressions.
 About the operations supported in expression
 --------------------------------------------
 
-Almost any operation is supported by expressions. :class:`ExpressionTree`
-uses the known :ref:`python protocols <py:datamodel>` to allow the composition
-of expressions using an natural (or idiomatic) form, so::
+Almost all normal operations are supported by
+expressions. :class:`ExpressionTree` uses the known :ref:`python protocols
+<py:datamodel>` to allow the composition of expressions using an natural
+(idiomatic) form, so::
 
     expression <operator> object
 
@@ -173,20 +173,19 @@ into expressions and keeps the feeling of naturality.
 
 The ``<operator>`` can be any of the supported operations, i.e:
 
-- All the arithmetical operations, except `pow(a, b, modulus)` with a non-None
-  `modulus`, but `a ** b` **is** supported.
+- All the arithmetical operations, except `pow(a, b, modulus)`, but `a ** b`
+  **is** supported.
 
 - The ``&``, ``|``, and ``^`` operations. This are proposed to replace the
-  `and`, `or`, and `xor` logical operations; but its true meaning is dependent
-  of the :term:`expression translator <query translator>`.
+  `and`, `or`, and `xor` logical operations; but its true meaning depends on
+  the :term:`expression translator <query translator>`.
 
-- All the comparation operations: ``<``, ``>``, ``<=``, ``>=``, ``==``, and
+- All the comparison operations: ``<``, ``>``, ``<=``, ``>=``, ``==``, and
   ``!=``.
 
 - The unary operators for ``abs``, ``+``, ``-``, and ``~``. We **don't**
-  support ``len``.
-
-- The operators for testing containment ``__contains__``.
+  support ``len``. The ``~`` is proposed to encode the `not` logical operator;
+  but its true meaning depends of the used query translator.
 
 .. autoclass:: OperatorType(type)
    :members:
@@ -278,6 +277,18 @@ Included operations
 .. autoclass:: InExpressionOperator
 
 .. autoclass:: in_
+
+.. warning:
+
+   Despite we could use the `__contains__` protocol for testing containment,
+   Python always convert the returned value to a bool and thus destroys the
+   expression tree.
+
+   If you need an expression that expresses a containment test, you **must**
+   use the :class:`in_` operator like this::
+
+       in_(item, collection)
+
 
 .. autoclass:: IsInstanceOperator
 
