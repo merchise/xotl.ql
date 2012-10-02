@@ -653,8 +653,21 @@ class ThisClass(These):
     __metaclass__ = ThisClassType
 
 
+    def __init__(self):
+        super(ThisClass, self).__init__()
+        self.__doc__ = ('The `this` object is a unnamed universal '
+                          '"selector" that may be placed in expressions and '
+                          'queries')
+
+
     def __call__(self, name, **kwargs):
         return These(name, **kwargs)
+
+
+    def __repr__(self):
+        # Hack to avoid sphinx writing <this at 0x...> in the docs.
+        # This won't
+        return None
 
 
 #: The `this` object is a unnamed universal "selector" that may be placed in

@@ -119,9 +119,9 @@ internal query API, used to those that need to build extensions of the query
 language, please refer to :ref:`query-api`.
 
 As we've said, at the core of the Query Language is the `this` object, whose
-type is a subclass of the `These`. The following describe both objects:
+type is a subclass of the class :class:`These`:
 
-.. autodata:: this
+.. autodata:: this(name, **kwargs)
 
 .. autoclass:: These
    :members: name, parent, binding, __iter__
