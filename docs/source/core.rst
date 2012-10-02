@@ -6,14 +6,11 @@ The query language and the `this` object
 
 .. module:: xotl.ql.core
 
-Extends the :mod:`~xotl.ql.expressions` language to provide universal
-selectors.
-
-The :obj:`this` object stands for every object in the "universe" (e.g. the
-index, the storage, etc.) The :obj:`this` object eases the construction of
-expressions directly, and also provides a query language by means of Python's
-syntax for :ref:`generator expressions <py:term-generator-expression>` and
-list, and dict comprehensions (we shall call them comprehensions).
+Provides a :obj:`this` object that stands for every object in the "universe"
+(e.g. the index, the storage, etc.) The :obj:`this` object eases the
+construction of expressions directly, and also a query language by means of
+Python's syntax for :ref:`generator expressions <py:term-generator-expression>`
+and list, and dict comprehensions (we shall call them comprehensions).
 
 
 An overview of the Query Language
@@ -26,23 +23,29 @@ In a query (comprehension) the :data:`this` objects stand for the entire
 universe of objects *unless otherwise restricted by filter expressions*. For
 instance::
 
-    >>> from xotl.ql.expressions import count
-    >>> parents = (parent for parent in this if count(parent.children) > 0)
+    >>> from xotl.ql.expressions import count, is_a
+
+    >>> class Person(object):
+    ...     pass
+
+    >>> parents = (parent for parent in this
+    ...                   if is_a(parent, Person) & count(parent.children) > 0)
 
 may be used to select every object ``parent`` that has an attribute
 ``children`` that is a non-empty sequence of objects.
 
 The :data:`this` object may also appear in expressions meaning "the *current*
-object"; when those expressions take a predicative form. For instance, with
-the third form of :class:`~xotl.ql.expression.all_`::
+object"; when those expressions take a predicative form. For instance,
+following the third interpretation for :class:`~xotl.ql.expression.all_`::
 
     >>> from xotl.ql.expressions import all_
     >>> parents = (parent for parent in this
     ...                if all_(parent.children, this.age > 10))
 
 meaning to retrieve all `parents` whose children are all at least 10 years
-(suppodsely). Of course, using the first form for `all_`, would be more
-readable::
+(supposedly). In this case, the second use of the `this` object would represent
+each child yielded by `parent.children`. But using the first interpretation for
+`all_` would be more readable::
 
     >>> parents = (parent for parent in this
     ...                if all_(child.age > 10 for child in parent.children))
@@ -57,13 +60,13 @@ readable::
 
    For instance: if the target is a CouchDB_ database, the :class:`is_instance
    <xotl.ql.expressions.IsInstanceOperator>` operation might be rejected
-   because CouchDB lacks types. Of course, a query translator for CouchDB
-   *should* be configurable to translate this operation to a ``document._type
-   == type``; where `_type` is the name of the attribute that is by convention
+   because CouchDB lacks types. Alternatively, a query translator for CouchDB
+   *may* be configurable to translate this operation to a ``document._type ==
+   type``; where `_type` is the name of the attribute that is by convention
    used in CouchDB to store the objects' types.
 
-   So when writing queries you should check the translators available to you
-   and their documentation.
+   So when writing queries you should check the translators available and their
+   documentation.
 
 
 :class:`!These` instances may be *named*, thus allowing to select different
@@ -83,32 +86,35 @@ In order to have explicitly named instances you may provide a name::
 
 Providing a name may ease debugging tasks, and clarify log messages.
 
-Notice that if you create an expression outside the context of a comprehesion
-you **must** provide names for instances that refer to different objects.
-Otherwise the expression would not express what you intended. For instance::
+.. note::
 
-    >>> from xotl.ql.expressions import in_
-    >>> parent, child = this, this
-    >>> expr = in_(child, parent.children)
-    >>> expr2 = in_(child, this.children)
+   Notice that if you create an expression outside the context of a
+   comprehesion you **must** provide names for instances that refer to
+   different objects.  Otherwise the expression would not express what you
+   intended. For instance::
 
-Both ``expr`` and ``expr2`` are semantically equivalent::
+     >>> from xotl.ql.expressions import in_
+     >>> parent, child = this, this
+     >>> expr = in_(child, parent.children)
+     >>> expr2 = in_(child, this.children)
 
-    >>> with context(UNPROXIFING_CONTEXT):
-    ...    expr == expr2
-    True
+   Both ``expr`` and ``expr2`` are semantically equivalent::
 
-And you may see that the "natural" meaning of ``expr2`` entails "objects that
-are child of themselves", and that's probably not what we intended to express
-with ``expr``.
+     >>> with context(UNPROXIFING_CONTEXT):
+     ...    expr == expr2
+     True
 
-Providing names avoids the confusion::
+   And you may see that the "natural" meaning of ``expr2`` entails "objects
+   that are child of themselves", and that's probably not what we intended to
+   express with ``expr``.
 
-    >>> parent, child = this('parent'), this('child')
-    >>> expr = in_(child, parent.children)
-    >>> with context(UNPROXIFING_CONTEXT):
-    ...    expr == expr2
-    False
+   Providing names avoids the confusion::
+
+     >>> parent, child = this('parent'), this('child')
+     >>> expr = in_(child, parent.children)
+     >>> with context(UNPROXIFING_CONTEXT):
+     ...    expr == expr2
+     False
 
 
 External API for the query language
