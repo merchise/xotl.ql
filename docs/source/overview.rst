@@ -141,6 +141,15 @@ means the only way to retrieve data from a query. See
 :class:`xotl.ql.interfaces.IQuery` for more information.
 
 
+Open issues
+===========
+
+The AST itself is still in flux. There's a fundamental open question:
+
+  Does bound these instances are enough to represent queries -- at least
+  without limits and offset?
+
+
 Footnotes
 =========
 

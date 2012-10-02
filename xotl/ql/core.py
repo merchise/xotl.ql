@@ -53,7 +53,8 @@ from xotl.ql.expressions import _true, _false, ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
-                                IQueryTranslator, IQueryConfiguration)
+                                IQueryTranslator, IQueryConfiguration,
+                                IQuery)
 
 
 __docstring_format__ = 'rst'
@@ -235,29 +236,31 @@ class These(Resource):
             >>> (parent, child)    # doctest: +ELLIPSIS
             (<...this('parent')...>, <...this('parent').children...>)
 
-        A `query` object is attached to each part::
+        A `token` object is attached to each part::
 
-            >>> unboxed(parent).query        # doctest: +ELLIPSIS
-            <...FromToken object at 0x...>
+            >>> unboxed(parent).token        # doctest: +ELLIPSIS
+            <...GeneratorToken object at 0x...>
 
-        In the case of subqueries, the attached `query` object is different
-        for each part created::
+        The attached `token` object is different for each part if those parts
+        are generated from different generators token (see
+        :class:`~xotl.ql.interfaces.IGeneratorToken`).
 
-            >>> unboxed(parent).query is not unboxed(child).query
+            >>> unboxed(parent).token is not unboxed(child).token
             True
 
-        However, in a query with a single iteration (only one `for`) `query`
-        object is shared::
+        However, in a query with a single generator token (only one `for`), the
+        `token` object is shared::
 
             >>> parent, children = next((parent, parent.children)
             ...                            for parent in this('parent'))
-            >>> unboxed(parent).query is unboxed(children).query
+            >>> unboxed(parent).token is unboxed(children).token
             True
 
         .. warning::
 
            We have used `next` here directly over the comprehensions, but the
-           query language *does not* support this kind of construction.
+           query language **does not** support this kind of construction.
+
            Queries must be built by calling the :func:`these` passing the
            comprehesion as its first argument.
         '''
@@ -265,8 +268,8 @@ class These(Resource):
             name = self.name
             parent = self.parent
         if name:
-            query = FromToken(instance=self)
-            instance = QueryPart(expression=self, query=query)
+            token = GeneratorToken(instance=self)
+            instance = QueryPart(expression=self, token=token)
             yield instance
         else:
             # We should generate a new-name
@@ -654,8 +657,8 @@ class ThisClass(These):
     __metaclass__ = ThisClassType
 
 
-    def __init__(self):
-        super(ThisClass, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(ThisClass, self).__init__(*args, **kwargs)
         self.__doc__ = ('The `this` object is a unnamed universal '
                           '"selector" that may be placed in expressions and '
                           'queries')
@@ -688,25 +691,16 @@ def provides_all(which, *interfaces):
         return all(interface.providedBy(which) for interface in interfaces)
 
 
-
-class FromToken(object):
+class Query(object):
     '''
+    Represents a query.
     '''
-    implements(IGeneratorToken, IQueryPartContainer)
-
-    __slots__ = ('instance', '_selection', '_filters',
-                 '_ordering', '_partition', '_parts',
-                 '_query_state')
+    implements(IQuery)
 
 
-    # TODO: Representation of grouping with dicts.
-    def __init__(self, **kwargs):
-        self.instance = instance = kwargs.get('instance')
-        self.selection = kwargs.get('selection', instance)
-        self.filters = kwargs.get('filters', None)
-        self.ordering = kwargs.get('ordering', None)
-        self.partition = kwargs.get('partition', None)
-        self._parts = []
+    def __init__(self):
+        self._selection = None
+        self._filters = []
 
 
     @property
@@ -741,6 +735,7 @@ class FromToken(object):
     def ordering(self):
         return self._ordering
 
+
     @ordering.setter
     def ordering(self, value):
         from xotl.ql.expressions import pos, neg
@@ -757,6 +752,7 @@ class FromToken(object):
         else:
             self._ordering = None
 
+
     @property
     def partition(self):
         return self._partition
@@ -767,7 +763,7 @@ class FromToken(object):
         if not value or isinstance(value, slice):
             self._partition = value
         else:
-            raise TypeError('Expected a slice; not a %r' % value)
+            raise TypeError('Expected a slice; got %r' % value)
 
 
     @property
@@ -778,34 +774,6 @@ class FromToken(object):
     @property
     def limit(self):
         return self._partition.stop
-
-
-    @staticmethod
-    def mergable(parts, expression):
-        assert context[UNPROXIFING_CONTEXT]
-        top = parts[-1]
-        if IExpressionTree.providedBy(expression):
-            return any(child is top for child in expression.children)
-#            return top in expression.children
-        elif IThese.providedBy(expression):
-            return expression.parent is top
-        else:
-            raise TypeError('Parts should be either these instance or '
-                            'expression trees; not %s' % type(expression))
-
-
-    def created_query_part(self, part):
-        with context(UNPROXIFING_CONTEXT):
-            assert part.query is self
-            if provides_all(part, IQueryPart):
-                expression = part.expression
-                parts = self._parts
-                if parts:
-                    while parts and self.mergable(parts, expression):
-                        parts.pop()
-                self._parts.append(expression)
-            else:
-                assert False
 
 
     def next(self):
@@ -834,37 +802,92 @@ class FromToken(object):
 
 
 
+class GeneratorToken(object):
+    '''
+    Represents a token in the syntactical tree that is used as generator.
+
+    This object is also an IQueryPartContainer, cause in this implementation we
+    need to record each time an IQueryPart is created in order to later retrieve
+    the filters related to this generator token.
+
+
+    '''
+    implements(IGeneratorToken, IQueryPartContainer)
+
+    __slots__ = ('_token', '_parts')
+
+
+    # TODO: Representation of grouping with dicts.
+    def __init__(self, **kwargs):
+        self._token = kwargs.get('token')
+        self._parts = []
+
+
+    @property
+    def token(self):
+        return self._token
+
+
+    @staticmethod
+    def mergable(parts, expression):
+        assert context[UNPROXIFING_CONTEXT]
+        top = parts[-1]
+        if IExpressionTree.providedBy(expression):
+            return any(child is top for child in expression.children)
+#            return top in expression.children
+        elif IThese.providedBy(expression):
+            return expression.parent is top
+        else:
+            raise TypeError('Parts should be either these instance or '
+                            'expression trees; not %s' % type(expression))
+
+
+    def created_query_part(self, part):
+        with context(UNPROXIFING_CONTEXT):
+            assert part.token is self
+            if provides_all(part, IQueryPart):
+                expression = part.expression
+                parts = self._parts
+                if parts:
+                    while parts and self.mergable(parts, expression):
+                        parts.pop()
+                self._parts.append(expression)
+            else:
+                assert False
+
+
 class QueryPart(object):
     '''A class that wraps :class:`These` instances to build queries
 
     When iterating over this instance, this token is used to catch all
-    expressions and build a :class:`FromToken` from it. This class is mostly
-    internal and does not belongs to the FromToken Language API.
+    expressions and build a :class:`GeneratorToken` from it. This class is mostly
+    internal and does not belongs to the GeneratorToken Language API.
 
     '''
     implements(IQueryPart)
 
-    __slots__ = ('_query', '_expression')
+    __slots__ = ('_token', '_expression')
 
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
-            self.query = kwargs.get('query')
+            self._token = None
+            self.token = token = kwargs.get('token')
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
 
     @property
-    def query(self):
-        return self._query
+    def token(self):
+        return self._token
 
 
-    @query.setter
-    def query(self, value):
-        if provides_any(value, IGeneratorToken):
-            self._query = value
+    @token.setter
+    def token(self, value):
+        if not self._token and provides_any(value, IGeneratorToken):
+            self._token = value
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
 
@@ -895,7 +918,7 @@ class QueryPart(object):
             # `iter` mark to easy the detection of subqueries that are not
             # in the selection.
             if IThese.providedBy(expression):
-                parts = self.query._parts
+                parts = self.token._parts
                 if parts and parts[-1] is expression:
                     parts.pop(-1)
             return iter(expression)
@@ -904,9 +927,9 @@ class QueryPart(object):
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
             result = str(instance)
-        return '<qp: %s; for %s>' % (result, query)
+        return '<qp: %s; for %s>' % (result, token)
     __repr__ = __str__
 
 
@@ -918,10 +941,10 @@ class QueryPart(object):
         else:
             with context(UNPROXIFING_CONTEXT):
                 instance = get('expression')
-                query = get('query')
+                token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
-                               query=query)
-            query.created_query_part(result)
+                               token=token)
+            token.created_query_part(result)
             return result
 
 
@@ -929,10 +952,10 @@ class QueryPart(object):
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=instance(*args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -941,12 +964,12 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = instance == other
         if provides_any(result, IExpressionTree, IThese):
             result = QueryPart(expression=result,
-                               query=query)
-            query.created_query_part(result)
+                               token=token)
+            token.created_query_part(result)
         return result
 
 
@@ -955,12 +978,12 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = instance != other
         if provides_any(result, IExpressionTree, IThese):
             result = QueryPart(expression=result,
-                               query=query)
-            query.created_query_part(result)
+                               token=token)
+            token.created_query_part(result)
         return result
 
 
@@ -970,10 +993,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -983,10 +1006,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -996,10 +1019,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1009,10 +1032,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1022,10 +1045,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1035,10 +1058,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1048,10 +1071,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1061,10 +1084,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1074,10 +1097,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1087,10 +1110,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1100,10 +1123,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1113,10 +1136,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1126,10 +1149,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1139,10 +1162,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1152,10 +1175,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1165,10 +1188,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1178,10 +1201,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
     __truediv__ = __div__
 
@@ -1192,10 +1215,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
     __rtruediv__ = __rdiv__
 
@@ -1206,10 +1229,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1219,10 +1242,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1232,10 +1255,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1245,10 +1268,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1258,10 +1281,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1271,10 +1294,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1284,10 +1307,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1297,10 +1320,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1310,10 +1333,10 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1323,50 +1346,50 @@ class QueryPart(object):
             other = unboxed(other).expression
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
     def __neg__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=-instance,
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
     def __abs__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=abs(instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
     def __pos__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=+instance,
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
     def __invert__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=~instance,
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1374,10 +1397,10 @@ class QueryPart(object):
         from xotl.ql.expressions import count as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1385,10 +1408,10 @@ class QueryPart(object):
         from xotl.ql.expressions import length as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1396,10 +1419,10 @@ class QueryPart(object):
         from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1407,10 +1430,10 @@ class QueryPart(object):
         from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1418,10 +1441,10 @@ class QueryPart(object):
         from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1429,10 +1452,10 @@ class QueryPart(object):
         from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1440,37 +1463,22 @@ class QueryPart(object):
         from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
 
 def these(comprehesion):
     '''
-    Post-process the query comprehension to build a FromToken.
+    Post-process the query comprehension to build a GeneratorToken.
     '''
     from xoutil.types import Unset, GeneratorType
     assert isinstance(comprehesion, (GeneratorType, dict))
-    if isinstance(comprehesion, GeneratorType):
-        preselection = next(comprehesion)
-        assert next(comprehesion, Unset) is Unset
-        if not isinstance(preselection, tuple):
-            preselection = (preselection, )
-        for qp in reversed(preselection):
-            with context(UNPROXIFING_CONTEXT):
-                query = qp.query
-                sel = qp.expression
-            # TODO: search for these instances inside expression
-            print(qp, sel, query)
-            parts = query._parts
-            if sel is parts[-1]:
-                parts.pop(-1)
-            query.filters = parts.pop(-1) if parts else None
-        return query
-
+    query = Query()
+    return query
 
 
 #def thesefy(target):

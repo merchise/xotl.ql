@@ -35,7 +35,7 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
 from xotl.ql.core import these, provides_all, provides_any
-from xotl.ql.interfaces import IGeneratorToken
+from xotl.ql.interfaces import IQuery
 
 from collections import namedtuple
 
@@ -86,8 +86,8 @@ if __TEST_DESIGN_DECISIONS:
                             if (parent.age > 32) & parent.married &
                                parent.spouse.alive)
             with context(UNPROXIFING_CONTEXT):
-                query = expr.query
-            parts = query._parts
+                token = expr.token
+            parts = token._parts
             # The select part is at the top
             ok("this('parent').title + this('parent').name", str(parts[-1]))
             # Then the binding
@@ -106,7 +106,7 @@ if __TEST_DESIGN_DECISIONS:
                                     if child.age < 5)
             ok = self.assertEquals
             with context(UNPROXIFING_CONTEXT):
-                pquery, cquery = parent.query, child.query
+                pquery, cquery = parent.token, child.token
             pparts = pquery._parts
             ok("this('parent').title + this('parent').name",
                str(pparts[-1]))
@@ -131,7 +131,7 @@ if __TEST_DESIGN_DECISIONS:
                                     if (parent.age > 32) & (child.age < 5))
             ok = self.assertEquals
             with context(UNPROXIFING_CONTEXT):
-                pquery, cquery = parent.query, child.query
+                pquery, cquery = parent.token, child.token
             pparts = pquery._parts
             print(pparts)
             ok("this('parent').title + this('parent').name",
@@ -162,11 +162,11 @@ if __TEST_DESIGN_DECISIONS:
 
             parent, (min_child, max_child) = d.popitem()
             with context(UNPROXIFING_CONTEXT):
-                pquery = parent.query
+                pquery = parent.token
                 parent = parent.expression
-                minc_query = min_child.query
+                minc_query = min_child.token
                 min_child = min_child.expression
-                maxc_query = max_child.query
+                maxc_query = max_child.token
                 max_child = max_child.expression
             self.assertIs(maxc_query, minc_query)
             self.assertIsNot(pquery, maxc_query)
@@ -191,11 +191,10 @@ if __TEST_DESIGN_DECISIONS:
         def test_query_reutilization_design(self):
             from xotl.ql.expressions import is_a
             Person = "Person"
-            token = next(parent for parent in this('parent')
+            persons = these(parent for parent in this('parent')
                                 if is_a(parent, Person))
-            query = unboxed(token).query
 
-            young_parents = next(parent for parent in query
+            young_parents = these(parent for parent in persons
                                         if (parent.age < 35) &
                                             parent.children)
 
@@ -212,7 +211,7 @@ if __TEST_DESIGN_DECISIONS:
 class TestThisQueries(unittest.TestCase):
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent'))
-        self.assertTrue(provides_any(query, IGeneratorToken))
+        self.assertTrue(provides_any(query, IQuery))
         (p, ) = query.selection
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(p, this('parent'))
@@ -222,13 +221,11 @@ class TestThisQueries(unittest.TestCase):
         query = these((parent.title + parent.name, parent.age)
                         for parent in this('parent')
                         if parent.age < 40)
-        self.assertTrue(provides_any(query, IGeneratorToken))
-        (p, ) = query.selection
+        self.assertTrue(provides_any(query, IQuery))
+        (full_name, age) = query.selection
         with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(p, this('parent'))
-            binding = p.binding
-            self.assertIsNotNone(binding)
-            self.assertEquals(binding, this('parent').age < 40)
+            self.assertEqual(full_name, this('parent').title + this('parent').name)
+            self.assertEqual(age, this('parent').age)
 
 
 

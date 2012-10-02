@@ -368,12 +368,25 @@ class IGeneratorToken(Interface):
 
         ((parent, child) for parent in this for child in parent.children)
 
-    In the query shown above there are two IGeneratorToken instances in its AST: the
-    first relates to the `this` object and the second relates to the
+    In the query shown above there are two IGeneratorToken instances in its
+    AST: the first relates to the `this` object and the second relates to the
     `parent.children` object.
+
+    .. todo::
+
+       Supporting calling `next` directly over queries impedes using query
+       objects as subqueries like in::
+
+           q1 = these((a, b) for a in this for b in a.places)
+           q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in q1)
+
+       The only was to include it would be by manually wrapping with a kind of
+       `query()` function::
+
+           q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in query(q1))
     '''
-    token = Attribute('The instance from which this query was created. Usually '
-                      'a These instance.')
+    token = Attribute('The instance from which this query was created. '
+                      'Usually a These instance.')
 
 
 
