@@ -1013,6 +1013,21 @@ class StringFormatFunction(FunctorOperator):
 
         >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
         <expression 'strformat({0} alas {1}, 1, 2)' ...>
+
+    .. todo::
+
+       Would not it be the same as ``call('{0} alas {1}'.format, 1, 2)``?
+
+       Unlike :class:`startswith` and :class:`endswith`, which are easily
+       replaced in queries, because they are deemed to be used in queries
+       like::
+
+           these(person for person in this if person.name.startswith('Manu'))
+
+       string formatting will be most likely used in the *selection* (the
+       projection in the query slang) like::
+
+           these(strformat('Your name is: {0}', person.name) for person in this)
     '''
     arity = N_ARITY
     _format = 'strformat({0})'
