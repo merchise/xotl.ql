@@ -17,17 +17,15 @@ The `xotl.ql` package comprises two main components: the :ref:`expression
 language <expression-lang>` and the :ref:`query language <query-lang>` itself.
 
 The expression language just allows to form expressions using common
-operations.  The resultant "expressions" are actually python objects that
-represent the :term:`expression tree`. As usual, the inner nodes of the
-expression tree represent operations and the leaves the operands.
+operations.  The result of an expression is an :term:`expression tree`
+object.
 
 The expression language is :ref:`fairly extensible <extending-expressions-lang>`
 as you may introduce new :term:`function object operators <function object
 operator>`.
 
-The query language relies heavily upon the expression language, since it allows
-to express predicates on the objects. The core of the query language itself is
-just a combination of:
+The query language relies heavily upon the expression language. The core of the
+query language itself is just a combination of:
 
 - the expression language used inside Python's generator expressions and/or
   dictionary comprehensions (we shall use the term :term:`comprehension` to
@@ -41,7 +39,8 @@ just a combination of:
 Let's see a query::
 
   >>> from xotl.ql import this, these
-  >>> parents = these(parent for parent in this if parent.children)
+  >>> from xotl.ql.expressions import count
+  >>> parents = these(parent for parent in this if count(parent.children) > 2)
 
 As you can see queries are just normal python comprehensions (usually over the
 :data:`~xotl.ql.this` object) wrapped inside the :func:`~xotl.ql.these`
@@ -54,7 +53,7 @@ More complex queries are allowed, for instance::
   ...                    if parent.children &
   ...                       all_(child.age > 10 for child in parent.children))
 
-This would retrieve every "parent" whose children are all more that 10 years
+This would retrieve every "parent" whose children are all more than 10 years
 (supposedly).
 
 .. warning::
@@ -78,21 +77,23 @@ This would retrieve every "parent" whose children are all more that 10 years
 The role of the query language and query translators
 ====================================================
 
-So far, we have shown the syntax of the query language and we have indicated
-the *intended meaning* of the constructions. However, `xotl.ql` does not
-enforce any particular interpretation on the queries since the whole meaning of
-queries depends on the semantics of the objects models in place.
+So far, we have shown how the syntax of the query language looks, and we have
+indicated the *intended meaning* of the constructions. However, `xotl.ql` does
+not enforce any particular interpretation on the queries since the whole
+meaning of queries depends on the semantics of the objects models in place.
 
 For instance, given a data model that honors transitive relations such as `is
 (physically) located in` between places; if you have that `B is located in A`
-and that `C is located in B`, then the query::
+and that `C is located in B`, then asking for every place that is located in
+`A`, both `B` and `C` should be found.
+
+One may encode such a query in a program like the following::
 
   >>> def is_located_in(place, container):
   ...    'Creates the expression that asserts that `place` is inside a `container`'
   ...    if isinstance(container, basestring):
   ...        return place.located_in.name == container
   ...    else:
-  ...        # assert isinstance(container, Place)
   ...        return place.located_in == container
 
   >>> inside = lambda(who: these(place for place in this
@@ -100,13 +101,14 @@ and that `C is located in B`, then the query::
 
   >>> inside_a = inside('A')
 
-it's expected to look up in the all the containment tree derived form the
-`located-in` relation, to fetch all places which are inside `A` either directly
-or indirectly.
+It's expected that such a query will look up in the all the containment tree
+derived form the `located-in` relation, to fetch all places which are inside
+`A` either directly or indirectly.
 
 In this model, just the use of `located_in.name == 'A'` would imply a recursive
-function or some sort of semantic index; such knowledge comes only from the
-object/store model and not the query language by itself.
+computation; and such knowledge comes only from the object/store model and not
+the query language by itself. Other models (for instance the relational model)
+might not find more than directly related objects.
 
 That's why in order to execute queries one **must** provide a :term:`query
 translator` with enough knowledge of the object model and of the system
@@ -141,4 +143,6 @@ Footnotes
 =========
 
 .. [#querying] Querying objects in a distributed environment is a no-go for
-	       performance issues. However the language by itself is possible.
+	       performance issues. However the language by itself is
+	       possible. One may maintain indexes for distributed systems,
+	       though; and the queries are run against these indexes.
