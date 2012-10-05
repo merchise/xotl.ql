@@ -42,6 +42,7 @@ from __future__ import (division as _py3_division,
 import re
 from itertools import count
 
+from xoutil.types import Unset
 from xoutil.objects import get_first_of, validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
@@ -780,19 +781,21 @@ class Query(object):
         '''Support for retrieving objects directly from the query object. Of
         course this requires that an IQueryTranslator is configured.
         '''
-        if not self._query_state:
+        state = getattr(self, '_query_state', Unset)
+        if state is Unset:
+            # TODO: This will change, configuration vs deployment. How to inject translator into a global/local context?
             name = getUtility(IQueryConfiguration).query_translator_name
             translator = getUtility(IQueryTranslator,
                                     name if name else b'default')
             query_plan = translator.build_plan(self, order=self.ordering,
                                                partition=self.partition)
-            self._query_state = query_plan()
-        result, _state = next(self._query_state, (None, None))
-        if result:
-            self._query_state = _state
+            state = self._query_state = query_plan()
+        result, state = next(state, (Unset, state))
+        if result is not Unset:
+            self._query_state = state
             return result
         else:
-            self._query_state = None
+            delattr(self, '_query_state')
             raise StopIteration
 
 
@@ -1475,10 +1478,11 @@ def these(comprehesion):
     '''
     Post-process the query comprehension to build a GeneratorToken.
     '''
-    from xoutil.types import Unset, GeneratorType
+    from xoutil.types import GeneratorType
     assert isinstance(comprehesion, (GeneratorType, dict))
     query = Query()
     return query
+
 
 
 #def thesefy(target):
