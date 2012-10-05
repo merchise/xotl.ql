@@ -6,6 +6,9 @@ Thoughts on Query Languages
 UnQL, and coSQL that were taken as inspiration for this work; but the
 information in here does not have other practical effect in xotl.ql.*
 
+*This document is rather a thinking pad I use when I need to think about query
+languages in general and how they apply to xotl.ql.*
+
 Expressions are the core for query languages and many of it's design decisions
 are strongly biased for query languages needs. But they purpose is more
 general. Notice that :class:`~xotl.ql.core.These` instances are they way to
