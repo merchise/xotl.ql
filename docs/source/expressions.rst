@@ -192,6 +192,36 @@ method is injected into the instance:
       ...    q(20) + x
       <expression '20 + invisible' at 0x...>
 
+
+   **Response**
+
+   :class:`q` objects proxy all it attributes to the proxy target, so in those
+   cases, working at the instance level may result in unpredictable results
+   depending on whether the target has or not a _target_:
+
+   .. doctest::
+
+      >>> with context('FLEXIBLE_TARGET_PROTOCOL'):
+      ...    expr = q('string') + q(1)
+
+      >>> [type(x) for x in expr.children]  # doctest: +ELLIPSIS
+      [<class '...q'>, <class '...q'>]
+
+   Notice that the type of these objects is :class:`q` since they delegated the
+   `_target_` protocol to their targets, and they don't implement the
+   `_target_` protocol. At the class level, :class:`q` implements the
+   `_target_` protocol with a `classmethod` and this would work as expected:
+
+   .. doctest::
+
+      >>> expr = q('string') + q(1)
+      >>> [type(x) for x in expr.children]
+      [<type 'str'>, <type 'int'>]
+
+
+   That's probably why we should not work at the instance level.
+
+
 Implementation via a metaclass also works:
 
 .. doctest::
