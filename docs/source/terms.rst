@@ -87,18 +87,35 @@ Terms and glossary
 
    query
 
-       The term `query` is used in this documentation with two
-       meanings that depend on the context:
+       The term `query` is used in this documentation with two meanings that
+       depend on the context:
 
        a) The comprehension as seen in the code that express what is
 	  intended to fetch from the storage(s).
 
+	  In the most part of this documentation the term `query` will refer to
+	  this sense of the word. However, to disambiguate we'll use the term
+	  :term:`query expression` to refer to this sense of the word if
+	  needed.
+
+
        b) The (internal) data structure that represents the query (as
           in item a) to the program.
 
-       Most of the time we talk about type-a queries, but in the internal API
-       documentation it's necessary to distinguish between the type-a query and
-       it's structure.
+	  We prefer the term :term:`query object` for this sense of the word,
+	  but sometimes it just does not matter.
+
+   query expression
+
+      This term is used solely to distinguish a :term:`query` as the
+      construction expressed in the (Python) language from the internal data
+      structure (:term:`query object`).
+
+   query object
+
+      This term is used solely to distinguish a :term:`query` as an internal
+      data structure from the language construction (i.e the first meaning for
+      the term :term:`query`) that implies such a structure.
 
    query translator
    translator
