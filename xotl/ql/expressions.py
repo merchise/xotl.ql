@@ -949,13 +949,13 @@ class InvokeFunction(FunctorOperator):
     unlikely that they can be :term:`translated <query translator>`. For
     instance::
 
-        >>> ident = lambda who: who
-        >>> expr = call(ident, 1)
+        >>> ident = lambda who, **kw: who
+        >>> expr = call(ident, 1, a=1, b=2)
         >>> str(expr)     # doctest: +ELLIPSIS
-        'call(<function <lambda> ...>, 1)'
+        'call(<function <lambda> ...>, 1, a=1, b=2)'
 
     '''
-    _format = 'call({0})'
+    _format = 'call({0}{1})'
     arity = N_ARITY
     _method_name = b'invoke'
 
