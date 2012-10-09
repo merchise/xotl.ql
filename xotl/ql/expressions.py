@@ -1284,10 +1284,10 @@ class ExpressionTree(object):
 def _build_op_class(name, methods_spec):
     def build_meth(func, binary=True):
         def binary_meth(self, other):
-            return func(unboxed(self).target, other)
+            return func(self, other)
 
         def unary_meth(self):
-            return func(unboxed(self).target)
+            return func(self)
 
         if binary:
             return binary_meth
