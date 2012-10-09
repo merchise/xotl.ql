@@ -1205,12 +1205,13 @@ class ExpressionTree(object):
         Creates an expression tree with operatiorn `operator`.
 
             >>> class X(object):
-            ...    @staticmethod
-            ...    def _target_(self):
-            ...        return 1
+            ...    @classmethod
+            ...    def _target_(cls, self):
+            ...        return 123
 
             >>> add(X(), 1978)    # doctest: +ELLIPSIS
-            <expression '1 + 1978' at 0x...>
+            <expression '123 + 1978' at 0x...>
+
         '''
         self._op = operation
         self._children = tuple(_extract_target(child) for child in children)
