@@ -357,30 +357,35 @@ class IQueryPartContainer(Interface):
 
 
 class IGeneratorToken(Interface):
-    '''
-    In the Query AST represents an object that is used as a source of objects.
+    '''In the :term:`query object`, a single :term:`generator token`.
 
-    This would represent any object whose `__iter__` method is called inside
-    a query to fetch is parts::
-
-        ((parent, child) for parent in this for child in parent.children)
-
-    In the query shown above there are two IGeneratorToken instances in its
-    AST: the first relates to the `this` object and the second relates to the
-    `parent.children` object.
+    A generator token is an expression that is used inside a :term:`query`
+    as a named location from which to draw objects. It relates to the FROM
+    clause in SQL, and to the ``<-`` operation in UnQL [UnQL]_.
 
     .. todo::
 
-       Supporting calling `next` directly over queries impedes using query
-       objects as subqueries like in::
+       Currently we only support :class:`IThese` instances as generators, since
+       allowing the `next` protocol directly over :term:`query objects <query
+       object>` impedes using them as subqueries like in::
 
            q1 = these((a, b) for a in this for b in a.places)
            q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in q1)
 
-       The only was to include it would be by manually wrapping with a kind of
+       The only way to include it would be by manually wrapping with a kind of
        `query()` function::
 
            q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in query(q1))
+
+       If this were to be allowed then a :term:`generator token` could be any
+       type expression that may be regarded as collection of objects:
+
+       - :class:`IThese` instances
+       - :class:`IQuery` instances.
+
+       However, for the time being there's no such thing as a `query()`
+       function.
+
     '''
     token = Attribute('The instance from which this token was created. '
                       'Usually a :class:`IThese` instance.')
