@@ -692,9 +692,10 @@ def provides_all(which, *interfaces):
         return all(interface.providedBy(which) for interface in interfaces)
 
 
+
 class Query(object):
     '''
-    Represents a query.
+    Represents a query. See :class:`xotl.ql.interfaces.IQuery`.
     '''
     implements(IQuery)
 
@@ -809,10 +810,10 @@ class GeneratorToken(object):
     '''
     Represents a token in the syntactical tree that is used as generator.
 
-    This object is also an IQueryPartContainer, cause in this implementation we
-    need to record each time an IQueryPart is created in order to later retrieve
-    the filters related to this generator token.
-
+    This object is also an :class:`~xotl.ql.interfaces.IQueryPartContainer`,
+    because in this implementation we need to record each time an
+    :class:`~xotl.ql.interfaces.IQueryPart` is created in order to later
+    retrieve the filters related to this generator token.
 
     '''
     implements(IGeneratorToken, IQueryPartContainer)
@@ -860,11 +861,114 @@ class GeneratorToken(object):
 
 
 class QueryPart(object):
-    '''A class that wraps :class:`These` instances to build queries
+    '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
+    implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
 
-    When iterating over this instance, this token is used to catch all
-    expressions and build a :class:`GeneratorToken` from it. This class is mostly
-    internal and does not belongs to the GeneratorToken Language API.
+    To build a query object from a comprehension like in::
+
+        these(count(parent.children) for parent in this if parent.age > 34)
+
+    We need to differiante the IF (``parent.age > 34``) part of the
+    comprehension from the SELECTION (``count(parent.children)``); which in the
+    general case are both expressions. The following procedure is a sketch of
+    what happens to accomplish that:
+
+    1. Python creates a generator object, and invokes the :func:`these`
+       function with the generator as it's sole argument.
+
+    2. The :func:`these` function invokes `next` upon the generator object.
+
+    3. Python invokes ``iter(this)`` which constructs internally another
+       instance of :class:`These` but with a unique name, and delegates the
+       ``iter`` to this instance.
+
+    4. The newly created named These instance creates :class:`GeneratorToken`
+       and assign itself to the
+       :attr:`~xotl.ql.interfaces.IGeneratorToken.token` attribute.
+
+       A :class:`QueryPart` is created; the GeneratorToken instance is assigned
+       to the attribute :attr:`~xotl.ql.interfaces.IQueryPart.token`, and
+       `self` is assigned to the attribute
+       :attr:`~xotl.ql.interfaces.IQueryPart.expression`.
+
+       The query part is yielded to the calling :func:`these`.
+
+    5. Python now processes the `if` part of the comprehension.
+
+       - First, ``parent.age`` is processed. The query part's
+         `__getattribute__` method is invoked, which delegates the call to it's
+         :attr:`~IQueryPart.expression` attribute. Since, it is an
+         :class:`These` instance, it returns another named These instance.
+
+         A new query part is created with `expression` set to the result, the
+         :attr:`~IQueryPart.token` is inherited from the current query part.
+
+         Upon creation of this new query part, the token's
+         :meth:`~xotl.ql.interfaces.IQueryPartContainer.created_query_part` is
+         called with the newly created query part as its argument.
+
+         The token maintains a stack of created parts. Whenever a new query
+         part is created it pushes it on top of the stack, if the new query
+         part *is not derived from the part on the top* of the stack, otherwise
+         it just replaces the top with the new one. (In fact, it removes all
+         parts from the top of the stack that are somehow contained in the
+         newly created part.)
+
+       - Next, Python invokes the method `__gt__` for the newly created query
+         part which, in turn, delegates the call to its :attr:`expression`
+         attribute.
+
+         The result is again wrapped inside another query part and it's token's
+         ``created_query_part`` is invoked. Since the resultant expression is
+         derived from the previously created part, the token only maintains the
+         last created part in its stack.
+
+    6. Now Python starts to process the "selection" part of the Query, but we
+       don't know that since there's no signal from the language that indicates
+       such an event.
+
+       It processes the `parent.children` by calling the `__getattribute__` of
+       the query part, as before this call is delegated and the result is
+       wrapped with another query part.
+
+       When calling the `created_query_part` method, the token realizes that
+       ``parent.children`` is not derived from ``parent.age > 34``, so it
+       pushes the new part into the stack instead of replacing the top.
+
+       Now the `count(...)` expression is invoked, and using the
+       :class:`xotl.ql.expressions.FunctorOperator` protocol the `_count`
+       method of the returned query part is invoked. Again, this is delegated
+       to the wrapped expression and a new :class:`ExpressionTree` is created
+       and wrapped inside a new query part.
+
+       Once more, the `created_query_part` method is invoked, and this time it
+       replaces the ``parent.children`` on the top of the stack for
+       ``count(parent.children)``.
+
+    7. Now the control is returned to the :func:`these` function and `next`
+       returns a `QueryPart` whose `expression` is equivalent to
+       ``count(parent.children)``.
+
+    8. The QueryPart's `token` attribute is inspected to retrieve any previous
+       *filter expressions* from the parts stack (disregarding the top-most if
+       it's the same as the selection.)
+
+    9. The :func:`these` creates a new :class:`Query` object and extracts the
+       `expression` from the selected query part and assigns it to the
+       :attr:`~xotl.ql.interfaces.IQuery.selection` attribute of the query
+       object, any retrieved expressions from the parts stack of the tokens are
+       appended to the :attr:`~xotl.ql.interfaces.IQuery.filters` attribute.
+
+    10. For the query above the query object returned will have its arguments
+        with following values:
+
+        selection
+          ``(count(parent.children), )``
+
+        filters
+          ``[parent.age > 34]``
+
+        Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
     implements(IQueryPart)
@@ -1474,9 +1578,41 @@ class QueryPart(object):
 
 
 
-def these(comprehesion):
+def these(comprehesion, **kwargs):
     '''
     Post-process the query comprehension to build a GeneratorToken.
+
+
+    :param comprehension:  A comprehension that express the query using the
+                           Query Language.
+
+    :param ordering: The ordering expressions.
+    :type ordering: A tuple of ordering expressions.
+
+    :param partition: A slice `(offset, limit, step)` that represents the
+                      part of the result set to be retrieved.
+
+                      You may express this by individually providing the
+                      arguments `offset`, `limit` and `step`.
+
+                      If you provide the `partition` argument, those will be
+                      ignored (and a warning will be logged).
+
+    :type partition: slice or None
+
+    :param offset: Indivually express the offset of the `partition` param.
+    :type offset: int or None
+
+    :param limit: Indivually express the limit of the `partition` param.
+    :type limit: int or None
+
+    :param step: Indivually express the step of the `partition` param.
+    :type step: int or None
+
+    :returns: An :class:`~xotl.ql.interfaces.IQuery` instance that represents
+              the Query expressed by the `comprehension` and the `kwargs`.
+    :rtype: :class:`Query`
+
     '''
     from xoutil.types import GeneratorType
     assert isinstance(comprehesion, (GeneratorType, dict))

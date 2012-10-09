@@ -129,10 +129,25 @@ type is a subclass of the class :class:`These`:
 
 .. autodata:: this(name, **kwargs)
 
+
 .. autoclass:: These
    :members: name, parent, binding, __iter__
 
    This class implements :class:`xotl.ql.interfaces.IThese`
+
+.. autofunction:: these(comprehension, **kwargs)
+
+
+.. autoclass:: Query
+
+.. autoclass:: GeneratorToken
+
+Implementation Details
+======================
+
+.. autoclass:: QueryPart
+   :members:
+
 
 
 .. _CouchDB: http://couchdb.apache.org/

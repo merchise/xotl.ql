@@ -50,8 +50,8 @@ class IOperator(Interface):
                         'number of arguments, it should contain only one '
                         'positional argument that will be filled with all '
                         'arguments separated by commas.')
-    arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`, '
-                       ':class:`~xotl.ql.expressions.BINARY`, or '
+    arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`,'
+                       ' :class:`~xotl.ql.expressions.BINARY`, or '
                        ':class:`~xotl.ql.expressions.N_ARITY`')
     _method_name = Attribute('Name of the method that should be called upon '
                              'the first operand, much like python does for '
@@ -264,25 +264,26 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a partial (but probably sound) expression that is been
-    attached somehow to a query.
+    '''Represents a partial (but sound) expression that is been attached somehow
+    to a generator token.
 
-    When `these(<comprehension>)` an IQueryPartContainer object is generated
-    internally to hold the query, but since we don't have the control of how
-    Python does is execution of the comprehension, we substitute expression
-    trees with "query part" objects.
+    Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
+    objects are generated internally whenever there's an *implicit iteration*
+    over some supported object (like a :class:`IThese` instance). This token
+    represents the FROM clause we can see in languages like SQL.
 
-    A query part behave as an expression but everytime a new query part is
-    created the attached `query` object gets notified.
+    Expression trees are powerful enough to capture the semantics of query
+    parts. But, since we don't have the control of how Python does is execution
+    of the comprehension, we employ query parts that behave just like
+    expressions, but inform a :class:`IQueryPartContainer` that a new query
+    part is being created.
+
+    See the documentation for :class:`xotl.ql.core.QueryPart` to see the
+    details of the procedure.
 
     '''
-    query = Attribute('A reference to the query instance this part has been '
-                      'attached to.',
-                      'When queries are built, parts are created whenever '
-                      'an expression tree is instantiated. But since queries '
-                      'needs to record such a construction, parts invoke '
-                      'the :meth:`IQueryPartContainer.created_query_part` '
-                      'to allow the query object to be notified.')
+    token = Attribute('A reference to the generator token instance to which '
+                      'this part has been attached.')
 
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
@@ -385,34 +386,59 @@ class IGeneratorToken(Interface):
 
            q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in query(q1))
     '''
-    token = Attribute('The instance from which this query was created. '
-                      'Usually a These instance.')
+    token = Attribute('The instance from which this token was created. '
+                      'Usually a :class:`IThese` instance.')
+
+
+
+class ISelection(Interface):
+    '''Represents a single expression in a selection of a Query'''
+    expression = Attribute('Either an :class:`IExpressionTree` or a '
+                           ':class:`IThese` -- usually built from '
+                           ':attr:`IQueryPart.expression`) that contains the '
+                           'expression to select.')
+    tokens = Attribute('A set of :class:IGeneratorToken instances from which '
+                       'this selection is drawn.',
+                       """
+                       It's set cause in a single selection there may be
+                       involved several tokens. For instance::
+
+                           (parent.age + child.age for parent in this
+                               for child in parent.children)
+
+                       In the previous query the single selection expression
+                       is related to both tokens: ``parent`` and
+                       ``parent.children``.
+                       """)
 
 
 
 class IQuery(Interface):
-    'Represents a query.'
-    selection = Attribute('Either a tuple/dict of IThese/IExpressionTree '
+    'Represents a query'
+    selection = Attribute('Either a tuple/dict of :class:`ISelection` '
                           'instances or single instance.')
-    filters = Attribute('A tuple of IExpressionTree instances '
-                        'that represent the where clauses. They are logically '
+    filters = Attribute('A tuple of :class:`IExpressionTree` instances '
+                        'that represent the WHERE clauses. They are logically '
                         'and-ed.')
-    ordering = Attribute('A tuple of ordering expressions.')
+    ordering = Attribute('A tuple of :ref:`ordering expressions <ordering-expressions>`_.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
 
 
     def __iter__():
-        'Queries are iterable, but they **must** return self in this method'
+        '''
+        Queries are iterable, but they **must** return ``self`` in this method.
+        See :meth:`IQuery.next`.
+        '''
 
 
     def next():
         '''
         Returns the next object in the cursor.
 
-        Internally this should get the configure IQueryTranslator and build
-        the execution plan, then execute the plan to get the IDataCursor from
-        which it can drawn objects from.
+        Internally this should get the configure :class:`IQueryTranslator` and
+        build the execution plan, then execute the plan to get the IDataCursor
+        from which it can drawn objects from.
         '''
 
 

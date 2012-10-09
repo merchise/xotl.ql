@@ -257,6 +257,20 @@ In fact, this model is quite suitable to represent the labeled tree model of
 We can see that labels may be the keys, and the trees may be encoded as
 references.
 
+Generator Token
+===============
+
+A generator token is related to the ``<- DB`` in the UnQL syntax, it's related
+to the FROM clause in SQL and LinQ. It represents from where the objects are
+drawn. `SQLAlchemy's <SQLAlchemy>`_ expression language has a similarity with
+xotl.ql's Query API, it's ``select()`` function, does not requires an explicit
+declaration of FROM, because it gathers the table from the SELECT-ed columns.
+
+This is quite similar to the idea of having the expressions in the
+:attr:`~xotl.ql.interfaces.IQuery.selection`
+
+
+
 Footnotes
 =========
 

@@ -1,6 +1,6 @@
-=================================================
-A common query translation framework and test bed
-=================================================
+=============================================================
+A common query translation framework and translation test bed
+=============================================================
 
-.. automodule:: xotl.ql.translate
+.. module:: xotl.ql.translate
 
