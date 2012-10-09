@@ -236,23 +236,11 @@ class IExpressionCapable(Interface):
 
 
 class IExpressionTree(IExpressionCapable):
-    '''A representation of an expression tree.
+    '''A representation of an :term:`expression tree`.
 
     It resembles a reduced AST for simple expressions. The expression tree has
     an `operation` attribute that holds a instance that describes the operation
-    between the `children` of this expression. For instance, the expression: `3
-    + 4**2 < 18983` would be encoded in a tree like::
-
-       {operation: [<]        -- An object that represents the "<" operation
-        children: (           -- children is always a tuple of "literals" or
-                              -- other expressions.
-           {operation: [+]
-            children: (
-                3,
-                {operation: [**]
-                 children: (4, 2)}
-            )}
-        )}
+    between the `children` of this expression.
 
     '''
 
@@ -260,7 +248,15 @@ class IExpressionTree(IExpressionCapable):
                           ':class:`~xotl.ql.interfaces.IOperator` interface.')
     children = Attribute('A tuple that contains the operands. Operands may '
                          'be themselves other expression trees.')
+    named_children = Attribute('A dictionary of named children. ',
+                               '''This attribute allows to represent the Python
+                               `**kwargs` idiom in the expressions so that
+                               calling a function (see
+                               :class:`~xotl.ql.expressions.invoke`) may invoke
+                               represent the invokation of arbitrary python
+                               functions.
 
+                               ''')
 
 
 class IQueryPart(IExpressionCapable):
