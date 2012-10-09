@@ -387,32 +387,36 @@ class IGeneratorToken(Interface):
 
 
 
-class ISelection(Interface):
-    '''Represents a single expression in a selection of a Query'''
-    expression = Attribute('Either an :class:`IExpressionTree` or a '
-                           ':class:`IThese` -- usually built from '
-                           ':attr:`IQueryPart.expression`) that contains the '
-                           'expression to select.')
-    tokens = Attribute('A set of :class:IGeneratorToken instances from which '
-                       'this selection is drawn.',
-                       """
-                       It's set cause in a single selection there may be
-                       involved several tokens. For instance::
-
-                           (parent.age + child.age for parent in this
-                               for child in parent.children)
-
-                       In the previous query the single selection expression
-                       is related to both tokens: ``parent`` and
-                       ``parent.children``.
-                       """)
-
-
-
 class IQuery(Interface):
-    'Represents a query'
-    selection = Attribute('Either a tuple/dict of :class:`ISelection` '
-                          'instances or single instance.')
+    '''A :term:`query object`.
+
+    This objects captures a query by its selection, filters and generator
+    tokens, and also provides ordering and partitioning features.
+
+    '''
+    selection = Attribute('Either a tuple/dict of :class:`IThese` or :class:`IExpressionTree` '
+                          'instances.')
+    tokens = Attribute('Generator tokens that occur in the query',
+                       '''When the :term:`query` is processed to create a
+                       :term:`query object`, at least one :term:`generator
+                       token` is created to represent a single, named
+                       "location" from where objects are drawn. However a
+                       :term:`query` may refer to several such locations. For
+                       instance in the query::
+
+                           these((book, author) for book in this for author in book.authors)
+
+                       There are two generator tokens: a) ``this`` and b)
+                       ``book.authors``. Those tokens relate to the FROM, and
+                       possibly JOIN, clauses of the SQL language.
+
+                       From the point of view of the query these tokens are
+                       just *names*, how to use those names to interpret the
+                       query is a task that is left to :term:`query translators
+                       <query translator>`.
+
+                       ''')
+
     filters = Attribute('A tuple of :class:`IExpressionTree` instances '
                         'that represent the WHERE clauses. They are logically '
                         'and-ed.')

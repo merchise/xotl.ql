@@ -1,4 +1,5 @@
 .. _api-ref:
+
 =============
 API reference
 =============
@@ -14,8 +15,14 @@ External API
 This part of the API is that must freeze when the first stable release of
 `xotl.ql` is to be released.
 
+Query objects interfaces
+------------------------
+
+:term:`Query objects <query object>` are represented by objects implementing
+the :class:`IQuery` below.
+
 .. autointerface:: IQuery
-   :members: selection, filters, ordering, partition
+   :members: selection, tokens, filters, ordering, partition
 
 .. autointerface:: IQueryTranslator
 
@@ -24,10 +31,8 @@ This part of the API is that must freeze when the first stable release of
 .. autointerface:: IGeneratorToken
    :members: token
 
-.. autointerface:: ISelection
-   :members: expression, tokens
-
 .. autointerface:: IExpressionTree
+   :members: operation, children, named_children
 
 .. autointerface:: IExpressionCapable
 
