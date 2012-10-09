@@ -12,20 +12,25 @@ Terms and glossary
        constructed.  Usually the inner nodes of the tree represents the
        operations and the leaves the "atomic" operands.
 
-       For instance, the expression tree for the expression ``2**4 + 3`` would
-       have as its root node the `+` symbol, the children of which would be:
+       For instance, the expression tree for the expression ``3 + 4**2 <
+       18983`` would have as its root node the `<` symbol, the children of
+       which would be:
 
-         a) the expression tree for ``2**4``, that would have `**` as its root
-            node, and literals `2` and `4` would be its children.
+         a) the expression tree for ``3 + 4**2``, that would have `+` as its root
+            node, and the literal `3` and the expression tree for ``4**2`` as
+	    its children.
 
-         b) the literal `3`
+         b) The literal `18983`.
+
+       This tree is depicted in the following image:
+
+       .. image:: figs/expr-tree.png
 
        In the expression language as implemented in :mod:`xotl.ql.expressions`,
        operations are always classes derived from
        :class:`~xotl.ql.expressions.Operator`, and the operands are any python
-       object (sometimes you need to enclose such an operand inside a
-       :class:`~xotl.ql.expressions.q` object). The class
-       :class:`~xotl.ql.expressions.ExpressionTree` represents such a tree.
+       object. The class :class:`~xotl.ql.expressions.ExpressionTree`
+       represents such a tree.
 
 
    function object operator
