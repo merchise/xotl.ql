@@ -63,6 +63,22 @@ Terms and glossary
           >>> q(1) + 2              # doctest: +ELLIPSIS
           <expression '1 + 2' ...>
 
+   generator token
+
+       A generator token is an expression that is used inside a :term:`query`
+       as a named location from which to draw objects. It relates to the FROM
+       clause in SQL, and to the ``<-`` operation in UnQL [UnQL]_.
+
+       In the query::
+
+	 these((parent, child) for parent in this if parent.age > 34
+	                       for child in parent.children if child.age < 2)
+
+       There are two such tokens: the first captures the iteration over
+       ``this`` and the second, the iteration over ``parent.children``.
+
+       See :class:`xotl.ql.interfaces.IGeneratorToken` for details.
+
    OMCaF
    Objects Model Canonical Form
 
