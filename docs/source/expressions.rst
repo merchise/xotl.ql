@@ -11,13 +11,12 @@
 The Expressions Language
 ========================
 
-This module provides the building blocks for query expressions.
+This module provides the building blocks for creating :term:`expression trees
+<expression tree>`. It provides several classes that represent the operations
+themselves, this classes does not attempt to provide anything else than what
+it's deem needed to have an Abstract Syntax Tree (AST).
 
-This module provides several classes that represent the operations themselves,
-this classes does not attempt to provide anything else than what it's deem
-needed to have an Abstract Syntax Tree (AST).
-
-Each expression is represented by an instance of an ExpressionTree. An
+Each expression is represented by an instance of an :class:`ExpressionTree`. An
 expression tree has two core attributes:
 
 - The :attr:`~ExpressionTree.operation` attribute contains a reference to the
