@@ -1,5 +1,10 @@
 .. module:: xotl.ql.expressions
 
+.. testsetup::
+
+   from xotl.ql.interfaces import ISyntacticallyReversibleOperation
+   from xotl.ql.expressions import *
+
 .. _expression-lang:
 
 ========================
@@ -142,19 +147,67 @@ The `_target_` protocol for expressions
 ---------------------------------------
 
 Expression trees support a custom protocol for placing operands inside
-expressions. If any operand implements a static method `_target_(self)` it will
-be called with the operand as its unique argument, and use its result in place
-of the operand::
+expressions. If any operand's class implements a method `_target_` it will be
+called with the operand as its unique argument, and use its result in place of
+the operand:
 
-  >>> class X(object):
-  ...    @staticmethod
-  ...    def _target_(self)
-  ...        return 1
+.. doctest::
 
-  >>> q(1) + X()  # doctest: +ELLIPSIS
-  <expression '1 + 1' at 0x...>
+   >>> class X(object):
+   ...    @classmethod
+   ...    def _target_(cls, self):
+   ...        return 1
 
-This is the protocol used by `q`-objects to let themselves out of expressions.
+   >>> q(1) + X()  # doctest: +ELLIPSIS
+   <expression '1 + 1' at 0x...>
+
+This protocol will work with if `_target_` is either a method, a classmethod or
+a staticmethod defined *in the class* object. It won't work if the `_target_`
+method is injected into the instance:
+
+.. doctest::
+
+   >>> class X(object):
+   ...     pass
+
+   >>> def _target_(self):
+   ...     return "invisible"
+
+   >>> x = X()
+   >>> setattr(x, '_target_', _target_)
+   >>> q(1) + x   # doctest: +ELLIPSIS
+   <expression '1 + <...X object at 0x...>' at 0x...>
+
+.. todo::
+
+   Do we really need this restriction? Wouldn't it be better to allow
+   flexibility?
+
+   I'm implementing a `FLEXIBLE_TARGET_PROTOCOL` execution context to testbed
+   the lifting of this restriction:
+
+   .. doctest::
+
+      >>> from xoutil.context import context
+      >>> with context('FLEXIBLE_TARGET_PROTOCOL'):    # doctest: +ELLIPSIS
+      ...    q(20) + x
+      <expression '20 + invisible' at 0x...>
+
+Implementation via a metaclass also works:
+
+.. doctest::
+
+   >>> class MetaX(type):
+   ...     def _target_(cls, self):
+   ...         return 12
+
+   >>> class X(object):
+   ...     __metaclass__ = MetaX
+
+   >>> q(1) + X()    # doctest: +ELLIPSIS
+   <expression '1 + 12' at 0x...>
+
+This is the protocol used by `q`-objects to get themselves out of expressions.
 
 
 About the operations supported in expression

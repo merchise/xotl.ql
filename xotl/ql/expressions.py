@@ -1180,14 +1180,17 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
 
 # The _target_ protocol for expressions.
 def _extract_target(which):
-    target = getattr(type(which), '_target_', lambda x: x)
+    if context['FLEXIBLE_TARGET_PROTOCOL']:
+        target = getattr(which, '_target_', lambda x: x)
+    else:
+        target = getattr(type(which), '_target_', lambda x: x)
     return target(which)
 
 
 
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
-    '''
+    ''''
     A representation of an expression.
 
     Each expression has an `op` attribute that *should* be a class derived
