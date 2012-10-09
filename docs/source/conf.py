@@ -274,3 +274,12 @@ intersphinx_cache_limit = 60
 
 # Include the todos in the documentation.
 todo_include_todos = True
+
+
+# Parse all doctest, including standard
+doctest_test_doctest_blocks = 'default'
+
+
+# Don't show doctest flags
+trim_doctest_flags = True
+
