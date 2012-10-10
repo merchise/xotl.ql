@@ -40,6 +40,13 @@ the :class:`IQuery` below.
    :members: name, parent, __iter__, __getattribute__
 
 .. autointerface:: IOperator
+   :members: _format, arity, _method_name
+
+.. autointerface:: ISyntacticallyReversibleOperation
+   :members: _rmethod_name
+
+.. autointerface:: ISynctacticallyCommutativeOperation
+   :members: equivalence_test
 
 
 Internal API

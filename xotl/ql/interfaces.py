@@ -79,11 +79,23 @@ class ISyntacticallyReversibleOperation(Interface):
 
 
 class ISynctacticallyCommutativeOperation(Interface):
-    '''
-    Marks :class:`IOperator` instances that are *syntactically* commutative.
+    '''Marks :class:`IOperator` instances that are *syntactically* commutative.
 
-    Usually this mark operators which Python itself treats commutatively, like
-    `==` and `!=`.
+    This mark applies only to operators `==` and `!=`, which Python itself
+    treats as commutative operations.
+
+    In an expression like ``expr1 == expr2`` if the class of the `expr1` does
+    not implements an `__eq__` method or returns `NotImplemented`, Python
+    fallbacks to call the method `__eq__` for `expr2`.
+
+    Notice that Python behaves differently when executing ``A + B``, i.e if `A`
+    does not have an `__add__`, the method looked for in `B` is `__radd__`;
+    i.e. the `+` operator is not commutative in general (for instance with
+    strings.)
+
+    Both `==` and `!=` are always commutative. That's why they need to test for
+    equivalence in way in which the order operands does not matter.
+
     '''
     def equivalence_test(ones, another):
         '''
