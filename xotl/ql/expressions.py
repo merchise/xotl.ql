@@ -243,6 +243,7 @@ class Operator(object):
     Subclasses of this class are *rarely* instantiated, instead they are used
     in :attr:`ExpressionTree.operation` to indicate the operation that is
     perform to the :attr:`operands <ExpressionTree.children>`.
+
     '''
     __metaclass__ = OperatorType
 
@@ -1190,12 +1191,16 @@ def _extract_target(which):
 
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
-    ''''
-    A representation of an expression.
+    '''A representation of an expression as an :term:`expression tree`.
 
     Each expression has an `op` attribute that *should* be a class derived
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
+
+    Some operators support *named_children*, for instance, the :class:`call
+    <InvokeFunction>` function may be passed a variable number of positional
+    arguments (children) and a variable number of keyword argument (named
+    children).
 
     '''
     implements(IExpressionTree)
@@ -1236,6 +1241,7 @@ class ExpressionTree(object):
 
     @property
     def named_children(self):
+        'A dictionary that contains the named operands in the expression.'
         return dict(self._named_children)
 
 
