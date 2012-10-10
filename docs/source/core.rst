@@ -6,22 +6,12 @@ The query language and the `this` object
 
 .. module:: xotl.ql.core
 
-Provides a :obj:`this` object that stands for every object in the "universe"
-(e.g. the index, the storage, etc.) The :obj:`this` object eases the
-construction of expressions directly, and also a query language by means of
-Python's syntax for :ref:`generator expressions <py:term-generator-expression>`
-and list, and dict comprehensions (we shall call them comprehensions).
-
-
-An overview of the Query Language
-=================================
-
 The basic query language uses comprehensions to express both the SELECT part
 and FILTER part of a query.
 
-In a query (comprehension) the :data:`this` objects stand for the entire
-universe of objects *unless otherwise restricted by filter expressions*. For
-instance::
+In a :term:`query expression` (comprehension) the :data:`this` objects stand
+for the entire universe of objects *unless otherwise restricted by filter
+expressions*. For instance::
 
     >>> from xotl.ql.expressions import count, is_a
 
