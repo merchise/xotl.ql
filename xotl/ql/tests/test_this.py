@@ -156,3 +156,7 @@ class RegressionTests(unittest.TestCase):
         t1 = this('abc', parent=this('efc'))
         t2 = this('abc', parent=this('efc'))
         self.assertIsNot(t1, t2)
+
+
+    def test_repr_this(self):
+        self.assert_(repr(this).startswith('<this at 0x'))
