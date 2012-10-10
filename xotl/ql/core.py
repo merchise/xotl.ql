@@ -621,9 +621,12 @@ class ThisClass(These):
 
 
     def __repr__(self):
-        # Hack to avoid sphinx writing <this at 0x...> in the docs.
-        # This won't
-        return None
+        # XXX: Hack to avoid sphinx writing <this at 0x...> in the docs.
+        # XXX: However, it's useful to have this repr when debugging.
+        import sys
+        sphinxed = 'sphinx' in sys.argv[0] if sys.argv else False
+        return None if sphinxed else super(ThisClass, self).__repr__()
+
 
 
 #: The `this` object is a unnamed universal "selector" that may be placed in
