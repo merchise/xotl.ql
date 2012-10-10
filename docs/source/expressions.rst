@@ -287,7 +287,7 @@ The ``<operator>`` can be any of the supported operations, i.e:
    :members:
 
 .. autoclass:: ExpressionTree
-   :members: operation, children
+   :members: operation, children, named_children
 
    This class implements the interface
    :class:`xotl.ql.interfaces.IExpressionTree`.
