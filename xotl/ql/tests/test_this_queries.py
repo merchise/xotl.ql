@@ -237,10 +237,19 @@ class TestThisQueries(unittest.TestCase):
                         for parent in this('parent')
                         if parent.age < 40)
         self.assertTrue(provides_any(query, IQuery))
+
         (full_name, age) = query.selection
+        full_name_expectation = this('parent').title + this('parent').name
+        age_expectation = this('parent').age
+
         with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(full_name, this('parent').title + this('parent').name)
-            self.assertEqual(age, this('parent').age)
+            self.assertEqual(full_name, full_name_expectation)
+            self.assertEqual(age, age_expectation)
+
+        filters = set(query.filters)
+        filters_expectation = set((this('parent').age < 40, ))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(filters, filters_expectation)
 
 
 
