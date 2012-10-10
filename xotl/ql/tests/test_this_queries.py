@@ -208,6 +208,21 @@ if __TEST_DESIGN_DECISIONS:
 
 
 
+class TestUtilities(unittest.TestCase):
+    def test_thesefy(self):
+        from xotl.ql.expressions import is_instance
+        from xotl.ql.core import thesefy
+
+        @thesefy
+        class Person(object):
+            pass
+
+        q = these(who for who in Person if who.age > 30)
+        q1 = these(who for who in this if is_instance(who, Person)
+                        if who.age > 30)
+        self.assertEqual(q, q1)
+
+
 class TestThisQueries(unittest.TestCase):
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent'))
