@@ -224,9 +224,14 @@ class TestUtilities(unittest.TestCase):
             pass
 
         q = these(who for who in Person if who.age > 30)
-        q1 = these(who for who in this if is_instance(who, Person)
+        # We need to extract the who so that names matches
+        domain = q.selection[0]
+        q1 = these(who for who in domain if is_instance(who, Person)
                         if who.age > 30)
-        self.assertEqual(q, q1)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(q.filters, q1.filters)
+            self.assertEqual(q.selection, q1.selection)
+            self.assertEqual(tuple(q.tokens), tuple(q1.tokens))
 
 
 class TestThisQueries(unittest.TestCase):

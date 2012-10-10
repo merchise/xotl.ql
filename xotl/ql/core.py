@@ -659,18 +659,6 @@ class Query(object):
         self._filters = []
 
 
-    def __eq__(self, other):
-        if isinstance(other, Query):
-            with context(UNPROXIFING_CONTEXT):
-                return (self.selection == other.selection and
-                        set(self.tokens) == set(other.tokens) and
-                        set(self.filters) == set(other.filters) and
-                        self.ordering == other.ordering and
-                        self.partition == other.partition)
-        else:
-            return False
-
-
     @property
     def selection(self):
         return self._selection
