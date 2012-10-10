@@ -37,6 +37,7 @@ the :class:`IQuery` below.
 .. autointerface:: IExpressionCapable
 
 .. autointerface:: IThese
+   :members: name, parent, __iter__, __getattribute__
 
 .. autointerface:: IOperator
 

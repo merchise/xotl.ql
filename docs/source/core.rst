@@ -131,7 +131,7 @@ type is a subclass of the class :class:`These`:
 
 
 .. autoclass:: These
-   :members: name, parent, binding, __iter__
+   :members: name, parent, root_parent,  __iter__
 
    This class implements :class:`xotl.ql.interfaces.IThese`
 

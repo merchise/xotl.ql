@@ -81,7 +81,7 @@ class Resource(object):
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name=None, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self.validate_name(name)
             self._name = name
@@ -144,58 +144,6 @@ class These(Resource):
     context in which `this` symbol is used inside the query itself.
     '''
     implements(IThese)
-
-    __slots__ = ('_binding')
-
-
-    def __init__(self, name=None, **kwargs):
-        with context(UNPROXIFING_CONTEXT):
-            self.validate_name(name)
-            self._name = name
-            self._parent = kwargs.get('parent', None)
-            self._binding = None
-            if not self._parent:
-                self.bind(get_first_of(kwargs, 'binding', 'filter',
-                                       default=None))
-
-
-    def bind(self, expression):
-        self.binding = expression
-
-
-    @property
-    def binding(self):
-        '''
-        The expression to which the `These` instance is bound to or None.
-        '''
-        current, res = self, None
-        while current and not res:
-            res = getattr(current, '_binding', None)
-            current = current.parent
-        return res if res else None
-
-
-    @binding.setter
-    def binding(self, value):
-        # This causes errors with objects that have __slots__, do we
-        # really need slots, or do we really need IBoundThese
-        #
-        # if value is not None:
-        #     directlyProvides(self, IBoundThese)
-        parent = getattr(self, 'parent', None)
-        if parent:
-            parent.binding = value
-        else:
-            self._binding = value
-
-
-    @binding.deleter
-    def binding(self):
-        parent = getattr(self, 'parent', None)
-        if parent:
-            del parent.binding
-        else:
-            del self._binding
 
 
     @classmethod
@@ -310,8 +258,7 @@ class These(Resource):
         from xotl.ql.expressions import eq
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
-                res = validate_attrs(self, other, ('name', 'parent',
-                                                   'binding'))
+                res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
         if context[UNPROXIFING_CONTEXT]:
@@ -338,8 +285,7 @@ class These(Resource):
         from xotl.ql.expressions import ne
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
-                res = validate_attrs(self, other, ('name', 'parent',
-                                                   'binding'))
+                res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
         if context[UNPROXIFING_CONTEXT]:
