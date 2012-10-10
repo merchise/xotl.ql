@@ -329,36 +329,25 @@ class IThese(IExpressionCapable):
         (this.age > 30) & (this.age < 40)
 
     '''
+    name = Attribute('The name of the instance.')
+    parent = Attribute('Another IThese instance from which self is drawn.')
 
     def __iter__():
         'These instances should be iterable'
 
 
     def __getattribute__(attr):
-        'Support for `this.attr[.attr2...]`'
+        '''All IThese instances support the creation of other instances just
+        by accesing an attribute `this.anyattr`.
 
+        This means that in order to access other *internal* attributes of the
+        instance, an execution context is needed.
 
-
-class IBoundThese(IThese):
-    'Bounded these instances'
-    binding = Attribute('A these instance *may* be bound to another '
-                        'expression.',
-                        'Bound these instances are meant to represent '
-                        'only those objects in the universe that matches '
-                        'certain criteria. This attribute should be '
-                        '*decidable* or None, but the means to decide '
-                        'such a fact are beyond the scope of this interface.')
-
-
-
-class ICallableThese(IThese):
-    '''Some instances of IThese may actually represent a callable.
-
-    For example, all attributes drawn from the `this` object are
-    ICallableThese instances.
-    '''
-    def __call__(*args):
-        'Support for callable these instances'
+        :param attr: The name of the object to access.
+        :type attr: unicode or str
+        :returns: Another IThese instance whose name is `attr` and whose parent
+                  is `self`.
+        '''
 
 
 
