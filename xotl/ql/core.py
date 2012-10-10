@@ -68,12 +68,17 @@ __all__ = (b'this',)
 class ExpressionError(Exception):
     '''Base class for expressions related errors'''
 
-class ResourceType(type): pass
 
 
-# TODO: Think about this name, also if we really need the __slots__ stuff. We
-# must stress the inmutability of some structures, but __slots__ does not
-# enforce inmutability, just disables the __dict__ in objects.
+class ResourceType(type):
+    pass
+
+
+
+# TODO: Think about this name.
+# TODO: Do we really need the __slots__ stuff? We must stress the inmutability
+#       of some structures, but __slots__ does not enforce inmutability,
+#       just disables the __dict__ in objects.
 class Resource(object):
     __slots__ = ('_name', '_parent')
     __metaclass__ = ResourceType
