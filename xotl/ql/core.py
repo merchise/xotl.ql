@@ -793,6 +793,12 @@ class GeneratorToken(object):
         self._parts = []
 
 
+    def __eq__(self, other):
+        with context(UNPROXIFING_CONTEXT):
+            if isinstance(other, GeneratorToken):
+                return self._token == other._token
+
+
     @property
     def token(self):
         return self._token
