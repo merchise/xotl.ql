@@ -1454,6 +1454,17 @@ class QueryPart(object):
         return result
 
 
+    def _is_a(self, what):
+        from xotl.ql.expressions import is_instance as f
+        with context(UNPROXIFING_CONTEXT):
+            instance = self.expression
+            token = self.token
+        result = QueryPart(expression=f(instance, what),
+                           token=token)
+        token.created_query_part(result)
+        return result
+
+
     def count(self):
         from xotl.ql.expressions import count as f
         with context(UNPROXIFING_CONTEXT):
