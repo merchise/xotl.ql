@@ -52,14 +52,21 @@ if __TEST_DESIGN_DECISIONS:
 
     class DesignDecisionTests(unittest.TestCase):
         '''
-            Tests that are not functional. This suite only tests design
-            decisions that may change over time; but which should not affect
-            the result of ``these(<comprehension>)`` syntax *unless* there's
-            a change in Query Language API.
+        Tests that are not functional. This suite only tests design
+        decisions that may change over time; but which should not affect
+        the result of ``these(<comprehension>)`` syntax *unless* there's
+        a change in Query Language API.
 
-            For instance, we test that comprehensions return always a
-            :class:`xotl.ql.core.QueryPart` (or a tuple/dict of them).
+        For instance, we test that comprehensions return always a
+        :class:`xotl.ql.core.QueryPart` (or a tuple/dict of them).
         '''
+
+        def test_yield_once(self):
+            q = (a for c in this for b in c.bs for a in b.a)
+            self.assertIsNotNone(next(q))
+            with self.assertRaises(StopIteration):
+                next(q)
+
 
         def test_plain_iter(self):
             t1 = next(iter(this))
@@ -194,9 +201,8 @@ if __TEST_DESIGN_DECISIONS:
             persons = these(parent for parent in this('parent')
                                 if is_a(parent, Person))
 
-            young_parents = these(parent for parent in persons
-                                        if (parent.age < 35) &
-                                            parent.children)
+            these(parent for parent in persons
+                         if (parent.age < 35) & parent.children)
 
 
         def test_iters_produce_a_single_name(self):
