@@ -272,8 +272,12 @@ The ``<operator>`` can be any of the supported operations, i.e:
 .. autoclass:: OperatorType(type)
    :members:
 
-   Instances of this class should provide the interface
-   :class:`xotl.ql.interfaces.IOperator`.
+   This is the metaclass for the class :class:`Operator` it automatically
+   injects documentation about
+   :class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation` and
+   :class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`, so there's
+   no need to explicitly declare which interfaces the class support in every
+   operator class.
 
 
 .. autoclass:: Operator
