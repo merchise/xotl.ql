@@ -1580,9 +1580,29 @@ def these(comprehesion, **kwargs):
 
     '''
     from xoutil.types import GeneratorType
-    assert isinstance(comprehesion, (GeneratorType, dict))
-    query = Query()
-    return query
+    assert isinstance(comprehesion, (GeneratorType,))
+    selected_parts = next(comprehesion)
+    with context(UNPROXIFING_CONTEXT):
+        if not isinstance(selected_parts, (list, tuple)):
+            selected_parts = (selected_parts, )
+        selection = []
+        tokens = []
+        filters = []
+        for part in selected_parts:
+            expr = part.expression
+            selection.append(expr)
+            token = part.token
+            tokens.append(part.token)
+            previous_parts = token._parts
+            if previous_parts and previous_parts[-1] is expr:
+                previous_parts.pop(-1)
+            filters.extend(previous_parts)
+        query = Query()
+        query.selection = tuple(selection)
+        query.tokens = set(tokens)
+        query.filters = list(set(filters))
+        return query
+
 
 
 def thesefy(target):
