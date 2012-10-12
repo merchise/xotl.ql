@@ -144,7 +144,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
 
     '''
     import types
-    if isinstance(expr, These):
+    if _is_these(expr):
         dejavu = [unboxed(expr).root_parent]
         expr = unboxed(expr).binding
     else:
@@ -164,7 +164,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
                 elif leave_filter(node) and node not in dejavu:
                     dejavu.append(node)
                     message = yield node
-                if isinstance(node, These):
+                if _is_these(node):
                     parent = node.root_parent
                     if parent not in dejavu:
                         dejavu.append(parent)
