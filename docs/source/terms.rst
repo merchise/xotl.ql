@@ -79,6 +79,32 @@ Terms and glossary
 
        See :class:`xotl.ql.interfaces.IGeneratorToken` for details.
 
+   object model
+
+       An object model is an object-oriented model which describes how objects
+       may exist and how they may relate to each other.
+
+       This include relational model; in such a model an object is a single
+       collection of named scalars that belongs to a single entity. Relations
+       are just foreign-keys, and the semantics associated with relations is
+       that of referential integrity.
+
+       A relational database is a kind of :term:`storage` that uses the
+       relational model as is object model (usually with some variations).
+
+       `xotl.ql` does not provides an API for expressing object models, but it
+       assumes that a :term:`translator <query translator>` exists which has
+       enough knowledge to deal which so an object model.
+
+       .. todo::
+
+	  Wouldn't the semantics of a object model be capture by category
+	  theory?
+
+	  The authors of [coSQL2011]_ point that this is possible; but I've not
+	  study that much yet ;)
+
+
    OMCaF
    Objects Model Canonical Form
 
@@ -155,3 +181,15 @@ Terms and glossary
        implementation path to follow to transform a `xotl.ql` query
        into another object (the plan) that may be better suited to be
        executed against your storage(s) media.
+
+   storage
+   object storage
+
+       A software component that allows to "persists" objects. Most of the time
+       the storage relates to a single :term:`object model`. For instance
+       relational databases use the relational model.
+
+       In general, a storage is a place from which one could draw objects
+       from. We may then, relax the "persistence" requirement from a component
+       to be considered a storage. For instance, a `memcached` server may be
+       considered a key-value storage, that a query translator may target.
