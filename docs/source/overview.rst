@@ -34,7 +34,7 @@ query language itself is just a combination of:
 
 - the :data:`~xotl.ql.core.this` object; and
 
-- the :func:`~xotl.ql.core.these` function.
+- the :class:`~xotl.ql.core.these` class.
 
 Let's see a query::
 
@@ -43,8 +43,8 @@ Let's see a query::
   >>> parents = these(parent for parent in this if count(parent.children) > 2)
 
 As you can see queries are just normal python comprehensions (usually over the
-:data:`~xotl.ql.this` object) wrapped inside the :func:`~xotl.ql.these`
-function.
+:data:`~xotl.ql.core.this` object) wrapped inside the
+:class:`~xotl.ql.core.these` function.
 
 More complex queries are allowed, for instance::
 
@@ -138,7 +138,7 @@ function to retrieve the objects that matches your query::
 If no translator is configured an exception is raised upon calling `next`. This
 allows to keep things simple at the data-consuming level. However, this by no
 means the only way to retrieve data from a query. See
-:class:`xotl.ql.interfaces.IQuery` for more information.
+:class:`xotl.ql.interfaces.IQueryObject` for more information.
 
 
 Open issues

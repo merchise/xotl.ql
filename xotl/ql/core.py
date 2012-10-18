@@ -43,19 +43,19 @@ import re
 from itertools import count
 
 from xoutil.types import Unset
-from xoutil.objects import get_first_of, validate_attrs
+from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from zope.component import getUtility
-from zope.interface import implements
+from zope.interface import implementer
 
 from xotl.ql.expressions import _true, _false, ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
                                 IQueryTranslator, IQueryConfiguration,
-                                IQuery)
+                                IQueryObject)
 
 
 __docstring_format__ = 'rst'
@@ -141,15 +141,13 @@ class Resource(object):
         else:
             return self
 
-
+@implementer(IThese)
 class These(Resource):
     '''
     The type of the :obj:`this` symbol: an unnamed object that may placed in
     queries and whose interpretation depends on the query context and the
     context in which `this` symbol is used inside the query itself.
     '''
-    implements(IThese)
-
 
     @classmethod
     def _newname(cls):
@@ -222,7 +220,7 @@ class These(Resource):
             name = self.name
             parent = self.parent
         if name:
-            token = GeneratorToken(instance=self)
+            token = GeneratorToken(expression=self)
             instance = QueryPart(expression=self, token=token)
             yield instance
         else:
@@ -647,11 +645,91 @@ def provides_all(which, *interfaces):
 
 
 
-class Query(object):
+
+class _QueryObjectType(type):
+    def these(self, comprehesion, **kwargs):
+        '''Post-process the query comprehension to build a :term:`query
+        object`.
+
+        :param comprehension: A comprehension in place of the :term:`query
+                              expression`.
+
+        :param ordering: The ordering expressions.
+        :type ordering: A tuple of ordering expressions.
+
+        :param partition: A slice `(offset, limit, step)` that represents the
+                          part of the result set to be retrieved.
+
+                          You may express this by individually providing the
+                          arguments `offset`, `limit` and `step`.
+
+                          If you provide the `partition` argument, those will be
+                          ignored (and a warning will be logged).
+
+        :type partition: slice or None
+
+        :param offset: Indivually express the offset of the `partition` param.
+        :type offset: int or None
+
+        :param limit: Indivually express the limit of the `partition` param.
+        :type limit: int or None
+
+        :param step: Indivually express the step of the `partition` param.
+        :type step: int or None
+
+        :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
+                  represents the QueryObject expressed by the `comprehension`
+                  and the `kwargs`.
+
+        :rtype: :class:`QueryObject`
+
+        '''
+        from types import GeneratorType
+        assert isinstance(comprehesion, GeneratorType)
+        selected_parts = next(comprehesion)
+        with context(UNPROXIFING_CONTEXT):
+            if not isinstance(selected_parts, (list, tuple)):
+                selected_parts = (selected_parts, )
+            selected_parts = tuple(reversed(selected_parts))
+            selection = []
+            tokens = []
+            filters = []
+            for part in selected_parts:
+                expr = part.expression
+                selection.append(expr)
+                token = part.token
+                tokens.append(token.expression)
+                previous_parts = token._parts
+                if previous_parts and previous_parts[-1] is expr:
+                    previous_parts.pop(-1)
+                filters.extend(previous_parts)
+            query = self()
+            query.selection = tuple(reversed(selection))
+            query.tokens = tuple(set(tokens))
+            query.filters = tuple(set(filters))
+            return query
+
+
+    def __call__(self, *args, **kwargs):
+        if args:
+            from xoutil.types import GeneratorType
+            first_arg, args = args[0], args[1:]
+            if not args:
+                if isinstance(first_arg, GeneratorType):
+                    return self.these(first_arg, **kwargs)
+                # TODO: Other types of queries
+
+        result = super(self, self).__new__(self)
+        result.__init__(*args, **kwargs)
+        return result
+
+
+@implementer(IQueryObject)
+class QueryObject(object):
     '''
-    Represents a query. See :class:`xotl.ql.interfaces.IQuery`.
+    Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
-    implements(IQuery)
+    __metaclass__ = _QueryObjectType
 
 
     def __init__(self):
@@ -738,7 +816,8 @@ class Query(object):
         '''
         state = getattr(self, '_query_state', Unset)
         if state is Unset:
-            # TODO: This will change, configuration vs deployment. How to inject translator into a global/local context?
+            # TODO: This will change, configuration vs deployment.
+            #       How to inject translator into a global/local context?
             name = getUtility(IQueryConfiguration).query_translator_name
             translator = getUtility(IQueryTranslator,
                                     name if name else b'default')
@@ -759,7 +838,10 @@ class Query(object):
         raise NotImplementedError
 
 
+these = QueryObject
 
+
+@implementer(IGeneratorToken, IQueryPartContainer)
 class GeneratorToken(object):
     '''
     Represents a token in the syntactical tree that is used as generator.
@@ -770,14 +852,13 @@ class GeneratorToken(object):
     retrieve the filters related to this generator token.
 
     '''
-    implements(IGeneratorToken, IQueryPartContainer)
-
-    __slots__ = ('_token', '_parts')
+    __slots__ = ('_expression', '_parts')
 
 
     # TODO: Representation of grouping with dicts.
-    def __init__(self, **kwargs):
-        self._token = kwargs.get('token')
+    def __init__(self, expression):
+        assert provides_any(expression, IThese)
+        self._expression = expression
         self._parts = []
 
 
@@ -788,8 +869,8 @@ class GeneratorToken(object):
 
 
     @property
-    def token(self):
-        return self._token
+    def expression(self):
+        return self._expression
 
 
     @staticmethod
@@ -798,7 +879,6 @@ class GeneratorToken(object):
         top = parts[-1]
         if IExpressionTree.providedBy(expression):
             return any(child is top for child in expression.children)
-#            return top in expression.children
         elif IThese.providedBy(expression):
             return expression.parent is top
         else:
@@ -820,6 +900,8 @@ class GeneratorToken(object):
                 assert False
 
 
+
+@implementer(IQueryPart)
 class QueryPart(object):
     '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
     implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
@@ -913,11 +995,11 @@ class QueryPart(object):
        *filter expressions* from the parts stack (disregarding the top-most if
        it's the same as the selection.)
 
-    9. The :func:`these` creates a new :class:`Query` object and extracts the
+    9. The :func:`these` creates a new :class:`QueryObject` object and extracts the
        `expression` from the selected query part and assigns it to the
-       :attr:`~xotl.ql.interfaces.IQuery.selection` attribute of the query
+       :attr:`~xotl.ql.interfaces.IQueryObject.selection` attribute of the query
        object, any retrieved expressions from the parts stack of the tokens are
-       appended to the :attr:`~xotl.ql.interfaces.IQuery.filters` attribute.
+       appended to the :attr:`~xotl.ql.interfaces.IQueryObject.filters` attribute.
 
     10. For the query above the query object returned will have its arguments
         with following values:
@@ -931,8 +1013,6 @@ class QueryPart(object):
         Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    implements(IQueryPart)
-
     __slots__ = ('_token', '_expression')
 
 
@@ -1471,7 +1551,7 @@ class QueryPart(object):
         return result
 
 
-    def count(self):
+    def _count(self):
         from xotl.ql.expressions import count as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
@@ -1549,68 +1629,6 @@ class QueryPart(object):
 
 
 
-def these(comprehesion, **kwargs):
-    '''
-    Post-process the query comprehension to build a GeneratorToken.
-
-
-    :param comprehension:  A comprehension that express the query using the
-                           Query Language.
-
-    :param ordering: The ordering expressions.
-    :type ordering: A tuple of ordering expressions.
-
-    :param partition: A slice `(offset, limit, step)` that represents the
-                      part of the result set to be retrieved.
-
-                      You may express this by individually providing the
-                      arguments `offset`, `limit` and `step`.
-
-                      If you provide the `partition` argument, those will be
-                      ignored (and a warning will be logged).
-
-    :type partition: slice or None
-
-    :param offset: Indivually express the offset of the `partition` param.
-    :type offset: int or None
-
-    :param limit: Indivually express the limit of the `partition` param.
-    :type limit: int or None
-
-    :param step: Indivually express the step of the `partition` param.
-    :type step: int or None
-
-    :returns: An :class:`~xotl.ql.interfaces.IQuery` instance that represents
-              the Query expressed by the `comprehension` and the `kwargs`.
-    :rtype: :class:`Query`
-
-    '''
-    from xoutil.types import GeneratorType
-    assert isinstance(comprehesion, (GeneratorType,))
-    selected_parts = next(comprehesion)
-    with context(UNPROXIFING_CONTEXT):
-        if not isinstance(selected_parts, (list, tuple)):
-            selected_parts = (selected_parts, )
-        selection = []
-        tokens = []
-        filters = []
-        for part in selected_parts:
-            expr = part.expression
-            selection.append(expr)
-            token = part.token
-            tokens.append(part.token)
-            previous_parts = token._parts
-            if previous_parts and previous_parts[-1] is expr:
-                previous_parts.pop(-1)
-            filters.extend(previous_parts)
-        query = Query()
-        query.selection = tuple(selection)
-        query.tokens = set(tokens)
-        query.filters = list(set(filters))
-        return query
-
-
-
 def thesefy(target):
     '''
     Takes in a class and injects it an `__iter__` method that can be used
@@ -1626,19 +1644,32 @@ def thesefy(target):
         >>> q.filters[0]   # doctest: +ELLIPSIS
         <expression 'is_a(this(...), <class ...Person>)' at 0x...>
 
-    This is only usefull if your real class does not have a metaclass of its
-    own that do that.
+    This is only useful if your real class does not have a metaclass of its
+    own that do that. However, if you do have a metaclass
     '''
     from xoutil.objects import nameof
     class new_meta(type(target)):
         def __new__(cls, name, bases, attrs):
             return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
         def __iter__(self):
-            from xotl.ql.expressions import is_instance
-            query_part = next(iter(this))
-            is_instance(query_part, self)  # This has the side-effect to be
-                                           # appended to the generated parts
-            yield query_part
+            from types import GeneratorType
+            from xotl.ql.interfaces import IQueryPart
+            try:
+                result = super(new_meta, self).__iter__()
+            except AttributeError:
+                result = Unset
+            if isinstance(result, GeneratorType):
+                return result
+            elif result is not Unset and IQueryPart.providedBy(result):
+                return iter((result, ))
+            elif result is Unset:
+                from xotl.ql.expressions import is_instance
+                query_part = next(iter(this))
+                is_instance(query_part, self)
+                return iter((query_part, ))
+            else:
+                raise TypeError('Class {target} has a metaclass with an '
+                                '__iter__ that does not support thesefy'.format(target=target))
 
     class new_class(target):
         __metaclass__ = new_meta

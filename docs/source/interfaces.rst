@@ -19,9 +19,9 @@ Query objects interfaces
 ------------------------
 
 :term:`Query objects <query object>` are represented by objects implementing
-the :class:`IQuery` below.
+the :class:`IQueryObject` below.
 
-.. autointerface:: IQuery
+.. autointerface:: IQueryObject
    :members: selection, tokens, filters, ordering, partition
 
 .. autointerface:: IQueryTranslator
@@ -29,7 +29,7 @@ the :class:`IQuery` below.
 .. autointerface:: IQueryExecutionPlan
 
 .. autointerface:: IGeneratorToken
-   :members: token
+   :members: expression
 
 .. autointerface:: IExpressionTree
    :members: operation, children, named_children

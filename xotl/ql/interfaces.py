@@ -360,9 +360,10 @@ class IQueryPartContainer(Interface):
 class IGeneratorToken(Interface):
     '''In the :term:`query object`, a single :term:`generator token`.
 
-    A generator token is an expression that is used inside a :term:`query`
-    as a named location from which to draw objects. It relates to the FROM
-    clause in SQL, and to the ``<-`` operation in UnQL [UnQL]_.
+    A generator token is a wrapper of the expression that is used inside a
+    :term:`query object` as a named location from which to draw objects. It
+    relates to the FROM clause in SQL, and to the ``<-`` operation in UnQL
+    [UnQL]_.
 
     .. todo::
 
@@ -382,18 +383,18 @@ class IGeneratorToken(Interface):
        type expression that may be regarded as collection of objects:
 
        - :class:`IThese` instances
-       - :class:`IQuery` instances.
+       - :class:`IQueryObject` instances.
 
        However, for the time being there's no such thing as a `query()`
        function.
 
     '''
-    token = Attribute('The instance from which this token was created. '
-                      'Usually a :class:`IThese` instance.')
+    expression = Attribute('The instance from which this token was created. '
+                           'Usually a :class:`IThese` instance.')
 
 
 
-class IQuery(Interface):
+class IQueryObject(Interface):
     '''A :term:`query object`.
 
     This objects captures a query by its selection, filters and generator
@@ -434,7 +435,7 @@ class IQuery(Interface):
     def __iter__():
         '''
         Queries are iterable, but they **must** return ``self`` in this method.
-        See :meth:`IQuery.next`.
+        See :meth:`IQueryObject.next`.
         '''
 
 

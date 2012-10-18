@@ -146,13 +146,12 @@ Terms and glossary
    query translator
    translator
 
-       In the general design a query translator is a component that
-       receives a :term:`query` and produces a :term:`query execution
-       plan`. The query is usually the result of the
-       :func:`~xotl.ql.core.these` function; and the execution plan
-       is dependant of the translator. A CouchDB translator, for
-       instance may simply translate the whole query to a CouchDB view
-       and return a plan that just involves quering that view.
+       In the general design a query translator is a component that receives a
+       :term:`query` and produces a :term:`query execution plan`. The query is
+       usually the result of the :class:`~xotl.ql.core.these` function; and the
+       execution plan is dependant of the translator. A CouchDB translator, for
+       instance may simply translate the whole query to a CouchDB view and
+       return a plan that just involves quering that view.
 
        Query translator are not implemented on this package.
 

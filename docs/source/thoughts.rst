@@ -267,7 +267,7 @@ xotl.ql's Query API, it's ``select()`` function, does not requires an explicit
 declaration of FROM, because it gathers the table from the SELECT-ed columns.
 
 This is quite similar to the idea of having the expressions in the
-:attr:`~xotl.ql.interfaces.IQuery.selection`
+:attr:`~xotl.ql.interfaces.IQueryObject.selection`
 
 
 

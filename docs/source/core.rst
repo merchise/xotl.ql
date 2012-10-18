@@ -125,10 +125,33 @@ type is a subclass of the class :class:`These`:
 
    This class implements :class:`xotl.ql.interfaces.IThese`
 
-.. autofunction:: these(comprehension, **kwargs)
+.. autoclass:: _QueryObjectType
+   :members: these
+
+.. class:: these(comprehension, **kwargs)
+
+   An alias to the :class`QueryObject`, you may use either as a constructor for
+   :term:`query objects <query object>`. However we use both names for
+   different purposes:
+
+   - We use :class:`these` with the `(comprehension, ...)` signature only to
+     get a :term:`query object` from a :term:`query expression`.
+
+   - We use :class:`QueryObject` without any arguments, to build a bare
+     :term:`query object` that may be filled afterward.
+
+     The only valid signature is the one of :class:`these`, any other signature
+     will produce a `TypeError`.
+
+   .. note::
+
+      The metaclass :class:`_QueryObjectType` of :class:`these` hooks into the
+      way of creating instances (:term:`query objects <query object>`), if you
+      pass a single positional argument which is of type `GeneratorType`, the
+      metaclass will use its :meth:`_QueryObjectType.these` method.
 
 
-.. autoclass:: Query
+.. autoclass:: QueryObject
 
 .. autoclass:: GeneratorToken
 
