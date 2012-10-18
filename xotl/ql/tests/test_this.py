@@ -91,13 +91,6 @@ class TestThisExpressions(unittest.TestCase):
         self.assertEqual("this('child').age < this('parent').age", str(expr))
 
 
-    def test_init_with_binding(self):
-        from xoutil.proxy import unboxed as u
-        t = this('p', binding=this('p') > 33)
-        binding = u(t).binding
-        self.assertEqual("this('p') > 33", str(binding))
-
-
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
