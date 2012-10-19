@@ -46,6 +46,7 @@ from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+from xoutil.decorators import decorator
 
 from zope.component import getUtility
 from zope.interface import implementer
@@ -1629,23 +1630,60 @@ class QueryPart(object):
 
 
 
-def thesefy(target):
+@decorator
+def thesefy(target, name=None):
     '''
-    Takes in a class and injects it an `__iter__` method that can be used
-    to form queries::
+    Takes in a class and injects it an `__iter__` so that the class may take
+    part of `this` in :term:`query expressions <query expression>`.
 
         >>> @thesefy
-        ... class Person(object):
+        ... class Entity(object):
+        ...    def __init__(self, **kwargs):
+        ...        for k, v in kwargs.items():
+        ...            setattr(self, k, v)
+        >>> q = these(which for which in Entity if which.name.startswith('A'))
+
+    The previous query is rougly equivalent to::
+
+        >>> q2 = these(which for which in this
+        ...                if is_instance(which, Entity)
+        ...                if which.name.startswith('A'))
+
+    You may test, that an `in_instance(..., Entity)` expression is in the query
+    object filters::
+
+        >>> from xotl.ql.expressions import is_instance
+        >>> any(unboxed(filter).operation is not is_instance
+        ...     or filter.children[1] is Entity for filter in q.filters)
+        True
+
+    This is only useful if your real class does not have a metaclass of its own
+    that do that. However, if you do have a metaclass with an `__iter__` method
+    it should either return an `IQueryPart` instance or a `generator object`.
+
+    Optionally (usually for debugging purposes only) you may pass a name to
+    the decorator that will be used as the name for the internally generated
+    :class:`These` instance.
+
+        >>> @thesefy('Entity')
+        ... class Entity(object):
         ...    pass
 
-        >>> from xoutil.proxy import unboxed
-        >>> from xotl.ql.expressions import q
-        >>> q = these(who for who in Person if who.age > 30)
-        >>> q.filters[0]   # doctest: +ELLIPSIS
-        <expression 'is_a(this(...), <class ...Person>)' at 0x...>
+        >>> q = these(which for which in Entity if which.name.startswith('A'))
+        >>> q.selection        # doctest: +ELLIPSIS
+        (<this('Entity') at 0x...>,)
 
-    This is only useful if your real class does not have a metaclass of its
-    own that do that. However, if you do have a metaclass
+    This way it's easier to doc-test::
+
+        >>> filters = q.filters
+        >>> expected_is = is_instance(this('Entity'), Entity)
+        >>> expected_filter = this('Entity').name.startswith('A')
+
+        >>> any(unboxed(expected_is) == f for f in filters)
+        True
+
+        >>> any(unboxed(expected_filter) == f for f in filters)
+        True
     '''
     from xoutil.objects import nameof
     class new_meta(type(target)):
@@ -1664,7 +1702,7 @@ def thesefy(target):
                 return iter((result, ))
             elif result is Unset:
                 from xotl.ql.expressions import is_instance
-                query_part = next(iter(this))
+                query_part = next(iter(this(name)))
                 is_instance(query_part, self)
                 return iter((query_part, ))
             else:
