@@ -649,11 +649,10 @@ def provides_all(which, *interfaces):
 
 class _QueryObjectType(type):
     def these(self, comprehesion, **kwargs):
-        '''Post-process the query comprehension to build a :term:`query
-        object`.
+        '''Builds a :term:`query object` from a :term:`query expression` given
+        by a comprehesion.
 
-        :param comprehension: A comprehension in place of the :term:`query
-                              expression`.
+        :param comprehension: The :term:`query expression` to be processed.
 
         :param ordering: The ordering expressions.
         :type ordering: A tuple of ordering expressions.
@@ -664,8 +663,8 @@ class _QueryObjectType(type):
                           You may express this by individually providing the
                           arguments `offset`, `limit` and `step`.
 
-                          If you provide the `partition` argument, those will be
-                          ignored (and a warning will be logged).
+                          If you provide the `partition` argument, those will
+                          be ignored (and a warning will be logged).
 
         :type partition: slice or None
 
@@ -708,6 +707,18 @@ class _QueryObjectType(type):
             query.selection = tuple(reversed(selection))
             query.tokens = tuple(set(tokens))
             query.filters = tuple(set(filters))
+            query.ordering = kwargs.get('ordering', None)
+            partition = kwargs.get('partition', None)
+            offset = kwargs.get('offset', None)
+            limit = kwargs.get('limit', None)
+            step = kwargs.get('step', None)
+            if not partition and (offset or limit or step):
+                partition = slice(offset, limit, step)
+            elif partition and (offset or limit or step):
+                import warnings
+                warnings.warn('Ignoring offset, limit and/or step argument '
+                              'since partition was passed', stacklevel=2)
+            query.partition = partition
             return query
 
 
@@ -735,7 +746,10 @@ class QueryObject(object):
 
     def __init__(self):
         self._selection = None
-        self._filters = []
+        self.tokens = None
+        self._filters = None
+        self._ordering = None
+        self.partition = None
 
 
     @property
@@ -782,8 +796,8 @@ class QueryObject(object):
             elif isinstance(value, tuple) and all(ok(v) for v in value):
                 self._ordering = value
             else:
-                raise TypeError('Expected a [tuple of] unary expressions; '
-                                'got %r' % value)
+                raise TypeError('Expected a [tuple of] unary (+ or -) '
+                                'expressions; got %r' % value)
         else:
             self._ordering = None
 
@@ -798,7 +812,7 @@ class QueryObject(object):
         if not value or isinstance(value, slice):
             self._partition = value
         else:
-            raise TypeError('Expected a slice; got %r' % value)
+            raise TypeError('Expected a slice or None; got %r' % value)
 
 
     @property
@@ -809,6 +823,11 @@ class QueryObject(object):
     @property
     def limit(self):
         return self._partition.stop
+
+
+    @property
+    def step(self):
+        return self._partition.step
 
 
     def next(self):
@@ -822,8 +841,7 @@ class QueryObject(object):
             name = getUtility(IQueryConfiguration).query_translator_name
             translator = getUtility(IQueryTranslator,
                                     name if name else b'default')
-            query_plan = translator.build_plan(self, order=self.ordering,
-                                               partition=self.partition)
+            query_plan = translator.build_plan(self)
             state = self._query_state = query_plan()
         result, state = next(state, (Unset, state))
         if result is not Unset:
