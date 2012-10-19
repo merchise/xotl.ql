@@ -169,7 +169,7 @@ class These(Resource):
         with context(UNPROXIFING_CONTEXT):
             parent = self.parent
         if parent is not None:
-            from .expressions import invoke
+            from xotl.ql.expressions import invoke
             return ExpressionTree(invoke, self, *args)
         else:
             raise TypeError()
