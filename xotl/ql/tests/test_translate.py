@@ -31,7 +31,10 @@ from __future__ import (division as _py3_division,
 
 
 import unittest
-from xotl.ql.core import these, this
+
+from xoutil.types import Unset
+
+from xotl.ql.core import these, this, thesefy
 from xotl.ql.translate import init
 
 
@@ -45,47 +48,117 @@ __author__ = 'manu'
 init()
 
 
+# The following classes are just a simple Model
+class TransitiveRelationDescriptor(object):
+    def __init__(self, name, target=None):
+        self.name = name
+        self.internal_name = '_' + name
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            result = getattr(instance, self.internal_name, [])
+            if result:
+                current = result
+                while current:
+                    current = getattr(current, self.name, Unset)
+                    if current and current not in result:
+                        result.append(current)
+            return result
+
+    def __set__(self, instance, value):
+        setattr(instance, self.internal_name, value)
+
+
+@thesefy
+class Entity(object):
+    def __init__(self, **attrs):
+        for k, v in attrs.iteritems():
+            setattr(self, k, v)
+
+
+def date_property(internal_attr_name):
+    def getter(self):
+        return getattr(self, internal_attr_name)
+
+    def setter(self, value):
+        from datetime import datetime, timedelta
+        if not isinstance(value, datetime):
+            import dateutil.parser
+            value = dateutil.parser.parse(value)
+        setattr(self, internal_attr_name, value)
+
+    def fdel(self):
+        delattr(self, internal_attr_name)
+
+    return property(getter, setter, fdel)
+
+
+def age_property(attr_name):
+    @property
+    def age(self):
+        from datetime import datetime
+        today = datetime.today()
+        date = getattr(self, attr_name)
+        age = today - date
+        return age.days // 365.25
+    return age
+
+
+class Place(Entity):
+    located_in = TransitiveRelationDescriptor('located-in')
+    foundation_date = date_property('_foundation_date')
+    age = age_property('foundation_date')
+
+
+class Person(Entity):
+    lives_in = TransitiveRelationDescriptor('located-in', Place)
+    birthdate = date_property('_birthdate')
+    age = age_property('birthdate')
+
+
+cuba = Place(name='Cuba', type='Country')
+havana = Place(name='Havana', type='Province', located_in=cuba)
+lisa = Place(name='La lisa', type='Municipality', located_in=havana)
+cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
+ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
+moron = Place(name='Morón', type='Municipality', located_in=ciego)
+
+elsa = Person(name='Elsa Acosta Cabrera',
+              birthdate='1947-10-06',
+              lives_in=moron)
+manu = Person(name='Manuel Vázquez Acosta',
+              birthdate='1978-10-21',
+              mother=elsa,
+              lives_in=lisa)
+
+denia = Person(name='Ana Denia Pérez',
+               birthdate='1950-04-01',
+               lives_in=cotorro)
+pedro = Person(name='Pedro Piñero', birthdate='1950-04-01', lives_in=cotorro)
+yade = Person(name='Yadenis Piñero Pérez', birthdate='1979-05-16',
+              mother=denia, father=pedro, lives_in=lisa)
+
+manolito = Person(name='Manuel Vázquez Piñero',
+                  birthdate='2007-03-22',
+                  mother=yade,
+                  father=manu,
+                  lives_in=lisa)
+
+
+select_manus = these(who for who in Person if who.name.startswith('Manuel '))
+select_aged_entities = these(who for who in Entity if who.age)
+
+# Three days after I (manu) wrote this query, I started to appear in the
+# results ;)
+select_old_entities = these(who for who in Entity if who.age > 34)
+
+
 
 class TestTranslatorTools(unittest.TestCase):
-    def test_traverse(self):
-        from xotl.ql.translate import cotraverse_expression
-        from xotl.ql.expressions import is_a, in_, all_
-        who = these(who for who in this('w')
-                        if all_(who.children,
-                                in_(this, these(sub for sub in this('s')
-                                                 if is_a(sub,
-                                                         'Subs')))))
-        is_a_nodes = cotraverse_expression(who,
-                                           yield_node=lambda x: x.op == is_a,
-                                           leave_filter=lambda _x: False)
-        self.assertEquals(["is_a(this('s'), Subs)"],
-                          [str(x) for x in is_a_nodes])
-
-
-    def test_query(self):
-        class Foo(object):
-            def __init__(self, age):
-                self.name = type(self).__name__.lower() + str(age)
-                self.age = age + 10
-
-        class Bar(Foo):
-            pass
-
-        class Baz(Foo):
-            pass
-
-        class Egg(Bar):
-            pass
-
-        _f = [Foo(i) for i in range(5)]  # 5 Foo objects
-        _bs = [Bar(i) for i in range(1)]  # 6 Foo objects, 1 bar
-        _bzs = [Baz(i) for i in range(3)]  # 9 Foo objects, 3 bazs
-        _es = [Egg(i) for i in range(3)]  # 12 Foo objects, 4 bars, and 3 eggs
-
-        from xotl.ql.expressions import is_a
-        query = list(these(foo for foo in this if is_a(foo, Foo)))
-        self.assertEqual(12, len(query))
-
+    def test_setup(self):
+        self.assertIn(cuba, manolito.lives_in)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
