@@ -227,8 +227,7 @@ class TestUtilities(unittest.TestCase):
     def _test_class(self, Person):
         from xotl.ql.expressions import is_instance
 
-        q = these((who for who in Person if who.age > 30),
-                  limit=100)
+        q = these(who for who in Person if who.age > 30)
         # We need to extract the who so that names matches
         who = domain = q.selection[0]
         q1 = these(who for who in domain if is_instance(who, Person)
@@ -246,8 +245,6 @@ class TestUtilities(unittest.TestCase):
 
             self.assertEqual(q.selection, q1.selection)
             self.assertEqual(q.tokens, q1.tokens)
-
-        self.assertEqual(slice(100), q.partition)
 
 
     def test_thesefy_good(self):
