@@ -88,6 +88,7 @@ def _instance_of(cls):
     accepts objects that are instances of `cls`.'''
     def accept(ob):
         return isinstance(ob, cls)
+    return accept
 
 
 
@@ -117,3 +118,5 @@ def init(settings=None):
     else:
         manager.registerUtility(self, IQueryConfiguration)
     manager.registerUtility(self, IQueryTranslator)
+
+
