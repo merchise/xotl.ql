@@ -1145,12 +1145,13 @@ class QueryPart(object):
     def tokens(self, value):
         from xoutil.types import is_collection
         with context(UNPROXIFING_CONTEXT):
+            tokens = self._tokens
             if is_collection(value):
                 assert all(provides_any(g, IGeneratorToken) for g in value)
-                self._tokens.extend(value)
+                tokens.extend(token for token in value if token not in tokens)
             else:
                 assert provides_any(value, IGeneratorToken)
-                self._tokens.append(value)
+                tokens.append(value)
 
 
     @property

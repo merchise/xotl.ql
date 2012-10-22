@@ -57,7 +57,7 @@ comprehensions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
 .. autointerface:: IQueryPart
-   :members: token, expression
+   :members: token, tokens, expression
 
 .. autointerface:: IQueryPartContainer
    :members: created_query_part
