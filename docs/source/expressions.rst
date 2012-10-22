@@ -360,9 +360,9 @@ Included operations
 
 .. autoclass:: ge
 
-.. autoclass:: InExpressionOperator
+.. autoclass:: ContainsExpressionOperator
 
-.. autoclass:: in_
+.. autoclass:: contains
 
 .. warning:
 
