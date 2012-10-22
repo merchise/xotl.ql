@@ -41,17 +41,19 @@ from __future__ import (division as _py3_division,
 
 import re
 from itertools import count
+from functools import partial
 
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 from xoutil.decorators import decorator
+from xoutil.aop.basic import complementor
 
 from zope.component import getUtility
 from zope.interface import implementer
 
-from xotl.ql.expressions import _true, _false, ExpressionTree
+from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
@@ -702,7 +704,8 @@ class _QueryObjectType(type):
                 previous_parts = token._parts
                 if previous_parts and previous_parts[-1] is expr:
                     previous_parts.pop(-1)
-                filters.extend(previous_parts)
+                filters.extend(part for part in previous_parts
+                                    if part not in filters)
             query = self()
             query.selection = tuple(reversed(selection))
             query.tokens = tuple(set(tokens))
@@ -884,7 +887,7 @@ class GeneratorToken(object):
     def __eq__(self, other):
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, GeneratorToken):
-                return self._token == other._token
+                return self._expression == other._expression
 
 
     @property
@@ -896,8 +899,14 @@ class GeneratorToken(object):
     def mergable(parts, expression):
         assert context[UNPROXIFING_CONTEXT]
         top = parts[-1]
-        if IExpressionTree.providedBy(expression):
-            return any(child is top for child in expression.children)
+        if top is expression:
+            return True
+        elif IExpressionTree.providedBy(expression):
+            result = any(child is top for child in expression.children)
+            if not result and IExpressionTree.providedBy(top):
+                return any(child is expression for child in top.children)
+            else:
+                return result
         elif IThese.providedBy(expression):
             return expression.parent is top
         else:
@@ -907,7 +916,6 @@ class GeneratorToken(object):
 
     def created_query_part(self, part):
         with context(UNPROXIFING_CONTEXT):
-            assert part.token is self
             if provides_all(part, IQueryPart):
                 expression = part.expression
                 parts = self._parts
@@ -920,7 +928,76 @@ class GeneratorToken(object):
 
 
 
+def _build_unary_operator(operation):
+    method_name = operation._method_name
+    def method(self):
+        with context(UNPROXIFING_CONTEXT):
+            instance = self.expression
+            token = self.token
+        result = QueryPart(expression=operation(instance),
+                           token=token)
+        token.created_query_part(result)
+        return result
+    method.__name__ = method_name
+    return method
+
+
+
+def _build_binary_operator(operation, inverse=False):
+    if not inverse:
+        method_name = operation._method_name
+    else:
+        method_name = operation._rmethod_name
+    if method_name:
+        def method(self, other):
+            with context(UNPROXIFING_CONTEXT):
+                instance = self.expression
+                token = self.token
+                tokens = getattr(self, 'tokens', [token])
+                if isinstance(other, QueryPart):
+                    other_token = other.token
+                    other_tokens = getattr(other, 'tokens', [other_token])
+                    other = other.expression
+                else:
+                    other_token = None
+                    other_tokens = []
+                tokens.extend(t for t in other_tokens if t not in tokens)
+            if not inverse:
+                result = QueryPart(expression=operation(instance, other),
+                                   token=token)
+            else:
+                result = QueryPart(expression=operation(other, instance),
+                                   token=token)
+            result.tokens = tokens
+            for token in tokens:
+                token.created_query_part(result)
+            return result
+        method.__name__ = method_name
+        return method
+
+
+
+_part_operations = {operation._method_name:
+                    _build_unary_operator(operation)
+                 for operation in OperatorType.operators
+                    if getattr(operation, 'arity', None) == UNARY}
+_part_operations.update({operation._method_name:
+                        _build_binary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY})
+
+_part_operations.update({operation._rmethod_name:
+                        _build_binary_operator(operation, True)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
+
+QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
+
+
 @implementer(IQueryPart)
+@complementor(QueryPartOperations)
 class QueryPart(object):
     '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
     implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
@@ -1032,7 +1109,7 @@ class QueryPart(object):
         Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    __slots__ = ('_token', '_expression')
+    __slots__ = ('_token', '_expression', '_tokens')
 
 
     def __init__(self, **kwargs):
@@ -1041,6 +1118,7 @@ class QueryPart(object):
             # TODO: assert that expression is ExpressionCapable
             self._token = None
             self.token = token = kwargs.get('token')
+            self._tokens = [token]
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
@@ -1056,6 +1134,23 @@ class QueryPart(object):
             self._token = value
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
+
+
+    @property
+    def tokens(self):
+        return list(self._tokens)
+
+
+    @tokens.setter
+    def tokens(self, value):
+        from xoutil.types import is_collection
+        with context(UNPROXIFING_CONTEXT):
+            if is_collection(value):
+                assert all(provides_any(g, IGeneratorToken) for g in value)
+                self._tokens.extend(value)
+            else:
+                assert provides_any(value, IGeneratorToken)
+                self._tokens.append(value)
 
 
     @property
@@ -1120,473 +1215,6 @@ class QueryPart(object):
             instance = self.expression
             token = self.token
         result = QueryPart(expression=instance(*args),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __eq__(self, other):
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = instance == other
-        if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(expression=result,
-                               token=token)
-            token.created_query_part(result)
-        return result
-
-
-    def __ne__(self, other):
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = instance != other
-        if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(expression=result,
-                               token=token)
-            token.created_query_part(result)
-        return result
-
-
-    def __lt__(self, other):
-        from operator import lt as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __gt__(self, other):
-        from operator import gt as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __le__(self, other):
-        from operator import le as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __ge__(self, other):
-        from operator import ge as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __and__(self, other):
-        from operator import and_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rand__(self, other):
-        from operator import and_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __or__(self, other):
-        from operator import or_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __ror__(self, other):
-        from operator import or_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __xor__(self, other):
-        from operator import xor as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rxor__(self, other):
-        from operator import xor as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __add__(self, other):
-        from operator import add as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __radd__(self, other):
-        from operator import add as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __sub__(self, other):
-        from operator import sub as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rsub__(self, other):
-        from operator import sub as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __mul__(self, other):
-        from operator import mul as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rmul__(self, other):
-        from operator import mul as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __div__(self, other):
-        from operator import div as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-    __truediv__ = __div__
-
-
-    def __rdiv__(self, other):
-        from operator import div as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-    __rtruediv__ = __rdiv__
-
-
-    def __floordiv__(self, other):
-        from operator import floordiv as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rfloordiv__(self, other):
-        from operator import floordiv as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __mod__(self, other):
-        from operator import mod as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rmod__(self, other):
-        from operator import mod as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __pow__(self, other):
-        from operator import pow as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rpow__(self, other):
-        from operator import pow as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __lshift__(self, other):
-        from operator import lshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rlshift__(self, other):
-        from operator import lshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rshift__(self, other):
-        from operator import rshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, other),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __rrshift__(self, other):
-        from operator import rshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(other, instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __neg__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=-instance,
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __abs__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=abs(instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __pos__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=+instance,
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def __invert__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=~instance,
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def _is_a(self, what):
-        from xotl.ql.expressions import is_instance as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, what),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def _count(self):
-        from xotl.ql.expressions import count as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance),
-                           token=token)
-        token.created_query_part(result)
-        return result
-
-
-    def length(self):
-        from xotl.ql.expressions import length as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance),
                            token=token)
         token.created_query_part(result)
         return result
@@ -1663,6 +1291,7 @@ def thesefy(target, name=None):
 
     The previous query is rougly equivalent to::
 
+        >>> from xotl.ql.expressions import is_instance
         >>> q2 = these(which for which in this
         ...                if is_instance(which, Entity)
         ...                if which.name.startswith('A'))
@@ -1670,7 +1299,6 @@ def thesefy(target, name=None):
     You may test, that an `in_instance(..., Entity)` expression is in the query
     object filters::
 
-        >>> from xotl.ql.expressions import is_instance
         >>> any(unboxed(filter).operation is not is_instance
         ...     or filter.children[1] is Entity for filter in q.filters)
         True

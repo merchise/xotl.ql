@@ -584,21 +584,22 @@ class GreaterOrEqualThanOperator(Operator):
 ge = GreaterOrEqualThanOperator
 
 
-class InExpressionOperator(Operator):
-    '''
-    The `a in b` expression::
 
-        >>> e = in_('abc', ('abc', 'abcdef'))
+class ContainsExpressionOperator(FunctorOperator):
+    '''
+    The `b contains a` expression::
+
+        >>> e = contains(('abc', 'abcdef'), 'abc')
         >>> print(str(e))
-        in(abc, ('abc', 'abcdef'))
+        contains(('abc', 'abcdef'), abc)
 
     '''
-    _format = 'in({0}, {1})'
+    _format = 'contains({0}, {1})'
     arity = BINARY
-    _method_name = b'__contains__'
+    _method_name = b'_contains_'
 
 
-in_ = InExpressionOperator
+contains = ContainsExpressionOperator
 
 
 

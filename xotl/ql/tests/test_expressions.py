@@ -42,8 +42,6 @@ __author__ = 'manu'
 
 class BasicTests(unittest.TestCase):
     def test_expression(self):
-        from xoutil.context import context
-        from xoutil.proxy import UNPROXIFING_CONTEXT
         from xotl.ql.expressions import (count, ExpressionTree, or_, and_,
                                          pow_, lt, eq, add)
         expr = ((q(1) < 3) & (1 == q("1")) |
@@ -85,6 +83,9 @@ class BasicTests(unittest.TestCase):
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
                               mul, div, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        from xotl.ql.expressions import count, min_, max_, all_, any_, length
+        from xotl.ql.expressions import contains, is_instance, invoke, new
+        from xotl.ql.expressions import startswith, endswith
         from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
@@ -104,12 +105,24 @@ class BasicTests(unittest.TestCase):
                         (mod, '{0} mod {1}'),
                         (pow, '{0}**{1}'),
                         (lshift, '{0} << {1}'),
-                        (rshift, '{0} >> {1}')]
+                        (rshift, '{0} >> {1}'),
+                        (endswith, "endswith('{0}', '{1}')"),
+                        (contains, 'contains({0}, {1})'),
+                        (is_instance, 'is_a({0}, {1})'),
+                        (startswith, "startswith('{0}', '{1}')")]
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
                        (invert, 'not {0}'),
-                       (not_, 'not {0}')]
+                       (not_, 'not {0}'),
+                       (count, 'count({0})'),
+                       (length, 'length({0})')]
+        nary_tests = [(all_, 'all({0})'),
+                      (any_, 'any({0})'),
+                      (min_, 'min({0})'),
+                      (max_, 'max({0})'),
+                      (invoke, 'call({0}{1})'),
+                      (new, 'new({0}{1})')]
         for test, fmt in binary_tests:
             ok(fmt.format("a", "b"),
                str(test(q('a'), 'b')))
@@ -117,6 +130,17 @@ class BasicTests(unittest.TestCase):
         for test, fmt in unary_tests:
             ok(fmt.format("age"),
                str(test(q('age'))))
+
+        args = (1, 2, 3, 4, 'a')
+        args_str = ', '.join(str(a) for a in args)
+        kwargs = {v: v for v in 'abcde'}
+        kwargs_str = ', '.join('%s=%s' % (v, kwargs[v]) for v in kwargs)
+        for test, fmt in nary_tests:
+            if '{1}' in fmt:
+                ok(fmt.format(args_str, ', ' + kwargs_str),
+                   str(test(*args, **kwargs)))
+            else:
+                ok(fmt.format(args_str), str(test(*args)))
 
 
     def test_named_children(self):
