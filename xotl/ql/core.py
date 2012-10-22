@@ -886,7 +886,7 @@ class GeneratorToken(object):
     def __eq__(self, other):
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, GeneratorToken):
-                return self._token == other._token
+                return self._expression == other._expression
 
 
     @property
