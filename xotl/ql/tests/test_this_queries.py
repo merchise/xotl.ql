@@ -54,9 +54,6 @@ if __TEST_DESIGN_DECISIONS:
         decisions that may change over time; but which should not affect
         the result of ``these(<comprehension>)`` syntax *unless* there's
         a change in Query Language API.
-
-        For instance, we test that comprehensions return always a
-        :class:`xotl.ql.core.QueryPart` (or a tuple/dict of them).
         '''
 
         def test_yield_once_per_query(self):
@@ -140,32 +137,8 @@ if __TEST_DESIGN_DECISIONS:
 
 
         def test_complex_intermingled_query(self):
-            parent, child = next((parent.title + parent.name,
-                                  child.name + child.nick)
-                                    for parent in this('parent')
-                                    for child in parent.children
-                                    if (parent.age > 32) & (child.age < 5))
-            ok = self.assertEquals
-            with context(UNPROXIFING_CONTEXT):
-                pquery, cquery = parent.token, child.token
-            pparts = pquery._parts
-            print(pparts)
-            ok("this('parent').title + this('parent').name",
-               str(pparts[-1]))
-            # Notice that the second part is also present in the children.
-            ok("(this('parent').age > 32) and (this('parent').children.age < 5)",
-               str(pparts[-2]))
-            with self.assertRaises(IndexError):
-                print(str(pparts[-3]))
-
-            cparts = cquery._parts
-            print(cparts)
-            ok("this('parent').children.name + this('parent').children.nick",
-               str(cparts[-1]))
-            ok("this('parent').children.age < 5", str(cparts[-2]))
-            with self.assertRaises(IndexError):
-                print(str(cparts[-3]))
-
+            # See below, DesignDecisionRegressionTests
+            pass
 
 
         def test_complex_query_building_with_dict(self):
@@ -222,6 +195,60 @@ if __TEST_DESIGN_DECISIONS:
                 self.assertNotEqual(p1, p2)
 
 
+    class DesignDesitionsRegressionTests(unittest.TestCase):
+        def test_20121022_complex_intermingled_query(self):
+            '''
+            Slight variation over the same test of previous testcase but
+            that shows how `|` that if we don't have the `tokens` params
+            things will go wrong:
+
+            - `parent.age > 32` will have `this('parent')` as its token
+
+            - `child.age < 5` will have `this('parent').children` as its token.
+
+            - When building `(parent.age > 32) & (child.age < 5)` the resultant
+              part will have only `this('parent')` as the token, and
+
+            - `contains(child.toys, 'laptop')` will be attached to
+              `this('parent').children`, but this will create a stack in this
+              token: `child.age < 5`, `contains(child.toys, 'laptop')`
+
+            - Then, building `... | contains(child.toys, 'laptop')` will be
+              attached to `this('parent')` only! This will cause that the token
+              `this('parent').children` will be left with a stack of two items
+              that will be and-ed; which is wrong!
+
+            The solutions seems to be simply to make `this('parent').children`
+            aware of parts that are generated. So
+            :attr:`xotl.ql.core.QuerPart.tokens` is born.
+            '''
+            parent, child, toy = next((parent.title + parent.name,
+                                       child.name + child.nick, toy.name)
+                                      for parent in this('parent')
+                                      for child in parent.children
+                                      for toy in child.toys
+                                      if (parent.age > 32) & (child.age < 5) |
+                                         (toy.type == 'laptop'))
+            ok = self.assertEquals
+            with context(UNPROXIFING_CONTEXT):
+                pquery, cquery = parent.token, child.token
+            pparts = pquery._parts
+            print(pparts)
+            ok("this('parent').title + this('parent').name",
+               str(pparts[-1]))
+            ok("((this('parent').age > 32) and (this('parent').children.age < 5)) or (this('parent').children.toys.type == laptop)",
+               str(pparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(pparts[-3]))
+
+            cparts = cquery._parts
+            print(cparts)
+            ok("this('parent').children.name + this('parent').children.nick", str(cparts[-1]))
+            ok("((this('parent').age > 32) and (this('parent').children.age < 5)) or (this('parent').children.toys.type == laptop)",
+               str(cparts[-2]))
+            with self.assertRaises(IndexError):
+                print(str(cparts[-3]))
+
 
 class TestUtilities(unittest.TestCase):
     def _test_class(self, Person):
@@ -229,8 +256,8 @@ class TestUtilities(unittest.TestCase):
 
         q = these((who for who in Person if who.age > 30),
                   limit=100)
-        # We need to extract the who so that names matches
-        who = domain = q.selection[0]
+        # We assume that Person has been thesefied with thesefy('Person')
+        who = domain = this('Person')
         q1 = these(who for who in domain if is_instance(who, Person)
                         if who.age > 30)
 
@@ -253,7 +280,7 @@ class TestUtilities(unittest.TestCase):
     def test_thesefy_good(self):
         from xotl.ql.core import thesefy
 
-        @thesefy
+        @thesefy("Person")
         class Person(object):
             pass
 
@@ -267,7 +294,7 @@ class TestUtilities(unittest.TestCase):
         class Meta(type):
             pass
 
-        @thesefy
+        @thesefy("Person")
         class Person(object):
             __metaclass__ = Meta
 
@@ -282,7 +309,7 @@ class TestUtilities(unittest.TestCase):
                 from xoutil.objects import nameof
                 return iter(this(nameof(self)))
 
-        @thesefy
+        @thesefy("Person")
         class Person(object):
             __metaclass__ = Meta
 
@@ -349,6 +376,39 @@ class TestThisQueries(unittest.TestCase):
             self.assertIn(children_token, tokens)
 
 
+    def test_complex_query_with_3_tokens(self):
+        query = these((parent.title + parent.name,
+                       child.name + child.nick, toy.name)
+                      for parent in this('parent')
+                      if parent.children
+                      for child in parent.children
+                      if child.toys
+                      for toy in child.toys
+                      if (parent.age > 32) & (child.age < 5) |
+                         (toy.type == 'laptop'))
+        p = this('parent')
+        c = p.children
+        t = c.toys
+
+        filters = query.filters
+        expected_filters = [((p.age > 32) & (c.age < 5) | (t.type == 'laptop')),
+                            p.children, c.toys]
+
+        tokens = query.tokens
+        expected_tokens = [p, c, t]
+
+        selection = query.selection
+        expected_selection = (p.title + p.name, c.name + c.nick, t.name)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(selection, expected_selection)
+
+            self.assertEqual(len(expected_filters), len(filters))
+            for f in expected_filters:
+                self.assertIn(f, filters)
+
+            self.assertEqual(len(expected_tokens), len(tokens))
+            for t in expected_tokens:
+                self.assertIn(t, tokens)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

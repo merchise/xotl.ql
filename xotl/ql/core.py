@@ -704,7 +704,8 @@ class _QueryObjectType(type):
                 previous_parts = token._parts
                 if previous_parts and previous_parts[-1] is expr:
                     previous_parts.pop(-1)
-                filters.extend(previous_parts)
+                filters.extend(part for part in previous_parts
+                                    if part not in filters)
             query = self()
             query.selection = tuple(reversed(selection))
             query.tokens = tuple(set(tokens))
@@ -898,8 +899,14 @@ class GeneratorToken(object):
     def mergable(parts, expression):
         assert context[UNPROXIFING_CONTEXT]
         top = parts[-1]
-        if IExpressionTree.providedBy(expression):
-            return any(child is top for child in expression.children)
+        if top is expression:
+            return True
+        elif IExpressionTree.providedBy(expression):
+            result = any(child is top for child in expression.children)
+            if not result and IExpressionTree.providedBy(top):
+                return any(child is expression for child in top.children)
+            else:
+                return result
         elif IThese.providedBy(expression):
             return expression.parent is top
         else:
@@ -918,7 +925,6 @@ class GeneratorToken(object):
                 self._parts.append(expression)
             else:
                 assert False
-
 
 
 
@@ -947,10 +953,10 @@ def _build_binary_operator(operation, inverse=False):
             with context(UNPROXIFING_CONTEXT):
                 instance = self.expression
                 token = self.token
-                tokens = getattr(self, 'all_tokens', [token])
+                tokens = getattr(self, 'tokens', [token])
                 if isinstance(other, QueryPart):
                     other_token = other.token
-                    other_tokens = getattr(other, 'all_tokens', [other_token])
+                    other_tokens = getattr(other, 'tokens', [other_token])
                     other = other.expression
                 else:
                     other_token = None
@@ -962,7 +968,7 @@ def _build_binary_operator(operation, inverse=False):
             else:
                 result = QueryPart(expression=operation(other, instance),
                                    token=token)
-            result.all_tokens = tokens
+            result.tokens = tokens
             for token in tokens:
                 token.created_query_part(result)
             return result
@@ -987,8 +993,7 @@ _part_operations.update({operation._rmethod_name:
                            getattr(operation, '_rmethod_name', None)})
 
 
-QueryPartOperations = type(b'QueryPartOperations', (object,),
-                           _part_operations)
+QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
 
 
 @implementer(IQueryPart)
@@ -1104,7 +1109,7 @@ class QueryPart(object):
         Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    __slots__ = ('_token', '_expression', 'all_tokens')
+    __slots__ = ('_token', '_expression', '_tokens')
 
 
     def __init__(self, **kwargs):
@@ -1113,6 +1118,7 @@ class QueryPart(object):
             # TODO: assert that expression is ExpressionCapable
             self._token = None
             self.token = token = kwargs.get('token')
+            self._tokens = [token]
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
@@ -1128,6 +1134,23 @@ class QueryPart(object):
             self._token = value
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
+
+
+    @property
+    def tokens(self):
+        return list(self._tokens)
+
+
+    @tokens.setter
+    def tokens(self, value):
+        from xoutil.types import is_collection
+        with context(UNPROXIFING_CONTEXT):
+            if is_collection(value):
+                assert all(provides_any(g, IGeneratorToken) for g in value)
+                self._tokens.extend(value)
+            else:
+                assert provides_any(value, IGeneratorToken)
+                self._tokens.append(value)
 
 
     @property
