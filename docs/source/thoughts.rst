@@ -6,6 +6,9 @@ Thoughts on Query Languages
 UnQL, and coSQL that were taken as inspiration for this work; but the
 information in here does not have other practical effect in xotl.ql.*
 
+*This document is rather a thinking pad I use when I need to think about query
+languages in general and how they apply to xotl.ql.*
+
 Expressions are the core for query languages and many of it's design decisions
 are strongly biased for query languages needs. But they purpose is more
 general. Notice that :class:`~xotl.ql.core.These` instances are they way to
@@ -64,9 +67,42 @@ encourages for documents) is contained inside `parent`:
      }
    }
 
-If `children` is not contained in `parent` such kind of translation is not be
-possible, so the :term:`query translator` might use several views and integrate
-it's results with Python code.
+If `children` is not fully contained in `parent` such kind of translation is
+not possible, so the :term:`query translator` might use several views and
+integrate it's results with Python code.
+
+
+The algorithm for translation may be decomposed like the following:
+
+- Create a mapping from simple expressions (not queries) tree to javascript
+  code.
+
+  For instance an expression like:: ``this('x').title + this('x').name`` might
+  be translated like the following javascript:
+
+  .. code-block:: javascript
+
+     var x = doc_x;  // assuming doc_x represents the this('x')
+     return x.title + x.name;
+
+- Create a mapping from simple functions names to javascript functions:
+
+  .. code-block:: javascript
+
+     function startswith(str, preffix) {
+        return str.indexOf(preffix) === 0;
+     }
+
+
+     function endswith(str, suffix) {
+	return str.slice(-suffix.length) === suffix;
+     }
+
+.. todo::
+
+   Écrire cette partie
+
+
 
 .. _lit-review:
 
@@ -220,6 +256,20 @@ In fact, this model is quite suitable to represent the labeled tree model of
 
 We can see that labels may be the keys, and the trees may be encoded as
 references.
+
+Generator Token
+===============
+
+A generator token is related to the ``<- DB`` in the UnQL syntax, it's related
+to the FROM clause in SQL and LinQ. It represents from where the objects are
+drawn. `SQLAlchemy's <SQLAlchemy>`_ expression language has a similarity with
+xotl.ql's Query API, it's ``select()`` function, does not requires an explicit
+declaration of FROM, because it gathers the table from the SELECT-ed columns.
+
+This is quite similar to the idea of having the expressions in the
+:attr:`~xotl.ql.interfaces.IQueryObject.selection`
+
+
 
 Footnotes
 =========

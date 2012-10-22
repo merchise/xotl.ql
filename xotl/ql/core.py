@@ -41,19 +41,24 @@ from __future__ import (division as _py3_division,
 
 import re
 from itertools import count
+from functools import partial
 
-from xoutil.objects import get_first_of, validate_attrs
+from xoutil.types import Unset
+from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+from xoutil.decorators import decorator
+from xoutil.aop.basic import complementor
 
 from zope.component import getUtility
-from zope.interface import implements
+from zope.interface import implementer
 
-from xotl.ql.expressions import _true, _false, ExpressionTree
+from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
-                                IQueryTranslator, IQueryConfiguration)
+                                IQueryTranslator, IQueryConfiguration,
+                                IQueryObject)
 
 
 __docstring_format__ = 'rst'
@@ -66,12 +71,17 @@ __all__ = (b'this',)
 class ExpressionError(Exception):
     '''Base class for expressions related errors'''
 
-class ResourceType(type): pass
 
 
-# TODO: Think about this name, also if we really need the __slots__ stuff. We
-# must stress the inmutability of some structures, but __slots__ does not
-# enforce inmutability, just disables the __dict__ in objects.
+class ResourceType(type):
+    pass
+
+
+
+# TODO: Think about this name.
+# TODO: Do we really need the __slots__ stuff? We must stress the inmutability
+#       of some structures, but __slots__ does not enforce inmutability,
+#       just disables the __dict__ in objects.
 class Resource(object):
     __slots__ = ('_name', '_parent')
     __metaclass__ = ResourceType
@@ -79,7 +89,7 @@ class Resource(object):
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name=None, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self.validate_name(name)
             self._name = name
@@ -134,67 +144,13 @@ class Resource(object):
         else:
             return self
 
-
+@implementer(IThese)
 class These(Resource):
     '''
-    The type of :obj:`this` symbol: an unnamed object that may placed in
-    queries and whose interpretation may be dependant of the query context and
-    the context in which `this` symbol is used in the query itself.
+    The type of the :obj:`this` symbol: an unnamed object that may placed in
+    queries and whose interpretation depends on the query context and the
+    context in which `this` symbol is used inside the query itself.
     '''
-    implements(IThese)
-
-    __slots__ = ('_binding')
-
-
-    def __init__(self, name=None, **kwargs):
-        with context(UNPROXIFING_CONTEXT):
-            self.validate_name(name)
-            self._name = name
-            self._parent = kwargs.get('parent', None)
-            self._binding = None
-            if not self._parent:
-                self.bind(get_first_of(kwargs, 'binding', 'filter',
-                                       default=None))
-
-
-    def bind(self, expression):
-        self.binding = expression
-
-
-    @property
-    def binding(self):
-        '''
-        The expression to which the `These` instance is bound to or None.
-        '''
-        current, res = self, None
-        while current and not res:
-            res = getattr(current, '_binding', None)
-            current = current.parent
-        return res if res else None
-
-
-    @binding.setter
-    def binding(self, value):
-        # This causes errors with objects that have __slots__, do we
-        # really need slots, or do we really need IBoundThese
-        #
-        # if value is not None:
-        #     directlyProvides(self, IBoundThese)
-        parent = getattr(self, 'parent', None)
-        if parent:
-            parent.binding = value
-        else:
-            self._binding = value
-
-
-    @binding.deleter
-    def binding(self):
-        parent = getattr(self, 'parent', None)
-        if parent:
-            del parent.binding
-        else:
-            del self._binding
-
 
     @classmethod
     def _newname(cls):
@@ -216,7 +172,7 @@ class These(Resource):
         with context(UNPROXIFING_CONTEXT):
             parent = self.parent
         if parent is not None:
-            from .expressions import invoke
+            from xotl.ql.expressions import invoke
             return ExpressionTree(invoke, self, *args)
         else:
             raise TypeError()
@@ -224,7 +180,8 @@ class These(Resource):
 
     def __iter__(self):
         '''
-        Yields a single instance of `self` but wrapped around a query part.
+        Yields a single instance of :class:`query part
+        <xotl.ql.interfaces.IQueryPart>` that wraps `self`.
 
         This allows an idiomatic way to express queries::
 
@@ -234,29 +191,31 @@ class These(Resource):
             >>> (parent, child)    # doctest: +ELLIPSIS
             (<...this('parent')...>, <...this('parent').children...>)
 
-        A `query` object is attached to each part::
+        A `token` object is attached to each part::
 
-            >>> unboxed(parent).query        # doctest: +ELLIPSIS
-            <...FromToken object at 0x...>
+            >>> unboxed(parent).token        # doctest: +ELLIPSIS
+            <...GeneratorToken object at 0x...>
 
-        In the case of subqueries, the attached `query` object is different
-        for each part created::
+        The attached `token` object is different for each part if those parts
+        are generated from different generators token (see
+        :class:`~xotl.ql.interfaces.IGeneratorToken`).
 
-            >>> unboxed(parent).query is not unboxed(child).query
+            >>> unboxed(parent).token is not unboxed(child).token
             True
 
-        However, in a query with a single iteration (only one `for`) `query`
-        object is shared::
+        However, in a query with a single generator token (only one `for`), the
+        `token` object is shared::
 
             >>> parent, children = next((parent, parent.children)
             ...                            for parent in this('parent'))
-            >>> unboxed(parent).query is unboxed(children).query
+            >>> unboxed(parent).token is unboxed(children).token
             True
 
         .. warning::
 
            We have used `next` here directly over the comprehensions, but the
-           query language *does not* support this kind of construction.
+           query language **does not** support this kind of construction.
+
            Queries must be built by calling the :func:`these` passing the
            comprehesion as its first argument.
         '''
@@ -264,8 +223,8 @@ class These(Resource):
             name = self.name
             parent = self.parent
         if name:
-            query = FromToken(instance=self)
-            instance = QueryPart(expression=self, query=query)
+            token = GeneratorToken(expression=self)
+            instance = QueryPart(expression=self, token=token)
             yield instance
         else:
             # We should generate a new-name
@@ -305,8 +264,7 @@ class These(Resource):
         from xotl.ql.expressions import eq
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
-                res = validate_attrs(self, other, ('name', 'parent',
-                                                   'binding'))
+                res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
         if context[UNPROXIFING_CONTEXT]:
@@ -333,8 +291,7 @@ class These(Resource):
         from xotl.ql.expressions import ne
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, These):
-                res = validate_attrs(self, other, ('name', 'parent',
-                                                   'binding'))
+                res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
         if context[UNPROXIFING_CONTEXT]:
@@ -653,8 +610,24 @@ class ThisClass(These):
     __metaclass__ = ThisClassType
 
 
+    def __init__(self, *args, **kwargs):
+        super(ThisClass, self).__init__(*args, **kwargs)
+        self.__doc__ = ('The `this` object is a unnamed universal '
+                          '"selector" that may be placed in expressions and '
+                          'queries')
+
+
     def __call__(self, name, **kwargs):
         return These(name, **kwargs)
+
+
+    def __repr__(self):
+        # XXX: Hack to avoid sphinx writing <this at 0x...> in the docs.
+        # XXX: However, it's useful to have this repr when debugging.
+        import sys
+        sphinxed = 'sphinx' in sys.argv[0] if sys.argv else False
+        return None if sphinxed else super(ThisClass, self).__repr__()
+
 
 
 #: The `this` object is a unnamed universal "selector" that may be placed in
@@ -675,24 +648,111 @@ def provides_all(which, *interfaces):
 
 
 
-class FromToken(object):
+
+class _QueryObjectType(type):
+    def these(self, comprehesion, **kwargs):
+        '''Builds a :term:`query object` from a :term:`query expression` given
+        by a comprehesion.
+
+        :param comprehension: The :term:`query expression` to be processed.
+
+        :param ordering: The ordering expressions.
+        :type ordering: A tuple of ordering expressions.
+
+        :param partition: A slice `(offset, limit, step)` that represents the
+                          part of the result set to be retrieved.
+
+                          You may express this by individually providing the
+                          arguments `offset`, `limit` and `step`.
+
+                          If you provide the `partition` argument, those will
+                          be ignored (and a warning will be logged).
+
+        :type partition: slice or None
+
+        :param offset: Indivually express the offset of the `partition` param.
+        :type offset: int or None
+
+        :param limit: Indivually express the limit of the `partition` param.
+        :type limit: int or None
+
+        :param step: Indivually express the step of the `partition` param.
+        :type step: int or None
+
+        :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
+                  represents the QueryObject expressed by the `comprehension`
+                  and the `kwargs`.
+
+        :rtype: :class:`QueryObject`
+
+        '''
+        from types import GeneratorType
+        assert isinstance(comprehesion, GeneratorType)
+        selected_parts = next(comprehesion)
+        with context(UNPROXIFING_CONTEXT):
+            if not isinstance(selected_parts, (list, tuple)):
+                selected_parts = (selected_parts, )
+            selected_parts = tuple(reversed(selected_parts))
+            selection = []
+            tokens = []
+            filters = []
+            for part in selected_parts:
+                expr = part.expression
+                selection.append(expr)
+                token = part.token
+                tokens.append(token.expression)
+                previous_parts = token._parts
+                if previous_parts and previous_parts[-1] is expr:
+                    previous_parts.pop(-1)
+                filters.extend(part for part in previous_parts
+                                    if part not in filters)
+            query = self()
+            query.selection = tuple(reversed(selection))
+            query.tokens = tuple(set(tokens))
+            query.filters = tuple(set(filters))
+            query.ordering = kwargs.get('ordering', None)
+            partition = kwargs.get('partition', None)
+            offset = kwargs.get('offset', None)
+            limit = kwargs.get('limit', None)
+            step = kwargs.get('step', None)
+            if not partition and (offset or limit or step):
+                partition = slice(offset, limit, step)
+            elif partition and (offset or limit or step):
+                import warnings
+                warnings.warn('Ignoring offset, limit and/or step argument '
+                              'since partition was passed', stacklevel=2)
+            query.partition = partition
+            return query
+
+
+    def __call__(self, *args, **kwargs):
+        if args:
+            from xoutil.types import GeneratorType
+            first_arg, args = args[0], args[1:]
+            if not args:
+                if isinstance(first_arg, GeneratorType):
+                    return self.these(first_arg, **kwargs)
+                # TODO: Other types of queries
+
+        result = super(self, self).__new__(self)
+        result.__init__(*args, **kwargs)
+        return result
+
+
+@implementer(IQueryObject)
+class QueryObject(object):
     '''
+    Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
-    implements(IGeneratorToken, IQueryPartContainer)
-
-    __slots__ = ('instance', '_selection', '_filters',
-                 '_ordering', '_partition', '_parts',
-                 '_query_state')
+    __metaclass__ = _QueryObjectType
 
 
-    # TODO: Representation of grouping with dicts.
-    def __init__(self, **kwargs):
-        self.instance = instance = kwargs.get('instance')
-        self.selection = kwargs.get('selection', instance)
-        self.filters = kwargs.get('filters', None)
-        self.ordering = kwargs.get('ordering', None)
-        self.partition = kwargs.get('partition', None)
-        self._parts = []
+    def __init__(self):
+        self._selection = None
+        self.tokens = None
+        self._filters = None
+        self._ordering = None
+        self.partition = None
 
 
     @property
@@ -727,6 +787,7 @@ class FromToken(object):
     def ordering(self):
         return self._ordering
 
+
     @ordering.setter
     def ordering(self, value):
         from xotl.ql.expressions import pos, neg
@@ -738,10 +799,11 @@ class FromToken(object):
             elif isinstance(value, tuple) and all(ok(v) for v in value):
                 self._ordering = value
             else:
-                raise TypeError('Expected a [tuple of] unary expressions; '
-                                'got %r' % value)
+                raise TypeError('Expected a [tuple of] unary (+ or -) '
+                                'expressions; got %r' % value)
         else:
             self._ordering = None
+
 
     @property
     def partition(self):
@@ -753,7 +815,7 @@ class FromToken(object):
         if not value or isinstance(value, slice):
             self._partition = value
         else:
-            raise TypeError('Expected a slice; not a %r' % value)
+            raise TypeError('Expected a slice or None; got %r' % value)
 
 
     @property
@@ -766,13 +828,85 @@ class FromToken(object):
         return self._partition.stop
 
 
+    @property
+    def step(self):
+        return self._partition.step
+
+
+    def next(self):
+        '''Support for retrieving objects directly from the query object. Of
+        course this requires that an IQueryTranslator is configured.
+        '''
+        state = getattr(self, '_query_state', Unset)
+        if state is Unset:
+            # TODO: This will change, configuration vs deployment.
+            #       How to inject translator into a global/local context?
+            name = getUtility(IQueryConfiguration).query_translator_name
+            translator = getUtility(IQueryTranslator,
+                                    name if name else b'default')
+            query_plan = translator.build_plan(self)
+            state = self._query_state = query_plan()
+        result, state = next(state, (Unset, state))
+        if result is not Unset:
+            self._query_state = state
+            return result
+        else:
+            delattr(self, '_query_state')
+            raise StopIteration
+
+
+    def __iter__(self):
+        'Creates a subquery'
+        raise NotImplementedError
+
+
+these = QueryObject
+
+
+@implementer(IGeneratorToken, IQueryPartContainer)
+class GeneratorToken(object):
+    '''
+    Represents a token in the syntactical tree that is used as generator.
+
+    This object is also an :class:`~xotl.ql.interfaces.IQueryPartContainer`,
+    because in this implementation we need to record each time an
+    :class:`~xotl.ql.interfaces.IQueryPart` is created in order to later
+    retrieve the filters related to this generator token.
+
+    '''
+    __slots__ = ('_expression', '_parts')
+
+
+    # TODO: Representation of grouping with dicts.
+    def __init__(self, expression):
+        assert provides_any(expression, IThese)
+        self._expression = expression
+        self._parts = []
+
+
+    def __eq__(self, other):
+        with context(UNPROXIFING_CONTEXT):
+            if isinstance(other, GeneratorToken):
+                return self._expression == other._expression
+
+
+    @property
+    def expression(self):
+        return self._expression
+
+
     @staticmethod
     def mergable(parts, expression):
         assert context[UNPROXIFING_CONTEXT]
         top = parts[-1]
-        if IExpressionTree.providedBy(expression):
-            return any(child is top for child in expression.children)
-#            return top in expression.children
+        if top is expression:
+            return True
+        elif IExpressionTree.providedBy(expression):
+            result = any(child is top for child in expression.children)
+            if not result and IExpressionTree.providedBy(top):
+                return any(child is expression for child in top.children)
+            else:
+                return result
         elif IThese.providedBy(expression):
             return expression.parent is top
         else:
@@ -782,7 +916,6 @@ class FromToken(object):
 
     def created_query_part(self, part):
         with context(UNPROXIFING_CONTEXT):
-            assert part.query is self
             if provides_all(part, IQueryPart):
                 expression = part.expression
                 parts = self._parts
@@ -794,65 +927,231 @@ class FromToken(object):
                 assert False
 
 
-    def next(self):
-        '''Support for retrieving objects directly from the query object. Of
-        course this requires that an IQueryTranslator is configured.
-        '''
-        if not self._query_state:
-            name = getUtility(IQueryConfiguration).query_translator_name
-            translator = getUtility(IQueryTranslator,
-                                    name if name else b'default')
-            query_plan = translator.build_plan(self, order=self.ordering,
-                                               partition=self.partition)
-            self._query_state = query_plan()
-        result, _state = next(self._query_state, (None, None))
-        if result:
-            self._query_state = _state
+
+def _build_unary_operator(operation):
+    method_name = operation._method_name
+    def method(self):
+        with context(UNPROXIFING_CONTEXT):
+            instance = self.expression
+            token = self.token
+        result = QueryPart(expression=operation(instance),
+                           token=token)
+        token.created_query_part(result)
+        return result
+    method.__name__ = method_name
+    return method
+
+
+
+def _build_binary_operator(operation, inverse=False):
+    if not inverse:
+        method_name = operation._method_name
+    else:
+        method_name = operation._rmethod_name
+    if method_name:
+        def method(self, other):
+            with context(UNPROXIFING_CONTEXT):
+                instance = self.expression
+                token = self.token
+                tokens = getattr(self, 'tokens', [token])
+                if isinstance(other, QueryPart):
+                    other_token = other.token
+                    other_tokens = getattr(other, 'tokens', [other_token])
+                    other = other.expression
+                else:
+                    other_token = None
+                    other_tokens = []
+                tokens.extend(t for t in other_tokens if t not in tokens)
+            if not inverse:
+                result = QueryPart(expression=operation(instance, other),
+                                   token=token)
+            else:
+                result = QueryPart(expression=operation(other, instance),
+                                   token=token)
+            result.tokens = tokens
+            for token in tokens:
+                token.created_query_part(result)
             return result
-        else:
-            self._query_state = None
-            raise StopIteration
-
-
-    def __iter__(self):
-        'Creates a subquery'
-        raise NotImplementedError
+        method.__name__ = method_name
+        return method
 
 
 
+_part_operations = {operation._method_name:
+                    _build_unary_operator(operation)
+                 for operation in OperatorType.operators
+                    if getattr(operation, 'arity', None) == UNARY}
+_part_operations.update({operation._method_name:
+                        _build_binary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY})
+
+_part_operations.update({operation._rmethod_name:
+                        _build_binary_operator(operation, True)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
+
+QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
+
+
+@implementer(IQueryPart)
+@complementor(QueryPartOperations)
 class QueryPart(object):
-    '''A class that wraps :class:`These` instances to build queries
+    '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
+    implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
 
-    When iterating over this instance, this token is used to catch all
-    expressions and build a :class:`FromToken` from it. This class is mostly
-    internal and does not belongs to the FromToken Language API.
+    To build a query object from a comprehension like in::
+
+        these(count(parent.children) for parent in this if parent.age > 34)
+
+    We need to differiante the IF (``parent.age > 34``) part of the
+    comprehension from the SELECTION (``count(parent.children)``); which in the
+    general case are both expressions. The following procedure is a sketch of
+    what happens to accomplish that:
+
+    1. Python creates a generator object, and invokes the :func:`these`
+       function with the generator as it's sole argument.
+
+    2. The :func:`these` function invokes `next` upon the generator object.
+
+    3. Python invokes ``iter(this)`` which constructs internally another
+       instance of :class:`These` but with a unique name, and delegates the
+       ``iter`` to this instance.
+
+    4. The newly created named These instance creates :class:`GeneratorToken`
+       and assign itself to the
+       :attr:`~xotl.ql.interfaces.IGeneratorToken.token` attribute.
+
+       A :class:`QueryPart` is created; the GeneratorToken instance is assigned
+       to the attribute :attr:`~xotl.ql.interfaces.IQueryPart.token`, and
+       `self` is assigned to the attribute
+       :attr:`~xotl.ql.interfaces.IQueryPart.expression`.
+
+       The query part is yielded to the calling :func:`these`.
+
+    5. Python now processes the `if` part of the comprehension.
+
+       - First, ``parent.age`` is processed. The query part's
+         `__getattribute__` method is invoked, which delegates the call to it's
+         :attr:`~IQueryPart.expression` attribute. Since, it is an
+         :class:`These` instance, it returns another named These instance.
+
+         A new query part is created with `expression` set to the result, the
+         :attr:`~IQueryPart.token` is inherited from the current query part.
+
+         Upon creation of this new query part, the token's
+         :meth:`~xotl.ql.interfaces.IQueryPartContainer.created_query_part` is
+         called with the newly created query part as its argument.
+
+         The token maintains a stack of created parts. Whenever a new query
+         part is created it pushes it on top of the stack, if the new query
+         part *is not derived from the part on the top* of the stack, otherwise
+         it just replaces the top with the new one. (In fact, it removes all
+         parts from the top of the stack that are somehow contained in the
+         newly created part.)
+
+       - Next, Python invokes the method `__gt__` for the newly created query
+         part which, in turn, delegates the call to its :attr:`expression`
+         attribute.
+
+         The result is again wrapped inside another query part and it's token's
+         ``created_query_part`` is invoked. Since the resultant expression is
+         derived from the previously created part, the token only maintains the
+         last created part in its stack.
+
+    6. Now Python starts to process the "selection" part of the Query, but we
+       don't know that since there's no signal from the language that indicates
+       such an event.
+
+       It processes the `parent.children` by calling the `__getattribute__` of
+       the query part, as before this call is delegated and the result is
+       wrapped with another query part.
+
+       When calling the `created_query_part` method, the token realizes that
+       ``parent.children`` is not derived from ``parent.age > 34``, so it
+       pushes the new part into the stack instead of replacing the top.
+
+       Now the `count(...)` expression is invoked, and using the
+       :class:`xotl.ql.expressions.FunctorOperator` protocol the `_count`
+       method of the returned query part is invoked. Again, this is delegated
+       to the wrapped expression and a new :class:`ExpressionTree` is created
+       and wrapped inside a new query part.
+
+       Once more, the `created_query_part` method is invoked, and this time it
+       replaces the ``parent.children`` on the top of the stack for
+       ``count(parent.children)``.
+
+    7. Now the control is returned to the :func:`these` function and `next`
+       returns a `QueryPart` whose `expression` is equivalent to
+       ``count(parent.children)``.
+
+    8. The QueryPart's `token` attribute is inspected to retrieve any previous
+       *filter expressions* from the parts stack (disregarding the top-most if
+       it's the same as the selection.)
+
+    9. The :func:`these` creates a new :class:`QueryObject` object and extracts the
+       `expression` from the selected query part and assigns it to the
+       :attr:`~xotl.ql.interfaces.IQueryObject.selection` attribute of the query
+       object, any retrieved expressions from the parts stack of the tokens are
+       appended to the :attr:`~xotl.ql.interfaces.IQueryObject.filters` attribute.
+
+    10. For the query above the query object returned will have its arguments
+        with following values:
+
+        selection
+          ``(count(parent.children), )``
+
+        filters
+          ``[parent.age > 34]``
+
+        Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    implements(IQueryPart)
-
-    __slots__ = ('_query', '_expression')
+    __slots__ = ('_token', '_expression', '_tokens')
 
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
-            self.query = kwargs.get('query')
+            self._token = None
+            self.token = token = kwargs.get('token')
+            self._tokens = [token]
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
 
     @property
-    def query(self):
-        return self._query
+    def token(self):
+        return self._token
 
 
-    @query.setter
-    def query(self, value):
-        if provides_any(value, IGeneratorToken):
-            self._query = value
+    @token.setter
+    def token(self, value):
+        if not self._token and provides_any(value, IGeneratorToken):
+            self._token = value
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
+
+
+    @property
+    def tokens(self):
+        return list(self._tokens)
+
+
+    @tokens.setter
+    def tokens(self, value):
+        from xoutil.types import is_collection
+        with context(UNPROXIFING_CONTEXT):
+            tokens = self._tokens
+            if is_collection(value):
+                assert all(provides_any(g, IGeneratorToken) for g in value)
+                tokens.extend(token for token in value if token not in tokens)
+            else:
+                assert provides_any(value, IGeneratorToken)
+                tokens.append(value)
 
 
     @property
@@ -881,7 +1180,7 @@ class QueryPart(object):
             # `iter` mark to easy the detection of subqueries that are not
             # in the selection.
             if IThese.providedBy(expression):
-                parts = self.query._parts
+                parts = self.token._parts
                 if parts and parts[-1] is expression:
                     parts.pop(-1)
             return iter(expression)
@@ -890,9 +1189,9 @@ class QueryPart(object):
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
             result = str(instance)
-        return '<qp: %s; for %s>' % (result, query)
+        return '<qp: %s; for %s>' % (result, token)
     __repr__ = __str__
 
 
@@ -904,10 +1203,10 @@ class QueryPart(object):
         else:
             with context(UNPROXIFING_CONTEXT):
                 instance = get('expression')
-                query = get('query')
+                token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
-                               query=query)
-            query.created_query_part(result)
+                               token=token)
+            token.created_query_part(result)
             return result
 
 
@@ -915,466 +1214,10 @@ class QueryPart(object):
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=instance(*args),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __eq__(self, other):
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = instance == other
-        if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(expression=result,
-                               query=query)
-            query.created_query_part(result)
-        return result
-
-
-    def __ne__(self, other):
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = instance != other
-        if provides_any(result, IExpressionTree, IThese):
-            result = QueryPart(expression=result,
-                               query=query)
-            query.created_query_part(result)
-        return result
-
-
-    def __lt__(self, other):
-        from operator import lt as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __gt__(self, other):
-        from operator import gt as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __le__(self, other):
-        from operator import le as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __ge__(self, other):
-        from operator import ge as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __and__(self, other):
-        from operator import and_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rand__(self, other):
-        from operator import and_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __or__(self, other):
-        from operator import or_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __ror__(self, other):
-        from operator import or_ as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __xor__(self, other):
-        from operator import xor as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rxor__(self, other):
-        from operator import xor as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __add__(self, other):
-        from operator import add as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __radd__(self, other):
-        from operator import add as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __sub__(self, other):
-        from operator import sub as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rsub__(self, other):
-        from operator import sub as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __mul__(self, other):
-        from operator import mul as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rmul__(self, other):
-        from operator import mul as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __div__(self, other):
-        from operator import div as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-    __truediv__ = __div__
-
-
-    def __rdiv__(self, other):
-        from operator import div as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-    __rtruediv__ = __rdiv__
-
-
-    def __floordiv__(self, other):
-        from operator import floordiv as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rfloordiv__(self, other):
-        from operator import floordiv as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __mod__(self, other):
-        from operator import mod as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rmod__(self, other):
-        from operator import mod as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __pow__(self, other):
-        from operator import pow as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rpow__(self, other):
-        from operator import pow as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __lshift__(self, other):
-        from operator import lshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rlshift__(self, other):
-        from operator import lshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rshift__(self, other):
-        from operator import rshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance, other),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __rrshift__(self, other):
-        from operator import rshift as f
-        if isinstance(other, QueryPart):
-            other = unboxed(other).expression
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(other, instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __neg__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=-instance,
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __abs__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=abs(instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __pos__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=+instance,
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def __invert__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=~instance,
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def count(self):
-        from xotl.ql.expressions import count as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance),
-                           query=query)
-        query.created_query_part(result)
-        return result
-
-
-    def length(self):
-        from xotl.ql.expressions import length as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            query = self.query
-        result = QueryPart(expression=f(instance),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1382,10 +1225,10 @@ class QueryPart(object):
         from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1393,10 +1236,10 @@ class QueryPart(object):
         from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1404,10 +1247,10 @@ class QueryPart(object):
         from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1415,10 +1258,10 @@ class QueryPart(object):
         from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
@@ -1426,64 +1269,94 @@ class QueryPart(object):
         from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            query = self.query
+            token = self.token
         result = QueryPart(expression=f(instance, *args),
-                           query=query)
-        query.created_query_part(result)
+                           token=token)
+        token.created_query_part(result)
         return result
 
 
 
-def these(comprehesion):
+@decorator
+def thesefy(target, name=None):
     '''
-    Post-process the query comprehension to build a FromToken.
+    Takes in a class and injects it an `__iter__` so that the class may take
+    part of `this` in :term:`query expressions <query expression>`.
+
+        >>> @thesefy
+        ... class Entity(object):
+        ...    def __init__(self, **kwargs):
+        ...        for k, v in kwargs.items():
+        ...            setattr(self, k, v)
+        >>> q = these(which for which in Entity if which.name.startswith('A'))
+
+    The previous query is rougly equivalent to::
+
+        >>> from xotl.ql.expressions import is_instance
+        >>> q2 = these(which for which in this
+        ...                if is_instance(which, Entity)
+        ...                if which.name.startswith('A'))
+
+    You may test, that an `in_instance(..., Entity)` expression is in the query
+    object filters::
+
+        >>> any(unboxed(filter).operation is not is_instance
+        ...     or filter.children[1] is Entity for filter in q.filters)
+        True
+
+    This is only useful if your real class does not have a metaclass of its own
+    that do that. However, if you do have a metaclass with an `__iter__` method
+    it should either return an `IQueryPart` instance or a `generator object`.
+
+    Optionally (usually for debugging purposes only) you may pass a name to
+    the decorator that will be used as the name for the internally generated
+    :class:`These` instance.
+
+        >>> @thesefy('Entity')
+        ... class Entity(object):
+        ...    pass
+
+        >>> q = these(which for which in Entity if which.name.startswith('A'))
+        >>> q.selection        # doctest: +ELLIPSIS
+        (<this('Entity') at 0x...>,)
+
+    This way it's easier to doc-test::
+
+        >>> filters = q.filters
+        >>> expected_is = is_instance(this('Entity'), Entity)
+        >>> expected_filter = this('Entity').name.startswith('A')
+
+        >>> any(unboxed(expected_is) == f for f in filters)
+        True
+
+        >>> any(unboxed(expected_filter) == f for f in filters)
+        True
     '''
-    from xoutil.types import Unset, GeneratorType
-    assert isinstance(comprehesion, (GeneratorType, dict))
-    if isinstance(comprehesion, GeneratorType):
-        preselection = next(comprehesion)
-        assert next(comprehesion, Unset) is Unset
-        if not isinstance(preselection, tuple):
-            preselection = (preselection, )
-        for qp in reversed(preselection):
-            with context(UNPROXIFING_CONTEXT):
-                query = qp.query
-                sel = qp.expression
-            # TODO: search for these instances inside expression
-            print(qp, sel, query)
-            parts = query._parts
-            if sel is parts[-1]:
-                parts.pop(-1)
-            query.filters = parts.pop(-1) if parts else None
-        return query
+    from xoutil.objects import nameof
+    class new_meta(type(target)):
+        def __new__(cls, name, bases, attrs):
+            return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
+        def __iter__(self):
+            from types import GeneratorType
+            from xotl.ql.interfaces import IQueryPart
+            try:
+                result = super(new_meta, self).__iter__()
+            except AttributeError:
+                result = Unset
+            if isinstance(result, GeneratorType):
+                return result
+            elif result is not Unset and IQueryPart.providedBy(result):
+                return iter((result, ))
+            elif result is Unset:
+                from xotl.ql.expressions import is_instance
+                query_part = next(iter(this(name)))
+                is_instance(query_part, self)
+                return iter((query_part, ))
+            else:
+                raise TypeError('Class {target} has a metaclass with an '
+                                '__iter__ that does not support thesefy'.format(target=target))
 
-
-
-#def thesefy(target):
-#    '''
-#    Takes in a class and injects it an `__iter__` method that can be used
-#    to form queries::
-#
-#        >>> @thesefy
-#        ... class Person(object):
-#        ...    pass
-#
-#        >>> from xoutil.proxy import unboxed
-#        >>> from xotl.ql.expressions import q
-#        >>> q = these(who for who in Person if who.age > 30)
-#        >>> unboxed(q).binding    # doctest: +ELLIPSIS
-#        <expression '(is_a(this('...'), <class '...Person'>)) and (this('...').age > 30)' ...>
-#
-#    This is only usefull if your real class does not have a metaclass of its
-#    own that do that.
-#    '''
-#    from xoutil.objects import nameof
-#    class new_meta(type(target)):
-#        def __new__(cls, name, bases, attrs):
-#            return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
-#        def __iter__(self):
-#            from xotl.ql.expressions import is_a
-#            return iter(these(s for s in this if is_a(s, self)))
-#    class new_class(target):
-#        __metaclass__ = new_meta
-#    return new_class
+    class new_class(target):
+        __metaclass__ = new_meta
+    new_class.__doc__ = getattr(target, '__doc__', None)
+    return new_class

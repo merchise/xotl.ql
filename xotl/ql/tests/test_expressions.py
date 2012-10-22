@@ -30,6 +30,9 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
+
 from xotl.ql.expressions import q
 
 
@@ -39,8 +42,6 @@ __author__ = 'manu'
 
 class BasicTests(unittest.TestCase):
     def test_expression(self):
-        from xoutil.context import context
-        from xoutil.proxy import UNPROXIFING_CONTEXT
         from xotl.ql.expressions import (count, ExpressionTree, or_, and_,
                                          pow_, lt, eq, add)
         expr = ((q(1) < 3) & (1 == q("1")) |
@@ -50,6 +51,18 @@ class BasicTests(unittest.TestCase):
         self.assertIsInstance(expr, ExpressionTree)
         with context(UNPROXIFING_CONTEXT):
             self.assertTrue(expr == expected, "%s ---- %s" % (expected, expr))
+
+
+    def test_target_procotol(self):
+        class X(object):
+            @staticmethod
+            def _target_(self):
+                return 1978
+
+        x = X()
+        expr = q(1) + x
+        self.assertEqual((1, 1978), expr.children)
+        self.assertEqual('1 + 1978', str(expr))
 
 
     def test_q_should_keep_it_self_in_expressions(self):
@@ -70,6 +83,9 @@ class BasicTests(unittest.TestCase):
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
                               mul, div, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        from xotl.ql.expressions import count, min_, max_, all_, any_, length
+        from xotl.ql.expressions import contains, is_instance, invoke, new
+        from xotl.ql.expressions import startswith, endswith
         from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
@@ -89,12 +105,24 @@ class BasicTests(unittest.TestCase):
                         (mod, '{0} mod {1}'),
                         (pow, '{0}**{1}'),
                         (lshift, '{0} << {1}'),
-                        (rshift, '{0} >> {1}')]
+                        (rshift, '{0} >> {1}'),
+                        (endswith, "endswith('{0}', '{1}')"),
+                        (contains, 'contains({0}, {1})'),
+                        (is_instance, 'is_a({0}, {1})'),
+                        (startswith, "startswith('{0}', '{1}')")]
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
                        (invert, 'not {0}'),
-                       (not_, 'not {0}')]
+                       (not_, 'not {0}'),
+                       (count, 'count({0})'),
+                       (length, 'length({0})')]
+        nary_tests = [(all_, 'all({0})'),
+                      (any_, 'any({0})'),
+                      (min_, 'min({0})'),
+                      (max_, 'max({0})'),
+                      (invoke, 'call({0}{1})'),
+                      (new, 'new({0}{1})')]
         for test, fmt in binary_tests:
             ok(fmt.format("a", "b"),
                str(test(q('a'), 'b')))
@@ -103,36 +131,53 @@ class BasicTests(unittest.TestCase):
             ok(fmt.format("age"),
                str(test(q('age'))))
 
+        args = (1, 2, 3, 4, 'a')
+        args_str = ', '.join(str(a) for a in args)
+        kwargs = {v: v for v in 'abcde'}
+        kwargs_str = ', '.join('%s=%s' % (v, kwargs[v]) for v in kwargs)
+        for test, fmt in nary_tests:
+            if '{1}' in fmt:
+                ok(fmt.format(args_str, ', ' + kwargs_str),
+                   str(test(*args, **kwargs)))
+            else:
+                ok(fmt.format(args_str), str(test(*args)))
+
+
+    def test_named_children(self):
+        from xotl.ql.expressions import new
+        self.assertEqual("new(object, a=1)", str(new('object', a=1)))
+
+
+    def test_named_children_equivalence(self):
+        from xotl.ql.expressions import new
+        expr1 = new(object, a=1, b=3)
+        expr2 = new(object, b=3, a=1)
+        expr3 = new(object, b=1)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expr1, expr2)
+            self.assertNotEqual(expr1, expr3)
 
 
 class ExtensibilityTests(unittest.TestCase):
     def test_new_function(self):
-        from xotl.ql.expressions import FunctorOperator, N_ARITY
+        from xotl.ql.expressions import FunctorOperator, UNARY
 
-        class AverageFunction(FunctorOperator):
+        class SinFunction(FunctorOperator):
             '''
-            The ``avg(*args)`` operation.
+            The ``sin(arg)`` operation.
             '''
-            _format = 'avg({0})'
-            arity = N_ARITY
-            _method_name = b'_avg'
-        avg = AverageFunction
+            _format = 'sin({0})'
+            arity = UNARY
+            _method_name = b'_sin'
+        sin = SinFunction
 
         class ZeroObject(object):
-            def _avg(self, *others):
-                if others:
-                    return avg(*others)
-                else:
-                    from xotl.ql.expressions import q
-                    return q(0)
-
-        expr = avg(0, 1, 2, 3, 4, 5)
-        self.assertEquals("avg(0, 1, 2, 3, 4, 5)", str(expr))
+            def _sin(self):
+                return sin(360)
 
         zero = ZeroObject()
-        expr = avg(zero, 1, 2, 3)
-        self.assertEquals("avg(1, 2, 3)", str(expr))
-        self.assertEqual('0', str(avg(zero)))
+        expr = sin(zero)
+        self.assertEquals("sin(360)", str(expr))
 
 
 

@@ -38,6 +38,7 @@ Contents:
    interfaces
    translate
    thoughts
+   terms
    references
    HISTORY
    credits

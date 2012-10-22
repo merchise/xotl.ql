@@ -50,8 +50,8 @@ class IOperator(Interface):
                         'number of arguments, it should contain only one '
                         'positional argument that will be filled with all '
                         'arguments separated by commas.')
-    arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`, '
-                       ':class:`~xotl.ql.expressions.BINARY`, or '
+    arity = Attribute('One of the classes :class:`~xotl.ql.expressions.UNARY`,'
+                       ' :class:`~xotl.ql.expressions.BINARY`, or '
                        ':class:`~xotl.ql.expressions.N_ARITY`')
     _method_name = Attribute('Name of the method that should be called upon '
                              'the first operand, much like python does for '
@@ -79,11 +79,23 @@ class ISyntacticallyReversibleOperation(Interface):
 
 
 class ISynctacticallyCommutativeOperation(Interface):
-    '''
-    Marks :class:`IOperator` instances that are *syntactically* commutative.
+    '''Marks :class:`IOperator` instances that are *syntactically* commutative.
 
-    Usually this mark operators which Python itself treats commutatively, like
-    `==` and `!=`.
+    This mark applies only to operators `==` and `!=`, which Python itself
+    treats as commutative operations.
+
+    In an expression like ``expr1 == expr2`` if the class of the `expr1` does
+    not implements an `__eq__` method or returns `NotImplemented`, Python
+    fallbacks to call the method `__eq__` for `expr2`.
+
+    Notice that Python behaves differently when executing ``A + B``, i.e if `A`
+    does not have an `__add__`, the method looked for in `B` is `__radd__`;
+    i.e. the `+` operator is not commutative in general (for instance with
+    strings.)
+
+    Both `==` and `!=` are always commutative. That's why they need to test for
+    equivalence in way in which the order operands does not matter.
+
     '''
     def equivalence_test(ones, another):
         '''
@@ -236,23 +248,11 @@ class IExpressionCapable(Interface):
 
 
 class IExpressionTree(IExpressionCapable):
-    '''A representation of an expression tree.
+    '''A representation of an :term:`expression tree`.
 
     It resembles a reduced AST for simple expressions. The expression tree has
     an `operation` attribute that holds a instance that describes the operation
-    between the `children` of this expression. For instance, the expression: `3
-    + 4**2 < 18983` would be encoded in a tree like::
-
-       {operation: [<]        -- An object that represents the "<" operation
-        children: (           -- children is always a tuple of "literals" or
-                              -- other expressions.
-           {operation: [+]
-            children: (
-                3,
-                {operation: [**]
-                 children: (4, 2)}
-            )}
-        )}
+    between the `children` of this expression.
 
     '''
 
@@ -260,29 +260,41 @@ class IExpressionTree(IExpressionCapable):
                           ':class:`~xotl.ql.interfaces.IOperator` interface.')
     children = Attribute('A tuple that contains the operands. Operands may '
                          'be themselves other expression trees.')
+    named_children = Attribute('A dictionary of named children. ',
+                               '''This attribute allows to represent the Python
+                               `**kwargs` idiom in the expressions so that
+                               calling a function (see
+                               :class:`~xotl.ql.expressions.invoke`) may invoke
+                               represent the invokation of arbitrary python
+                               functions.
 
+                               ''')
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a partial (but probably sound) expression that is been
-    attached somehow to a query.
+    '''Represents a partial (but sound) expression that is been attached somehow
+    to a generator token.
 
-    When `these(<comprehension>)` an IQueryPartContainer object is generated
-    internally to hold the query, but since we don't have the control of how
-    Python does is execution of the comprehension, we substitute expression
-    trees with "query part" objects.
+    Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
+    objects are generated internally whenever there's an *implicit iteration*
+    over some supported object (like a :class:`IThese` instance). This token
+    represents the FROM clause we can see in languages like SQL.
 
-    A query part behave as an expression but everytime a new query part is
-    created the attached `query` object gets notified.
+    Expression trees are powerful enough to capture the semantics of query
+    parts. But, since we don't have the control of how Python does is execution
+    of the comprehension, we employ query parts that behave just like
+    expressions, but inform a :class:`IQueryPartContainer` that a new query
+    part is being created.
+
+    See the documentation for :class:`xotl.ql.core.QueryPart` to see the
+    details of the procedure.
 
     '''
-    query = Attribute('A reference to the query instance this part has been '
-                      'attached to.',
-                      'When queries are built, parts are created whenever '
-                      'an expression tree is instantiated. But since queries '
-                      'needs to record such a construction, parts invoke '
-                      'the :meth:`IQueryPartContainer.created_query_part` '
-                      'to allow the query object to be notified.')
+    token = Attribute('A reference to the generator token instance to which '
+                      'this part has been attached.')
+
+    tokens = Attribute('References to all the generator token instances to '
+                       'which this instance has a relation with.')
 
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
@@ -320,36 +332,25 @@ class IThese(IExpressionCapable):
         (this.age > 30) & (this.age < 40)
 
     '''
+    name = Attribute('The name of the instance.')
+    parent = Attribute('Another IThese instance from which self is drawn.')
 
     def __iter__():
         'These instances should be iterable'
 
 
     def __getattribute__(attr):
-        'Support for `this.attr[.attr2...]`'
+        '''All IThese instances support the creation of other instances just
+        by accesing an attribute `this.anyattr`.
 
+        This means that in order to access other *internal* attributes of the
+        instance, an execution context is needed.
 
-
-class IBoundThese(IThese):
-    'Bounded these instances'
-    binding = Attribute('A these instance *may* be bound to another '
-                        'expression.',
-                        'Bound these instances are meant to represent '
-                        'only those objects in the universe that matches '
-                        'certain criteria. This attribute should be '
-                        '*decidable* or None, but the means to decide '
-                        'such a fact are beyond the scope of this interface.')
-
-
-
-class ICallableThese(IThese):
-    '''Some instances of IThese may actually represent a callable.
-
-    For example, all attributes drawn from the `this` object are
-    ICallableThese instances.
-    '''
-    def __call__(*args):
-        'Support for callable these instances'
+        :param attr: The name of the object to access.
+        :type attr: unicode or str
+        :returns: Another IThese instance whose name is `attr` and whose parent
+                  is `self`.
+        '''
 
 
 
@@ -360,46 +361,94 @@ class IQueryPartContainer(Interface):
 
 
 class IGeneratorToken(Interface):
+    '''In the :term:`query object`, a single :term:`generator token`.
+
+    A generator token is a wrapper of the expression that is used inside a
+    :term:`query object` as a named location from which to draw objects. It
+    relates to the FROM clause in SQL, and to the ``<-`` operation in UnQL
+    [UnQL]_.
+
+    .. todo::
+
+       Currently we only support :class:`IThese` instances as generators, since
+       allowing the `next` protocol directly over :term:`query objects <query
+       object>` impedes using them as subqueries like in::
+
+           q1 = these((a, b) for a in this for b in a.places)
+           q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in q1)
+
+       The only way to include it would be by manually wrapping with a kind of
+       `query()` function::
+
+           q2 = these(strformat('{0} has place {1}', a, b) for (a, b) in query(q1))
+
+       If this were to be allowed then a :term:`generator token` could be any
+       type expression that may be regarded as collection of objects:
+
+       - :class:`IThese` instances
+       - :class:`IQueryObject` instances.
+
+       However, for the time being there's no such thing as a `query()`
+       function.
+
     '''
-    In the Query AST represents an object that is used as a source of objects.
+    expression = Attribute('The instance from which this token was created. '
+                           'Usually a :class:`IThese` instance.')
 
-    This would represent any object whose `__iter__` method is called inside
-    a query to fetch is parts::
 
-        ((parent, child) for parent in this for child in parent.children)
 
-    In the query shown above there are two IGeneratorToken instances in its AST: the
-    first relates to the `this` object and the second relates to the
-    `parent.children` object.
+class IQueryObject(Interface):
+    '''A :term:`query object`.
+
+    This objects captures a query by its selection, filters and generator
+    tokens, and also provides ordering and partitioning features.
+
     '''
-    token = Attribute('The instance from which this query was created. Usually '
-                      'a These instance.')
+    selection = Attribute('Either a tuple/dict of :class:`IThese` or :class:`IExpressionTree` '
+                          'instances.')
+    tokens = Attribute('Generator tokens that occur in the query',
+                       '''When the :term:`query` is processed to create a
+                       :term:`query object`, at least one :term:`generator
+                       token` is created to represent a single, named
+                       "location" from where objects are drawn. However a
+                       :term:`query` may refer to several such locations. For
+                       instance in the query::
 
+                           these((book, author) for book in this for author in book.authors)
 
+                       There are two generator tokens: a) ``this`` and b)
+                       ``book.authors``. Those tokens relate to the FROM, and
+                       possibly JOIN, clauses of the SQL language.
 
-class IQuery(Interface):
-    'Represents a query.'
-    selection = Attribute('Either a tuple/dict of IThese/IExpressionTree '
-                          'instances or single instance.')
-    filters = Attribute('A tuple of IExpressionTree instances '
-                        'that represent the where clauses. They are logically '
+                       From the point of view of the query these tokens are
+                       just *names*, how to use those names to interpret the
+                       query is a task that is left to :term:`query translators
+                       <query translator>`.
+
+                       ''')
+
+    filters = Attribute('A tuple of :class:`IExpressionTree` instances '
+                        'that represent the WHERE clauses. They are logically '
                         'and-ed.')
-    ordering = Attribute('A tuple of ordering expressions.')
+    ordering = Attribute('A tuple of :ref:`ordering expressions <ordering-expressions>`_.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
 
 
     def __iter__():
-        'Queries are iterable, but they **must** return self in this method'
+        '''
+        Queries are iterable, but they **must** return ``self`` in this method.
+        See :meth:`IQueryObject.next`.
+        '''
 
 
     def next():
         '''
         Returns the next object in the cursor.
 
-        Internally this should get the configure IQueryTranslator and build
-        the execution plan, then execute the plan to get the IDataCursor from
-        which it can drawn objects from.
+        Internally this should get the configure :class:`IQueryTranslator` and
+        build the execution plan, then execute the plan to get the IDataCursor
+        from which it can drawn objects from.
         '''
 
 

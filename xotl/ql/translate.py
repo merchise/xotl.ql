@@ -80,7 +80,6 @@ __author__ = 'manu'
 __all__ = (b'cotraverse_expression', b'fetch', )
 
 
-
 _is_these = lambda who: IThese.providedBy(who)
 _vrai = lambda _who: True
 _none = lambda _who: False
@@ -144,7 +143,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
 
     '''
     import types
-    if isinstance(expr, These):
+    if _is_these(expr):
         dejavu = [unboxed(expr).root_parent]
         expr = unboxed(expr).binding
     else:
@@ -164,7 +163,7 @@ def cotraverse_expression(expr, inspect_node=_vrai, yield_node=_none,
                 elif leave_filter(node) and node not in dejavu:
                     dejavu.append(node)
                     message = yield node
-                if isinstance(node, These):
+                if _is_these(node):
                     parent = node.root_parent
                     if parent not in dejavu:
                         dejavu.append(parent)
@@ -223,7 +222,9 @@ def fetch(expr, order=None, partition=None):
 
 
 def init(conf=''):
-    '''Registers this module as an IQueryTranslator.
+    '''Registers the implementation in this module as an IQueryTranslator for
+    an object model we call "Python Object Model". Also we register this model
+    as the default for the current :term:`registry`.
 
     .. warning::
 
@@ -236,10 +237,10 @@ def init(conf=''):
 
     '''
     import sys
-    from zope.component import getGlobalSiteManager
+    from zope.component import getSiteManager
     from .interfaces import IQueryConfiguration, IQueryTranslator
     self = sys.modules[__name__]
-    manager = getGlobalSiteManager()
+    manager = getSiteManager()
     configurator = manager.queryUtility(IQueryConfiguration)
     if configurator:
         pass

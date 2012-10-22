@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 extensions = ['sphinx.ext.autodoc',
               'repoze.sphinx.autointerface',
               'sphinx.ext.doctest',
+              'sphinx.ext.todo',
               'sphinx.ext.intersphinx']
 
 # Add any paths that contain templates here, relative to this directory.
@@ -122,7 +123,7 @@ html_theme = 'pyramid'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+html_theme_path = ['../themes/']
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -269,3 +270,16 @@ texinfo_documents = [
 intersphinx_mapping = {'py': ('http://docs.python.org/', None),
                        'python': ('http://docs.python.org/', None)}
 intersphinx_cache_limit = 60
+
+
+# Include the todos in the documentation.
+todo_include_todos = True
+
+
+# Parse all doctest, including standard
+doctest_test_doctest_blocks = 'default'
+
+
+# Don't show doctest flags
+trim_doctest_flags = True
+

@@ -1,21 +1,13 @@
 Changelog
 =========
 
-2012-07-11. Released version 1.0.2
-----------------------------------
+2012/10/22 - Release 0.1.4
+--------------------------
 
-- First public release, with GPL 3.
-- Adds some comments on future work.
+- Huge revamp of design. Now I'm proud to say the query language
+  is almost done in its first stage.
 
+  Introduces QueryPart, loads of documentation has been updated.
+  Tests for design are now almost done, etc...
 
-2012-07-04. Released version 1.0.1
-----------------------------------
-
-- Small bugs fixes
-- Improves documentation
-- Declares :class:`~xotl.ql.expressions.ExpressionTree` inmutable.
-
-1.0.0
--------------------
-
-- Initial release
+  You're encourage to try it!

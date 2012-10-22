@@ -30,6 +30,9 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
+
 from xotl.ql.core import this
 from xotl.ql.expressions import _true, _false, ExpressionTree
 
@@ -51,10 +54,14 @@ class TestThisExpressions(unittest.TestCase):
 
 
     def test_calling_functions(self):
+        from xotl.ql.expressions import call
         expression = this.startswith('manu')
         self.assertIsInstance(expression, ExpressionTree)
         self.assertEqual("call(this.startswith, manu)",
                          str(expression))
+        equiv_expr = call(this.startswith, 'manu')
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(equiv_expr, expression)
 
         # But the calling a these instance directly is not supported
         # (I think is not pretty)
@@ -82,13 +89,6 @@ class TestThisExpressions(unittest.TestCase):
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))
-
-
-    def test_init_with_binding(self):
-        from xoutil.proxy import unboxed as u
-        t = this('p', binding=this('p') > 33)
-        binding = u(t).binding
-        self.assertEqual("this('p') > 33", str(binding))
 
 
     def test_all_ops(self):
@@ -149,3 +149,7 @@ class RegressionTests(unittest.TestCase):
         t1 = this('abc', parent=this('efc'))
         t2 = this('abc', parent=this('efc'))
         self.assertIsNot(t1, t2)
+
+
+    def test_repr_this(self):
+        self.assert_(repr(this).startswith('<this at 0x'))

@@ -39,6 +39,7 @@ from functools import partial
 from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
+from xoutil.deprecation import deprecated
 
 from zope.interface import implements, directlyProvides
 
@@ -54,7 +55,7 @@ __author__ = 'manu'
 
 class UNARY(object):
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kw=None):
         str_format = operation._format
         child = children[0]
         return str_format.format(str(child) if not isinstance(child,
@@ -65,7 +66,7 @@ class UNARY(object):
 
 class BINARY(object):
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kw=None):
         str_format = operation._format
         child1, child2 = children[:2]
         return str_format.format(str(child1) if not isinstance(child1,
@@ -92,13 +93,24 @@ class N_ARITY(object):
         <expression 'print(1, 2)' ...>
     '''
     @classmethod
-    def formatter(cls, operation, children):
+    def formatter(cls, operation, children, kwargs=None):
         str_format = operation._format
         args = ', '.join((str(child) if not isinstance(child,
                                                           ExpressionTree)
                                         else '(%s)' % child)
                          for child in children)
-        return str_format.format(args)
+        if '{1}' in str_format:
+            kwargs = {} if kwargs is None else kwargs
+            if kwargs:
+                kwargs = ", " + ', '.join("%s=%s" % (k, v)
+                                          for k, v in kwargs.items())
+                return str_format.format(args, kwargs)
+            else:
+                return str_format.format(args, '')
+        else:
+            return str_format.format(args)
+
+
 
 
 
@@ -193,7 +205,7 @@ class OperatorType(type):
         directlyProvides(self, *interfaces)
 
 
-    def __call__(self, *children):
+    def __call__(self, *children, **named):
         '''Support for operators classes return expression trees upon
         "instantiation"::
 
@@ -202,7 +214,7 @@ class OperatorType(type):
             True
 
         '''
-        return ExpressionTree(self, *children)
+        return ExpressionTree(self, *children, **named)
 
 
     @property
@@ -231,6 +243,7 @@ class Operator(object):
     Subclasses of this class are *rarely* instantiated, instead they are used
     in :attr:`ExpressionTree.operation` to indicate the operation that is
     perform to the :attr:`operands <ExpressionTree.children>`.
+
     '''
     __metaclass__ = OperatorType
 
@@ -255,7 +268,7 @@ class _FunctorOperatorType(OperatorType):
     ``opfunction(self, arg2, ...)``, we stop recursing a provide the standard
     implementation: creating an expression of the type `(opfunction, *args)`.
     '''
-    def __call__(self, *children):
+    def __call__(self, *children, **named):
         if children:
             stack = context
             head, tail = children[0], children[1:]
@@ -267,13 +280,13 @@ class _FunctorOperatorType(OperatorType):
                 #       because of __slots__; use a stack instead.
                 with stack((head, method)):
                     if tail:
-                        return func(head, *tail)
+                        return func(head, *tail, **named)
                     else:
                         return func(head)
             else:
-                return super(_FunctorOperatorType, self).__call__(*children)
+                return super(_FunctorOperatorType, self).__call__(*children, **named)
         else:
-            return super(_FunctorOperatorType, self).__call__(*children)
+            return super(_FunctorOperatorType, self).__call__(*children, **named)
 
 
 
@@ -571,21 +584,22 @@ class GreaterOrEqualThanOperator(Operator):
 ge = GreaterOrEqualThanOperator
 
 
-class InExpressionOperator(Operator):
-    '''
-    The `a in b` expression::
 
-        >>> e = in_('abc', ('abc', 'abcdef'))
+class ContainsExpressionOperator(FunctorOperator):
+    '''
+    The `b contains a` expression::
+
+        >>> e = contains(('abc', 'abcdef'), 'abc')
         >>> print(str(e))
-        in(abc, ('abc', 'abcdef'))
+        contains(('abc', 'abcdef'), abc)
 
     '''
-    _format = 'in({0}, {1})'
+    _format = 'contains({0}, {1})'
     arity = BINARY
-    _method_name = b'__contains__'
+    _method_name = b'_contains_'
 
 
-in_ = InExpressionOperator
+contains = ContainsExpressionOperator
 
 
 
@@ -604,41 +618,6 @@ class IsInstanceOperator(FunctorOperator):
 
 
 is_a = is_instance = IsInstanceOperator
-
-
-
-class StartsWithOperator(FunctorOperator):
-    '''
-    The `string.startswith(something)` operator::
-
-         >>> e = startswith(q('something'), 's')
-         >>> str(e)
-         "startswith('something', 's')"
-
-    '''
-    _format = 'startswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = b'startswith'
-
-
-startswith = StartsWithOperator
-
-
-class EndsWithOperator(FunctorOperator):
-    '''
-    The `string.endswith(something)` operator::
-
-        >>> e = endswith(q('something'), 's')
-        >>> str(e)
-        "endswith('something', 's')"
-
-    '''
-    _format = 'endswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = b'endswith'
-
-
-endswith = EndsWithOperator
 
 
 
@@ -770,7 +749,7 @@ class CountFunction(FunctorOperator):
        :class:`length` for those cases.
 
        :term:`Translators <query translator>` may rely on this rule to infer
-       the type the argument passed to either :class:`!length` or
+       the type of the argument passed to either :class:`!length` or
        :class:`!count`.
 
     '''
@@ -868,10 +847,9 @@ class AllFunction(FunctorOperator):
 
     .. warning::
 
-       There's no way to syntactically (at the level on which one
-       could do normally in Python) to distiguish from the last two
-       elements: so VMs that evaluate `all_` expressions may further
-       restrict the interpretation.
+       There's no way to syntactically (at the level on which one could do
+       normally in Python) to distiguish the last two elements from each other;
+       so translators may further restrict these interpretations.
     '''
 
     _format = 'all({0})'
@@ -886,7 +864,7 @@ all_ = AllFunction
 class AnyFunction(FunctorOperator):
     '''
     The representation of the `any` function. As with :class:`all_` three
-    interpretations are possible::
+    analogous interpretations are possible. For instance::
 
         >>> ages = [1, 2, 3, 4, 5]
         >>> expr = any_(age > 10 for age in ages)
@@ -910,22 +888,22 @@ class MinFunction(FunctorOperator):
 
     There are two possible syntaxes/interpretations for :func:`min_`:
 
-    - A single argument is passed and it represents a collection::
+    - A single argument is passed which represents a collection::
 
             >>> age = [1, 2, 3, 4, 5]
             >>> min_(age)        # doctest: +ELLIPSIS
             <expression 'min([1, 2, 3, 4, 5])' ...>
-
-    - Several arguments are passed and the minimum of all is returned::
-
-            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
-            <expression 'min(1, 2, 3, 4, 5)' ...>
 
       This syntax allows complex expressions like::
 
             >>> from xotl.ql.core import this
             >>> min_(child.age for child in this) > 5    # doctest: +ELLIPSIS
             <expression '(min(...)) > 5' ...>
+
+    - Several arguments are passed and the minimum of all is returned::
+
+            >>> min_(1, 2, 3, 4, 5)    # doctest: +ELLIPSIS
+            <expression 'min(1, 2, 3, 4, 5)' ...>
 
     .. note::
 
@@ -973,18 +951,59 @@ class InvokeFunction(FunctorOperator):
     unlikely that they can be :term:`translated <query translator>`. For
     instance::
 
-        >>> ident = lambda who: who
-        >>> expr = call(ident, 1)
+        >>> ident = lambda who, **kw: who
+        >>> expr = call(ident, 1, a=1, b=2)
         >>> str(expr)     # doctest: +ELLIPSIS
-        'call(<function <lambda> ...>, 1)'
+        'call(<function <lambda> ...>, 1, a=1, b=2)'
 
     '''
-    _format = 'call({0})'
+    _format = 'call({0}{1})'
     arity = N_ARITY
     _method_name = b'invoke'
 
 
 invoke = call = InvokeFunction
+
+
+#@deprecated(call)
+class StartsWithOperator(FunctorOperator):
+    '''
+    The `startswith(string, prefix)` operator::
+
+         >>> e = startswith(q('something'), 's')
+         >>> str(e)
+         "startswith('something', 's')"
+
+    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
+    '''
+    _format = 'startswith({0!r}, {1!r})'
+    arity = BINARY
+    _method_name = b'startswith'
+
+
+startswith = StartsWithOperator
+
+
+
+#@deprecated(call)
+class EndsWithOperator(FunctorOperator):
+    '''
+    The `endswith(string, suffix)` operator::
+
+        >>> e = endswith(q('something'), 's')
+        >>> str(e)
+        "endswith('something', 's')"
+
+
+    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
+    '''
+    _format = 'endswith({0!r}, {1!r})'
+    arity = BINARY
+    _method_name = b'endswith'
+
+
+endswith = EndsWithOperator
+
 
 
 class StringFormatFunction(FunctorOperator):
@@ -1007,12 +1026,63 @@ class StringFormatFunction(FunctorOperator):
 
         >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
         <expression 'strformat({0} alas {1}, 1, 2)' ...>
+
+    .. todo::
+
+       Would not it be the same as ``call('{0} alas {1}'.format, 1, 2)``?
+
+       Unlike :class:`startswith` and :class:`endswith`, which are easily
+       replaced in queries, because they are deemed to be used in queries
+       like::
+
+           these(person for person in this if person.name.startswith('Manu'))
+
+       string formatting will be most likely used in the *selection* (the
+       projection in the query slang) like::
+
+           these(strformat('Your name is: {0}', person.name) for person in this)
     '''
     arity = N_ARITY
     _format = 'strformat({0})'
 
 
 strformat = StringFormatFunction
+
+
+
+class AverageFunction(FunctorOperator):
+    '''
+    The ``avg(*args)`` operation. There're two possible interpretations:
+
+    - A single argument (a collection) is passed and the average for each
+      element is computed::
+
+        avg(person.age for person in this)
+
+    - Several arguments are passed::
+
+        avg(1, 2, 3, 5)
+    '''
+    arity = N_ARITY
+    _format = 'avg({0})'
+    _method_name = b'_avg'
+
+avg = AverageFunction
+
+
+
+class NewObjectFunction(FunctorOperator):
+    '''
+    The expression for building a new object.
+
+       >>> new(object, a=1, b=2)          # doctest: +ELLIPSIS
+       <expression 'new(<type 'object'>, a=1, b=2)' ...>
+    '''
+    arity = N_ARITY
+    _format = 'new({0}{1})'
+
+new = NewObjectFunction
+
 
 # XXXX: Removed the auto-mutable feature of expressions. Expressions should be
 # regarded as immutable.
@@ -1109,24 +1179,53 @@ ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
                                 _expr_operations)
 
 
+
+# The _target_ protocol for expressions.
+def _extract_target(which):
+    if context['FLEXIBLE_TARGET_PROTOCOL']:
+        target = getattr(which, '_target_', lambda x: x)
+    else:
+        target = getattr(type(which), '_target_', lambda x: x)
+    return target(which)
+
+
+
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
-    '''
-    A representation of an expression.
+    '''A representation of an expression as an :term:`expression tree`.
 
     Each expression has an `op` attribute that *should* be a class derived
     from :class:`Operator`, and a `children` attribute that's a tuple of the
     operands of the expression.
 
+    Some operators support *named_children*, for instance, the :class:`call
+    <InvokeFunction>` function may be passed a variable number of positional
+    arguments (children) and a variable number of keyword argument (named
+    children).
+
     '''
     implements(IExpressionTree)
 
-    __slots__ = ('_op', '_children', )
+    __slots__ = ('_op', '_children', '_named_children')
 
 
-    def __init__(self, op, *children):
-        self._op = op
-        self._children = tuple(child for child in children)
+    def __init__(self, operation, *children, **named_children):
+        '''
+        Creates an expression tree with operatiorn `operator`.
+
+            >>> class X(object):
+            ...    @classmethod
+            ...    def _target_(cls, self):
+            ...        return 123
+
+            >>> add(X(), 1978)    # doctest: +ELLIPSIS
+            <expression '123 + 1978' at 0x...>
+
+        '''
+        self._op = operation
+        self._children = tuple(_extract_target(child) for child in children)
+        self._named_children = {name: _extract_target(value) for name, value in named_children.items()}
+
 
     @property
     def op(self):
@@ -1139,6 +1238,12 @@ class ExpressionTree(object):
     def children(self):
         'A tuple that contains the operands involved in the expression.'
         return self._children[:]
+
+
+    @property
+    def named_children(self):
+        'A dictionary that contains the named operands in the expression.'
+        return dict(self._named_children)
 
 
     def __eq__(self, other):
@@ -1159,7 +1264,9 @@ class ExpressionTree(object):
                 if self.op == other.op:
                     test = getattr(self.op, 'equivalence_test',
                                    builtin_eq)
-                    return test(self.children, other.children)
+                    return (test(self.children, other.children) and
+                            builtin_eq(self.named_children,
+                                       other.named_children))
                 else:
                     return False
         else:
@@ -1171,7 +1278,7 @@ class ExpressionTree(object):
         arity_class = self.op.arity
         formatter = getattr(arity_class, 'formatter', None)
         if formatter:
-            return formatter(self.op, self.children)
+            return formatter(self.op, self.children, self.named_children)
         else:
             return super(ExpressionTree, self).__str__()
 
@@ -1184,12 +1291,10 @@ class ExpressionTree(object):
 def _build_op_class(name, methods_spec):
     def build_meth(func, binary=True):
         def binary_meth(self, other):
-            if isinstance(other, q):
-                other = unboxed(other).target
-            return func(unboxed(self).target, other)
+            return func(self, other)
 
         def unary_meth(self):
-            return func(unboxed(self).target)
+            return func(self)
 
         if binary:
             return binary_meth
@@ -1205,11 +1310,11 @@ def _build_op_class(name, methods_spec):
 class q(object):
     '''A light-weight wrapper for objects in an expression::
 
-        >>> print(str(q('parent')))
-        parent
+        >>> print(repr(1 + q(1)))           # doctest: +ELLIPSIS
+        <expression '1 + 1' at 0x...>
 
-    `q` wrappers are quite transparent, meaning, that they will proxy
-    every supported operation to its wrapped object.
+    `q` wrappers are quite transparent, meaning that they will proxy every
+    supported operation to its wrapped object.
 
     `q`-objects are based upon xoutil's :mod:`proxy module
     <xoutil:xoutil.proxy>`; so you should read its documentation.
@@ -1283,6 +1388,13 @@ class q(object):
 
     behaves = [query_fragment, comparable, comparable_for_equalitity,
                number_like, string_like]
+
+
+    @classmethod
+    def _target_(cls, self):
+        'Supports the target protocol for expressions'
+        with context(UNPROXIFING_CONTEXT):
+            return self.target
 
 
     def __init__(self, target):
