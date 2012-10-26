@@ -681,6 +681,13 @@ class _QueryObjectType(type):
 
         :rtype: :class:`QueryObject`
 
+
+        .. note::
+
+           All others keyword arguments are copied to the
+           :attr:`~xotl.ql.interface.IQueryObject.params` attribute, so that
+           :term:`query translators <query translator>` may use them.
+
         '''
         from types import GeneratorType
         assert isinstance(comprehesion, GeneratorType)
@@ -718,6 +725,9 @@ class _QueryObjectType(type):
                 warnings.warn('Ignoring offset, limit and/or step argument '
                               'since partition was passed', stacklevel=2)
             query.partition = partition
+            query.params = {k: v for k, v in kwargs.items()
+                            if k not in ('partition', 'offset',
+                                         'limit', 'step')}
             return query
 
 
@@ -749,6 +759,7 @@ class QueryObject(object):
         self._filters = None
         self._ordering = None
         self.partition = None
+        self.params = {}
 
 
     @property

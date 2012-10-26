@@ -147,8 +147,9 @@ type is a subclass of the class :class:`Term`:
 
       The metaclass :class:`_QueryObjectType` of :class:`these` hooks into the
       way of creating instances (:term:`query objects <query object>`), if you
-      pass a single positional argument which is of type `GeneratorType`, the
-      metaclass will use its :meth:`_QueryObjectType.these` method.
+      pass a single positional argument which is of type `GeneratorType` and
+      possibly many others keyword arguments, the metaclass will use its
+      :meth:`_QueryObjectType.these` method.
 
 
 .. autoclass:: QueryObject

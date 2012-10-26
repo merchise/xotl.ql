@@ -433,6 +433,13 @@ class IQueryObject(Interface):
     ordering = Attribute('A tuple of :ref:`ordering expressions <ordering-expressions>`_.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
+    params = Attribute('A dict containing other arguments to the query. '
+                       'Some :term:`query translators <query translator>` '
+                       'may make use of these to better decide how to '
+                       'translate the query. For instance, you may '
+                       'want have an OUTER JOIN, instead of a INNER JOIN '
+                       'generated, and so on. '
+                       'See :class:`~xotl.ql.core.these`.')
 
 
     def __iter__():

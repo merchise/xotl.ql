@@ -22,7 +22,7 @@ Query objects interfaces
 the :class:`IQueryObject` below.
 
 .. autointerface:: IQueryObject
-   :members: selection, tokens, filters, ordering, partition
+   :members: selection, tokens, filters, ordering, partition, params
 
 .. autointerface:: IQueryTranslator
 
