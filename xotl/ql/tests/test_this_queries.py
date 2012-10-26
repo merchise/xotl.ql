@@ -258,8 +258,8 @@ class TestUtilities(unittest.TestCase):
                   limit=100)
         # We assume that Person has been thesefied with thesefy('Person')
         who = domain = this('Person')
-        q1 = these(who for who in domain if is_instance(who, Person)
-                        if who.age > 30)
+        q1 = these(w for w in domain if is_instance(w, Person)
+                        if w.age > 30)
 
         is_filter = is_instance(who, Person)
         age_filter = who.age > 30
@@ -315,6 +315,36 @@ class TestUtilities(unittest.TestCase):
         q1 = these(who for who in this('Person') if who.age > 30)
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(q.selection, q1.selection)
+
+
+    def test_thesefy_doesnot_messup_identities(self):
+        from itertools import izip
+        from xotl.ql.core import thesefy
+        from xotl.ql.expressions import is_a
+
+        @thesefy
+        class Person(object):
+            pass
+
+        @thesefy
+        class Partnership(object):
+            pass
+
+        query = these((person, partner)
+                      for person, partner in izip(Person, Person)
+                      for rel in Partnership
+                      if (rel.subject == person) & (rel.obj == partner))
+        filters = list(query.filters)
+        person, partner = query.selection
+        person_is_a_person = is_a(person, Person)
+        partner_is_a_person = is_a(partner, Person)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertNotEqual(person, partner)
+            self.assertIn(person_is_a_person, filters)
+            self.assertIn(partner_is_a_person, filters)
+            filters.remove(person_is_a_person)
+            filters.remove(partner_is_a_person)
+            self.assertIs(1, len(filters))
 
 
 
