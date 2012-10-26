@@ -11,7 +11,7 @@ languages in general and how they apply to xotl.ql.*
 
 Expressions are the core for query languages and many of it's design decisions
 are strongly biased for query languages needs. But they purpose is more
-general. Notice that :class:`~xotl.ql.core.These` instances are they way to
+general. Notice that :class:`~xotl.ql.core.Term` instances are they way to
 specify the selected data in queries.
 
 Before executing an expression, it has to be :term:`compiled <query execution

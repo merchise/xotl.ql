@@ -55,7 +55,7 @@ from zope.interface import implementer
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
-from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
+from xotl.ql.interfaces import (ITerm, IGeneratorToken, IQueryPart, IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
                                 IQueryTranslator, IQueryConfiguration,
                                 IQueryObject)
@@ -99,7 +99,7 @@ class Resource(object):
     @classmethod
     def validate_name(cls, name):
         '''
-        Checks names of named These instances::
+        Checks names of named Term instances::
 
             >>> this('::1nvalid')        # doctest: +ELLIPSIS
             Traceback (most recent call last):
@@ -110,14 +110,14 @@ class Resource(object):
         if context['_INVALID_THESE_NAME']:
             regexp = re.compile(r'::i\d+')
         if name and not regexp.match(name):
-            raise NameError('Invalid identifier %r for a named These '
+            raise NameError('Invalid identifier %r for a named Term '
                             'instance' % name)
 
 
     @property
     def name(self):
         '''
-        `These` instances may be named in order to be distiguishable from each
+        `Term` instances may be named in order to be distiguishable from each
         other in a query where two instances may represent different objects.
         '''
         return getattr(self, '_name', None)
@@ -126,7 +126,7 @@ class Resource(object):
     @property
     def parent(self):
         '''
-        `These` instances may have a parent `these` instance from which they
+        `Term` instances may have a parent `these` instance from which they
         are to be "drawn". If fact, only the pair of attributes ``(parent,
         name)`` allows to distiguish two instances from each other.
         '''
@@ -144,8 +144,10 @@ class Resource(object):
         else:
             return self
 
-@implementer(IThese)
-class These(Resource):
+
+
+@implementer(ITerm)
+class Term(Resource):
     '''
     The type of the :obj:`this` symbol: an unnamed object that may placed in
     queries and whose interpretation depends on the query context and the
@@ -161,11 +163,11 @@ class These(Resource):
         # Notice we can't use the __getattr__ way because then things like::
         #   this.name and this.binding
         # would not work properly.
-        get = super(These, self).__getattribute__
+        get = super(Term, self).__getattribute__
         if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
             return get(attr)
         else:
-            return These(name=attr, parent=self)
+            return Term(name=attr, parent=self)
 
 
     def __call__(self, *args):
@@ -263,7 +265,7 @@ class These(Resource):
         '''
         from xotl.ql.expressions import eq
         with context(UNPROXIFING_CONTEXT):
-            if isinstance(other, These):
+            if isinstance(other, Term):
                 res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
@@ -290,7 +292,7 @@ class These(Resource):
         '''
         from xotl.ql.expressions import ne
         with context(UNPROXIFING_CONTEXT):
-            if isinstance(other, These):
+            if isinstance(other, Term):
                 res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
@@ -594,20 +596,14 @@ class These(Resource):
 
 
 
-class ThisClassType(ResourceType):
-    pass
-
-
-
-class ThisClass(These):
+class ThisClass(Term):
     '''
     The class for the :obj:`this` object.
 
     The `this` object is a singleton that behaves like any other
-    :class:`These` instances but also allows the creation of named instances.
+    :class:`Term` instances but also allows the creation of named instances.
 
     '''
-    __metaclass__ = ThisClassType
 
 
     def __init__(self, *args, **kwargs):
@@ -618,7 +614,7 @@ class ThisClass(These):
 
 
     def __call__(self, name, **kwargs):
-        return These(name, **kwargs)
+        return Term(name, **kwargs)
 
 
     def __repr__(self):
@@ -762,7 +758,7 @@ class QueryObject(object):
 
     @selection.setter
     def selection(self, value):
-        ok = lambda v: isinstance(v, (ExpressionTree, These))
+        ok = lambda v: isinstance(v, (ExpressionTree, Term))
         if ok(value):
             self._selection = (value, )
         elif isinstance(value, tuple) and all(ok(v) for v in value):
@@ -879,7 +875,7 @@ class GeneratorToken(object):
 
     # TODO: Representation of grouping with dicts.
     def __init__(self, expression):
-        assert provides_any(expression, IThese)
+        assert provides_any(expression, ITerm)
         self._expression = expression
         self._parts = []
 
@@ -907,7 +903,7 @@ class GeneratorToken(object):
                 return any(child is expression for child in top.children)
             else:
                 return result
-        elif IThese.providedBy(expression):
+        elif ITerm.providedBy(expression):
             return expression.parent is top
         else:
             raise TypeError('Parts should be either these instance or '
@@ -999,7 +995,7 @@ QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
 @implementer(IQueryPart)
 @complementor(QueryPartOperations)
 class QueryPart(object):
-    '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
+    '''A class that wraps either :class:`Term` or :class:`ExpressionTree` that
     implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
 
     To build a query object from a comprehension like in::
@@ -1017,10 +1013,10 @@ class QueryPart(object):
     2. The :func:`these` function invokes `next` upon the generator object.
 
     3. Python invokes ``iter(this)`` which constructs internally another
-       instance of :class:`These` but with a unique name, and delegates the
+       instance of :class:`Term` but with a unique name, and delegates the
        ``iter`` to this instance.
 
-    4. The newly created named These instance creates :class:`GeneratorToken`
+    4. The newly created named Term instance creates :class:`GeneratorToken`
        and assign itself to the
        :attr:`~xotl.ql.interfaces.IGeneratorToken.token` attribute.
 
@@ -1036,7 +1032,7 @@ class QueryPart(object):
        - First, ``parent.age`` is processed. The query part's
          `__getattribute__` method is invoked, which delegates the call to it's
          :attr:`~IQueryPart.expression` attribute. Since, it is an
-         :class:`These` instance, it returns another named These instance.
+         :class:`Term` instance, it returns another named Term instance.
 
          A new query part is created with `expression` set to the result, the
          :attr:`~IQueryPart.token` is inherited from the current query part.
@@ -1179,7 +1175,7 @@ class QueryPart(object):
             # Review note: Maybe we could this part but wrapped inside an
             # `iter` mark to easy the detection of subqueries that are not
             # in the selection.
-            if IThese.providedBy(expression):
+            if ITerm.providedBy(expression):
                 parts = self.token._parts
                 if parts and parts[-1] is expression:
                     parts.pop(-1)
@@ -1310,7 +1306,7 @@ def thesefy(target, name=None):
 
     Optionally (usually for debugging purposes only) you may pass a name to
     the decorator that will be used as the name for the internally generated
-    :class:`These` instance.
+    :class:`Term` instance.
 
         >>> @thesefy('Entity')
         ... class Entity(object):

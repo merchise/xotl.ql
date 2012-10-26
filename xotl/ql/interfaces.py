@@ -30,7 +30,7 @@ __author__ = 'manu'
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
-           'IExpressionTree', 'IQueryPart', 'IThese', 'IBoundThese',
+           'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
@@ -277,7 +277,7 @@ class IQueryPart(IExpressionCapable):
 
     Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
     objects are generated internally whenever there's an *implicit iteration*
-    over some supported object (like a :class:`IThese` instance). This token
+    over some supported object (like a :class:`ITerm` instance). This token
     represents the FROM clause we can see in languages like SQL.
 
     Expression trees are powerful enough to capture the semantics of query
@@ -307,7 +307,7 @@ class IQueryPart(IExpressionCapable):
 
 def _proper_generating_expression(part):
     if not IThese.providedBy(part.expression):
-        raise TypeError('GeneratingQuery parts allows only IThese instances.')
+        raise TypeError('GeneratingQuery parts allows only ITerm instances.')
 
 
 
@@ -316,15 +316,15 @@ class IGeneratingQueryPart(IQueryPart):
     A GeneratingQuery part is a query part that is used as an argument to the
     built-in `iter()` function, i.e. a generator expression iterates over it.
 
-    GeneratingQuery parts just need to stand for expressions which are IThese
+    GeneratingQuery parts just need to stand for expressions which are ITerm
     instances.
     '''
     invariant(_proper_generating_expression)
 
 
 
-class IThese(IExpressionCapable):
-    '''IThese instances are meant to represent the *whole* universe of objects.
+class ITerm(IExpressionCapable):
+    '''ITerm instances are meant to represent the *whole* universe of objects.
 
     These instances take place in expressions to create predicates about
     objects, such as the `this` object in the following expression::
@@ -333,14 +333,14 @@ class IThese(IExpressionCapable):
 
     '''
     name = Attribute('The name of the instance.')
-    parent = Attribute('Another IThese instance from which self is drawn.')
+    parent = Attribute('Another ITerm instance from which self is drawn.')
 
     def __iter__():
         'These instances should be iterable'
 
 
     def __getattribute__(attr):
-        '''All IThese instances support the creation of other instances just
+        '''All ITerm instances support the creation of other instances just
         by accesing an attribute `this.anyattr`.
 
         This means that in order to access other *internal* attributes of the
@@ -348,7 +348,7 @@ class IThese(IExpressionCapable):
 
         :param attr: The name of the object to access.
         :type attr: unicode or str
-        :returns: Another IThese instance whose name is `attr` and whose parent
+        :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
 
@@ -370,7 +370,7 @@ class IGeneratorToken(Interface):
 
     .. todo::
 
-       Currently we only support :class:`IThese` instances as generators, since
+       Currently we only support :class:`ITerm` instances as generators, since
        allowing the `next` protocol directly over :term:`query objects <query
        object>` impedes using them as subqueries like in::
 
@@ -385,7 +385,7 @@ class IGeneratorToken(Interface):
        If this were to be allowed then a :term:`generator token` could be any
        type expression that may be regarded as collection of objects:
 
-       - :class:`IThese` instances
+       - :class:`ITerm` instances
        - :class:`IQueryObject` instances.
 
        However, for the time being there's no such thing as a `query()`
@@ -393,7 +393,7 @@ class IGeneratorToken(Interface):
 
     '''
     expression = Attribute('The instance from which this token was created. '
-                           'Usually a :class:`IThese` instance.')
+                           'Usually a :class:`ITerm` instance.')
 
 
 
@@ -404,7 +404,7 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`IThese` or :class:`IExpressionTree` '
+    selection = Attribute('Either a tuple/dict of :class:`ITerm` or :class:`IExpressionTree` '
                           'instances.')
     tokens = Attribute('Generator tokens that occur in the query',
                        '''When the :term:`query` is processed to create a
