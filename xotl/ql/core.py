@@ -68,23 +68,14 @@ __author__ = 'manu'
 __all__ = (b'this',)
 
 
-class ExpressionError(Exception):
-    '''Base class for expressions related errors'''
 
-
-
-class ResourceType(type):
-    pass
-
-
-
-# TODO: Think about this name.
-# TODO: Do we really need the __slots__ stuff? We must stress the inmutability
-#       of some structures, but __slots__ does not enforce inmutability,
-#       just disables the __dict__ in objects.
-class Resource(object):
-    __slots__ = ('_name', '_parent')
-#    __metaclass__ = ResourceType
+@implementer(ITerm)
+class Term(object):
+    '''
+    The type of the :obj:`this` symbol: an unnamed object that may placed in
+    queries and whose interpretation depends on the query context and the
+    context in which `this` symbol is used inside the query itself.
+    '''
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
@@ -144,15 +135,6 @@ class Resource(object):
         else:
             return self
 
-
-
-@implementer(ITerm)
-class Term(Resource):
-    '''
-    The type of the :obj:`this` symbol: an unnamed object that may placed in
-    queries and whose interpretation depends on the query context and the
-    context in which `this` symbol is used inside the query itself.
-    '''
 
     @classmethod
     def _newname(cls):
@@ -702,16 +684,18 @@ class _QueryObjectType(type):
             for part in selected_parts:
                 expr = part.expression
                 selection.append(expr)
-                token = part.token
-                tokens.append(token.expression)
-                previous_parts = token._parts
+                tokens.extend(token for token in part.tokens)
+                previous_parts = part.token._parts
                 if previous_parts and previous_parts[-1] is expr:
                     previous_parts.pop(-1)
                 filters.extend(part for part in previous_parts
                                     if part not in filters)
+            for token in tokens:
+                filters.extend(part for part in token._parts
+                               if part not in filters)
             query = self()
             query.selection = tuple(reversed(selection))
-            query.tokens = tuple(set(tokens))
+            query.tokens = tuple(set(token.expression for token in tokens))
             query.filters = tuple(set(filters))
             query.ordering = kwargs.get('ordering', None)
             partition = kwargs.get('partition', None)
@@ -897,6 +881,10 @@ class GeneratorToken(object):
                 return self._expression == other._expression
 
 
+    def __repr__(self):
+        return '<token: %r>' % self._expression
+
+
     @property
     def expression(self):
         return self._expression
@@ -962,13 +950,23 @@ def _build_binary_operator(operation, inverse=False):
                 token = self.token
                 tokens = getattr(self, 'tokens', [token])
                 if isinstance(other, QueryPart):
+                    original_other = other
                     other_token = other.token
                     other_tokens = getattr(other, 'tokens', [other_token])
                     other = other.expression
                 else:
+                    original_other = None
                     other_token = None
                     other_tokens = []
                 tokens.extend(t for t in other_tokens if t not in tokens)
+                if original_other:
+                    # XXX: We must alter the tokens for the right-hand side
+                    #      of the expression just in case the left hand is
+                    #      not selected.
+                    original_tokens = getattr(original_other, 'tokens', [])
+                    original_other.tokens = tokens
+                    tokens.extend(token for token in original_tokens
+                                  if token not in tokens)
             if not inverse:
                 result = QueryPart(expression=operation(instance, other),
                                    token=token)
