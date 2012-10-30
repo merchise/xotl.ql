@@ -32,6 +32,8 @@ from __future__ import (division as _py3_division,
 
 import unittest
 
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.types import Unset
 
 from xotl.ql.core import these, this, thesefy
@@ -157,8 +159,40 @@ select_old_entities = these(who for who in Entity if who.age > 34)
 
 
 class TestTranslatorTools(unittest.TestCase):
-    def test_setup(self):
-        self.assertIn(cuba, manolito.lives_in)
+    def test_cofind_tokens(self):
+        from itertools import izip
+        from xotl.ql.expressions import is_a
+        from xotl.ql.translate import cofind_tokens
+
+        @thesefy
+        class Person(object):
+            pass
+
+        @thesefy
+        class Partnership(object):
+            pass
+
+        query = these((person, partner)
+                      for person, partner in izip(Person, Person)
+                      for rel in Partnership
+                      if (rel.subject == person) & (rel.obj == partner))
+        filters = list(query.filters)
+        person, partner = query.selection
+        person_is_a_person = is_a(person, Person)
+        partner_is_a_person = is_a(partner, Person)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertNotEqual(person, partner)
+            self.assertIn(person_is_a_person, filters)
+            self.assertIn(partner_is_a_person, filters)
+            filters.remove(person_is_a_person)
+            filters.remove(partner_is_a_person)
+            self.assertIs(1, len(filters))
+
+            # (rel.subject == person) & (rel.obj == partner)
+            # there are 4 named instances there
+            self.assertIs(4, len(list(cofind_tokens(filters[0]))))
+
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

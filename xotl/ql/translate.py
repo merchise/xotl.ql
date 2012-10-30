@@ -25,7 +25,7 @@
 '''
 The main purporses of this module are two:
 
-- To provide common query/expression translation (co)routines from expressions
+- To provide common query/expression translation framework from query objects
   to data store languages.
 
 - To provide a testing bed for queries to retrieve real objects from somewhere
@@ -41,19 +41,17 @@ from __future__ import (division as _py3_division,
 from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
 
+from zope.interface import Interface
+
 from xotl.ql.expressions import ExpressionTree
-from xotl.ql.interfaces import (IThese,
+from xotl.ql.interfaces import (ITerm,
+                                IExpressionTree,
                                 IQueryObject,
                                 IQueryTranslator,
                                 IQueryExecutionPlan)
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
-
-
-_is_these = lambda who: IThese.providedBy(who)
-_vrai = lambda _who: True
-_none = lambda _who: False
 
 
 def _iter_classes(accept=lambda x: True):
@@ -83,12 +81,134 @@ def _iter_objects(accept=lambda x: True):
 
 
 
-def _instance_of(cls):
+def _instance_of(which):
     '''Returns an `accept` filter for _iter_objects/_iter_classes that only
-    accepts objects that are instances of `cls`.'''
+    accepts objects that are instances of `which`; `which` may be either
+    a class or an Interface (:mod:`zope.interface`).'''
     def accept(ob):
-        return isinstance(ob, cls)
+        return isinstance(ob, which) or (issubclass(which, Interface) and
+                                         which.providedBy(ob))
     return accept
+
+
+
+def cofind_tokens(*expressions, **kwargs):
+    '''
+    Coroutine that traverses expression trees an yields every node that matched
+    the `accept` predicate. If `accept` is None it defaults to accept only
+    :class:`~xotl.ql.interface.ITerm` instances that have a non-None `name`.
+
+    Coroutine behavior:
+
+    You may reintroduce both `expr` and `accept` arguments by sending messages
+    to this coroutine. The message may be:
+
+    - A single callable value, which will replace `accept`.
+
+    - A single non callable value, which will be considered *another*
+      expression to process. Notice this won't make `cofind_tokens` to stop
+      considering all the nodes from previous expressions. However, the
+      expression might be explored before other later generated children
+      of the previous expressions.
+
+    - A tuple consisting in `(expr, accept)` that will be treated like the
+      previous cases.
+
+    - A dict that may have `expr` and `accept` keys.
+
+    The default behavior helps to catch all named ITerm instances in an
+    expression. This is usefull for finding every "name" in a query, which may
+    no appear in the query selection. For instance we, may have a model that
+    relates Person objects indirectly via a Relation object::
+
+        >>> from xotl.ql.core import thesefy
+        >>> @thesefy
+        ... class Person(object):
+        ...     pass
+
+        >>> @thesefy
+        ... class Relation(object):
+        ...    pass
+
+    Then the following query::
+
+        >>> from xotl.ql.core import these
+        >>> from itertools import izip
+        >>> query = these((person, partner)
+        ...               for person, partner in izip(Person, Person)
+        ...               for rel in Relation
+        ...               if (rel.subject == person) & (rel.obj == partner))
+
+    would have two selections::
+
+        >>> person, partner = query.selection
+    '''
+    accept = kwargs.get('accept', lambda x: _instance_of(ITerm)(x) and x.name)
+    with context(UNPROXIFING_CONTEXT):
+        queue = list(expressions)
+        while queue:
+            current = queue.pop(0)
+            msg = None
+            if accept(current):
+                msg = yield current
+            if IExpressionTree.providedBy(current):
+                queue.extend(current.children)
+                named_children = current.named_children
+                queue.extend(named_children[key] for key in named_children)
+            if msg:
+                if callable(msg):
+                    accept = msg
+                elif isinstance(msg, tuple):
+                    expr, accept = msg
+                    queue.append(expr)
+                elif isinstance(msg, dict):
+                    expr = msg.get('expr', None)
+                    if expr:
+                        queue.append(expr)
+                    accept = msg.get('accept', accept)
+                else:
+                    queue.append(msg)
+
+
+
+def cocreate_plan(query, **kwargs):
+    '''
+    Builds a :term:`query execution plan` for a given query that fetches
+    objects from Python's VM memory.
+
+    This function is meant to be general enough so that other may use it as a
+    base for building their :term:`translators <query translator>`.
+
+    It works like this:
+
+    1. First it inspect the tokens and their relations (if a token is the
+       parent of another). For instance in the query::
+
+           query = these((parent, child)
+                           for parent in this
+                           if parent.children & (parent.age > 34)
+                           for child in parent.children if child.age < 5)
+
+        The `parent.children` generator tokens is *derived* from the token
+        `this`, so there should be a relation between the two.
+
+       .. todo::
+
+          If we allow to have subqueries, it's not clear how to correlate
+          tokens. A given token may be whole query::
+
+              p = these((parent, partner)
+                        for parent in this('parent')
+                        for partner, _ in subquery((partner, partner.depth())
+                                            for partner in this
+                                            if contains(partner.related_to,
+                                                        parent)))
+
+         Since all examples so far of sub-queries as generators tokens are not
+         quite convincing, we won't consider that.
+
+
+    '''
 
 
 
