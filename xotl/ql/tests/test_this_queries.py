@@ -458,15 +458,20 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
                                                   this('partner'))
                       for rel in this('relation')
                       if rel.type == 'partnership'
-                      if (rel.subject == person) & (rel.obj == partner))
+                      if (rel.subject == person) & (rel.object == partner))
 
-        self.worst = these((person, partner)
-                      for person, partner in izip(this('person'),
-                                                  this('partner'))
-                      for rel in this('relation')
-                      if rel.type == 'partnership'
-                      if rel.subject == person
-                      if rel.obj == partner)
+
+        # The following query is worst; we'd like a person that has partner
+        # (no matter who, and we don't needed) whose age is greater than 32.
+        self.triple = these(person
+                            for person, partner in izip(this('person'),
+                                                        this('partner'))
+                            for rel in this('relation')
+                            if rel.type == 'partnership'
+                            if rel.subject == person
+                            if rel.object == partner
+                            if partner.age > 32)
+
 
 
     def test_is_a_partnership_is_not_forgotten(self):
@@ -481,16 +486,34 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     def test_theres_a_token_for_Partnership(self):
         query = self.query
         tokens = list(query.tokens)
+        person, partner, rel = this('person'), this('partner'), this('relation')
         with context(UNPROXIFING_CONTEXT):
-            self.assertIn(this('relation'), tokens)
             self.assertIs(3, len(tokens))
+            self.assertIn(rel, tokens)
+            self.assertIn(person, tokens)
+            self.assertIn(partner, tokens)
 
 
-    def test_worst_case_must_have_3_filters(self):
-        query = self.worst
+    def test_worst_case_must_have_3_filters_and_3_tokens(self):
+        query = self.triple
         filters = list(query.filters)
+        tokens = list(query.tokens)
+        person, partner, rel = this('person'), this('partner'), this('relation')
+        expected_rel_type_filter = rel.type == 'partnership'
+        expected_rel_subject_filter = rel.subject == person
+        expected_rel_obj_filter = rel.object == partner
+        expected_partner_age = partner.age > 32
         with context(UNPROXIFING_CONTEXT):
-            self.assertIs(3, len(filters))
+            self.assertIs(4, len(filters))
+            self.assertIn(expected_rel_type_filter, filters)
+            self.assertIn(expected_rel_subject_filter, filters)
+            self.assertIn(expected_rel_obj_filter, filters)
+            self.assertIn(expected_partner_age, filters)
+
+            self.assertIn(person, tokens)
+            self.assertIn(rel, tokens)
+            self.assertIs(3, len(tokens))
+            self.assertIn(partner, tokens)
 
 
 
