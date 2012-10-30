@@ -344,7 +344,6 @@ class TestUtilities(unittest.TestCase):
             self.assertIn(partner_is_a_person, filters)
             filters.remove(person_is_a_person)
             filters.remove(partner_is_a_person)
-            self.assertIs(1, len(filters))
 
 
 
@@ -437,6 +436,63 @@ class TestThisQueries(unittest.TestCase):
             self.assertEqual(len(expected_tokens), len(tokens))
             for t in expected_tokens:
                 self.assertIn(t, tokens)
+
+
+
+class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
+    '''
+    Non-selected tokens should not be forgotten.
+
+    This tests copycats most of the test_thesey_doesnot_messup_identities
+    There's was two related bugs there:
+       - There should be a token for rel
+       - There should be a filter `is_instance(rel, Partnetship)`
+
+    '''
+
+    def setUp(self):
+        from itertools import izip
+
+        self.query = these((person, partner)
+                      for person, partner in izip(this('person'),
+                                                  this('partner'))
+                      for rel in this('relation')
+                      if rel.type == 'partnership'
+                      if (rel.subject == person) & (rel.obj == partner))
+
+        self.worst = these((person, partner)
+                      for person, partner in izip(this('person'),
+                                                  this('partner'))
+                      for rel in this('relation')
+                      if rel.type == 'partnership'
+                      if rel.subject == person
+                      if rel.obj == partner)
+
+
+    def test_is_a_partnership_is_not_forgotten(self):
+        query = self.query
+        filters = list(query.filters)
+        expected_rel_type = this('relation').type == 'partnership'
+        with context(UNPROXIFING_CONTEXT):
+            self.assertIn(expected_rel_type, filters)
+            self.assertIs(2, len(filters))
+
+
+    def test_theres_a_token_for_Partnership(self):
+        query = self.query
+        tokens = list(query.tokens)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertIn(this('relation'), tokens)
+            self.assertIs(3, len(tokens))
+
+
+    def test_worst_case_must_have_3_filters(self):
+        query = self.worst
+        filters = list(query.filters)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertIs(3, len(filters))
+
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
