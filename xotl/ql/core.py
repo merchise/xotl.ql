@@ -84,7 +84,7 @@ class ResourceType(type):
 #       just disables the __dict__ in objects.
 class Resource(object):
     __slots__ = ('_name', '_parent')
-    __metaclass__ = ResourceType
+#    __metaclass__ = ResourceType
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
