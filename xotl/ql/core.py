@@ -46,7 +46,7 @@ from functools import partial
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorators import decorator
 from xoutil.aop.basic import complementor
 
@@ -177,8 +177,9 @@ class Term(object):
 
         A `token` object is attached to each part::
 
+            >>> from xoutil.proxy import unboxed
             >>> unboxed(parent).token        # doctest: +ELLIPSIS
-            <...GeneratorToken object at 0x...>
+            <token: <this('parent') at 0x...>>
 
         The attached `token` object is different for each part if those parts
         are generated from different generators token (see
@@ -1305,6 +1306,7 @@ def thesefy(target, name=None):
     You may test, that an `in_instance(..., Entity)` expression is in the query
     object filters::
 
+        >>> from xoutil.proxy import unboxed
         >>> any(unboxed(filter).operation is not is_instance
         ...     or filter.children[1] is Entity for filter in q.filters)
         True
