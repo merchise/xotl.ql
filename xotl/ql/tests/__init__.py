@@ -28,7 +28,7 @@ __author__ = 'manu'
 
 
 class LoggingAspect(object):
-    def _before_(self, method, *args, **kwargs):
+    def _after_(self, method, result, exc_value, *args, **kwargs):
         cls = nameof(type(self)) if self else None
         if cls:
             method_name = '{cls}.{method}'.format(cls=cls, method=nameof(method))
@@ -40,11 +40,14 @@ class LoggingAspect(object):
         if kwargs:
             arguments += ', '.join('%s=%r' % (k, v)
                                    for k, v in iteritems_(kwargs))
-        message = 'Calling {method}({arguments})'.format(method=method_name,
+        message = 'Called {method}({arguments})'.format(method=method_name,
                                                          arguments=arguments)
         logger = logging.getLogger(cls)
         logger.info(message)
         print(message)
-        return None
+        if result is not None:
+            logger.info('Result: %r' % result)
+            print('Result: %r' % result)
+        return result
 
 

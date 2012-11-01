@@ -389,6 +389,11 @@ class TestUtilities(unittest.TestCase):
 
 
 class TestThisQueries(unittest.TestCase):
+    def setUp(self):
+        from xotl.ql.core import QueryStateMachine
+        setattr(QueryStateMachine, '__repr__', lambda self: hex(id(self)))
+
+
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent') if parent.age > 40)
         self.assertTrue(provides_any(query, IQueryObject))
