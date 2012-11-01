@@ -37,16 +37,47 @@ from xotl.ql import this
 from xotl.ql.core import these, provides_any
 from xotl.ql.interfaces import IQueryObject
 
+
+from zope.interface import implementer
+
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
 # This flag
 __TEST_DESIGN_DECISIONS = True
+__LOG = True
+
+
+if __LOG:
+    from xoutil.compat import iterkeys_
+    from xoutil.aop.classical import weave, _weave_before_method
+
+    from xotl.ql.core import QueryStateMachine, QueryPart, _part_operations
+    from xotl.ql.tests import LoggingAspect
+
+    # Weave logging aspect into every relevant method during testing
+    weave(LoggingAspect, QueryStateMachine)
+    for attr in iterkeys_(_part_operations):
+        _weave_before_method(QueryPart, LoggingAspect, attr, '_before_')
 
 
 if __TEST_DESIGN_DECISIONS:
-    from xotl.ql.interfaces import IQueryPart
+    from xotl.ql.interfaces import IQueryPart, IQueryStateMachine
+
+    @implementer(IQueryStateMachine)
+    class FakeStateMachine(object):
+        def __repr__(self):
+            return hex(id(self))[2:]
+
+        def on_created_part(self, part):
+            pass
+
+        def on_created_token(self, token):
+            pass
+
+    if __LOG:
+        weave(LoggingAspect, FakeStateMachine)
 
     class DesignDecisionTests(unittest.TestCase):
         '''
@@ -55,6 +86,16 @@ if __TEST_DESIGN_DECISIONS:
         the result of ``these(<comprehension>)`` syntax *unless* there's
         a change in Query Language API.
         '''
+        def setUp(self):
+            query_state_machine = FakeStateMachine()
+            self.query_context = context(query_state_machine)
+            self.query_context.__enter__()
+            self.query_context.machine = query_state_machine
+
+
+        def tearDown(self):
+            self.query_context.__exit__(None, None, None)
+
 
         def test_yield_once_per_query(self):
             q = (a for c in this for b in c.bs for a in b.a)
