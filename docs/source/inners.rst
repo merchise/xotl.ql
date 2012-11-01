@@ -7,14 +7,11 @@ This document tries to explain how it's implemented the "parsing" of a
 
 When processing a query expression, all that is passed to the
 :class:`~xotl.ql.core.these` callable is a comprehension (and possible some
-keyword arguments that are irrelevant for the purposes of this description.)
-We're not in control of how Python does the job of interpreting the real
-query expression.
+keyword arguments that are irrelevant for the purposes of this description)
+we're not in control of how Python does the job of interpreting the real query
+expression.
 
-We may try to picture this process, by figuring we have a machine that receives
-"events".
-
-Let's use a given query for our purposes::
+Let's stick with a given query for explaining how this works::
 
   these((person.name, partner.name)
         for person in this('person')
@@ -131,12 +128,8 @@ Let's see how Python acts, and how we react.
      Once again our program has no idea that all the `ifs` are done, and that
      it will now be asked to build *selection* expressions.
 
-
-Depiction of the "machine"
-==========================
-
-
-
+  Again, Python calls `__getattribute__` to `qp<person>` which creates yet
+  another part and notifies `tk<person>`...
 
 Flaws of the current implementation
 ===================================
@@ -153,5 +146,11 @@ Flaws of the current implementation
   This is tricky, though. Separate events are "collapsible". For instance, the
   five steps described :ref:`above <five-steps>` are separate events, but they
   are collapsed into a single expression filter.
+
+
+Depiction of the "machine"
+==========================
+
+
 
 
