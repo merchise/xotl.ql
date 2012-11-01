@@ -272,8 +272,8 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a partial (but sound) expression that is been attached somehow
-    to a generator token.
+    '''Represents a *possibly* partial (but sound) expression that is been
+    attached somehow to a generator token.
 
     Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
     objects are generated internally whenever there's an *implicit iteration*
@@ -283,7 +283,7 @@ class IQueryPart(IExpressionCapable):
     Expression trees are powerful enough to capture the semantics of query
     parts. But, since we don't have the control of how Python does is execution
     of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryPartContainer` that a new query
+    expressions, but inform a :class:`IQueryStateMachine` that a new query
     part is being created.
 
     See the documentation for :class:`xotl.ql.core.QueryPart` to see the
@@ -292,9 +292,6 @@ class IQueryPart(IExpressionCapable):
     '''
     token = Attribute('A reference to the generator token instance to which '
                       'this part has been attached.')
-
-    tokens = Attribute('References to all the generator token instances to '
-                       'which this instance has a relation with.')
 
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
@@ -351,12 +348,6 @@ class ITerm(IExpressionCapable):
         :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
-
-
-
-class IQueryPartContainer(Interface):
-    def created_query_part(part):
-        'Called whenever a new query part is created'
 
 
 

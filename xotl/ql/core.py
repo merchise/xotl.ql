@@ -57,7 +57,7 @@ from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (ITerm, IGeneratorToken, IQueryPart,
                                 IExpressionTree,
-                                IExpressionCapable, IQueryPartContainer,
+                                IExpressionCapable,
                                 IQueryTranslator, IQueryConfiguration,
                                 IQueryObject, IQueryStateMachine)
 
@@ -734,20 +734,13 @@ class _QueryObjectType(type):
                 selected_parts = (selected_parts, )
             selected_parts = tuple(reversed(selected_parts))
             selection = []
-            tokens = []
-            filters = []
+            tokens = machine._tokens
+            filters = machine._parts[:]
             for part in selected_parts:
                 expr = part.expression
+                if filters and expr is filters[-1]:
+                    filters.pop(-1)
                 selection.append(expr)
-                tokens.extend(token for token in part.tokens)
-                previous_parts = part.token._parts
-                if previous_parts and previous_parts[-1] is expr:
-                    previous_parts.pop(-1)
-                filters.extend(part for part in previous_parts
-                                    if part not in filters)
-            for token in tokens:
-                filters.extend(part for part in token._parts
-                               if part not in filters)
             query = self()
             query.selection = tuple(reversed(selection))
             query.tokens = tuple(set(token.expression for token in tokens))
@@ -910,7 +903,7 @@ class QueryObject(object):
 these = QueryObject
 
 
-@implementer(IGeneratorToken, IQueryPartContainer)
+@implementer(IGeneratorToken)
 class GeneratorToken(object):
     '''
     Represents a token in the syntactical tree that is used as generator.
@@ -979,18 +972,27 @@ class GeneratorToken(object):
 
 
 
+def _query_part_method(target):
+    def inner(self, *args, **kwargs):
+        result = target(self, *args, **kwargs)
+        machine = getattr(context[IQueryStateMachine], 'machine', None)
+        if not machine:
+            machine = getattr(self, '_machine', None)
+        assert machine
+        machine.on_created_part(result)
+        return result
+    return inner
+
+
 def _build_unary_operator(operation):
     method_name = operation._method_name
+    @_query_part_method
     def method(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             token = self.token
         result = QueryPart(expression=operation(instance),
                            token=token)
-        machine = getattr(context[IQueryStateMachine], 'machine', None)
-        assert machine
-        machine.on_created_part(result)
-        token.created_query_part(result)
         return result
     method.__name__ = method_name
     return method
@@ -1003,41 +1005,19 @@ def _build_binary_operator(operation, inverse=False):
     else:
         method_name = operation._rmethod_name
     if method_name:
+        @_query_part_method
         def method(self, other):
             with context(UNPROXIFING_CONTEXT):
                 instance = self.expression
                 token = self.token
-                tokens = getattr(self, 'tokens', [token])
-                if isinstance(other, QueryPart):
-                    original_other = other
-                    other_token = other.token
-                    other_tokens = getattr(other, 'tokens', [other_token])
+                if IQueryPart.providedBy(other):
                     other = other.expression
-                else:
-                    original_other = None
-                    other_token = None
-                    other_tokens = []
-                tokens.extend(t for t in other_tokens if t not in tokens)
-                if original_other:
-                    # XXX: We must alter the tokens for the right-hand side
-                    #      of the expression just in case the left hand is
-                    #      not selected.
-                    original_tokens = getattr(original_other, 'tokens', [])
-                    original_other.tokens = tokens
-                    tokens.extend(token for token in original_tokens
-                                  if token not in tokens)
             if not inverse:
                 result = QueryPart(expression=operation(instance, other),
                                    token=token)
             else:
                 result = QueryPart(expression=operation(other, instance),
                                    token=token)
-            result.tokens = tokens
-            machine = getattr(context[IQueryStateMachine], 'machine', None)
-            assert machine
-            machine.on_created_part(result)
-            for token in tokens:
-                token.created_query_part(result)
             return result
         method.__name__ = method_name
         return method
@@ -1073,7 +1053,7 @@ class QueryPart(object):
 
         these(count(parent.children) for parent in this if parent.age > 34)
 
-    We need to differiante the IF (``parent.age > 34``) part of the
+    We need to differentiate the IF (``parent.age > 34``) part of the
     comprehension from the SELECTION (``count(parent.children)``); which in the
     general case are both expressions. The following procedure is a sketch of
     what happens to accomplish that:
@@ -1176,7 +1156,7 @@ class QueryPart(object):
         Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    __slots__ = ('_token', '_expression', '_tokens')
+    __slots__ = ('_token', '_expression')
 
 
     def __init__(self, **kwargs):
@@ -1184,8 +1164,7 @@ class QueryPart(object):
             self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
             self._token = None
-            self.token = token = kwargs.get('token')
-            self._tokens = [token]
+            self.token = kwargs.get('token')
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
@@ -1201,24 +1180,6 @@ class QueryPart(object):
             self._token = value
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
-
-
-    @property
-    def tokens(self):
-        return list(self._tokens)
-
-
-    @tokens.setter
-    def tokens(self, value):
-        from xoutil.types import is_collection
-        with context(UNPROXIFING_CONTEXT):
-            tokens = self._tokens
-            if is_collection(value):
-                assert all(provides_any(g, IGeneratorToken) for g in value)
-                tokens.extend(token for token in value if token not in tokens)
-            else:
-                assert provides_any(value, IGeneratorToken)
-                tokens.append(value)
 
 
     @property
@@ -1247,7 +1208,9 @@ class QueryPart(object):
             if ITerm.providedBy(expression):
                 machine = getattr(context[IQueryStateMachine], 'machine', None)
                 assert machine
-                # parts = machine._parts
+                parts = machine._parts
+                if parts and parts[-1] is expression:
+                    parts.pop(-1)
                 parts = self.token._parts
                 if parts and parts[-1] is expression:
                     parts.pop(-1)
@@ -1273,21 +1236,24 @@ class QueryPart(object):
                 token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
                                token=token)
-            token.created_query_part(result)
+            machine = getattr(context[IQueryStateMachine], 'machine', None)
+            assert machine
+            machine.on_created_part(result)
             return result
 
 
     # TODO: Again, in which interface?
+    @_query_part_method
     def __call__(self, *args):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             token = self.token
         result = QueryPart(expression=instance(*args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def any_(self, *args):
         from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1295,10 +1261,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def all_(self, *args):
         from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1306,10 +1272,13 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
+        machine = getattr(context[IQueryStateMachine], 'machine', None)
+        assert machine
+        machine.on_created_part(result)
         return result
 
 
+    @_query_part_method
     def min_(self, *args):
         from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1317,10 +1286,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def max_(self, *args):
         from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1328,10 +1297,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def invoke(self, *args):
         from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
@@ -1339,7 +1308,6 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
@@ -1411,14 +1379,15 @@ def thesefy(target, name=None):
             except AttributeError:
                 result = Unset
             if isinstance(result, GeneratorType):
-                return result
+                for item in result:
+                    yield item
             elif result is not Unset and IQueryPart.providedBy(result):
-                return iter((result, ))
+                    yield result
             elif result is Unset:
                 from xotl.ql.expressions import is_instance
                 query_part = next(iter(this(name)))
                 is_instance(query_part, self)
-                return iter((query_part, ))
+                yield query_part
             else:
                 raise TypeError('Class {target} has a metaclass with an '
                                 '__iter__ that does not support thesefy'.format(target=target))

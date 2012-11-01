@@ -65,31 +65,12 @@ if __LOG:
 
 
 if __TEST_DESIGN_DECISIONS:
-    from xotl.ql.interfaces import IQueryPart, IQueryStateMachine
+    from xotl.ql.interfaces import IQueryPart
+    from xotl.ql.core import QueryStateMachine
 
-    @implementer(IQueryStateMachine)
-    class FakeStateMachine(object):
-        def __repr__(self):
-            return hex(id(self))[2:]
-
-        def on_created_part(self, part):
-            pass
-
-        def on_created_token(self, token):
-            pass
-
-    if __LOG:
-        weave(LoggingAspect, FakeStateMachine)
-
-    class DesignDecisionTests(unittest.TestCase):
-        '''
-        Tests that are not functional. This suite only tests design
-        decisions that may change over time; but which should not affect
-        the result of ``these(<comprehension>)`` syntax *unless* there's
-        a change in Query Language API.
-        '''
+    class DesignDecisionTestCase(unittest.TestCase):
         def setUp(self):
-            query_state_machine = FakeStateMachine()
+            self.query_state_machine = query_state_machine = QueryStateMachine()
             self.query_context = context(query_state_machine)
             self.query_context.__enter__()
             self.query_context.machine = query_state_machine
@@ -98,6 +79,15 @@ if __TEST_DESIGN_DECISIONS:
         def tearDown(self):
             self.query_context.__exit__(None, None, None)
 
+
+
+    class DesignDecisionTests(DesignDecisionTestCase):
+        '''
+        Tests that are not functional. This suite only tests design
+        decisions that may change over time; but which should not affect
+        the result of ``these(<comprehension>)`` syntax *unless* there's
+        a change in Query Language API.
+        '''
 
         def test_yield_once_per_query(self):
             q = (a for c in this for b in c.bs for a in b.a)
@@ -141,9 +131,7 @@ if __TEST_DESIGN_DECISIONS:
                             for parent in this('parent')
                             if (parent.age > 32) & parent.married &
                                parent.spouse.alive)
-            with context(UNPROXIFING_CONTEXT):
-                token = expr.token
-            parts = token._parts
+            parts = self.query_state_machine._parts
             # The select part is at the top
             ok("this('parent').title + this('parent').name", str(parts[-1]))
             # Then the binding
@@ -161,22 +149,15 @@ if __TEST_DESIGN_DECISIONS:
                                  for child in parent.children
                                     if child.age < 5)
             ok = self.assertEquals
-            with context(UNPROXIFING_CONTEXT):
-                pquery, cquery = parent.token, child.token
-            pparts = pquery._parts
-            ok("this('parent').title + this('parent').name",
-               str(pparts[-1]))
-            ok("(this('parent').age > 32) and this('parent').children",
-               str(pparts[-2]))
+            parts = self.query_state_machine._parts
+            parent = this('parent')
+            child = parent.children
+            ok(str(child.name + child.nick), str(parts[-1]))
+            ok(str(parent.title + parent.name), str(parts[-2]))
+            ok(str(child.age < 5), str(parts[-3]))
+            ok(str((parent.age > 32) & parent.children), str(parts[-4]))
             with self.assertRaises(IndexError):
-                print(str(pparts[-3]))
-
-            cparts = cquery._parts
-            ok("this('parent').children.name + this('parent').children.nick",
-               str(cparts[-1]))
-            ok("this('parent').children.age < 5", str(cparts[-2]))
-            with self.assertRaises(IndexError):
-                print(str(cparts[-3]))
+                print(str(parts[-5]))
 
 
         def test_complex_intermingled_query(self):
@@ -184,40 +165,40 @@ if __TEST_DESIGN_DECISIONS:
             pass
 
 
-        def test_complex_query_building_with_dict(self):
-            from xotl.ql.expressions import min_, max_
-            ok = self.assertEquals
-            d = {parent.age: (min_(child.age), max_(child.age))
-                    for parent in this('parent')
-                        if (parent.age > 32) & parent.children
-                    for child in parent.children if child.age < 5}
-
-            parent, (min_child, max_child) = d.popitem()
-            with context(UNPROXIFING_CONTEXT):
-                pquery = parent.token
-                parent = parent.expression
-                minc_query = min_child.token
-                min_child = min_child.expression
-                maxc_query = max_child.token
-                max_child = max_child.expression
-            self.assertIs(maxc_query, minc_query)
-            self.assertIsNot(pquery, maxc_query)
-            ok("this('parent').age", str(parent))
-            parts = pquery._parts
-            ok("(this('parent').age > 32) and this('parent').children",
-               str(parts[-2]))  # the selected `parent.age` was the last
-            with self.assertRaises(IndexError):
-                print(parts[-3])
-
-            parts = maxc_query._parts
-            top = parts.pop()
-            ok("max(this('parent').children.age)", str(top))
-            top = parts.pop()
-            ok("min(this('parent').children.age)", str(top))
-            top = parts.pop()
-            ok("this('parent').children.age < 5", str(top))
-            with self.assertRaises(IndexError):
-                print(parts.pop())
+#        def test_complex_query_building_with_dict(self):
+#            from xotl.ql.expressions import min_, max_
+#            ok = self.assertEquals
+#            d = {parent.age: (min_(child.age), max_(child.age))
+#                    for parent in this('parent')
+#                        if (parent.age > 32) & parent.children
+#                    for child in parent.children if child.age < 5}
+#
+#            parent, (min_child, max_child) = d.popitem()
+#            with context(UNPROXIFING_CONTEXT):
+#                pquery = parent.token
+#                parent = parent.expression
+#                minc_query = min_child.token
+#                min_child = min_child.expression
+#                maxc_query = max_child.token
+#                max_child = max_child.expression
+#            self.assertIs(maxc_query, minc_query)
+#            self.assertIsNot(pquery, maxc_query)
+#            ok("this('parent').age", str(parent))
+#            parts = self.query_state_machine._parts
+#            ok("(this('parent').age > 32) and this('parent').children",
+#               str(parts[-2]))  # the selected `parent.age` was the last
+#            with self.assertRaises(IndexError):
+#                print(parts[-3])
+#
+#            parts = self.query_state_machine._parts
+#            top = parts.pop()
+#            ok("max(this('parent').children.age)", str(top))
+#            top = parts.pop()
+#            ok("min(this('parent').children.age)", str(top))
+#            top = parts.pop()
+#            ok("this('parent').children.age < 5", str(top))
+#            with self.assertRaises(IndexError):
+#                print(parts.pop())
 
 
         def test_query_reutilization_design(self):
@@ -238,7 +219,7 @@ if __TEST_DESIGN_DECISIONS:
                 self.assertNotEqual(p1, p2)
 
 
-    class DesignDesitionsRegressionTests(unittest.TestCase):
+    class DesignDesitionsRegressionTests(DesignDecisionTestCase):
         def test_20121022_complex_intermingled_query(self):
             '''
             Slight variation over the same test of previous testcase but
@@ -272,25 +253,81 @@ if __TEST_DESIGN_DECISIONS:
                                       for toy in child.toys
                                       if (parent.age > 32) & (child.age < 5) |
                                          (toy.type == 'laptop'))
-            ok = self.assertEquals
-            with context(UNPROXIFING_CONTEXT):
-                pquery, cquery = parent.token, child.token
-            pparts = pquery._parts
-            print(pparts)
-            ok("this('parent').title + this('parent').name",
-               str(pparts[-1]))
-            ok("((this('parent').age > 32) and (this('parent').children.age < 5)) or (this('parent').children.toys.type == laptop)",
-               str(pparts[-2]))
+            parts = self.query_state_machine._parts
+            parent = this('parent')
+            child = parent.children
+            ok = lambda x: self.assertEquals(str(x), str(parts.pop(-1)))
+            toy = child.toys
+            ok(toy.name)
+            ok(child.name + child.nick)
+            ok(parent.title + parent.name)
+            ok((parent.age > 32) & (child.age < 5) | (toy.type == 'laptop'))
             with self.assertRaises(IndexError):
-                print(str(pparts[-3]))
+                print(ok(None))
 
-            cparts = cquery._parts
-            print(cparts)
-            ok("this('parent').children.name + this('parent').children.nick", str(cparts[-1]))
-            ok("((this('parent').age > 32) and (this('parent').children.age < 5)) or (this('parent').children.toys.type == laptop)",
-               str(cparts[-2]))
+
+    class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
+        '''
+        Non-selected tokens should not be forgotten.
+
+        This tests copycats most of the test_thesey_doesnot_messup_identities
+        There's was two related bugs there:
+           - There should be a token for rel
+           - There should be a filter `is_instance(rel, Partnetship)`
+
+        '''
+
+        def test_is_a_partnership_is_not_forgotten(self):
+            from itertools import izip
+            next((person, partner)
+                 for person, partner in izip(this('person'),
+                                             this('partner'))
+                 for rel in this('relation')
+                 if rel.type == 'partnership'
+                 if (rel.subject == person) & (rel.object == partner))
+            parts = self.query_state_machine._parts
+            tokens = self.query_state_machine._tokens
+            ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
+            person = this('person')
+            partner = this('partner')
+            rel = this('relation')
+            self.assertIn(person, tokens)
+            self.assertIn(partner, tokens)
+            self.assertIn(rel, tokens)
+            ok((rel.subject == person) & (rel.object == partner))
+            ok(rel.type == 'partnership')
             with self.assertRaises(IndexError):
-                print(str(cparts[-3]))
+                ok(None)
+
+
+
+        def test_worst_case_must_have_3_filters_and_3_tokens(self):
+            from itertools import izip
+
+            next(person
+                 for person, partner in izip(this('person'),
+                                             this('partner'))
+                 for rel in this('relation')
+                 if rel.type == 'partnership'
+                 if rel.subject == person
+                 if rel.object == partner
+                 if partner.age > 32)
+            parts = self.query_state_machine._parts
+            tokens = self.query_state_machine._tokens
+            ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
+            person = this('person')
+            partner = this('partner')
+            rel = this('relation')
+            self.assertIn(person, tokens)
+            self.assertIn(partner, tokens)
+            self.assertIn(rel, tokens)
+            ok(partner.age > 32)
+            ok(rel.object == partner)
+            ok(rel.subject == person)
+            ok(rel.type == 'partnership')
+            with self.assertRaises(IndexError):
+                ok(None)
+
 
 
 class TestUtilities(unittest.TestCase):
@@ -497,33 +534,14 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
        - There should be a filter `is_instance(rel, Partnetship)`
 
     '''
-
-    def setUp(self):
+    def test_is_a_partnership_is_not_forgotten(self):
         from itertools import izip
-
-        self.query = these((person, partner)
+        query = these((person, partner)
                       for person, partner in izip(this('person'),
                                                   this('partner'))
                       for rel in this('relation')
                       if rel.type == 'partnership'
                       if (rel.subject == person) & (rel.object == partner))
-
-
-        # The following query is worst; we'd like a person that has partner
-        # (no matter who, and we don't needed) whose age is greater than 32.
-        self.triple = these(person
-                            for person, partner in izip(this('person'),
-                                                        this('partner'))
-                            for rel in this('relation')
-                            if rel.type == 'partnership'
-                            if rel.subject == person
-                            if rel.object == partner
-                            if partner.age > 32)
-
-
-
-    def test_is_a_partnership_is_not_forgotten(self):
-        query = self.query
         filters = list(query.filters)
         expected_rel_type = this('relation').type == 'partnership'
         with context(UNPROXIFING_CONTEXT):
@@ -531,8 +549,14 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIs(2, len(filters))
 
 
-    def test_theres_a_token_for_Partnership(self):
-        query = self.query
+    def test_theres_a_token_for_partnership(self):
+        from itertools import izip
+        query = these((person, partner)
+                      for person, partner in izip(this('person'),
+                                                  this('partner'))
+                      for rel in this('relation')
+                      if rel.type == 'partnership'
+                      if (rel.subject == person) & (rel.object == partner))
         tokens = list(query.tokens)
         person, partner, rel = this('person'), this('partner'), this('relation')
         with context(UNPROXIFING_CONTEXT):
@@ -543,7 +567,15 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
 
 
     def test_worst_case_must_have_3_filters_and_3_tokens(self):
-        query = self.triple
+        from itertools import izip
+        query = these(person
+                      for person, partner in izip(this('person'),
+                                                  this('partner'))
+                      for rel in this('relation')
+                      if rel.type == 'partnership'
+                      if rel.subject == person
+                      if rel.object == partner
+                      if partner.age > 32)
         filters = list(query.filters)
         tokens = list(query.tokens)
         person, partner, rel = this('person'), this('partner'), this('relation')
