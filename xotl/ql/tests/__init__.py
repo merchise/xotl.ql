@@ -27,27 +27,29 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-class LoggingAspect(object):
-    def _after_(self, method, result, exc_value, *args, **kwargs):
-        cls = nameof(type(self)) if self else None
-        if cls:
-            method_name = '{cls}.{method}'.format(cls=cls, method=nameof(method))
-        else:
-            method_name = nameof(method)
-        if self:
-            args = (self, ) + args
-        arguments = ', '.join('%r' % a for a in args) if args else ''
-        if kwargs:
-            arguments += ', '.join('%s=%r' % (k, v)
-                                   for k, v in iteritems_(kwargs))
-        message = 'Called {method}({arguments})'.format(method=method_name,
-                                                         arguments=arguments)
-        logger = logging.getLogger(cls)
-        logger.info(message)
-        print(message)
-        if result is not None:
-            logger.info('Result: %r' % result)
-            print('Result: %r' % result)
-        return result
 
-
+def logging_aspect(output_to=None):
+    class LoggingAspect(object):
+        def _after_(self, method, result, exc_value, *args, **kwargs):
+            cls = nameof(type(self)) if self else None
+            if cls:
+                method_name = '{cls}.{method}'.format(cls=cls, method=nameof(method))
+            else:
+                method_name = nameof(method)
+            if self:
+                args = (self, ) + args
+            arguments = ', '.join('%r' % a for a in args) if args else ''
+            if kwargs:
+                arguments += ', '.join('%s=%r' % (k, v)
+                                       for k, v in iteritems_(kwargs))
+            message = 'Called {method}({arguments})'.format(method=method_name,
+                                                             arguments=arguments)
+            logger = logging.getLogger(cls)
+            logger.setLevel(logging.DEBUG)
+            if output_to and not logger.handlers:
+                logger.addHandler(logging.StreamHandler(output_to))
+            logger.debug(message)
+            if result is not None:
+                logger.debug('Result: %r' % result)
+            return result
+    return LoggingAspect

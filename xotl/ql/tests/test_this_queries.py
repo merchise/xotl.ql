@@ -50,16 +50,18 @@ __LOG = True
 
 
 if __LOG:
+    import sys
     from xoutil.compat import iterkeys_
     from xoutil.aop.classical import weave, _weave_before_method
 
     from xotl.ql.core import QueryStateMachine, QueryPart, _part_operations
-    from xotl.ql.tests import LoggingAspect
+    from xotl.ql.tests import logging_aspect
 
     # Weave logging aspect into every relevant method during testing
-    weave(LoggingAspect, QueryStateMachine)
+    aspect = logging_aspect(sys.stdout)
+    weave(aspect, QueryStateMachine)
     for attr in iterkeys_(_part_operations):
-        _weave_before_method(QueryPart, LoggingAspect, attr, '_before_')
+        _weave_before_method(QueryPart, aspect, attr, '_before_')
 
 
 if __TEST_DESIGN_DECISIONS:
