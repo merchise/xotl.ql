@@ -360,6 +360,20 @@ class IQueryPartContainer(Interface):
 
 
 
+class IQueryStateMachine(Interface):
+    def on_created_token(token):
+        pass
+
+    def on_created_part(part):
+        pass
+
+
+
+class IQueryContext(Interface):
+    machine = Attribute('A reference to an :class:`IQueryStateMachine`')
+
+
+
 class IGeneratorToken(Interface):
     '''In the :term:`query object`, a single :term:`generator token`.
 

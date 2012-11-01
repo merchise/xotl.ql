@@ -55,10 +55,11 @@ from zope.interface import implementer
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
 from xotl.ql.expressions import UNARY, BINARY, N_ARITY
-from xotl.ql.interfaces import (ITerm, IGeneratorToken, IQueryPart, IExpressionTree,
+from xotl.ql.interfaces import (ITerm, IGeneratorToken, IQueryPart,
+                                IExpressionTree,
                                 IExpressionCapable, IQueryPartContainer,
                                 IQueryTranslator, IQueryConfiguration,
-                                IQueryObject)
+                                IQueryObject, IQueryStateMachine)
 
 
 __docstring_format__ = 'rst'
@@ -210,6 +211,9 @@ class Term(object):
         if name:
             token = GeneratorToken(expression=self)
             instance = QueryPart(expression=self, token=token)
+            machine = getattr(context[IQueryStateMachine], 'machine', None)
+            assert machine
+            machine.on_created_token(token)
             yield instance
         else:
             # We should generate a new-name
@@ -628,6 +632,53 @@ def provides_all(which, *interfaces):
 
 
 
+@implementer(IQueryStateMachine)
+class QueryStateMachine(object):
+    def __init__(self):
+        self._parts = []
+        self._tokens = []
+
+
+    def mergable(self, expression):
+        assert context[UNPROXIFING_CONTEXT]
+        is_expression = IExpressionTree.providedBy
+        top = self._parts[-1]
+        if top is expression:
+            return True
+        elif is_expression(expression):
+            result = any(child is top for child in expression.children)
+            if not result and is_expression(top):
+                return any(child is expression for child in top.children)
+            else:
+                return result
+        elif ITerm.providedBy(expression):
+            return expression.parent is top
+        else:
+            raise TypeError('Parts should be either these instance or '
+                            'expression trees; not %s' % type(expression))
+
+
+    def on_created_part(self, part):
+        with context(UNPROXIFING_CONTEXT):
+            if provides_all(part, IQueryPart):
+                expression = part.expression
+                parts = self._parts
+                if parts:
+                    mergable = self.mergable
+                    while parts and mergable(expression):
+                        parts.pop()
+                self._parts.append(expression)
+            else:
+                assert False
+
+
+    def on_created_token(self, token):
+        tokens = self._tokens
+        if token not in tokens:
+            tokens.append(token)
+
+
+
 class _QueryObjectType(type):
     def these(self, comprehesion, **kwargs):
         '''Builds a :term:`query object` from a :term:`query expression` given
@@ -674,7 +725,10 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehesion, GeneratorType)
-        selected_parts = next(comprehesion)
+        machine = QueryStateMachine()
+        with context(machine) as query_context:
+            query_context.machine = machine
+            selected_parts = next(comprehesion)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts, )
@@ -728,6 +782,7 @@ class _QueryObjectType(type):
         result = super(self, self).__new__(self)
         result.__init__(*args, **kwargs)
         return result
+
 
 
 @implementer(IQueryObject)
@@ -883,7 +938,7 @@ class GeneratorToken(object):
 
 
     def __repr__(self):
-        return '<token: %r>' % self._expression
+        return '<tk: %r>' % self._expression
 
 
     @property
@@ -932,6 +987,9 @@ def _build_unary_operator(operation):
             token = self.token
         result = QueryPart(expression=operation(instance),
                            token=token)
+        machine = getattr(context[IQueryStateMachine], 'machine', None)
+        assert machine
+        machine.on_created_part(result)
         token.created_query_part(result)
         return result
     method.__name__ = method_name
@@ -975,6 +1033,9 @@ def _build_binary_operator(operation, inverse=False):
                 result = QueryPart(expression=operation(other, instance),
                                    token=token)
             result.tokens = tokens
+            machine = getattr(context[IQueryStateMachine], 'machine', None)
+            assert machine
+            machine.on_created_part(result)
             for token in tokens:
                 token.created_query_part(result)
             return result
@@ -1176,16 +1237,17 @@ class QueryPart(object):
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
             expression = self.expression
-            # This kind of a hack: since in queries like::
+            # This is kind of a hack: since in query expressions like::
             #     ((parent, child) for parent in this
             #                      for child in parent.children)
             # The `parent.children` will generate a part and push it to the
-            # query; but this part should be there; so we need to remove it
+            # _parts; but this part should not be there; so we need to remove
+            # it.
             #
-            # Review note: Maybe we could this part but wrapped inside an
-            # `iter` mark to easy the detection of subqueries that are not
-            # in the selection.
             if ITerm.providedBy(expression):
+                machine = getattr(context[IQueryStateMachine], 'machine', None)
+                assert machine
+                # parts = machine._parts
                 parts = self.token._parts
                 if parts and parts[-1] is expression:
                     parts.pop(-1)
@@ -1195,9 +1257,8 @@ class QueryPart(object):
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
             result = str(instance)
-        return '<qp: %s; for %s>' % (result, token)
+        return '<qp: %s>' % result
     __repr__ = __str__
 
 
@@ -1345,7 +1406,6 @@ def thesefy(target, name=None):
             return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
         def __iter__(self):
             from types import GeneratorType
-            from xotl.ql.interfaces import IQueryPart
             try:
                 result = super(new_meta, self).__iter__()
             except AttributeError:
