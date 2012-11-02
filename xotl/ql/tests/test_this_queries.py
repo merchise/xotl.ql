@@ -165,47 +165,55 @@ if __TEST_DESIGN_DECISIONS:
             pass
 
 
-#        def test_complex_query_building_with_dict(self):
-#            from xotl.ql.expressions import min_, max_
-#            ok = self.assertEquals
-#            d = {parent.age: (min_(child.age), max_(child.age))
-#                    for parent in this('parent')
-#                        if (parent.age > 32) & parent.children
-#                    for child in parent.children if child.age < 5}
-#
-#            parent, (min_child, max_child) = d.popitem()
-#            with context(UNPROXIFING_CONTEXT):
-#                pquery = parent.token
-#                parent = parent.expression
-#                minc_query = min_child.token
-#                min_child = min_child.expression
-#                maxc_query = max_child.token
-#                max_child = max_child.expression
-#            self.assertIs(maxc_query, minc_query)
-#            self.assertIsNot(pquery, maxc_query)
-#            ok("this('parent').age", str(parent))
-#            parts = self.query_state_machine._parts
-#            ok("(this('parent').age > 32) and this('parent').children",
-#               str(parts[-2]))  # the selected `parent.age` was the last
-#            with self.assertRaises(IndexError):
-#                print(parts[-3])
-#
-#            parts = self.query_state_machine._parts
-#            top = parts.pop()
-#            ok("max(this('parent').children.age)", str(top))
-#            top = parts.pop()
-#            ok("min(this('parent').children.age)", str(top))
-#            top = parts.pop()
-#            ok("this('parent').children.age < 5", str(top))
-#            with self.assertRaises(IndexError):
-#                print(parts.pop())
+        def test_tokens_as_names(self):
+            next((parent, child)
+                 for parent in this('parent')
+                 if parent.children & parent.children.length() > 4
+                 for child in parent.children
+                 if child.age < 5)
+            # The query has two filters:
+            #
+            #    this('parent').children & (count(this('parent').children) > 4)
+            #    this('parent').children.age < 5
+            #
+            # If we regard every term `this('parent').children` as the *token*,
+            # what would be the meaning of the first condition? How do we
+            # distinguish from conditions over the named-token and the
+            # expression that generates the token?
+            # i.e in `for child in parent.children`, the `child` token
+            # is *not* the same as the term `parent.children`.
+            #
+            # Now the token of the relevant query might help, but then the
+            # machine should not strip those tokens from query-parts.
+
+
+
+        def test_complex_query_building_with_dict(self):
+            from xotl.ql.expressions import min_, max_
+            d = {parent.age: (min_(child.age), max_(child.age))
+                    for parent in this('parent')
+                        if (parent.age > 32) & parent.children
+                    for child in parent.children if child.age < 5}
+
+            parts = self.query_state_machine._parts
+            ok = lambda which: self.assertEqual(str(which), str(parts.pop(-1)))
+            parent = this('parent')
+            child = parent.children
+            ok(parent.age)  # The key of the dict is the top-most expression
+            ok(max_(child.age))
+            ok(min_(child.age))
+            ok(child.age < 5)
+            ok((parent.age > 32) & parent.children)
+            with self.assertRaises(IndexError):
+                ok(None)
 
 
         def test_query_reutilization_design(self):
             from xotl.ql.expressions import is_a
             Person = "Person"
-            persons = these(parent for parent in this('parent')
-                                if is_a(parent, Person))
+            persons = these(parent
+                            for parent in this('parent')
+                            if is_a(parent, Person))
 
             these(parent for parent in persons
                          if (parent.age < 35) & parent.children)
@@ -242,9 +250,12 @@ if __TEST_DESIGN_DECISIONS:
               `this('parent').children` will be left with a stack of two items
               that will be and-ed; which is wrong!
 
-            The solutions seems to be simply to make `this('parent').children`
-            aware of parts that are generated. So
+            (Obsolote) The solutions seems to be simply to make
+            `this('parent').children` aware of parts that are generated. So
             :attr:`xotl.ql.core.QuerPart.tokens` is born.
+
+            The solution was to create an execution context for a "machine"
+            that receives every created part.
             '''
             parent, child, toy = next((parent.title + parent.name,
                                        child.name + child.nick, toy.name)
