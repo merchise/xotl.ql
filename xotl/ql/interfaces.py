@@ -283,7 +283,7 @@ class IQueryPart(IExpressionCapable):
     Expression trees are powerful enough to capture the semantics of query
     parts. But, since we don't have the control of how Python does is execution
     of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryStateMachine` that a new query
+    expressions, but inform a :class:`IQueryParticlesBubble` that a new query
     part is being created.
 
     See the documentation for :class:`xotl.ql.core.QueryPart` to see the
@@ -350,18 +350,71 @@ class ITerm(IExpressionCapable):
         '''
 
 
+class IBoundTerm(ITerm):
+    '''A term that is bound to a single :class:`IGeneratorToken` instance.
+    '''
+    binding = Attribute('The instance to which this term is bound to')
 
-class IQueryStateMachine(Interface):
-    def on_created_token(token):
-        pass
 
-    def on_created_part(part):
-        pass
+
+class IQueryParticlesBubble(Interface):
+    def capture_token(token):
+        '''Captures an emitted token
+
+        :param token: The emitted token
+        :type token: :class:`IGeneratorToken`
+        '''
+
+    def capture_part(part):
+        '''Captures an emitted query part.
+
+        When a given part is captured, it might replace the lastly previously
+        emitted parts if either of the following conditions hold:
+
+        - The capture part *is* the same last emitted part.
+
+        - The captured part is a term, and the last emitted part *is* its
+          parent, then the parent part is replaced by the newly captured part.
+
+        - The captured part is an expression and the last emitted part *is* one
+          of its children (named or positional).
+
+        The previous conditions are cycled while any of them hold against the
+        particle at the "end" of the :attr:`particles` collection.
+
+        Note that in an expression like ``invoke(some, a > b, b > c,
+        argument=(c > d))`` before the whole expression is formed (and thus the
+        part that represents it is captured), all of the arguments emitted
+        particles, so we should remove those contained parts and just keep the
+        bigger one that has them all.
+
+        .. note::
+
+           Checks **are** done with the `is` operator and not with `==`. Doing
+           otherwise may lead to undesired results::
+
+               these(parent.name for parent in this if parent.name)
+
+           If `==` would be used, then the filter part `parent.name` would be
+           lost.
+
+        :param part: The emitted query part
+        :type part: :class:`IQueryPart`
+        '''
+
+
+    parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
+                      'that were captured. ')
+    tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
+                       'tokens that were captured.')
+
+    particles = Attribute('Ordered collection of either tokens or query parts '
+                          'that were captured.')
 
 
 
 class IQueryContext(Interface):
-    machine = Attribute('A reference to an :class:`IQueryStateMachine`')
+    machine = Attribute('A reference to an :class:`IQueryParticlesBubble`')
 
 
 

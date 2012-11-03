@@ -39,6 +39,9 @@ the :class:`IQueryObject` below.
 .. autointerface:: ITerm
    :members: name, parent, __iter__, __getattribute__
 
+.. autointerface:: IBoundTerm
+   :members: binding
+
 .. autointerface:: IOperator
    :members: _format, arity, _method_name
 
@@ -57,7 +60,7 @@ comprehensions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
 .. autointerface:: IQueryPart
-   :members: token, tokens, expression
+   :members: token, expression
 
-.. autointerface:: IQueryPartContainer
-   :members: created_query_part
+.. autointerface:: IQueryParticlesBubble
+   :members: capture_part, capture_token, parts, tokens, particles

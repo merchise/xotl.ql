@@ -52,21 +52,27 @@ from xoutil.aop.basic import complementor
 
 from zope.component import getUtility
 from zope.interface import implementer
+from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY
-from xotl.ql.interfaces import (ITerm, IGeneratorToken, IQueryPart,
+from xotl.ql.expressions import UNARY, BINARY
+from xotl.ql.interfaces import (ITerm,
+                                IBoundTerm,
+                                IGeneratorToken,
+                                IQueryPart,
                                 IExpressionTree,
                                 IExpressionCapable,
-                                IQueryTranslator, IQueryConfiguration,
-                                IQueryObject, IQueryStateMachine)
+                                IQueryTranslator,
+                                IQueryConfiguration,
+                                IQueryObject,
+                                IQueryParticlesBubble)
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__all__ = (b'this',)
+__all__ = (b'this', b'these', )
 
 
 
@@ -86,6 +92,9 @@ class Term(object):
             self.validate_name(name)
             self._name = name
             self._parent = kwargs.get('parent', None)
+            binding = kwargs.get('binding', None)
+            if binding:
+                self.binding = binding
 
 
     @classmethod
@@ -137,6 +146,25 @@ class Term(object):
             return self
 
 
+    @property
+    def binding(self):
+        result = getattr(self, '_proper_binding', None)
+        parent = self.parent
+        while not result and parent:
+            result = getattr(parent, 'binding', None)
+            parent = parent.parent
+        return result
+
+
+    @binding.setter
+    def binding(self, value):
+        if value:
+            alsoProvides(self, IBoundTerm)
+        else:
+            noLongerProvides(self, IBoundTerm)
+        self._proper_binding = value
+
+
     @classmethod
     def _newname(cls):
         return '::i{count}'.format(count=next(cls._counter))
@@ -153,12 +181,12 @@ class Term(object):
             return Term(name=attr, parent=self)
 
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             parent = self.parent
         if parent is not None:
             from xotl.ql.expressions import invoke
-            return ExpressionTree(invoke, self, *args)
+            return ExpressionTree(invoke, self, *args, **kwargs)
         else:
             raise TypeError()
 
@@ -208,18 +236,18 @@ class Term(object):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        if name:
-            token = GeneratorToken(expression=self)
-            instance = QueryPart(expression=self, token=token)
-            machine = getattr(context[IQueryStateMachine], 'machine', None)
-            assert machine
-            machine.on_created_token(token)
-            yield instance
-        else:
-            # We should generate a new-name
-            with context(UNPROXIFING_CONTEXT), context('_INVALID_THESE_NAME'):
-                instance = type(self)(self._newname(), parent=parent)
-            yield next(iter(instance))
+        token = GeneratorToken(expression=self)
+        with context(UNPROXIFING_CONTEXT):
+            if name:
+                bound_term = Term(name, parent=parent, binding=token)
+            else:
+                with context('_INVALID_THESE_NAME'):
+                    bound_term = Term(self._newname(), parent=parent, binding=token)
+        instance = QueryPart(expression=bound_term, token=token)
+        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
+        assert machine
+        machine.capture_token(token)
+        yield instance
 
 
     def __str__(self):
@@ -613,6 +641,7 @@ class ThisClass(Term):
 
 
 
+
 #: The `this` object is a unnamed universal "selector" that may be placed in
 #: expressions and queries.
 this = ThisClass()
@@ -632,11 +661,27 @@ def provides_all(which, *interfaces):
 
 
 
-@implementer(IQueryStateMachine)
-class QueryStateMachine(object):
+@implementer(IQueryParticlesBubble)
+class QueryParticlesBubble(object):
     def __init__(self):
+        self._particles = []
         self._parts = []
         self._tokens = []
+
+
+    @property
+    def parts(self):
+        return self._parts[:]
+
+
+    @property
+    def tokens(self):
+        return self._tokens[:]
+
+
+    @property
+    def particles(self):
+        return self._particles[:]
 
 
     def mergable(self, expression):
@@ -647,10 +692,23 @@ class QueryStateMachine(object):
             return True
         elif is_expression(expression):
             result = any(child is top for child in expression.children)
-            if not result and is_expression(top):
-                return any(child is expression for child in top.children)
+            if not result:
+                from xoutil.compat import itervalues_
+                return any(child is top
+                           for child in itervalues_(expression.named_children))
             else:
                 return result
+
+            # XXX: I don't see any tests failing because if we comment the
+            #      lines below. That's probably because in the particle bubble
+            #      the ordering is global and bottom- top.  Previously it was a
+            #      "local" accounting of events, in each of the generator
+            #      tokens.
+
+#            if not result and is_expression(top):
+#                return any(child is expression for child in top.children)
+#            else:
+#                return result
         elif ITerm.providedBy(expression):
             return expression.parent is top
         else:
@@ -658,7 +716,7 @@ class QueryStateMachine(object):
                             'expression trees; not %s' % type(expression))
 
 
-    def on_created_part(self, part):
+    def capture_part(self, part):
         with context(UNPROXIFING_CONTEXT):
             if provides_all(part, IQueryPart):
                 expression = part.expression
@@ -666,16 +724,19 @@ class QueryStateMachine(object):
                 if parts:
                     mergable = self.mergable
                     while parts and mergable(expression):
-                        parts.pop()
+                        top = parts.pop()
+                        self._particles.remove(top)
                 self._parts.append(expression)
+                self._particles.append(expression)
             else:
                 assert False
 
 
-    def on_created_token(self, token):
+    def capture_token(self, token):
         tokens = self._tokens
         if token not in tokens:
             tokens.append(token)
+            self._particles.append(token)
 
 
 
@@ -725,7 +786,7 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehesion, GeneratorType)
-        machine = QueryStateMachine()
+        machine = QueryParticlesBubble()
         with context(machine) as query_context:
             query_context.machine = machine
             selected_parts = next(comprehesion)
@@ -975,11 +1036,11 @@ class GeneratorToken(object):
 def _query_part_method(target):
     def inner(self, *args, **kwargs):
         result = target(self, *args, **kwargs)
-        machine = getattr(context[IQueryStateMachine], 'machine', None)
+        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
         if not machine:
             machine = getattr(self, '_machine', None)
         assert machine
-        machine.on_created_part(result)
+        machine.capture_part(result)
         return result
     return inner
 
@@ -1206,7 +1267,7 @@ class QueryPart(object):
             # it.
             #
             if ITerm.providedBy(expression):
-                machine = getattr(context[IQueryStateMachine], 'machine', None)
+                machine = getattr(context[IQueryParticlesBubble], 'machine', None)
                 assert machine
                 parts = machine._parts
                 if parts and parts[-1] is expression:
@@ -1236,19 +1297,19 @@ class QueryPart(object):
                 token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
                                token=token)
-            machine = getattr(context[IQueryStateMachine], 'machine', None)
+            machine = getattr(context[IQueryParticlesBubble], 'machine', None)
             assert machine
-            machine.on_created_part(result)
+            machine.capture_part(result)
             return result
 
 
     # TODO: Again, in which interface?
     @_query_part_method
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             token = self.token
-        result = QueryPart(expression=instance(*args),
+        result = QueryPart(expression=instance(*args, **kwargs),
                            token=token)
         return result
 
@@ -1272,9 +1333,9 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        machine = getattr(context[IQueryStateMachine], 'machine', None)
+        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
         assert machine
-        machine.on_created_part(result)
+        machine.capture_part(result)
         return result
 
 

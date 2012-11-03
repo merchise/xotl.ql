@@ -54,23 +54,23 @@ if __LOG:
     from xoutil.compat import iterkeys_
     from xoutil.aop.classical import weave, _weave_before_method
 
-    from xotl.ql.core import QueryStateMachine, QueryPart, _part_operations
+    from xotl.ql.core import QueryParticlesBubble, QueryPart, _part_operations
     from xotl.ql.tests import logging_aspect
 
     # Weave logging aspect into every relevant method during testing
     aspect = logging_aspect(sys.stdout)
-    weave(aspect, QueryStateMachine)
+    weave(aspect, QueryParticlesBubble)
     for attr in iterkeys_(_part_operations):
         _weave_before_method(QueryPart, aspect, attr, '_before_')
 
 
 if __TEST_DESIGN_DECISIONS:
     from xotl.ql.interfaces import IQueryPart
-    from xotl.ql.core import QueryStateMachine
+    from xotl.ql.core import QueryParticlesBubble
 
     class DesignDecisionTestCase(unittest.TestCase):
         def setUp(self):
-            self.query_state_machine = query_state_machine = QueryStateMachine()
+            self.query_state_machine = query_state_machine = QueryParticlesBubble()
             self.query_context = context(query_state_machine)
             self.query_context.__enter__()
             self.query_context.machine = query_state_machine
@@ -131,7 +131,7 @@ if __TEST_DESIGN_DECISIONS:
                             for parent in this('parent')
                             if (parent.age > 32) & parent.married &
                                parent.spouse.alive)
-            parts = self.query_state_machine._parts
+            parts = self.query_state_machine.parts
             # The select part is at the top
             ok("this('parent').title + this('parent').name", str(parts[-1]))
             # Then the binding
@@ -149,7 +149,7 @@ if __TEST_DESIGN_DECISIONS:
                                  for child in parent.children
                                     if child.age < 5)
             ok = self.assertEquals
-            parts = self.query_state_machine._parts
+            parts = self.query_state_machine.parts
             parent = this('parent')
             child = parent.children
             ok(str(child.name + child.nick), str(parts[-1]))
@@ -164,6 +164,36 @@ if __TEST_DESIGN_DECISIONS:
             # See below, DesignDecisionRegressionTests
             pass
 
+
+        def test_rigth_bindings(self):
+            query = these((parent, child)
+                          for parent in this('parent')
+                          if parent.children.updated_since(days=1)
+                          for child in parent.children
+                          if child.age < 4)
+            parts = self.query_state_machine.parts
+            bubble_tokens = self.query_state_machine.tokens
+            with context(UNPROXIFING_CONTEXT):
+                parent_token = next(token
+                                    for token in bubble_tokens
+                                    if token.expression == this('parent'))
+                children_token = next(token
+                                    for token in bubble_tokens
+                                    if token.expression != this('parent'))
+            child_age_filter = parts.pop(-1)
+            parent_children_updated_filter = parts.pop(-1)
+            with self.assertRaises(IndexError):
+                parts.pop(-1)
+            with context(UNPROXIFING_CONTEXT):
+                child_age_term = child_age_filter.children[0]
+                self.assertEqual(child_age_term.binding, children_token)
+
+                # Note that: parent.children.updated_since(days=1)
+                # is equivalent to invoke(parent.children.updated_since, days=1)
+                parent_children_term = parent_children_updated_filter.children[0]
+                self.assertEqual(parent_children_term.binding, parent_token)
+                self.assertEqual(dict(days=1),
+                                 parent_children_updated_filter.named_children)
 
         def test_tokens_as_names(self):
             next((parent, child)
@@ -195,7 +225,7 @@ if __TEST_DESIGN_DECISIONS:
                         if (parent.age > 32) & parent.children
                     for child in parent.children if child.age < 5}
 
-            parts = self.query_state_machine._parts
+            parts = self.query_state_machine.parts
             ok = lambda which: self.assertEqual(str(which), str(parts.pop(-1)))
             parent = this('parent')
             child = parent.children
@@ -230,32 +260,42 @@ if __TEST_DESIGN_DECISIONS:
     class DesignDesitionsRegressionTests(DesignDecisionTestCase):
         def test_20121022_complex_intermingled_query(self):
             '''
-            Slight variation over the same test of previous testcase but
-            that shows how `|` that if we don't have the `tokens` params
-            things will go wrong:
+            Tests that toy.type == 'laptop' does not get singled out
+            of its containing expression.
 
-            - `parent.age > 32` will have `this('parent')` as its token
+            The following procedure is not current any more; but we leave it
+            there for historical reasons. Since the introduction of "particle
+            bubble" that captures all the parts and tokens, we have removed
+            the :attr:`xotl.ql.interfaces.IQueryPart.tokens`.
 
-            - `child.age < 5` will have `this('parent').children` as its token.
+               Slight variation over the same test of previous testcase but
+               that shows how `|` that if we don't have the `tokens` params
+               things will go wrong:
 
-            - When building `(parent.age > 32) & (child.age < 5)` the resultant
-              part will have only `this('parent')` as the token, and
+               - `parent.age > 32` will have `this('parent')` as its token
 
-            - `contains(child.toys, 'laptop')` will be attached to
-              `this('parent').children`, but this will create a stack in this
-              token: `child.age < 5`, `contains(child.toys, 'laptop')`
+               - `child.age < 5` will have `this('parent').children` as its
+                 token.
 
-            - Then, building `... | contains(child.toys, 'laptop')` will be
-              attached to `this('parent')` only! This will cause that the token
-              `this('parent').children` will be left with a stack of two items
-              that will be and-ed; which is wrong!
+               - When building `(parent.age > 32) & (child.age < 5)` the
+                 resultant part will have only `this('parent')` as the token,
+                 and
 
-            (Obsolote) The solutions seems to be simply to make
-            `this('parent').children` aware of parts that are generated. So
-            :attr:`xotl.ql.core.QuerPart.tokens` is born.
+               - `contains(child.toys, 'laptop')` will be attached to
+                 `this('parent').children`, but this will create a stack in the
+                 token for `child`, the stack will contain: ``child.age < 5``,
+                 and ``contains(child.toys, 'laptop')``, for they don't merge.
 
-            The solution was to create an execution context for a "machine"
-            that receives every created part.
+               - Then, building ``... | contains(child.toys, 'laptop')`` will
+                 be attached to `this('parent')` only! This will cause that the
+                 token `this('parent').children` will be left with a stack of
+                 two items that will be considered separate filters, which is
+                 wrong!
+
+               The solutions seems to be simply to make
+               `this('parent').children` aware of parts that are generated. So
+               :attr:`xotl.ql.core.QuerPart.tokens` is born.
+
             '''
             parent, child, toy = next((parent.title + parent.name,
                                        child.name + child.nick, toy.name)
@@ -264,7 +304,7 @@ if __TEST_DESIGN_DECISIONS:
                                       for toy in child.toys
                                       if (parent.age > 32) & (child.age < 5) |
                                          (toy.type == 'laptop'))
-            parts = self.query_state_machine._parts
+            parts = self.query_state_machine.parts
             parent = this('parent')
             child = parent.children
             ok = lambda x: self.assertEquals(str(x), str(parts.pop(-1)))
@@ -296,8 +336,8 @@ if __TEST_DESIGN_DECISIONS:
                  for rel in this('relation')
                  if rel.type == 'partnership'
                  if (rel.subject == person) & (rel.object == partner))
-            parts = self.query_state_machine._parts
-            tokens = self.query_state_machine._tokens
+            parts = self.query_state_machine.parts
+            tokens = self.query_state_machine.tokens
             ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
             person = this('person')
             partner = this('partner')
@@ -323,8 +363,8 @@ if __TEST_DESIGN_DECISIONS:
                  if rel.subject == person
                  if rel.object == partner
                  if partner.age > 32)
-            parts = self.query_state_machine._parts
-            tokens = self.query_state_machine._tokens
+            parts = self.query_state_machine.parts
+            tokens = self.query_state_machine.tokens
             ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
             person = this('person')
             partner = this('partner')
@@ -440,8 +480,8 @@ class TestUtilities(unittest.TestCase):
 
 class TestThisQueries(unittest.TestCase):
     def setUp(self):
-        from xotl.ql.core import QueryStateMachine
-        setattr(QueryStateMachine, '__repr__', lambda self: hex(id(self)))
+        from xotl.ql.core import QueryParticlesBubble
+        setattr(QueryParticlesBubble, '__repr__', lambda self: hex(id(self)))
 
 
     def test_most_basic_query(self):
