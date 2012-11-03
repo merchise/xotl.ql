@@ -359,7 +359,20 @@ class IBoundTerm(ITerm):
 
 class IQueryParticlesBubble(Interface):
     def capture_token(token):
-        '''Captures an emitted token
+        '''Captures an emitted token.
+
+        When a token is emitted if the last previously created part is a term
+        that *is* the same as the :attr:`IGeneratorToken.expression`, then this
+        last term should be removed from the particles collection.
+
+        This is because in a query like::
+
+            these((parent, child)
+                  for parent in this
+                  for child in parent.children)
+
+        The `parent.children` emits itself as a query part and inmediatly it
+        is transformed to a token.
 
         :param token: The emitted token
         :type token: :class:`IGeneratorToken`

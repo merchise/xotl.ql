@@ -717,6 +717,41 @@ class QueryParticlesBubble(object):
 
 
     def capture_part(self, part):
+        '''Captures an emitted query part.
+
+        When a given part is captured, it might replace the lastly previously
+        emitted parts if either of the following conditions hold:
+
+        - The capture part *is* the same last emitted part.
+
+        - The captured part is a term, and the last emitted part *is* its
+          parent, then the parent part is replaced by the newly captured part.
+
+        - The captured part is an expression and the last emitted part *is* one
+          of its children (named or positional).
+
+        The previous conditions are cycled while any of them hold against the
+        particle at the "end" of the :attr:`particles` collection.
+
+        Note that in an expression like ``invoke(some, a > b, b > c,
+        argument=(c > d))`` before the whole expression is formed (and thus the
+        part that represents it is captured), all of the arguments emitted
+        particles, so we should remove those contained parts and just keep the
+        bigger one that has them all.
+
+        .. note::
+
+           Checks **are** done with the `is` operator and not with `==`. Doing
+           otherwise may lead to undesired results::
+
+               these(parent.name for parent in this if parent.name)
+
+           If `==` would be used, then the filter part `parent.name` would be
+           lost.
+
+        :param part: The emitted query part
+        :type part: :class:`IQueryPart`
+        '''
         with context(UNPROXIFING_CONTEXT):
             if provides_all(part, IQueryPart):
                 expression = part.expression
@@ -733,7 +768,31 @@ class QueryParticlesBubble(object):
 
 
     def capture_token(self, token):
+        '''Captures an emitted token.
+
+        When a token is emitted if the last previously created part is a term
+        that *is* the same as the :attr:`IGeneratorToken.expression`, then this
+        last term should be removed from the particles collection.
+
+        This is because in a query like::
+
+            these((parent, child)
+                  for parent in this
+                  for child in parent.children)
+
+        The `parent.children` emits itself as a query part and inmediatly it
+        is transformed to a token.
+
+        :param token: The emitted token
+        :type token: :class:`IGeneratorToken`
+        '''
         tokens = self._tokens
+        with context(UNPROXIFING_CONTEXT):
+            parts = self._parts
+            if parts:
+                top = parts.pop(-1)
+                if token.expression is not top:
+                    parts.append(top)
         if token not in tokens:
             tokens.append(token)
             self._particles.append(token)
@@ -1261,22 +1320,6 @@ class QueryPart(object):
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
             expression = self.expression
-            # This is kind of a hack: since in query expressions like::
-            #     ((parent, child) for parent in this
-            #                      for child in parent.children)
-            # The `parent.children` will generate a part and push it to the
-            # _parts; but this part should not be there; so we need to remove
-            # it.
-            #
-            if ITerm.providedBy(expression):
-                machine = getattr(context[IQueryParticlesBubble], 'machine', None)
-                assert machine
-                parts = machine._parts
-                if parts and parts[-1] is expression:
-                    parts.pop(-1)
-                parts = self.token._parts
-                if parts and parts[-1] is expression:
-                    parts.pop(-1)
             return iter(expression)
 
 
