@@ -6,6 +6,19 @@ Terms and glossary
 
 .. glossary::
 
+   execution context
+
+      An object that represents the context in which a given piece of code is
+      being executed. Contexts may influence how objects behaves. Every process
+      and thread entail an execution context, and they may form a tree.
+
+      Currently a very simple implementation of execution contexts is in the
+      module :ref:`xoutil.context`.
+
+      A future more comprehensive implementation is planned to be in
+      :ref:`xotl.context`; where contexts are though to be queriable using
+      `xotl.ql` query language.
+
    expression tree
 
        The tree that represents an expression as it was syntactically
