@@ -1059,38 +1059,6 @@ class GeneratorToken(object):
         return self._expression
 
 
-    @staticmethod
-    def mergable(parts, expression):
-        assert context[UNPROXIFING_CONTEXT]
-        top = parts[-1]
-        if top is expression:
-            return True
-        elif IExpressionTree.providedBy(expression):
-            result = any(child is top for child in expression.children)
-            if not result and IExpressionTree.providedBy(top):
-                return any(child is expression for child in top.children)
-            else:
-                return result
-        elif ITerm.providedBy(expression):
-            return expression.parent is top
-        else:
-            raise TypeError('Parts should be either these instance or '
-                            'expression trees; not %s' % type(expression))
-
-
-    def created_query_part(self, part):
-        with context(UNPROXIFING_CONTEXT):
-            if provides_all(part, IQueryPart):
-                expression = part.expression
-                parts = self._parts
-                if parts:
-                    while parts and self.mergable(parts, expression):
-                        parts.pop()
-                self._parts.append(expression)
-            else:
-                assert False
-
-
 
 def _query_part_method(target):
     '''Decorator of every method in QueryPart that emits its result to
