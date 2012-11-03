@@ -73,7 +73,7 @@ if __TEST_DESIGN_DECISIONS:
             self.query_state_machine = query_state_machine = QueryParticlesBubble()
             self.query_context = context(query_state_machine)
             self.query_context.__enter__()
-            self.query_context.machine = query_state_machine
+            self.query_context.bubble = query_state_machine
 
 
         def tearDown(self):

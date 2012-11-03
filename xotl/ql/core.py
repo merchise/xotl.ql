@@ -244,9 +244,9 @@ class Term(object):
                 with context('_INVALID_THESE_NAME'):
                     bound_term = Term(self._newname(), parent=parent, binding=token)
         instance = QueryPart(expression=bound_term, token=token)
-        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
-        assert machine
-        machine.capture_token(token)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        assert bubble
+        bubble.capture_token(token)
         yield instance
 
 
@@ -786,17 +786,17 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehesion, GeneratorType)
-        machine = QueryParticlesBubble()
-        with context(machine) as query_context:
-            query_context.machine = machine
+        bubble = QueryParticlesBubble()
+        with context(bubble) as query_context:
+            query_context.bubble = bubble
             selected_parts = next(comprehesion)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts, )
             selected_parts = tuple(reversed(selected_parts))
             selection = []
-            tokens = machine._tokens
-            filters = machine._parts[:]
+            tokens = bubble._tokens
+            filters = bubble._parts[:]
             for part in selected_parts:
                 expr = part.expression
                 if filters and expr is filters[-1]:
@@ -1034,13 +1034,15 @@ class GeneratorToken(object):
 
 
 def _query_part_method(target):
+    '''Decorator of every method in QueryPart that emits its result to
+    the "active" particle bubble.'''
     def inner(self, *args, **kwargs):
         result = target(self, *args, **kwargs)
-        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
-        if not machine:
-            machine = getattr(self, '_machine', None)
-        assert machine
-        machine.capture_part(result)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        if not bubble:
+            bubble = getattr(self, '_bubble', None)
+        assert bubble
+        bubble.capture_part(result)
         return result
     return inner
 
@@ -1297,9 +1299,9 @@ class QueryPart(object):
                 token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
                                token=token)
-            machine = getattr(context[IQueryParticlesBubble], 'machine', None)
-            assert machine
-            machine.capture_part(result)
+            bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+            assert bubble
+            bubble.capture_part(result)
             return result
 
 
@@ -1333,9 +1335,9 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        machine = getattr(context[IQueryParticlesBubble], 'machine', None)
-        assert machine
-        machine.capture_part(result)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        assert bubble
+        bubble.capture_part(result)
         return result
 
 

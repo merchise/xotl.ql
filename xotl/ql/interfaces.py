@@ -414,7 +414,7 @@ class IQueryParticlesBubble(Interface):
 
 
 class IQueryContext(Interface):
-    machine = Attribute('A reference to an :class:`IQueryParticlesBubble`')
+    bubble = Attribute('A reference to an :class:`IQueryParticlesBubble`')
 
 
 
