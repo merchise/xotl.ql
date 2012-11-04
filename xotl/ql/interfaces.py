@@ -352,12 +352,20 @@ class ITerm(IExpressionCapable):
 
 class IBoundTerm(ITerm):
     '''A term that is bound to a single :class:`IGeneratorToken` instance.
+
+    Binding serves the purpose of identifying the *source* of a given term in a
+    query. See :ref:`Terms versus Tokens <terms-vs-tokens>` for an example.
     '''
     binding = Attribute('The instance to which this term is bound to')
 
 
 
 class IQueryParticlesBubble(Interface):
+    '''
+    An object used to capture newly created tokens and expressions that
+    ocurr in a :term:`query expression`, when that query expression is used
+    to create a :term:`query object`.
+    '''
     def capture_token(token):
         '''Captures an emitted token.
 
