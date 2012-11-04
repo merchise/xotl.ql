@@ -165,6 +165,29 @@ if __TEST_DESIGN_DECISIONS:
             pass
 
 
+        def test_free_terms_are_not_captured(self):
+            from xotl.ql.expressions import any_
+            these(parent
+                  for parent in this('parent')
+                  if parent.name
+                  if any_(this.children, this.age < 6))
+
+            parts = self.query_state_machine.parts
+            self.assertIs(1, len(parts))
+            pname = this('parent').name
+            with context(UNPROXIFING_CONTEXT):
+                self.assertIn(pname, parts)
+
+
+        def test_undetected_particles(self):
+            from xotl.ql.expressions import any_
+            these(parent
+                  for parent in this('parent')
+                  if any_(child for child in parent.children if child.age < 6))
+            parts = self.query_state_machine.parts
+            self.assertIs(0, len(parts))
+
+
         def test_rigth_bindings(self):
             query = these((parent, child)
                           for parent in this('parent')
