@@ -86,6 +86,15 @@ class TestThisExpressions(unittest.TestCase):
         self.assertEqual("(1 + this.x) < 3", str(expr))
 
 
+    def test_regression_test_calling_terms_directly(self):
+        'Tests that invoke(term, ...) is equivalent to term(...)'
+        from xotl.ql.expressions import invoke
+        e1 = this('parent').children.updated_since(1, threshold=0.99)
+        e2 = invoke(this('parent').children.updated_since, 1, threshold=0.99)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(e1, e2)
+
+
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))

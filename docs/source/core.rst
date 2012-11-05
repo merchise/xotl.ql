@@ -59,9 +59,9 @@ each child yielded by `parent.children`. But using the first interpretation for
    documentation.
 
 
-:class:`!These` instances may be *named*, thus allowing to select different
+:class:`!Term` instances may be *named*, thus allowing to select different
 objects in a single query. When used in comprehensions, `this` automatically
-yields a single uniquely named :class:`These` instance. So, you don't need to
+yields a single uniquely named :class:`Term` instance. So, you don't need to
 specify a name by your self::
 
     >>> p, c = next((parent.name, child.name) for parent in this
@@ -115,15 +115,15 @@ internal query API, used to those that need to build extensions of the query
 language, please refer to :ref:`query-api`.
 
 As we've said, at the core of the Query Language is the `this` object, whose
-type is a subclass of the class :class:`These`:
+type is a subclass of the class :class:`Term`:
 
 .. autodata:: this(name, **kwargs)
 
 
-.. autoclass:: These
+.. autoclass:: Term
    :members: name, parent, root_parent,  __iter__
 
-   This class implements :class:`xotl.ql.interfaces.IThese`
+   This class implements :class:`xotl.ql.interfaces.ITerm`
 
 .. autoclass:: _QueryObjectType
    :members: these
@@ -147,8 +147,9 @@ type is a subclass of the class :class:`These`:
 
       The metaclass :class:`_QueryObjectType` of :class:`these` hooks into the
       way of creating instances (:term:`query objects <query object>`), if you
-      pass a single positional argument which is of type `GeneratorType`, the
-      metaclass will use its :meth:`_QueryObjectType.these` method.
+      pass a single positional argument which is of type `GeneratorType` and
+      possibly many others keyword arguments, the metaclass will use its
+      :meth:`_QueryObjectType.these` method.
 
 
 .. autoclass:: QueryObject

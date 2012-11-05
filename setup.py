@@ -63,7 +63,7 @@ setup(name=project_name,
       zip_safe=False,
       setup_requires=['setuptools', ],
       install_requires=[
-          'xoutil>=1.0.30dev',
+          'xoutil>=1.1.4',
           'zope.interface',
           'zope.component',
 

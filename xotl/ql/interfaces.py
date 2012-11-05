@@ -30,7 +30,7 @@ __author__ = 'manu'
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
-           'IExpressionTree', 'IQueryPart', 'IThese', 'IBoundThese',
+           'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
@@ -272,18 +272,18 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a partial (but sound) expression that is been attached somehow
-    to a generator token.
+    '''Represents a *possibly* partial (but sound) expression that is been
+    attached somehow to a generator token.
 
     Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
     objects are generated internally whenever there's an *implicit iteration*
-    over some supported object (like a :class:`IThese` instance). This token
+    over some supported object (like a :class:`ITerm` instance). This token
     represents the FROM clause we can see in languages like SQL.
 
     Expression trees are powerful enough to capture the semantics of query
     parts. But, since we don't have the control of how Python does is execution
     of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryPartContainer` that a new query
+    expressions, but inform a :class:`IQueryParticlesBubble` that a new query
     part is being created.
 
     See the documentation for :class:`xotl.ql.core.QueryPart` to see the
@@ -292,9 +292,6 @@ class IQueryPart(IExpressionCapable):
     '''
     token = Attribute('A reference to the generator token instance to which '
                       'this part has been attached.')
-
-    tokens = Attribute('References to all the generator token instances to '
-                       'which this instance has a relation with.')
 
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
@@ -307,7 +304,7 @@ class IQueryPart(IExpressionCapable):
 
 def _proper_generating_expression(part):
     if not IThese.providedBy(part.expression):
-        raise TypeError('GeneratingQuery parts allows only IThese instances.')
+        raise TypeError('GeneratingQuery parts allows only ITerm instances.')
 
 
 
@@ -316,15 +313,15 @@ class IGeneratingQueryPart(IQueryPart):
     A GeneratingQuery part is a query part that is used as an argument to the
     built-in `iter()` function, i.e. a generator expression iterates over it.
 
-    GeneratingQuery parts just need to stand for expressions which are IThese
+    GeneratingQuery parts just need to stand for expressions which are ITerm
     instances.
     '''
     invariant(_proper_generating_expression)
 
 
 
-class IThese(IExpressionCapable):
-    '''IThese instances are meant to represent the *whole* universe of objects.
+class ITerm(IExpressionCapable):
+    '''ITerm instances are meant to represent the *whole* universe of objects.
 
     These instances take place in expressions to create predicates about
     objects, such as the `this` object in the following expression::
@@ -333,14 +330,14 @@ class IThese(IExpressionCapable):
 
     '''
     name = Attribute('The name of the instance.')
-    parent = Attribute('Another IThese instance from which self is drawn.')
+    parent = Attribute('Another ITerm instance from which self is drawn.')
 
     def __iter__():
         'These instances should be iterable'
 
 
     def __getattribute__(attr):
-        '''All IThese instances support the creation of other instances just
+        '''All ITerm instances support the creation of other instances just
         by accesing an attribute `this.anyattr`.
 
         This means that in order to access other *internal* attributes of the
@@ -348,15 +345,97 @@ class IThese(IExpressionCapable):
 
         :param attr: The name of the object to access.
         :type attr: unicode or str
-        :returns: Another IThese instance whose name is `attr` and whose parent
+        :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
 
 
+class IBoundTerm(ITerm):
+    '''A term that is bound to a single :class:`IGeneratorToken` instance.
 
-class IQueryPartContainer(Interface):
-    def created_query_part(part):
-        'Called whenever a new query part is created'
+    Binding serves the purpose of identifying the *source* of a given term in a
+    query. See :ref:`Terms versus Tokens <terms-vs-tokens>` for an example.
+    '''
+    binding = Attribute('The instance to which this term is bound to')
+
+
+
+class IQueryParticlesBubble(Interface):
+    '''
+    An object used to capture newly created tokens and expressions that
+    ocurr in a :term:`query expression`, when that query expression is used
+    to create a :term:`query object`.
+    '''
+    def capture_token(token):
+        '''Captures an emitted token.
+
+        When a token is emitted if the last previously created part is a term
+        that *is* the same as the :attr:`IGeneratorToken.expression`, then this
+        last term should be removed from the particles collection.
+
+        This is because in a query like::
+
+            these((parent, child)
+                  for parent in this
+                  for child in parent.children)
+
+        The `parent.children` emits itself as a query part and inmediatly it
+        is transformed to a token.
+
+        :param token: The emitted token
+        :type token: :class:`IGeneratorToken`
+        '''
+
+    def capture_part(part):
+        '''Captures an emitted query part.
+
+        When a given part is captured, it might replace the lastly previously
+        emitted parts if either of the following conditions hold:
+
+        - The capture part *is* the same last emitted part.
+
+        - The captured part is a term, and the last emitted part *is* its
+          parent, then the parent part is replaced by the newly captured part.
+
+        - The captured part is an expression and the last emitted part *is* one
+          of its children (named or positional).
+
+        The previous conditions are cycled while any of them hold against the
+        particle at the "end" of the :attr:`particles` collection.
+
+        Note that in an expression like ``invoke(some, a > b, b > c,
+        argument=(c > d))`` before the whole expression is formed (and thus the
+        part that represents it is captured), all of the arguments emitted
+        particles, so we should remove those contained parts and just keep the
+        bigger one that has them all.
+
+        .. note::
+
+           Checks **are** done with the `is` operator and not with `==`. Doing
+           otherwise may lead to undesired results::
+
+               these(parent.name for parent in this if parent.name)
+
+           If `==` would be used, then the filter part `parent.name` would be
+           lost.
+
+        :param part: The emitted query part
+        :type part: :class:`IQueryPart`
+        '''
+
+
+    parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
+                      'that were captured. ')
+    tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
+                       'tokens that were captured.')
+
+    particles = Attribute('Ordered collection of either tokens or query parts '
+                          'that were captured.')
+
+
+
+class IQueryContext(Interface):
+    bubble = Attribute('A reference to an :class:`IQueryParticlesBubble`')
 
 
 
@@ -370,7 +449,7 @@ class IGeneratorToken(Interface):
 
     .. todo::
 
-       Currently we only support :class:`IThese` instances as generators, since
+       Currently we only support :class:`ITerm` instances as generators, since
        allowing the `next` protocol directly over :term:`query objects <query
        object>` impedes using them as subqueries like in::
 
@@ -385,7 +464,7 @@ class IGeneratorToken(Interface):
        If this were to be allowed then a :term:`generator token` could be any
        type expression that may be regarded as collection of objects:
 
-       - :class:`IThese` instances
+       - :class:`ITerm` instances
        - :class:`IQueryObject` instances.
 
        However, for the time being there's no such thing as a `query()`
@@ -393,7 +472,7 @@ class IGeneratorToken(Interface):
 
     '''
     expression = Attribute('The instance from which this token was created. '
-                           'Usually a :class:`IThese` instance.')
+                           'Usually a :class:`ITerm` instance.')
 
 
 
@@ -404,7 +483,7 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`IThese` or :class:`IExpressionTree` '
+    selection = Attribute('Either a tuple/dict of :class:`ITerm` or :class:`IExpressionTree` '
                           'instances.')
     tokens = Attribute('Generator tokens that occur in the query',
                        '''When the :term:`query` is processed to create a
@@ -433,6 +512,13 @@ class IQueryObject(Interface):
     ordering = Attribute('A tuple of :ref:`ordering expressions <ordering-expressions>`_.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
+    params = Attribute('A dict containing other arguments to the query. '
+                       'Some :term:`query translators <query translator>` '
+                       'may make use of these to better decide how to '
+                       'translate the query. For instance, you may '
+                       'want have an OUTER JOIN, instead of a INNER JOIN '
+                       'generated, and so on. '
+                       'See :class:`~xotl.ql.core.these`.')
 
 
     def __iter__():

@@ -38,6 +38,7 @@ Contents:
    interfaces
    translate
    thoughts
+   inners
    terms
    references
    HISTORY

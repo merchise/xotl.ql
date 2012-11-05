@@ -46,45 +46,43 @@ from functools import partial
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
+from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorators import decorator
 from xoutil.aop.basic import complementor
 
 from zope.component import getUtility
 from zope.interface import implementer
+from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY
-from xotl.ql.interfaces import (IThese, IGeneratorToken, IQueryPart, IExpressionTree,
-                                IExpressionCapable, IQueryPartContainer,
-                                IQueryTranslator, IQueryConfiguration,
-                                IQueryObject)
+from xotl.ql.expressions import UNARY, BINARY
+from xotl.ql.interfaces import (ITerm,
+                                IBoundTerm,
+                                IGeneratorToken,
+                                IQueryPart,
+                                IExpressionTree,
+                                IExpressionCapable,
+                                IQueryTranslator,
+                                IQueryConfiguration,
+                                IQueryObject,
+                                IQueryParticlesBubble)
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__all__ = (b'this',)
-
-
-class ExpressionError(Exception):
-    '''Base class for expressions related errors'''
+__all__ = (b'this', b'these', )
 
 
 
-class ResourceType(type):
-    pass
-
-
-
-# TODO: Think about this name.
-# TODO: Do we really need the __slots__ stuff? We must stress the inmutability
-#       of some structures, but __slots__ does not enforce inmutability,
-#       just disables the __dict__ in objects.
-class Resource(object):
-    __slots__ = ('_name', '_parent')
-    __metaclass__ = ResourceType
+@implementer(ITerm)
+class Term(object):
+    '''
+    The type of the :obj:`this` symbol: an unnamed object that may placed in
+    queries and whose interpretation depends on the query context and the
+    context in which `this` symbol is used inside the query itself.
+    '''
 
     _counter = count(1)
     valid_names_regex = re.compile(r'^(?!\d)\w[\d\w_]*$')
@@ -94,12 +92,15 @@ class Resource(object):
             self.validate_name(name)
             self._name = name
             self._parent = kwargs.get('parent', None)
+            binding = kwargs.get('binding', None)
+            if binding:
+                self.binding = binding
 
 
     @classmethod
     def validate_name(cls, name):
         '''
-        Checks names of named These instances::
+        Checks names of named Term instances::
 
             >>> this('::1nvalid')        # doctest: +ELLIPSIS
             Traceback (most recent call last):
@@ -110,14 +111,14 @@ class Resource(object):
         if context['_INVALID_THESE_NAME']:
             regexp = re.compile(r'::i\d+')
         if name and not regexp.match(name):
-            raise NameError('Invalid identifier %r for a named These '
+            raise NameError('Invalid identifier %r for a named Term '
                             'instance' % name)
 
 
     @property
     def name(self):
         '''
-        `These` instances may be named in order to be distiguishable from each
+        `Term` instances may be named in order to be distiguishable from each
         other in a query where two instances may represent different objects.
         '''
         return getattr(self, '_name', None)
@@ -126,7 +127,7 @@ class Resource(object):
     @property
     def parent(self):
         '''
-        `These` instances may have a parent `these` instance from which they
+        `Term` instances may have a parent `these` instance from which they
         are to be "drawn". If fact, only the pair of attributes ``(parent,
         name)`` allows to distiguish two instances from each other.
         '''
@@ -144,13 +145,25 @@ class Resource(object):
         else:
             return self
 
-@implementer(IThese)
-class These(Resource):
-    '''
-    The type of the :obj:`this` symbol: an unnamed object that may placed in
-    queries and whose interpretation depends on the query context and the
-    context in which `this` symbol is used inside the query itself.
-    '''
+
+    @property
+    def binding(self):
+        result = getattr(self, '_proper_binding', None)
+        parent = self.parent
+        while not result and parent:
+            result = getattr(parent, 'binding', None)
+            parent = parent.parent
+        return result
+
+
+    @binding.setter
+    def binding(self, value):
+        if value:
+            alsoProvides(self, IBoundTerm)
+        else:
+            noLongerProvides(self, IBoundTerm)
+        self._proper_binding = value
+
 
     @classmethod
     def _newname(cls):
@@ -161,19 +174,19 @@ class These(Resource):
         # Notice we can't use the __getattr__ way because then things like::
         #   this.name and this.binding
         # would not work properly.
-        get = super(These, self).__getattribute__
+        get = super(Term, self).__getattribute__
         if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
             return get(attr)
         else:
-            return These(name=attr, parent=self)
+            return Term(name=attr, parent=self)
 
 
-    def __call__(self, *args):
+    def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             parent = self.parent
         if parent is not None:
             from xotl.ql.expressions import invoke
-            return ExpressionTree(invoke, self, *args)
+            return ExpressionTree(invoke, self, *args, **kwargs)
         else:
             raise TypeError()
 
@@ -193,8 +206,9 @@ class These(Resource):
 
         A `token` object is attached to each part::
 
+            >>> from xoutil.proxy import unboxed
             >>> unboxed(parent).token        # doctest: +ELLIPSIS
-            <...GeneratorToken object at 0x...>
+            <token: <this('parent') at 0x...>>
 
         The attached `token` object is different for each part if those parts
         are generated from different generators token (see
@@ -222,15 +236,18 @@ class These(Resource):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        if name:
-            token = GeneratorToken(expression=self)
-            instance = QueryPart(expression=self, token=token)
-            yield instance
-        else:
-            # We should generate a new-name
-            with context(UNPROXIFING_CONTEXT), context('_INVALID_THESE_NAME'):
-                instance = type(self)(self._newname(), parent=parent)
-            yield next(iter(instance))
+        token = GeneratorToken(expression=self)
+        with context(UNPROXIFING_CONTEXT):
+            if name:
+                bound_term = Term(name, parent=parent, binding=token)
+            else:
+                with context('_INVALID_THESE_NAME'):
+                    bound_term = Term(self._newname(), parent=parent, binding=token)
+        instance = QueryPart(expression=bound_term, token=token)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        assert bubble
+        bubble.capture_token(token)
+        yield instance
 
 
     def __str__(self):
@@ -263,7 +280,7 @@ class These(Resource):
         '''
         from xotl.ql.expressions import eq
         with context(UNPROXIFING_CONTEXT):
-            if isinstance(other, These):
+            if isinstance(other, Term):
                 res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
@@ -290,7 +307,7 @@ class These(Resource):
         '''
         from xotl.ql.expressions import ne
         with context(UNPROXIFING_CONTEXT):
-            if isinstance(other, These):
+            if isinstance(other, Term):
                 res = validate_attrs(self, other, ('name', 'parent'))
             else:
                 res = False
@@ -594,20 +611,14 @@ class These(Resource):
 
 
 
-class ThisClassType(ResourceType):
-    pass
-
-
-
-class ThisClass(These):
+class ThisClass(Term):
     '''
     The class for the :obj:`this` object.
 
     The `this` object is a singleton that behaves like any other
-    :class:`These` instances but also allows the creation of named instances.
+    :class:`Term` instances but also allows the creation of named instances.
 
     '''
-    __metaclass__ = ThisClassType
 
 
     def __init__(self, *args, **kwargs):
@@ -618,7 +629,7 @@ class ThisClass(These):
 
 
     def __call__(self, name, **kwargs):
-        return These(name, **kwargs)
+        return Term(name, **kwargs)
 
 
     def __repr__(self):
@@ -627,6 +638,7 @@ class ThisClass(These):
         import sys
         sphinxed = 'sphinx' in sys.argv[0] if sys.argv else False
         return None if sphinxed else super(ThisClass, self).__repr__()
+
 
 
 
@@ -646,6 +658,144 @@ def provides_all(which, *interfaces):
     with context(UNPROXIFING_CONTEXT):
         return all(interface.providedBy(which) for interface in interfaces)
 
+
+
+
+@implementer(IQueryParticlesBubble)
+class QueryParticlesBubble(object):
+    def __init__(self):
+        self._particles = []
+        self._parts = []
+        self._tokens = []
+
+
+    @property
+    def parts(self):
+        return self._parts[:]
+
+
+    @property
+    def tokens(self):
+        return self._tokens[:]
+
+
+    @property
+    def particles(self):
+        return self._particles[:]
+
+
+    def mergable(self, expression):
+        assert context[UNPROXIFING_CONTEXT]
+        is_expression = IExpressionTree.providedBy
+        top = self._parts[-1]
+        if top is expression:
+            return True
+        elif is_expression(expression):
+            result = any(child is top for child in expression.children)
+            if not result:
+                from xoutil.compat import itervalues_
+                return any(child is top
+                           for child in itervalues_(expression.named_children))
+            else:
+                return result
+
+            # XXX: I don't see any tests failing because if we comment the
+            #      lines below. That's probably because in the particle bubble
+            #      the ordering is global and bottom- top.  Previously it was a
+            #      "local" accounting of events, in each of the generator
+            #      tokens.
+
+#            if not result and is_expression(top):
+#                return any(child is expression for child in top.children)
+#            else:
+#                return result
+        elif ITerm.providedBy(expression):
+            return expression.parent is top
+        else:
+            raise TypeError('Parts should be either these instance or '
+                            'expression trees; not %s' % type(expression))
+
+
+    def capture_part(self, part):
+        '''Captures an emitted query part.
+
+        When a given part is captured, it might replace the lastly previously
+        emitted parts if either of the following conditions hold:
+
+        - The capture part *is* the same last emitted part.
+
+        - The captured part is a term, and the last emitted part *is* its
+          parent, then the parent part is replaced by the newly captured part.
+
+        - The captured part is an expression and the last emitted part *is* one
+          of its children (named or positional).
+
+        The previous conditions are cycled while any of them hold against the
+        particle at the "end" of the :attr:`particles` collection.
+
+        Note that in an expression like ``invoke(some, a > b, b > c,
+        argument=(c > d))`` before the whole expression is formed (and thus the
+        part that represents it is captured), all of the arguments emitted
+        particles, so we should remove those contained parts and just keep the
+        bigger one that has them all.
+
+        .. note::
+
+           Checks **are** done with the `is` operator and not with `==`. Doing
+           otherwise may lead to undesired results::
+
+               these(parent.name for parent in this if parent.name)
+
+           If `==` would be used, then the filter part `parent.name` would be
+           lost.
+
+        :param part: The emitted query part
+        :type part: :class:`IQueryPart`
+        '''
+        with context(UNPROXIFING_CONTEXT):
+            if provides_all(part, IQueryPart):
+                expression = part.expression
+                parts = self._parts
+                if parts:
+                    mergable = self.mergable
+                    while parts and mergable(expression):
+                        top = parts.pop()
+                        self._particles.remove(top)
+                self._parts.append(expression)
+                self._particles.append(expression)
+            else:
+                assert False
+
+
+    def capture_token(self, token):
+        '''Captures an emitted token.
+
+        When a token is emitted if the last previously created part is a term
+        that *is* the same as the :attr:`IGeneratorToken.expression`, then this
+        last term should be removed from the particles collection.
+
+        This is because in a query like::
+
+            these((parent, child)
+                  for parent in this
+                  for child in parent.children)
+
+        The `parent.children` emits itself as a query part and inmediatly it
+        is transformed to a token.
+
+        :param token: The emitted token
+        :type token: :class:`IGeneratorToken`
+        '''
+        tokens = self._tokens
+        with context(UNPROXIFING_CONTEXT):
+            parts = self._parts
+            if parts:
+                top = parts.pop(-1)
+                if token.expression is not top:
+                    parts.append(top)
+        if token not in tokens:
+            tokens.append(token)
+            self._particles.append(token)
 
 
 
@@ -685,30 +835,35 @@ class _QueryObjectType(type):
 
         :rtype: :class:`QueryObject`
 
+
+        .. note::
+
+           All others keyword arguments are copied to the
+           :attr:`~xotl.ql.interface.IQueryObject.params` attribute, so that
+           :term:`query translators <query translator>` may use them.
+
         '''
         from types import GeneratorType
         assert isinstance(comprehesion, GeneratorType)
-        selected_parts = next(comprehesion)
+        bubble = QueryParticlesBubble()
+        with context(bubble) as query_context:
+            query_context.bubble = bubble
+            selected_parts = next(comprehesion)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts, )
             selected_parts = tuple(reversed(selected_parts))
             selection = []
-            tokens = []
-            filters = []
+            tokens = bubble._tokens
+            filters = bubble._parts[:]
             for part in selected_parts:
                 expr = part.expression
+                if filters and expr is filters[-1]:
+                    filters.pop(-1)
                 selection.append(expr)
-                token = part.token
-                tokens.append(token.expression)
-                previous_parts = token._parts
-                if previous_parts and previous_parts[-1] is expr:
-                    previous_parts.pop(-1)
-                filters.extend(part for part in previous_parts
-                                    if part not in filters)
             query = self()
             query.selection = tuple(reversed(selection))
-            query.tokens = tuple(set(tokens))
+            query.tokens = tuple(set(token.expression for token in tokens))
             query.filters = tuple(set(filters))
             query.ordering = kwargs.get('ordering', None)
             partition = kwargs.get('partition', None)
@@ -722,6 +877,9 @@ class _QueryObjectType(type):
                 warnings.warn('Ignoring offset, limit and/or step argument '
                               'since partition was passed', stacklevel=2)
             query.partition = partition
+            query.params = {k: v for k, v in kwargs.items()
+                            if k not in ('partition', 'offset',
+                                         'limit', 'step')}
             return query
 
 
@@ -739,6 +897,7 @@ class _QueryObjectType(type):
         return result
 
 
+
 @implementer(IQueryObject)
 class QueryObject(object):
     '''
@@ -753,6 +912,7 @@ class QueryObject(object):
         self._filters = None
         self._ordering = None
         self.partition = None
+        self.params = {}
 
 
     @property
@@ -762,7 +922,7 @@ class QueryObject(object):
 
     @selection.setter
     def selection(self, value):
-        ok = lambda v: isinstance(v, (ExpressionTree, These))
+        ok = lambda v: isinstance(v, (ExpressionTree, Term))
         if ok(value):
             self._selection = (value, )
         elif isinstance(value, tuple) and all(ok(v) for v in value):
@@ -863,7 +1023,7 @@ class QueryObject(object):
 these = QueryObject
 
 
-@implementer(IGeneratorToken, IQueryPartContainer)
+@implementer(IGeneratorToken)
 class GeneratorToken(object):
     '''
     Represents a token in the syntactical tree that is used as generator.
@@ -879,7 +1039,7 @@ class GeneratorToken(object):
 
     # TODO: Representation of grouping with dicts.
     def __init__(self, expression):
-        assert provides_any(expression, IThese)
+        assert provides_any(expression, ITerm)
         self._expression = expression
         self._parts = []
 
@@ -890,53 +1050,39 @@ class GeneratorToken(object):
                 return self._expression == other._expression
 
 
+    def __repr__(self):
+        return '<tk: %r>' % self._expression
+
+
     @property
     def expression(self):
         return self._expression
 
 
-    @staticmethod
-    def mergable(parts, expression):
-        assert context[UNPROXIFING_CONTEXT]
-        top = parts[-1]
-        if top is expression:
-            return True
-        elif IExpressionTree.providedBy(expression):
-            result = any(child is top for child in expression.children)
-            if not result and IExpressionTree.providedBy(top):
-                return any(child is expression for child in top.children)
-            else:
-                return result
-        elif IThese.providedBy(expression):
-            return expression.parent is top
-        else:
-            raise TypeError('Parts should be either these instance or '
-                            'expression trees; not %s' % type(expression))
 
-
-    def created_query_part(self, part):
-        with context(UNPROXIFING_CONTEXT):
-            if provides_all(part, IQueryPart):
-                expression = part.expression
-                parts = self._parts
-                if parts:
-                    while parts and self.mergable(parts, expression):
-                        parts.pop()
-                self._parts.append(expression)
-            else:
-                assert False
-
+def _query_part_method(target):
+    '''Decorator of every method in QueryPart that emits its result to
+    the "active" particle bubble.'''
+    def inner(self, *args, **kwargs):
+        result = target(self, *args, **kwargs)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        if not bubble:
+            bubble = getattr(self, '_bubble', None)
+        assert bubble
+        bubble.capture_part(result)
+        return result
+    return inner
 
 
 def _build_unary_operator(operation):
     method_name = operation._method_name
+    @_query_part_method
     def method(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             token = self.token
         result = QueryPart(expression=operation(instance),
                            token=token)
-        token.created_query_part(result)
         return result
     method.__name__ = method_name
     return method
@@ -949,28 +1095,19 @@ def _build_binary_operator(operation, inverse=False):
     else:
         method_name = operation._rmethod_name
     if method_name:
+        @_query_part_method
         def method(self, other):
             with context(UNPROXIFING_CONTEXT):
                 instance = self.expression
                 token = self.token
-                tokens = getattr(self, 'tokens', [token])
-                if isinstance(other, QueryPart):
-                    other_token = other.token
-                    other_tokens = getattr(other, 'tokens', [other_token])
+                if IQueryPart.providedBy(other):
                     other = other.expression
-                else:
-                    other_token = None
-                    other_tokens = []
-                tokens.extend(t for t in other_tokens if t not in tokens)
             if not inverse:
                 result = QueryPart(expression=operation(instance, other),
                                    token=token)
             else:
                 result = QueryPart(expression=operation(other, instance),
                                    token=token)
-            result.tokens = tokens
-            for token in tokens:
-                token.created_query_part(result)
             return result
         method.__name__ = method_name
         return method
@@ -999,14 +1136,14 @@ QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
 @implementer(IQueryPart)
 @complementor(QueryPartOperations)
 class QueryPart(object):
-    '''A class that wraps either :class:`These` or :class:`ExpressionTree` that
+    '''A class that wraps either :class:`Term` or :class:`ExpressionTree` that
     implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
 
     To build a query object from a comprehension like in::
 
         these(count(parent.children) for parent in this if parent.age > 34)
 
-    We need to differiante the IF (``parent.age > 34``) part of the
+    We need to differentiate the IF (``parent.age > 34``) part of the
     comprehension from the SELECTION (``count(parent.children)``); which in the
     general case are both expressions. The following procedure is a sketch of
     what happens to accomplish that:
@@ -1017,10 +1154,10 @@ class QueryPart(object):
     2. The :func:`these` function invokes `next` upon the generator object.
 
     3. Python invokes ``iter(this)`` which constructs internally another
-       instance of :class:`These` but with a unique name, and delegates the
+       instance of :class:`Term` but with a unique name, and delegates the
        ``iter`` to this instance.
 
-    4. The newly created named These instance creates :class:`GeneratorToken`
+    4. The newly created named Term instance creates :class:`GeneratorToken`
        and assign itself to the
        :attr:`~xotl.ql.interfaces.IGeneratorToken.token` attribute.
 
@@ -1036,7 +1173,7 @@ class QueryPart(object):
        - First, ``parent.age`` is processed. The query part's
          `__getattribute__` method is invoked, which delegates the call to it's
          :attr:`~IQueryPart.expression` attribute. Since, it is an
-         :class:`These` instance, it returns another named These instance.
+         :class:`Term` instance, it returns another named Term instance.
 
          A new query part is created with `expression` set to the result, the
          :attr:`~IQueryPart.token` is inherited from the current query part.
@@ -1109,7 +1246,7 @@ class QueryPart(object):
         Actually the ``parent`` will be something like ``this('::i1387')``.
 
     '''
-    __slots__ = ('_token', '_expression', '_tokens')
+    __slots__ = ('_token', '_expression')
 
 
     def __init__(self, **kwargs):
@@ -1117,8 +1254,7 @@ class QueryPart(object):
             self._expression = kwargs.get('expression')
             # TODO: assert that expression is ExpressionCapable
             self._token = None
-            self.token = token = kwargs.get('token')
-            self._tokens = [token]
+            self.token = kwargs.get('token')
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
@@ -1137,24 +1273,6 @@ class QueryPart(object):
 
 
     @property
-    def tokens(self):
-        return list(self._tokens)
-
-
-    @tokens.setter
-    def tokens(self, value):
-        from xoutil.types import is_collection
-        with context(UNPROXIFING_CONTEXT):
-            tokens = self._tokens
-            if is_collection(value):
-                assert all(provides_any(g, IGeneratorToken) for g in value)
-                tokens.extend(token for token in value if token not in tokens)
-            else:
-                assert provides_any(value, IGeneratorToken)
-                tokens.append(value)
-
-
-    @property
     def expression(self):
         return self._expression
 
@@ -1170,28 +1288,14 @@ class QueryPart(object):
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
             expression = self.expression
-            # This kind of a hack: since in queries like::
-            #     ((parent, child) for parent in this
-            #                      for child in parent.children)
-            # The `parent.children` will generate a part and push it to the
-            # query; but this part should be there; so we need to remove it
-            #
-            # Review note: Maybe we could this part but wrapped inside an
-            # `iter` mark to easy the detection of subqueries that are not
-            # in the selection.
-            if IThese.providedBy(expression):
-                parts = self.token._parts
-                if parts and parts[-1] is expression:
-                    parts.pop(-1)
             return iter(expression)
 
 
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
             result = str(instance)
-        return '<qp: %s; for %s>' % (result, token)
+        return '<qp: %s>' % result
     __repr__ = __str__
 
 
@@ -1206,21 +1310,24 @@ class QueryPart(object):
                 token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
                                token=token)
-            token.created_query_part(result)
+            bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+            assert bubble
+            bubble.capture_part(result)
             return result
 
 
     # TODO: Again, in which interface?
-    def __call__(self, *args):
+    @_query_part_method
+    def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             token = self.token
-        result = QueryPart(expression=instance(*args),
+        result = QueryPart(expression=instance(*args, **kwargs),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def any_(self, *args):
         from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1228,10 +1335,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def all_(self, *args):
         from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1239,10 +1346,13 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
+        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+        assert bubble
+        bubble.capture_part(result)
         return result
 
 
+    @_query_part_method
     def min_(self, *args):
         from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1250,10 +1360,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def max_(self, *args):
         from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
@@ -1261,10 +1371,10 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
+    @_query_part_method
     def invoke(self, *args):
         from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
@@ -1272,7 +1382,6 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        token.created_query_part(result)
         return result
 
 
@@ -1300,6 +1409,7 @@ def thesefy(target, name=None):
     You may test, that an `in_instance(..., Entity)` expression is in the query
     object filters::
 
+        >>> from xoutil.proxy import unboxed
         >>> any(unboxed(filter).operation is not is_instance
         ...     or filter.children[1] is Entity for filter in q.filters)
         True
@@ -1310,7 +1420,7 @@ def thesefy(target, name=None):
 
     Optionally (usually for debugging purposes only) you may pass a name to
     the decorator that will be used as the name for the internally generated
-    :class:`These` instance.
+    :class:`Term` instance.
 
         >>> @thesefy('Entity')
         ... class Entity(object):
@@ -1338,20 +1448,20 @@ def thesefy(target, name=None):
             return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
         def __iter__(self):
             from types import GeneratorType
-            from xotl.ql.interfaces import IQueryPart
             try:
                 result = super(new_meta, self).__iter__()
             except AttributeError:
                 result = Unset
             if isinstance(result, GeneratorType):
-                return result
+                for item in result:
+                    yield item
             elif result is not Unset and IQueryPart.providedBy(result):
-                return iter((result, ))
+                    yield result
             elif result is Unset:
                 from xotl.ql.expressions import is_instance
                 query_part = next(iter(this(name)))
                 is_instance(query_part, self)
-                return iter((query_part, ))
+                yield query_part
             else:
                 raise TypeError('Class {target} has a metaclass with an '
                                 '__iter__ that does not support thesefy'.format(target=target))

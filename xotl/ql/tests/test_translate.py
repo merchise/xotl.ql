@@ -6,20 +6,19 @@
 # Copyright (c) 2012 Merchise Autrement
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License (GPL) as published by the
-# Free Software Foundation;  either version 2  of  the  License, or (at
-# your option) any later version.
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the GNU General Public License (GPL) as published by the Free
+# Software Foundation;  either version 2  of  the  License, or (at your option)
+# any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301, USA.
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Created on Jul 2, 2012
 
@@ -31,7 +30,12 @@ from __future__ import (division as _py3_division,
 
 
 import unittest
-from xotl.ql.core import these, this
+
+from xoutil.context import context
+from xoutil.proxy import UNPROXIFING_CONTEXT
+from xoutil.types import Unset
+
+from xotl.ql.core import these, this, thesefy
 from xotl.ql.translate import init
 
 
@@ -45,46 +49,148 @@ __author__ = 'manu'
 init()
 
 
+# The following classes are just a simple Model
+class TransitiveRelationDescriptor(object):
+    def __init__(self, name, target=None):
+        self.name = name
+        self.internal_name = '_' + name
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            result = getattr(instance, self.internal_name, [])
+            if result:
+                current = result
+                while current:
+                    current = getattr(current, self.name, Unset)
+                    if current and current not in result:
+                        result.append(current)
+            return result
+
+    def __set__(self, instance, value):
+        setattr(instance, self.internal_name, value)
+
+
+@thesefy
+class Entity(object):
+    def __init__(self, **attrs):
+        for k, v in attrs.iteritems():
+            setattr(self, k, v)
+
+
+def date_property(internal_attr_name):
+    def getter(self):
+        return getattr(self, internal_attr_name)
+
+    def setter(self, value):
+        from datetime import datetime, timedelta
+        if not isinstance(value, datetime):
+            import dateutil.parser
+            value = dateutil.parser.parse(value)
+        setattr(self, internal_attr_name, value)
+
+    def fdel(self):
+        delattr(self, internal_attr_name)
+
+    return property(getter, setter, fdel)
+
+
+def age_property(attr_name):
+    @property
+    def age(self):
+        from datetime import datetime
+        today = datetime.today()
+        date = getattr(self, attr_name)
+        age = today - date
+        return age.days // 365.25
+    return age
+
+
+class Place(Entity):
+    located_in = TransitiveRelationDescriptor('located-in')
+    foundation_date = date_property('_foundation_date')
+    age = age_property('foundation_date')
+
+
+class Person(Entity):
+    lives_in = TransitiveRelationDescriptor('located-in', Place)
+    birthdate = date_property('_birthdate')
+    age = age_property('birthdate')
+
+
+cuba = Place(name='Cuba', type='Country')
+havana = Place(name='Havana', type='Province', located_in=cuba)
+lisa = Place(name='La lisa', type='Municipality', located_in=havana)
+cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
+ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
+moron = Place(name='Morón', type='Municipality', located_in=ciego)
+
+elsa = Person(name='Elsa Acosta Cabrera',
+              birthdate='1947-10-06',
+              lives_in=moron)
+manu = Person(name='Manuel Vázquez Acosta',
+              birthdate='1978-10-21',
+              mother=elsa,
+              lives_in=lisa)
+
+denia = Person(name='Ana Denia Pérez',
+               birthdate='1950-04-01',
+               lives_in=cotorro)
+pedro = Person(name='Pedro Piñero', birthdate='1950-04-01', lives_in=cotorro)
+yade = Person(name='Yadenis Piñero Pérez', birthdate='1979-05-16',
+              mother=denia, father=pedro, lives_in=lisa)
+
+manolito = Person(name='Manuel Vázquez Piñero',
+                  birthdate='2007-03-22',
+                  mother=yade,
+                  father=manu,
+                  lives_in=lisa)
+
+
+select_manus = these(who for who in Person if who.name.startswith('Manuel '))
+select_aged_entities = these(who for who in Entity if who.age)
+
+# Three days after I (manu) wrote this query, I started to appear in the
+# results ;)
+select_old_entities = these(who for who in Entity if who.age > 34)
+
+
 
 class TestTranslatorTools(unittest.TestCase):
-    def test_traverse(self):
-        from xotl.ql.translate import cotraverse_expression
-        from xotl.ql.expressions import is_a, in_, all_
-        who = these(who for who in this('w')
-                        if all_(who.children,
-                                in_(this, these(sub for sub in this('s')
-                                                 if is_a(sub,
-                                                         'Subs')))))
-        is_a_nodes = cotraverse_expression(who,
-                                           yield_node=lambda x: x.op == is_a,
-                                           leave_filter=lambda _x: False)
-        self.assertEquals(["is_a(this('s'), Subs)"],
-                          [str(x) for x in is_a_nodes])
-
-
-    def test_query(self):
-        class Foo(object):
-            def __init__(self, age):
-                self.name = type(self).__name__.lower() + str(age)
-                self.age = age + 10
-
-        class Bar(Foo):
-            pass
-
-        class Baz(Foo):
-            pass
-
-        class Egg(Bar):
-            pass
-
-        _f = [Foo(i) for i in range(5)]  # 5 Foo objects
-        _bs = [Bar(i) for i in range(1)]  # 6 Foo objects, 1 bar
-        _bzs = [Baz(i) for i in range(3)]  # 9 Foo objects, 3 bazs
-        _es = [Egg(i) for i in range(3)]  # 12 Foo objects, 4 bars, and 3 eggs
-
+    def test_cofind_tokens(self):
+        from itertools import izip
         from xotl.ql.expressions import is_a
-        query = list(these(foo for foo in this if is_a(foo, Foo)))
-        self.assertEqual(12, len(query))
+        from xotl.ql.translate import cofind_tokens
+
+        @thesefy
+        class Person(object):
+            pass
+
+        @thesefy
+        class Partnership(object):
+            pass
+
+        query = these((person, partner)
+                      for person, partner in izip(Person, Person)
+                      for rel in Partnership
+                      if (rel.subject == person) & (rel.obj == partner))
+        filters = list(query.filters)
+        person, partner = query.selection
+        person_is_a_person = is_a(person, Person)
+        partner_is_a_person = is_a(partner, Person)
+        with context(UNPROXIFING_CONTEXT):
+            self.assertNotEqual(person, partner)
+            self.assertIn(person_is_a_person, filters)
+            self.assertIn(partner_is_a_person, filters)
+            filters.remove(person_is_a_person)
+            filters.remove(partner_is_a_person)
+            self.assertIs(1, len(filters))
+
+            # (rel.subject == person) & (rel.obj == partner)
+            # there are 4 named instances there
+            self.assertIs(4, len(list(cofind_tokens(filters[0]))))
+
 
 
 if __name__ == "__main__":

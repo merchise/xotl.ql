@@ -6,6 +6,26 @@ Terms and glossary
 
 .. glossary::
 
+   data set
+
+     An object that represents the result of executing a :term:`query` against
+     a define :term:`storage`. It should implement the interface
+     :class:`xotl.ql.interfaces.IDataSet`, which is quite flexible since it
+     only requires the data set to be iterable using the `next` protocol.
+
+   execution context
+
+      An object that represents the context in which a given piece of code is
+      being executed. Contexts may influence how objects behaves. Every process
+      and thread entail an execution context, and they may form a tree.
+
+      Currently a very simple implementation of execution contexts is in the
+      module :ref:`xoutil.context`.
+
+      A future more comprehensive implementation is planned to be in
+      :ref:`xotl.context`; where contexts are though to be queriable using
+      `xotl.ql` query language.
+
    expression tree
 
        The tree that represents an expression as it was syntactically
@@ -94,7 +114,7 @@ Terms and glossary
 
        `xotl.ql` does not provides an API for expressing object models, but it
        assumes that a :term:`translator <query translator>` exists which has
-       enough knowledge to deal which so an object model.
+       enough knowledge to deal which such an object model.
 
        .. todo::
 
@@ -140,27 +160,27 @@ Terms and glossary
    query object
 
       This term is used solely to distinguish a :term:`query` as an internal
-      data structure from the language construction (i.e the first meaning for
-      the term :term:`query`) that implies such a structure.
+      data structure in contrast to the language construction (i.e the first
+      meaning for the term :term:`query`) that implies such a structure.
 
    query translator
    translator
 
        In the general design a query translator is a component that receives a
-       :term:`query` and produces a :term:`query execution plan`. The query is
-       usually the result of the :class:`~xotl.ql.core.these` function; and the
-       execution plan is dependant of the translator. A CouchDB translator, for
-       instance may simply translate the whole query to a CouchDB view and
-       return a plan that just involves quering that view.
+       :term:`query object` and produces a :term:`query execution plan`. The
+       query execution plan depends on the translator for it encompasses the
+       knowledge about both the :term:`object model` and the :term:`object
+       storage <storage>`. A CouchDB translator, for instance may simply
+       translate the whole query to a CouchDB view and return a plan that just
+       involves quering that view.
 
-       Query translator are not implemented on this package.
-
+       There no (serious) translators implemented on this package.
 
    query execution plan
 
-       When a :term:`query` is processed by a :term:`query translator` it
-       produces an execution plan. Such a plan is a sort of *compiled form* of
-       the query.
+       When a :term:`query object` is processed by a :term:`query translator`
+       it produces an execution plan. Such a plan is a sort of a *compiled
+       form* of the query.
 
        The execution plan should include instructions to retrieve the objects
        expected. An execution plan may be as simple as:
@@ -172,14 +192,13 @@ Terms and glossary
 	   then, return an iterator for instances of those objects created by
 	   the factory class ``ISomeModel``.
 
-       to another plan that checks an SQL index and the fetches objects from a
-       REST interface.
+       to another plan that checks an index stored in a SQL database, but
+       fetches objects from a remote system through REST interface.
 
-       The execution plan in this package is not subject to any design
-       restrictions, is just noted that it may be a good
-       implementation path to follow to transform a `xotl.ql` query
-       into another object (the plan) that may be better suited to be
-       executed against your storage(s) media.
+       The :class:`interface for a query execution plan
+       <xotl.ql.interfaces.IQueryExecutionPlan>` in this package places almost
+       no restrictions, it just requires that the execution is a callable that
+       returns an iterable :term:`data set` using the `next` protocol.
 
    storage
    object storage
