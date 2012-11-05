@@ -2,16 +2,40 @@
 Internal details of the processing of query expressions
 =======================================================
 
-This document tries to explain how it's implemented the "parsing" of a
-:term:`query expression` into a :term:`query object`.
+This document explains how it's implemented the "parsing" of a :term:`query
+expression` into a :term:`query object`. It's a rather technical document and
+does not belong to the API, so you may not read it unless you are interested in
+the internal implementation of :mod:`xotl.ql.core`.
+
+Restrictions and goals of the procedure for constructing query objects
+======================================================================
 
 When processing a query expression, all that is passed to the
 :class:`~xotl.ql.core.these` callable is a comprehension (and possible some
-keyword arguments that are irrelevant for the purposes of this description)
-we're not in control of how Python does the job of interpreting the real query
-expression.
+keyword arguments that are irrelevant for the purposes of this
+description). The key point is that *we're not in control of how Python does
+the job of interpreting the real query expression*.
 
-Let's stick with a given query for explaining how this works::
+This is further complicated because there might be several expression inside a
+single query expression, and we don't know where they "end". Thus, we can't
+trust the expression building mechanism to "store" built expressions, because
+at that level there's no need of a "multi-expression" kind of object. In fact,
+as an historical note, :class:`~xotl.ql.core.these` was created because we
+needed to detect expression boundaries, and specially distinguish expressions
+occurring in the selection part of the query from those that occur in filters.
+
+Taking account of this restriction, the task of the `query object builder` is
+to get a :term:`structure <query object>` that represents a given :term:`query
+expression`. But we should try not to interpret/validate the query neither
+syntactically nor semantically. Python's has already done it's job of assuring
+that the expression is syntactically correct. Our :mod:`expression language
+<xotl.ql.expressions>` will raise exceptions if it finds any errors
+(unsupported operators for instance).
+
+The only restriction is that the resultant :term:`query object` should be
+syntactically equivalent to the input :term:`query expression`.
+
+As an example let's analyze the following query expression::
 
   these((person.name, partner.name)
         for person in this('person')
@@ -20,37 +44,217 @@ Let's stick with a given query for explaining how this works::
 	if rel.type == 'partnership'
 	if (rel.subject == person) & (rel.object == partner))
 
-Iterating over `this` should always yield a single :class:`term
-<xotl.ql.interface.ITerm>` instance, that may be then placed inside
-expressions. So, the only thing that :class:`~xotl.ql.core.these` is in control
-of is calling ``next()`` with the comprehension as its argument. This single
-call, will start the "machine" and Python itself will be calling methods that
-we should trap and interpret as events.
 
-Let's see how Python acts, and how we react.
+For this query expression, the query object object should:
 
-- When `these` calls ``next(comprehension)``, Python calls the `__iter__`
+- Have for :attr:`~xotl.ql.interfaces.IQuery.tokens` the ones related to
+  `this('person')`, `this('partner')` and `this('relation')`.
+
+- Have for :attr:`~xotl.ql.interfaces.IQuery.selection` the tuple that contains
+  the expressions `person.name` and `partner.name`.
+
+  In these expressions, `person` is actually the term `this('person')`, and
+  `partner` is actually the term `this('partner')`
+
+  We'll cover the difference (and relation) of terms and tokens :ref:`later
+  <terms-vs-tokens>`.
+
+- Have for :attr:`~xotl.ql.interfaces.IQuery.filters` a list which contains:
+
+  - the expression `rel.type == 'partnership'`, where `rel` stands for the term
+    `this('relation')`
+
+  - the expression `(rel.subject == person) & (rel.object == partner)`, the
+    terms are the same as before.
+
+If, instead, the query expression were::
+
+  these((person.name, partner.name)
+        for person in this('person')
+	for partner in this('partner')
+	for rel in this('relation')
+	if rel.type == 'partnership'
+	if rel.subject == person
+	if rel.object == partner)
+
+Although it is semantically equivalent to the previous one, its query object
+should *not* be the same; for the query expression "parser" must *not* deal
+with that kind of equivalence: this query expression is *not* syntactically
+equivalent to the previous one. So, the attribute `filters` changes to a list
+of:
+
+  - the expression `rel.type == 'partnership'`
+  - the expression `rel.subject == person`
+  - the expression `rel.object == partner`
+
+.. _terms-vs-tokens:
+
+Terms versus Tokens
+===================
+
+As pointed before, there's subtle distinction between terms and tokens. In
+previous alpha versions of `xotl.ql`, we used to think that a given term in a
+query object should be related to an object generated from a token if that term
+was on the list of tokens (or the term's
+:attr:`~xotl.ql.interfaces.ITerm.parent` was a token). But this approach was
+fundamentally flawed.
+
+The main reason is that a collection may have attributes itself that are
+different from those attributes of the objects it yields.
+
+Let's make our point clearer by inspecting the query object expressions
+corresponding to::
+
+  these((parent, child)
+        for parent in this('parent')
+	if parent.children & parent.children.updated_since(1)
+	for child in parent.children
+	if child.age < 6)
+
+The corresponding query object have:
+
+- two tokens: ``this('parent')`` and ``this('parent').children``
+- and two filters:
+
+  - ``this('parent').children & this('parent').children.updated_since(1)``
+  - ``this('parent').children.age < 6``
+
+Why does in the expression ``child.age < 6`` "mutates" to
+``this('parent').children < 6``. Because, the `__iter__` method of a term (like
+``this('parent').children``) yields a `query part` that wraps the very term,
+and since ``parent.children`` is actually ``this('parent').children``, then
+``child`` is just a query part that wraps that term.
+
+Then, how could we tell that ``this('parent').children.updated_since(1)`` is a
+condition over the collection ``this('parent').children`` instead over each
+object drawn from it? How do we tell that ``this('parent').children.age < 6``
+is a condition over objects from and not a condition over the collection
+itself?
+
+The answer is simple: terms that occur in expressions of a query object, are
+usually :class:`bound <xotl.ql.interfaces.IBoundTerm>` to a generator token. If
+we were to explore the terms that occurs in the filters before, we would find
+that the term ``this('parent').children.updated_since`` is bound to the
+``this('parent')`` token; and the term ``this('parent').children.age`` is bound
+to the token ``this('parent').children``. Thus we can precisely determine to
+which object a term refers.
+
+.. _free-terms:
+
+"Free" terms
+------------
+
+Sometimes when query expressions involve :term:`functions <function object
+operator>` like :class:`all_ <xotl.ql.expressions.AllFunction>` that may take
+"free" expressions as arguments, terms in that expressions are not
+bound. Furthermore, the query object building machinery does not even realizes
+those term were there.
+
+.. todo::
+
+   This issue points to another complex issue. Let's analyze the following
+   query::
+
+     these(parent for parent in this('parent')
+           if any_(child for child in parent.children if child.age < 6))
+
+   Currently, the query object returned contains a single filter that reflects
+   the ``any_(...)`` condition; but the argument is unprocessed: a blind
+   `generator object`.
+
+   This is partially correct, since if were to "open" the generator, then the
+   parts and tokens emitted by this subquery would merge with the ones of the
+   outer queries and would lead to an mistaken query object. On the other hand,
+   not opening it left *too much* work for :term:`translators <query
+   translator>` that actually belongs to the `query object` building machinery.
+
+   If we were to "open" subqueries, the
+   :class:`xotl.ql.interfaces.IQueryObject` should be changed to have,
+   possibly, an attribute ``queries``; and :class:`xotl.ql.core.these` would
+   have to chose a given interpretation of `any_`.
+
+   Also, if we give the responsability to ``these`` we may hurt the extension
+   point, since ``these`` not have any knowledge of "future" operations.
+
+   The tie breaker seems to provide a mechanism for resolving generator
+   arguments:
+
+   If an operator have implements a given protocol (a subquery protocol), then
+   invoke it to produce subqueries. This operator may call ``these``
+   recursively to obtain the sub-query, this would have the effect of isolating
+   the sub-query elements from the outer queries, and if those subqueries enter
+   also have sub-queries, they will be constructed as well.
+
+   Furthermore, leaving this resolution mechanism to operators, leaves open the
+   possibility to multiple interpretations.
+
+
+Notation
+========
+
+Before proceeding, let's introduce some notations to keep our explanation more
+compact:
+
+- we will use the notation `tk<expr>` to represent the generator
+  token built by the the expression `expr`;
+
+- and `qp<expr>` to represent a query part with its
+  :attr:`~xotl.ql.interfaces.IQueryPart.expression` equal to `expr`.
+
+- In both cases, we'll use the `name of term` instead of the full `this(name)`
+  when a term occurs in an expression.
+
+So `tk<parent>` represents a token created with ``this('parent')``, and
+`qp<parent.age > 34>` is a query part that wraps the expression
+``this('parent').age > 34``. To keep the notation simple, will identify a bound
+term with is :attr:`~xotl.ql.interfaces.IBoundTerm.binding`; so in the query
+part `qp<child.age < 6>`, the term `child.age` is bound to the token from which
+`child` is drawn.
+
+
+How does :class:`~xotl.ql.core.these` builds a query object?
+============================================================
+
+When creating a query object, :class:`xotl.ql.core.these` wraps the entire
+comprehension in an :term:`execution context` that hosts a special "particles
+bubble" [#bubble]_. The particles bubble captures every "emitted" expression
+and token (a particle).
+
+Let's see how the whole thing works. Let's step by our algorithm when it is
+processing the following query expression::
+
+  these((person.name, partner.name)
+        for person in this('person')
+	for partner in this('partner')
+	for rel in this('relation')
+	if rel.type == 'partnership'
+	if (rel.subject == person) & (rel.object == partner))
+
+
+When the shown sentence is executed, Python creates a `generator object` and
+invokes ``these`` with the generator as its sole argument. Then the following
+steps are performed in the given order:
+
+- An instance of a :class:`~xotl.ql.interfaces.IQueryParticlesBubble` is
+  created, such an instance is used as the key for a new :term:`execution
+  context` and, the instance itself is set to the
+  :attr:`~xotl.ql.interfaces.IQueryContext.bubble` attribute of the context.
+
+- `these` calls ``next(comprehension)``, and then Python calls the `__iter__`
   method of ``this('person')``.
 
-  This method creates a :term:`generator token` and associates the term
-  ``this('parent')`` to the token, then it also builds an instance of
-  :class:`xotl.ql.interfaces.IQueryPart`, with
-  :attr:`~xotl.ql.interfaces.IQueryPart.expression` assigned to
-  ``this('parent')`` and :attr:`~xotl.ql.interfaces.IQueryPart.token` assigned
-  to the created `generator token`.
+  This method creates the token `tk<person>` and bounds the term to it. This
+  token is emitted and captured by the particles bubble ``these`` put in
+  context.
 
-  In this document we will use the notation `tk<expr>` to represent the
-  generator token built by the the expression `expr`; and `qp<expr>` to
-  represent a query part with ``expression`` equal to `expr`. In both cases,
-  we'll use the name of term instead of the full `this(name)`.
-
-  The created query part is yielded.
+  Then it also builds the query part `qp<person>` and yields it. This query
+  part is not emitted
 
 - Python now calls the `__iter__` method of ``this('partner')``, this will
   create the token `tk<partner>` and the query part `qp<partner>`; this query
   part is yielded.
 
-- Again, Python calls the `__iter__` method of ``this('relation')``, which
+- Once more, Python calls the `__iter__` method of ``this('relation')``, which
   build `tk<relation>` and yields `qp<relation>`.
 
   At this point it's Python, not our program, who has the handle of these three
@@ -59,11 +263,12 @@ Let's see how Python acts, and how we react.
 - Now Python beings to process the `ifs`. The comprehension-local variable
   ``rel`` refers to the query part `qp<relation>`. So, when trying to get
   ``rel.type``, Python calls the `__getattribute__` method of the query part
-  `qp<relation>`, who delegates the call to ``this('relation')`` and then wraps
-  the result into another query part `qp<relation.type>` -- this new query part
-  shares the token `tk<relation>` with `qp<relation>`.
+  `qp<relation>`, who delegates the call to them ``this('relation')`` and then
+  wraps the result into another query part `qp<relation.type>` -- this new
+  query part shares the token `tk<relation>` with `qp<relation>`, and it's
+  contained expression is also bound to ``this('relation')``.
 
-  Also the token `tk<relation>` is notified about the new query part.
+  The newly created
 
   Finally `qp<relation.type>` is returned (to Python).
 
@@ -131,26 +336,11 @@ Let's see how Python acts, and how we react.
   Again, Python calls `__getattribute__` to `qp<person>` which creates yet
   another part and notifies `tk<person>`...
 
-Flaws of the current implementation
-===================================
+Footnotes
+=========
 
-- [2012-10-30] It may discard filters and tokens that **are** relevant to the
-  query object. There's a regression test that shows this bug.
-
-  Although our depiction is based on a "machine"-like object that receives
-  events, in our implementation there's no such machine. Maybe if I introduce
-  an object that keeps tracks of all events in a single processing of a query
-  expression this bug may be easier to fix. Also we may not need to record
-  `token` in query parts but such a machine.
-
-  This is tricky, though. Separate events are "collapsible". For instance, the
-  five steps described :ref:`above <five-steps>` are separate events, but they
-  are collapsed into a single expression filter.
-
-
-Depiction of the "machine"
-==========================
-
-
-
-
+.. [#bubble] Particles bubbles are used by experimental physicists to capture
+	     sub-atomic particles. Our particle is either a token or an
+	     expression, and our bubble captures them all and stores them so
+	     that we are able to create the query object from those pieces (and
+	     their order).
