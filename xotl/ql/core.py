@@ -41,7 +41,6 @@ from __future__ import (division as _py3_division,
 
 import re
 from itertools import count
-from functools import partial
 
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
@@ -118,7 +117,7 @@ class Term(object):
     @property
     def name(self):
         '''
-        `Term` instances may be named in order to be distiguishable from each
+        `Term` instances may be named in order to be distinguishable from each
         other in a query where two instances may represent different objects.
         '''
         return getattr(self, '_name', None)
@@ -129,7 +128,7 @@ class Term(object):
         '''
         `Term` instances may have a parent `these` instance from which they
         are to be "drawn". If fact, only the pair of attributes ``(parent,
-        name)`` allows to distiguish two instances from each other.
+        name)`` allows to distinguish two instances from each other.
         '''
         return getattr(self, '_parent', None)
 
@@ -137,7 +136,7 @@ class Term(object):
     @property
     def root_parent(self):
         '''
-        The top-most parent of the instace or self if it has no parent.
+        The top-most parent of the instance or self if it has no parent.
         '''
         parent = getattr(self, 'parent', None)
         if parent is not None:
@@ -171,11 +170,11 @@ class Term(object):
 
 
     def __getattribute__(self, attr):
-        # Notice we can't use the __getattr__ way because then things like::
-        #   this.name and this.binding
-        # would not work properly.
+        # Notice we can't use the __getattr__ way because then things like
+        # ``this.name`` would not work properly.
         get = super(Term, self).__getattribute__
-        if attr in ('__mro__', '__class__', '__doc__',) or context[UNPROXIFING_CONTEXT]:
+        if (attr in ('__mro__', '__class__', '__doc__',) or
+            context[UNPROXIFING_CONTEXT]):
             return get(attr)
         else:
             return Term(name=attr, parent=self)
@@ -231,7 +230,7 @@ class Term(object):
            query language **does not** support this kind of construction.
 
            Queries must be built by calling the :func:`these` passing the
-           comprehesion as its first argument.
+           comprehension as its first argument.
         '''
         with context(UNPROXIFING_CONTEXT):
             name = self.name
@@ -616,8 +615,8 @@ class ThisClass(Term):
     '''
     The class for the :obj:`this` object.
 
-    The `this` object is a singleton that behaves like any other
-    :class:`Term` instances but also allows the creation of named instances.
+    The `this` object is a singleton that behaves like any other :class:`Term`
+    instances but also allows the creation of named instances.
 
     '''
 
@@ -771,7 +770,7 @@ class QueryParticlesBubble(object):
                   for parent in this
                   for child in parent.children)
 
-        The `parent.children` emits itself as a query part and inmediatly it
+        The `parent.children` emits itself as a query part and immediately it
         is transformed to a token.
 
         :param token: The emitted token
@@ -791,9 +790,9 @@ class QueryParticlesBubble(object):
 
 
 class _QueryObjectType(type):
-    def these(self, comprehesion, **kwargs):
+    def these(self, comprehension, **kwargs):
         '''Builds a :term:`query object` from a :term:`query expression` given
-        by a comprehesion.
+        by a comprehension.
 
         :param comprehension: The :term:`query expression` to be processed.
 
@@ -811,13 +810,19 @@ class _QueryObjectType(type):
 
         :type partition: slice or None
 
-        :param offset: Indivually express the offset of the `partition` param.
+        :param offset: Individually express the offset of the `partition`
+                       parameter.
+
         :type offset: int or None
 
-        :param limit: Indivually express the limit of the `partition` param.
+        :param limit: Individually express the limit of the `partition`
+                      parameter.
+
         :type limit: int or None
 
-        :param step: Indivually express the step of the `partition` param.
+        :param step: Individually express the step of the `partition`
+                     parameter.
+
         :type step: int or None
 
         :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
@@ -835,11 +840,11 @@ class _QueryObjectType(type):
 
         '''
         from types import GeneratorType
-        assert isinstance(comprehesion, GeneratorType)
+        assert isinstance(comprehension, GeneratorType)
         bubble = QueryParticlesBubble()
         with context(bubble) as query_context:
             query_context.bubble = bubble
-            selected_parts = next(comprehesion)
+            selected_parts = next(comprehension)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts, )
@@ -876,7 +881,7 @@ class _QueryObjectType(type):
 
     def __call__(self, *args, **kwargs):
         if args:
-            from xoutil.types import GeneratorType
+            from types import GeneratorType
             first_arg, args = args[0], args[1:]
             if not args:
                 if isinstance(first_arg, GeneratorType):
@@ -1136,105 +1141,7 @@ class QueryPart(object):
 
     We need to differentiate the IF (``parent.age > 34``) part of the
     comprehension from the SELECTION (``count(parent.children)``); which in the
-    general case are both expressions. The following procedure is a sketch of
-    what happens to accomplish that:
-
-    1. Python creates a generator object, and invokes the :func:`these`
-       function with the generator as it's sole argument.
-
-    2. The :func:`these` function invokes `next` upon the generator object.
-
-    3. Python invokes ``iter(this)`` which constructs internally another
-       instance of :class:`Term` but with a unique name, and delegates the
-       ``iter`` to this instance.
-
-    4. The newly created named Term instance creates :class:`GeneratorToken`
-       and assign itself to the
-       :attr:`~xotl.ql.interfaces.IGeneratorToken.token` attribute.
-
-       A :class:`QueryPart` is created; the GeneratorToken instance is assigned
-       to the attribute :attr:`~xotl.ql.interfaces.IQueryPart.token`, and
-       `self` is assigned to the attribute
-       :attr:`~xotl.ql.interfaces.IQueryPart.expression`.
-
-       The query part is yielded to the calling :func:`these`.
-
-    5. Python now processes the `if` part of the comprehension.
-
-       - First, ``parent.age`` is processed. The query part's
-         `__getattribute__` method is invoked, which delegates the call to it's
-         :attr:`~IQueryPart.expression` attribute. Since, it is an
-         :class:`Term` instance, it returns another named Term instance.
-
-         A new query part is created with `expression` set to the result, the
-         :attr:`~IQueryPart.token` is inherited from the current query part.
-
-         Upon creation of this new query part, the token's
-         :meth:`~xotl.ql.interfaces.IQueryPartContainer.created_query_part` is
-         called with the newly created query part as its argument.
-
-         The token maintains a stack of created parts. Whenever a new query
-         part is created it pushes it on top of the stack, if the new query
-         part *is not derived from the part on the top* of the stack, otherwise
-         it just replaces the top with the new one. (In fact, it removes all
-         parts from the top of the stack that are somehow contained in the
-         newly created part.)
-
-       - Next, Python invokes the method `__gt__` for the newly created query
-         part which, in turn, delegates the call to its :attr:`expression`
-         attribute.
-
-         The result is again wrapped inside another query part and it's token's
-         ``created_query_part`` is invoked. Since the resultant expression is
-         derived from the previously created part, the token only maintains the
-         last created part in its stack.
-
-    6. Now Python starts to process the "selection" part of the Query, but we
-       don't know that since there's no signal from the language that indicates
-       such an event.
-
-       It processes the `parent.children` by calling the `__getattribute__` of
-       the query part, as before this call is delegated and the result is
-       wrapped with another query part.
-
-       When calling the `created_query_part` method, the token realizes that
-       ``parent.children`` is not derived from ``parent.age > 34``, so it
-       pushes the new part into the stack instead of replacing the top.
-
-       Now the `count(...)` expression is invoked, and using the
-       :class:`xotl.ql.expressions.FunctorOperator` protocol the `_count`
-       method of the returned query part is invoked. Again, this is delegated
-       to the wrapped expression and a new :class:`ExpressionTree` is created
-       and wrapped inside a new query part.
-
-       Once more, the `created_query_part` method is invoked, and this time it
-       replaces the ``parent.children`` on the top of the stack for
-       ``count(parent.children)``.
-
-    7. Now the control is returned to the :func:`these` function and `next`
-       returns a `QueryPart` whose `expression` is equivalent to
-       ``count(parent.children)``.
-
-    8. The QueryPart's `token` attribute is inspected to retrieve any previous
-       *filter expressions* from the parts stack (disregarding the top-most if
-       it's the same as the selection.)
-
-    9. The :func:`these` creates a new :class:`QueryObject` object and extracts the
-       `expression` from the selected query part and assigns it to the
-       :attr:`~xotl.ql.interfaces.IQueryObject.selection` attribute of the query
-       object, any retrieved expressions from the parts stack of the tokens are
-       appended to the :attr:`~xotl.ql.interfaces.IQueryObject.filters` attribute.
-
-    10. For the query above the query object returned will have its arguments
-        with following values:
-
-        selection
-          ``(count(parent.children), )``
-
-        filters
-          ``[parent.age > 34]``
-
-        Actually the ``parent`` will be something like ``this('::i1387')``.
+    general case are both expressions.
 
     '''
     __slots__ = ('_token', '_expression')
@@ -1396,20 +1303,12 @@ def thesefy(target, name=None):
         ...            setattr(self, k, v)
         >>> q = these(which for which in Entity if which.name.startswith('A'))
 
-    The previous query is rougly equivalent to::
+    The previous query is roughly equivalent to::
 
         >>> from xotl.ql.expressions import is_instance
         >>> q2 = these(which for which in this
         ...                if is_instance(which, Entity)
         ...                if which.name.startswith('A'))
-
-    You may test, that an `in_instance(..., Entity)` expression is in the query
-    object filters::
-
-        >>> from xoutil.proxy import unboxed
-        >>> any(unboxed(filter).operation is not is_instance
-        ...     or filter.children[1] is Entity for filter in q.filters)
-        True
 
     This is only useful if your real class does not have a metaclass of its own
     that do that. However, if you do have a metaclass with an `__iter__` method
@@ -1427,7 +1326,7 @@ def thesefy(target, name=None):
         >>> q.selection        # doctest: +ELLIPSIS
         (<this('Entity') at 0x...>,)
 
-    This way it's easier to doc-test::
+    This way it's easier to create tests::
 
         >>> filters = q.filters
         >>> expected_is = is_instance(this('Entity'), Entity)
@@ -1438,6 +1337,7 @@ def thesefy(target, name=None):
 
         >>> any(unboxed(expected_filter) == f for f in filters)
         True
+
     '''
     from xoutil.objects import nameof
     class new_meta(type(target)):
@@ -1461,7 +1361,8 @@ def thesefy(target, name=None):
                 yield query_part
             else:
                 raise TypeError('Class {target} has a metaclass with an '
-                                '__iter__ that does not support thesefy'.format(target=target))
+                                '__iter__ that does not support thesefy'
+                                .format(target=target))
 
     class new_class(target):
         __metaclass__ = new_meta

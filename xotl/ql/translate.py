@@ -23,7 +23,7 @@
 # Created on Jul 2, 2012
 
 '''
-The main purporses of this module are two:
+The main purposes of this module are two:
 
 - To provide common query/expression translation framework from query objects
   to data store languages.
@@ -117,20 +117,20 @@ def cofind_tokens(*expressions, **kwargs):
     - A dict that may have `expr` and `accept` keys.
 
     The default behavior helps to catch all named ITerm instances in an
-    expression. This is usefull for finding every "name" in a query, which may
+    expression. This is useful for finding every "name" in a query, which may
     no appear in the query selection. For instance we, may have a model that
     relates Person objects indirectly via a Relation object::
 
         >>> from xotl.ql.core import thesefy
-        >>> @thesefy
+        >>> @thesefy('person')
         ... class Person(object):
         ...     pass
 
-        >>> @thesefy
+        >>> @thesefy('relation')
         ... class Relation(object):
         ...    pass
 
-    Then the following query::
+    Then, for the following query::
 
         >>> from xotl.ql.core import these
         >>> from itertools import izip
@@ -139,10 +139,19 @@ def cofind_tokens(*expressions, **kwargs):
         ...               for rel in Relation
         ...               if (rel.subject == person) & (rel.obj == partner))
 
-    would have two selections::
+    if we need to find every single named term in the filters of the query,
+    we would see that there are seven:
 
-        >>> person, partner = query.selection
+        - `person`, `partner` and `rel` (as given by the `is_instance(...)`
+          filters ``@thesefy`` injects)
+
+        - `rel.subject`, `person`, `rel.obj` and `partner` in the explicit
+          filter.
+
+        >>> len(list(cofind_tokens(*query.filters)))
+        7
     '''
+    is_expression = IExpressionTree.providedBy
     accept = kwargs.get('accept', lambda x: _instance_of(ITerm)(x) and x.name)
     with context(UNPROXIFING_CONTEXT):
         queue = list(expressions)
@@ -151,7 +160,7 @@ def cofind_tokens(*expressions, **kwargs):
             msg = None
             if accept(current):
                 msg = yield current
-            if IExpressionTree.providedBy(current):
+            if is_expression(current):
                 queue.extend(current.children)
                 named_children = current.named_children
                 queue.extend(named_children[key] for key in named_children)
@@ -207,8 +216,8 @@ def cocreate_plan(query, **kwargs):
          Since all examples so far of sub-queries as generators tokens are not
          quite convincing, we won't consider that.
 
-
     '''
+    pass
 
 
 
@@ -223,7 +232,7 @@ def init(settings=None):
        of your query-related configuration.
 
        This is only intended to allow testing of the translation common
-       framework by installing query translator that searches over Python's VM
+       framework by configuring query translator that searches over Python's VM
        memory.
 
     '''
@@ -238,5 +247,3 @@ def init(settings=None):
     else:
         manager.registerUtility(self, IQueryConfiguration)
     manager.registerUtility(self, IQueryTranslator)
-
-

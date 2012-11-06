@@ -23,7 +23,7 @@ from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorators import assignment_operator
 
-from xotl.ql.core import These
+from xotl.ql.core import Term
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'

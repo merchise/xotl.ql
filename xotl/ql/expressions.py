@@ -39,7 +39,6 @@ from functools import partial
 from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
-from xoutil.deprecation import deprecated
 
 from zope.interface import implements, directlyProvides
 
@@ -224,8 +223,8 @@ class OperatorType(type):
         operation.
 
         Python has a several protocols to invoke method in-place of operators
-        in expressions. See the :ref:`Python's data model <py:datamodel>` for
-        more information.
+        in expressions. See the `Python's data model
+        <http://doc.python.org/reference/datamodel.html>` for more information.
 
         This is the name of the method that is invoked by Python when the
         operation is found in a expression.
@@ -254,11 +253,11 @@ class _FunctorOperatorType(OperatorType):
     A metaclass for :class:`FunctorOperator`.
 
     This provides operators that are called as functions with a dual behavior
-    upon instantiantion. To allow operands to customize how to place
+    upon instantiation. To allow operands to customize how to place
     themselves in the operation, the "protocol" of calling the operand's
     method is implemented here, but if the operand just wants to build the
     `op(self, *others)` expression, we stack the first operand to avoid
-    infinit recursion.
+    infinite recursion.
 
     This means that if you have an `opfunction` class that inherits from
     :class:`FunctorOperator` (or otherwise is an instance of this metaclass),
@@ -276,23 +275,24 @@ class _FunctorOperatorType(OperatorType):
             method = getattr(unboxed(head), name, None) if name else None
             if method and not stack[(head, method)]:
                 func = getattr(method, 'im_func', method)
-                # manu: Don't use weaved since it won't work with These instance
-                #       because of __slots__; use a stack instead.
                 with stack((head, method)):
                     if tail:
                         return func(head, *tail, **named)
                     else:
                         return func(head)
             else:
-                return super(_FunctorOperatorType, self).__call__(*children, **named)
+                return super(_FunctorOperatorType, self).__call__(*children,
+                                                                  **named)
         else:
-            return super(_FunctorOperatorType, self).__call__(*children, **named)
+            return super(_FunctorOperatorType, self).__call__(*children,
+                                                              **named)
 
 
 
 class FunctorOperator(Operator):
     '''
-    The base class for operations that are invoked explictly by the programmer.
+    The base class for operations that are invoked explicitly by the
+    programmer.
 
     Some operations like (:class:`count`, :class:`is_a`, etc.) are not called
     implicitly by Python and you must use them as "functions". So any
@@ -306,7 +306,7 @@ class FunctorOperator(Operator):
     parsed Python won't call the `count` method of `X`.
 
     This class adds such behavior. Operations that are always invoked
-    explicitly by the programmer instead of Python's implicit invokation
+    explicitly by the programmer instead of Python's implicit invocation
     protocol, **should** inherit from this class. We take steps to prevent
     infinity recursion if an operand implements a protocol but calls the
     operator to build the final expression.
@@ -815,12 +815,12 @@ class AbsoluteValueUnaryFunction(Operator):
 abs_ = AbsoluteValueUnaryFunction
 
 
-# TODO: Review any_ and all_
+
 class AllFunction(FunctorOperator):
     '''
     The representation of the `all` function.
 
-    There are three possible interpretations/syntaxis for :func:`all_`:
+    There are three possible interpretations/syntaxes for :func:`all_`:
 
     1. It takes an expression (probably a subquery) and returns true only if
        every object is true::
@@ -965,7 +965,7 @@ class InvokeFunction(FunctorOperator):
 invoke = call = InvokeFunction
 
 
-#@deprecated(call)
+
 class StartsWithOperator(FunctorOperator):
     '''
     The `startswith(string, prefix)` operator::
@@ -974,7 +974,9 @@ class StartsWithOperator(FunctorOperator):
          >>> str(e)
          "startswith('something', 's')"
 
-    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
+    .. note::
+
+       At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
     '''
     _format = 'startswith({0!r}, {1!r})'
     arity = BINARY
@@ -985,7 +987,6 @@ startswith = StartsWithOperator
 
 
 
-#@deprecated(call)
 class EndsWithOperator(FunctorOperator):
     '''
     The `endswith(string, suffix)` operator::
@@ -995,7 +996,9 @@ class EndsWithOperator(FunctorOperator):
         "endswith('something', 's')"
 
 
-    .. note:: At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
+    .. note::
+
+       At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
     '''
     _format = 'endswith({0!r}, {1!r})'
     arity = BINARY
@@ -1024,8 +1027,8 @@ class StringFormatFunction(FunctorOperator):
 
     Example::
 
-        >>> strformat('{0} alas {1}', 1, 2)    # doctest: +ELLIPSIS
-        <expression 'strformat({0} alas {1}, 1, 2)' ...>
+        >>> strformat('{0} alas {1}, {a}', 1, 2, a=1)    # doctest: +ELLIPSIS
+        <expression 'strformat({0} alas {1}, {a}, 1, 2, a=1)' ...>
 
     .. todo::
 
@@ -1038,12 +1041,13 @@ class StringFormatFunction(FunctorOperator):
            these(person for person in this if person.name.startswith('Manu'))
 
        string formatting will be most likely used in the *selection* (the
-       projection in the query slang) like::
+       projection in the relational slang) like::
 
-           these(strformat('Your name is: {0}', person.name) for person in this)
+           these(strformat('Your name is: {0}', person.name)
+                 for person in this)
     '''
     arity = N_ARITY
-    _format = 'strformat({0})'
+    _format = 'strformat({0}{1})'
 
 
 strformat = StringFormatFunction
@@ -1224,12 +1228,14 @@ class ExpressionTree(object):
         '''
         self._op = operation
         self._children = tuple(_extract_target(child) for child in children)
-        self._named_children = {name: _extract_target(value) for name, value in named_children.items()}
+        self._named_children = {name: _extract_target(value)
+                                for name, value in named_children.items()}
 
 
     @property
     def op(self):
-        'The operator class of this expression. It should be a subclass of :class:`Operator`'
+        '''The operator class of this expression. It should be a subclass of
+        :class:`Operator`'''
         return self._op
     operation = op
 
@@ -1316,7 +1322,7 @@ class q(object):
     `q` wrappers are quite transparent, meaning that they will proxy every
     supported operation to its wrapped object.
 
-    `q`-objects are based upon xoutil's :mod:`proxy module
+    `q`-objects are based upon the xoutil's module :mod:`proxy module
     <xoutil:xoutil.proxy>`; so you should read its documentation.
 
     `q`-objects add support for building expressions using the wrapped object.
@@ -1332,8 +1338,7 @@ class q(object):
         [<type 'str'>, <type 'int'>]
 
     '''
-    def r(f):
-        return lambda self, other: f(other, self)
+    r = lambda f: lambda self, other: f(other, self)
 
     query_fragment = _build_op_class(b'query_fragment',
                                      (('__and__', and_, True),
