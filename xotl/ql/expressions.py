@@ -164,7 +164,6 @@ class _false(object):
         return "False"
 
 
-
 class OperatorType(type):
     '''The type of operators in an expression.'''
 
@@ -173,8 +172,11 @@ class OperatorType(type):
     def __init__(self, name, bases, attrs):
         from xoutil.objects import nameof
         OperatorType.operators.append(self)
+        _PROVIDES = ('This {which} directly provides '
+                     ':class:`xotl.ql.interfaces.{interface}`.\n\n')
         doc = ''
-        for attr, trans in (('arity', nameof), ('_method_name', repr), ('_format', repr)):
+        for attr, trans in (('arity', nameof), ('_method_name', repr),
+                            ('_format', repr)):
             value = getattr(self, attr, None)
             if value:
                 v = trans(value).replace('_', r'\_')
@@ -188,17 +190,15 @@ class OperatorType(type):
         if getattr(self, '_rmethod_name', False):
             interfaces += (ISyntacticallyReversibleOperation, )
             if 'ISyntacticallyReversibleOperation' not in self.__doc__:
-                doc += ('\n    This class directly provides '
-                        ':class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation`.'
-                        '\n\n'
-                        '        >>> ISyntacticallyReversibleOperation.providedBy({name})\n        True'.format(name=name))
+                doc += _PROVIDES.format(
+                            which='class',
+                            interface='ISyntacticallyReversibleOperation')
         if getattr(self, 'equivalence_test', False):
             interfaces += (ISynctacticallyCommutativeOperation, )
             if 'ISynctacticallyCommutativeOperation' not in self.__doc__:
-                doc += ('\n    This class directly provides '
-                        ':class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`::'
-                        '\n\n'
-                        '        >>> ISynctacticallyCommutativeOperation.providedBy({name})\n        True'.format(name=name))
+                doc += _PROVIDES.format(
+                            which='class',
+                            interface='ISynctacticallyCommutativeOperation')
         if doc:
             self.__doc__ += '\n\n    **Interface(s)**:\n\n' + doc
 

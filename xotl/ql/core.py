@@ -242,7 +242,8 @@ class Term(object):
                 bound_term = Term(name, parent=parent, binding=token)
             else:
                 with context('_INVALID_THESE_NAME'):
-                    bound_term = Term(self._newname(), parent=parent, binding=token)
+                    bound_term = Term(self._newname(), parent=parent,
+                                      binding=token)
         instance = QueryPart(expression=bound_term, token=token)
         bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
         assert bubble
@@ -685,6 +686,8 @@ class QueryParticlesBubble(object):
 
 
     def mergable(self, expression):
+        'Returns true if `expression` is mergeable with the last captured part'
+        from xoutil.compat import itervalues_
         assert context[UNPROXIFING_CONTEXT]
         is_expression = IExpressionTree.providedBy
         top = self._parts[-1]
@@ -693,22 +696,10 @@ class QueryParticlesBubble(object):
         elif is_expression(expression):
             result = any(child is top for child in expression.children)
             if not result:
-                from xoutil.compat import itervalues_
                 return any(child is top
                            for child in itervalues_(expression.named_children))
             else:
                 return result
-
-            # XXX: I don't see any tests failing because if we comment the
-            #      lines below. That's probably because in the particle bubble
-            #      the ordering is global and bottom- top.  Previously it was a
-            #      "local" accounting of events, in each of the generator
-            #      tokens.
-
-#            if not result and is_expression(top):
-#                return any(child is expression for child in top.children)
-#            else:
-#                return result
         elif ITerm.providedBy(expression):
             return expression.parent is top
         else:
@@ -854,8 +845,8 @@ class _QueryObjectType(type):
                 selected_parts = (selected_parts, )
             selected_parts = tuple(reversed(selected_parts))
             selection = []
-            tokens = bubble._tokens
-            filters = bubble._parts[:]
+            tokens = bubble.tokens
+            filters = bubble.parts
             for part in selected_parts:
                 expr = part.expression
                 if filters and expr is filters[-1]:

@@ -189,20 +189,22 @@ if __TEST_DESIGN_DECISIONS:
 
 
         def test_rigth_bindings(self):
-            query = these((parent, child)
-                          for parent in this('parent')
-                          if parent.children.updated_since(days=1)
-                          for child in parent.children
-                          if child.age < 4)
+            these((parent, child)
+                  for parent in this('parent')
+                  if parent.children.updated_since(days=1)
+                  for child in parent.children
+                  if child.age < 4)
             parts = self.query_state_machine.parts
             bubble_tokens = self.query_state_machine.tokens
             with context(UNPROXIFING_CONTEXT):
-                parent_token = next(token
-                                    for token in bubble_tokens
-                                    if token.expression == this('parent'))
-                children_token = next(token
-                                    for token in bubble_tokens
-                                    if token.expression != this('parent'))
+                parent_token = next((token
+                                     for token in bubble_tokens
+                                     if token.expression == this('parent')),
+                                    None)
+                children_token = next((token
+                                       for token in bubble_tokens
+                                       if token.expression != this('parent')),
+                                      None)
             child_age_filter = parts.pop(-1)
             parent_children_updated_filter = parts.pop(-1)
             with self.assertRaises(IndexError):

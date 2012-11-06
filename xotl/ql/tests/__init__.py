@@ -33,7 +33,8 @@ def logging_aspect(output_to=None):
         def _after_(self, method, result, exc_value, *args, **kwargs):
             cls = nameof(type(self)) if self else None
             if cls:
-                method_name = '{cls}.{method}'.format(cls=cls, method=nameof(method))
+                method_name = '{cls}.{method}'.format(cls=cls,
+                                                      method=nameof(method))
             else:
                 method_name = nameof(method)
             if self:
@@ -43,7 +44,7 @@ def logging_aspect(output_to=None):
                 arguments += ', '.join('%s=%r' % (k, v)
                                        for k, v in iteritems_(kwargs))
             message = 'Called {method}({arguments})'.format(method=method_name,
-                                                             arguments=arguments)
+                                                            arguments=arguments)
             logger = logging.getLogger(cls)
             logger.setLevel(logging.DEBUG)
             if output_to and not logger.handlers:
