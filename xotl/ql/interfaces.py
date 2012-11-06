@@ -27,6 +27,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
@@ -333,7 +334,12 @@ class ITerm(IExpressionCapable):
     parent = Attribute('Another ITerm instance from which self is drawn.')
 
     def __iter__():
-        'These instances should be iterable'
+        '''ITerm instances should be iterable. Also this should yield a single
+        instance of a :class:`IQueryPart` whose :attr:`~IQueryPart.expression`
+        should have a bound copy of `self`. The :attr:`~IBoundTerm.binding`
+        should be made to an instance of a :class:`IGeneratorToken`, whose
+        :attr:`~IGeneratorToken.expression` attribute should be `self`.
+        '''
 
 
     def __getattribute__(attr):
