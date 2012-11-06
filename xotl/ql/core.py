@@ -1288,6 +1288,12 @@ class QueryPart(object):
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
             expression = self.expression
+            # XXX: In cases of sub-queries the part will be emitted, but the
+            #      iter will be hold, so the token won't be emitted and the
+            #      part won't be removed. So we're bringing this check back.
+            bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+            if bubble._parts and expression is bubble._parts[-1]:
+                bubble._parts.pop(-1)
             return iter(expression)
 
 
