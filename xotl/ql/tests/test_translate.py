@@ -45,11 +45,12 @@ __author__ = 'manu'
 
 # Initialize and configure the query translation components provided by the
 # translate module. DON'T REMOVE since, some tests actually test this kind of
-# facility.
+# facility. Also, DON'T put it the setUp of any test cases, cause it will
+# likely fail.
 init()
 
 
-# The following classes are just a simple Model
+# The following classes are just a simple Object Model
 class TransitiveRelationDescriptor(object):
     def __init__(self, name, target=None):
         self.name = name
@@ -80,11 +81,17 @@ class Entity(object):
 
 
 def date_property(internal_attr_name):
+    '''Creates a property date property that accepts string repr of dates
+
+    :param internal_attr_name: The name of the attribute that will be used
+                               internally to store the value. It should be
+                               different that the name of the property itself.
+    '''
     def getter(self):
         return getattr(self, internal_attr_name)
 
     def setter(self, value):
-        from datetime import datetime, timedelta
+        from datetime import datetime
         if not isinstance(value, datetime):
             import dateutil.parser
             value = dateutil.parser.parse(value)
@@ -96,13 +103,25 @@ def date_property(internal_attr_name):
     return property(getter, setter, fdel)
 
 
-def age_property(attr_name):
+
+def age_property(start_attr_name, end_attr_name=None):
+    '''Creates a property for calculating the `age` given an
+    attribute that holds the starting date of the event.
+
+    :param start_attr_name: The name of the attribute that holds the
+                            starting date of the event.
+    :param end_attr_name: The name of the attribute that holds the end date
+                          of the event. If None, each time `age` is calculated
+                          `today` is used as the end date.
+    :returns: The age in years (using 365.25 days per year).
+    '''
     @property
     def age(self):
         from datetime import datetime
-        today = datetime.today()
-        date = getattr(self, attr_name)
-        age = today - date
+        end = datetime.today() if not end_attr_name else getattr(self,
+                                                                 end_attr_name)
+        date = getattr(self, start_attr_name)
+        age = end - date
         return age.days // 365.25
     return age
 
