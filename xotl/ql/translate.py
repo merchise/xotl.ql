@@ -194,9 +194,9 @@ def cocreate_plan(query, **kwargs):
        parent of another). For instance in the query::
 
            query = these((parent, child)
-                           for parent in this
-                           if parent.children & (parent.age > 34)
-                           for child in parent.children if child.age < 5)
+                         for parent in this
+                         if parent.children & (parent.age > 34)
+                         for child in parent.children if child.age < 5)
 
         The `parent.children` generator tokens is *derived* from the token
         `this`, so there should be a relation between the two.
@@ -204,7 +204,7 @@ def cocreate_plan(query, **kwargs):
        .. todo::
 
           If we allow to have subqueries, it's not clear how to correlate
-          tokens. A given token may be whole query::
+          tokens. A given token may be a whole query::
 
               p = these((parent, partner)
                         for parent in this('parent')
