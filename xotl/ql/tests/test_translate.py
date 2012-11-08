@@ -204,10 +204,16 @@ class TestTranslatorTools(unittest.TestCase):
             self.assertIn(partner_is_a_person, filters)
             filters.remove(person_is_a_person)
             filters.remove(partner_is_a_person)
-            self.assertIs(1, len(filters))
+            # left filter are is_a(rel, Partnership) and the explicit we see in
+            # the query expression
+            self.assertIs(2, len(filters))
 
+            rel_is_a = next(f for f in filters
+                            if f.operation == is_a)
+            filters.remove(rel_is_a)
+
+            # there are 4 named instances in the left filter
             # (rel.subject == person) & (rel.obj == partner)
-            # there are 4 named instances there
             self.assertIs(4, len(list(cofind_tokens(filters[0]))))
 
 
