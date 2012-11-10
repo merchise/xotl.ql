@@ -194,6 +194,20 @@ if __TEST_DESIGN_DECISIONS:
                   if parent.children.updated_since(days=1)
                   for child in parent.children
                   if child.age < 4)
+            # The query has two filters:
+            #
+            #    this('parent').children & (count(this('parent').children) > 4)
+            #    this('parent').children.age < 5
+            #
+            # If we regard every term `this('parent').children` as the *token*,
+            # what would be the meaning of the first condition? How do we
+            # distinguish from conditions over the named-token and the
+            # expression that generates the token?
+            # i.e in `for child in parent.children`, the `child` token
+            # is *not* the same as the term `parent.children`.
+            #
+            # Now the token of the relevant query might help, but then the
+            # machine should not strip those tokens from query-parts.
             parts = self.query_state_machine.parts
             bubble_tokens = self.query_state_machine.tokens
             with context(UNPROXIFING_CONTEXT):
@@ -219,28 +233,6 @@ if __TEST_DESIGN_DECISIONS:
                 self.assertEqual(parent_children_term.binding, parent_token)
                 self.assertEqual(dict(days=1),
                                  parent_children_updated_filter.named_children)
-
-        def test_tokens_as_names(self):
-            next((parent, child)
-                 for parent in this('parent')
-                 if parent.children & parent.children.length() > 4
-                 for child in parent.children
-                 if child.age < 5)
-            # The query has two filters:
-            #
-            #    this('parent').children & (count(this('parent').children) > 4)
-            #    this('parent').children.age < 5
-            #
-            # If we regard every term `this('parent').children` as the *token*,
-            # what would be the meaning of the first condition? How do we
-            # distinguish from conditions over the named-token and the
-            # expression that generates the token?
-            # i.e in `for child in parent.children`, the `child` token
-            # is *not* the same as the term `parent.children`.
-            #
-            # Now the token of the relevant query might help, but then the
-            # machine should not strip those tokens from query-parts.
-
 
 
         def test_complex_query_building_with_dict(self):
