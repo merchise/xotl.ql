@@ -127,40 +127,41 @@ class _boolean(type):
         return _true if self is _false else _false
 
 
-class _true(object):
-    __metaclass__ = _boolean
-
     def __and__(self, other):
-        return other
+        '''
+            >>> (_true & 1) is 1
+            True
 
+            >>> (_false & 3) is _false
+            True
+        '''
+        if self is _true:
+            return other
+        else:
+            return self
     __rand__ = __and__
 
     def __or__(self, other):
-        return self
+        '''
+            >>> (_true | 1) is _true
+            True
 
+            >>> (_false | 3) is 3
+            True
+        '''
+        if self is _false:
+            return other
+        else:
+            return self
     __ror__ = __or__
 
-    def __repr__(self):
-        return "True"
 
-
+class _true(object):
+    __metaclass__ = _boolean
 
 
 class _false(object):
     __metaclass__ = _boolean
-
-    def __and__(self, other):
-        return self
-
-    __rand__ = __and__
-
-    def __or__(self, other):
-        return other
-
-    __ror__ = __or__
-
-    def __repr__(self):
-        return "False"
 
 
 class OperatorType(type):
