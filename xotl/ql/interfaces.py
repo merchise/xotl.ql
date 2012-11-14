@@ -302,25 +302,6 @@ class IQueryPart(IExpressionCapable):
                            'the query-related stuff.')
 
 
-
-def _proper_generating_expression(part):
-    if not IThese.providedBy(part.expression):
-        raise TypeError('GeneratingQuery parts allows only ITerm instances.')
-
-
-
-class IGeneratingQueryPart(IQueryPart):
-    '''
-    A GeneratingQuery part is a query part that is used as an argument to the
-    built-in `iter()` function, i.e. a generator expression iterates over it.
-
-    GeneratingQuery parts just need to stand for expressions which are ITerm
-    instances.
-    '''
-    invariant(_proper_generating_expression)
-
-
-
 class ITerm(IExpressionCapable):
     '''ITerm instances are meant to represent the *whole* universe of objects.
 
