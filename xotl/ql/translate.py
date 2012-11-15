@@ -238,8 +238,10 @@ def init(settings=None):
     '''
     import sys
     from zope.component import getSiteManager
-    from .interfaces import IQueryConfiguration, IQueryTranslator
+    from zope.interface import directlyProvides
+    from .interfaces import IQueryConfiguration
     self = sys.modules[__name__]
+    directlyProvides(self, IQueryConfiguration, IQueryTranslator)
     manager = getSiteManager()
     configurator = manager.queryUtility(IQueryConfiguration)
     if configurator:
