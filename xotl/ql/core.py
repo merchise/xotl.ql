@@ -997,14 +997,20 @@ class QueryObject(object):
         if state is Unset:
             # TODO: This will change, configuration vs deployment.
             #       How to inject translator into a global/local context?
-            name = getUtility(IQueryConfiguration).query_translator_name
+            conf = getUtility(IQueryConfiguration)
+            name = getattr(conf, 'default_translator_name', None)
             translator = getUtility(IQueryTranslator,
                                     name if name else b'default')
             query_plan = translator.build_plan(self)
             state = self._query_state = query_plan()
-        result, state = next(state, (Unset, state))
+        result = next(state, (Unset, Unset))
+        if isinstance(result, tuple):
+            result, state = result
+        else:
+            state = Unset
         if result is not Unset:
-            self._query_state = state
+            if state:
+                self._query_state = state
             return result
         else:
             delattr(self, '_query_state')
