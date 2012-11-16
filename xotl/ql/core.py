@@ -71,8 +71,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__all__ = (b'this', b'these', )
-
+__all__ = (b'this', b'these',)
 
 
 @implementer(ITerm)
@@ -95,7 +94,6 @@ class Term(object):
             if binding:
                 self.binding = binding
 
-
     @classmethod
     def validate_name(cls, name):
         '''
@@ -113,7 +111,6 @@ class Term(object):
             raise NameError('Invalid identifier %r for a named Term '
                             'instance' % name)
 
-
     @property
     def name(self):
         '''
@@ -121,7 +118,6 @@ class Term(object):
         other in a query where two instances may represent different objects.
         '''
         return getattr(self, '_name', None)
-
 
     @property
     def parent(self):
@@ -131,7 +127,6 @@ class Term(object):
         name)`` allows to distinguish two instances from each other.
         '''
         return getattr(self, '_parent', None)
-
 
     @property
     def root_parent(self):
@@ -144,7 +139,6 @@ class Term(object):
         else:
             return self
 
-
     @property
     def binding(self):
         result = getattr(self, '_proper_binding', None)
@@ -154,7 +148,6 @@ class Term(object):
             parent = parent.parent
         return result
 
-
     @binding.setter
     def binding(self, value):
         if value:
@@ -163,11 +156,9 @@ class Term(object):
             noLongerProvides(self, IBoundTerm)
         self._proper_binding = value
 
-
     @classmethod
     def _newname(cls):
         return '::i{count}'.format(count=next(cls._counter))
-
 
     def __getattribute__(self, attr):
         # Notice we can't use the __getattr__ way because then things like
@@ -179,7 +170,6 @@ class Term(object):
         else:
             return Term(name=attr, parent=self)
 
-
     def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             parent = self.parent
@@ -188,7 +178,6 @@ class Term(object):
             return ExpressionTree(invoke, self, *args, **kwargs)
         else:
             raise TypeError()
-
 
     def __iter__(self):
         '''
@@ -249,7 +238,6 @@ class Term(object):
         bubble.capture_token(token)
         yield instance
 
-
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
@@ -263,10 +251,8 @@ class Term(object):
         else:  # parent and not name:
             assert False
 
-
     def __repr__(self):
         return '<%s at 0x%x>' % (str(self), id(self))
-
 
     def __eq__(self, other):
         '''
@@ -294,7 +280,6 @@ class Term(object):
                 # for it.
                 return _true
 
-
     def __ne__(self, other):
         '''
             >>> with context(UNPROXIFING_CONTEXT):
@@ -319,7 +304,6 @@ class Term(object):
             else:
                 return _false
 
-
     def __lt__(self, other):
         '''
             >>> this < 1     # doctest: +ELLIPSIS
@@ -327,7 +311,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import lt
         return lt(self, other)
-
 
     def __gt__(self, other):
         '''
@@ -337,7 +320,6 @@ class Term(object):
         from xotl.ql.expressions import gt
         return gt(self, other)
 
-
     def __le__(self, other):
         '''
             >>> this <= 1     # doctest: +ELLIPSIS
@@ -345,7 +327,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import le
         return le(self, other)
-
 
     def __ge__(self, other):
         '''
@@ -355,7 +336,6 @@ class Term(object):
         from xotl.ql.expressions import ge
         return ge(self, other)
 
-
     def __and__(self, other):
         '''
             >>> this & 1     # doctest: +ELLIPSIS
@@ -363,7 +343,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import and_
         return and_(self, other)
-
 
     def __rand__(self, other):
         '''
@@ -373,7 +352,6 @@ class Term(object):
         from xotl.ql.expressions import and_
         return and_(other, self)
 
-
     def __or__(self, other):
         '''
             >>> this | 1     # doctest: +ELLIPSIS
@@ -381,7 +359,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import or_
         return or_(self, other)
-
 
     def __ror__(self, other):
         '''
@@ -391,7 +368,6 @@ class Term(object):
         from xotl.ql.expressions import or_
         return or_(other, self)
 
-
     def __xor__(self, other):
         '''
             >>> this ^ 1     # doctest: +ELLIPSIS
@@ -399,7 +375,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import xor_
         return xor_(self, other)
-
 
     def __rxor__(self, other):
         '''
@@ -409,7 +384,6 @@ class Term(object):
         from xotl.ql.expressions import xor_
         return xor_(other, self)
 
-
     def __add__(self, other):
         '''
             >>> this + 1       # doctest: +ELLIPSIS
@@ -417,7 +391,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import add
         return add(self, other)
-
 
     def __radd__(self, other):
         '''
@@ -427,7 +400,6 @@ class Term(object):
         from xotl.ql.expressions import add
         return add(other, self)
 
-
     def __sub__(self, other):
         '''
             >>> this - 1      # doctest: +ELLIPSIS
@@ -435,7 +407,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import sub
         return sub(self, other)
-
 
     def __rsub__(self, other):
         '''
@@ -445,7 +416,6 @@ class Term(object):
         from xotl.ql.expressions import sub
         return sub(other, self)
 
-
     def __mul__(self, other):
         '''
             >>> this * 1    # doctest: +ELLIPSIS
@@ -454,7 +424,6 @@ class Term(object):
         from xotl.ql.expressions import mul
         return mul(self, other)
 
-
     def __rmul__(self, other):
         '''
             >>> 1 * this    # doctest: +ELLIPSIS
@@ -462,7 +431,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import mul
         return mul(other, self)
-
 
     def __div__(self, other):
         '''
@@ -473,7 +441,6 @@ class Term(object):
         return div(self, other)
     __truediv__ = __div__
 
-
     def __rdiv__(self, other):
         '''
             >>> 1 / this    # doctest: +ELLIPSIS
@@ -483,7 +450,6 @@ class Term(object):
         return div(other, self)
     __rtruediv__ = __rdiv__
 
-
     def __floordiv__(self, other):
         '''
             >>> this // 1    # doctest: +ELLIPSIS
@@ -491,7 +457,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import floordiv
         return floordiv(self, other)
-
 
     def __rfloordiv__(self, other):
         '''
@@ -501,7 +466,6 @@ class Term(object):
         from xotl.ql.expressions import floordiv
         return floordiv(other, self)
 
-
     def __mod__(self, other):
         '''
             >>> this % 1    # doctest: +ELLIPSIS
@@ -509,7 +473,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import mod
         return mod(self, other)
-
 
     def __rmod__(self, other):
         '''
@@ -519,7 +482,6 @@ class Term(object):
         from xotl.ql.expressions import mod
         return mod(other, self)
 
-
     def __pow__(self, other):
         '''
             >>> this**1    # doctest: +ELLIPSIS
@@ -527,7 +489,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import pow_
         return pow_(self, other)
-
 
     def __rpow__(self, other):
         '''
@@ -537,7 +498,6 @@ class Term(object):
         from xotl.ql.expressions import pow_
         return pow_(other, self)
 
-
     def __lshift__(self, other):
         '''
             >>> this << 1    # doctest: +ELLIPSIS
@@ -545,7 +505,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import lshift
         return lshift(self, other)
-
 
     def __rlshift__(self, other):
         '''
@@ -555,7 +514,6 @@ class Term(object):
         from xotl.ql.expressions import lshift
         return lshift(other, self)
 
-
     def __rshift__(self, other):
         '''
             >>> this >> 1    # doctest: +ELLIPSIS
@@ -563,7 +521,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import rshift
         return rshift(self, other)
-
 
     def __rrshift__(self, other):
         '''
@@ -573,7 +530,6 @@ class Term(object):
         from xotl.ql.expressions import rshift
         return rshift(other, self)
 
-
     def __neg__(self):
         '''
             >>> -this         # doctest: +ELLIPSIS
@@ -581,7 +537,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import neg
         return neg(self)
-
 
     def __abs__(self):
         '''
@@ -591,7 +546,6 @@ class Term(object):
         from xotl.ql.expressions import abs_
         return abs_(self)
 
-
     def __pos__(self):
         '''
             >>> +this         # doctest: +ELLIPSIS
@@ -600,7 +554,6 @@ class Term(object):
         from xotl.ql.expressions import pos
         return pos(self)
 
-
     def __invert__(self):
         '''
             >>> ~this         # doctest: +ELLIPSIS
@@ -608,7 +561,6 @@ class Term(object):
         '''
         from xotl.ql.expressions import invert
         return invert(self)
-
 
 
 class ThisClass(Term):
@@ -620,17 +572,14 @@ class ThisClass(Term):
 
     '''
 
-
     def __init__(self, *args, **kwargs):
         super(ThisClass, self).__init__(*args, **kwargs)
         self.__doc__ = ('The `this` object is a unnamed universal '
                           '"selector" that may be placed in expressions and '
                           'queries')
 
-
     def __call__(self, name, **kwargs):
         return Term(name, **kwargs)
-
 
     def __repr__(self):
         # XXX: Hack to avoid sphinx writing <this at 0x...> in the docs.
@@ -640,12 +589,9 @@ class ThisClass(Term):
         return None if sphinxed else super(ThisClass, self).__repr__()
 
 
-
-
 #: The `this` object is a unnamed universal "selector" that may be placed in
 #: expressions and queries.
 this = ThisClass()
-
 
 
 def provides_any(which, *interfaces):
@@ -653,12 +599,9 @@ def provides_any(which, *interfaces):
         return any(interface.providedBy(which) for interface in interfaces)
 
 
-
 def provides_all(which, *interfaces):
     with context(UNPROXIFING_CONTEXT):
         return all(interface.providedBy(which) for interface in interfaces)
-
-
 
 
 @implementer(IQueryParticlesBubble)
@@ -668,21 +611,17 @@ class QueryParticlesBubble(object):
         self._parts = []
         self._tokens = []
 
-
     @property
     def parts(self):
         return self._parts[:]
-
 
     @property
     def tokens(self):
         return self._tokens[:]
 
-
     @property
     def particles(self):
         return self._particles[:]
-
 
     def mergable(self, expression):
         'Returns true if `expression` is mergeable with the last captured part'
@@ -704,7 +643,6 @@ class QueryParticlesBubble(object):
         else:
             raise TypeError('Parts should be either these instance or '
                             'expression trees; not %s' % type(expression))
-
 
     def capture_part(self, part):
         '''Captures an emitted query part.
@@ -756,7 +694,6 @@ class QueryParticlesBubble(object):
             else:
                 assert False
 
-
     def capture_token(self, token):
         '''Captures an emitted token.
 
@@ -786,7 +723,6 @@ class QueryParticlesBubble(object):
         if token not in tokens:
             tokens.append(token)
             self._particles.append(token)
-
 
 
 class _QueryObjectType(type):
@@ -847,7 +783,7 @@ class _QueryObjectType(type):
             selected_parts = next(comprehension)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
-                selected_parts = (selected_parts, )
+                selected_parts = (selected_parts,)
             selected_parts = tuple(reversed(selected_parts))
             selection = []
             tokens = bubble.tokens
@@ -878,7 +814,6 @@ class _QueryObjectType(type):
                                          'limit', 'step')}
             return query
 
-
     def __call__(self, *args, **kwargs):
         if args:
             from types import GeneratorType
@@ -893,14 +828,12 @@ class _QueryObjectType(type):
         return result
 
 
-
 @implementer(IQueryObject)
 class QueryObject(object):
     '''
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
     __metaclass__ = _QueryObjectType
-
 
     def __init__(self):
         self._selection = None
@@ -910,17 +843,15 @@ class QueryObject(object):
         self.partition = None
         self.params = {}
 
-
     @property
     def selection(self):
         return self._selection
-
 
     @selection.setter
     def selection(self, value):
         ok = lambda v: isinstance(v, (ExpressionTree, Term))
         if ok(value):
-            self._selection = (value, )
+            self._selection = (value,)
         elif isinstance(value, tuple) and all(ok(v) for v in value):
             self._selection = value
         # TODO: Include dict
@@ -932,17 +863,14 @@ class QueryObject(object):
     def filters(self):
         return self._filters
 
-
     @filters.setter
     def filters(self, value):
         # TODO: Validate
         self._filters = value
 
-
     @property
     def ordering(self):
         return self._ordering
-
 
     @ordering.setter
     def ordering(self, value):
@@ -951,7 +879,7 @@ class QueryObject(object):
             ok = lambda v: (isinstance(v, ExpressionTree) and
                             value.op in (pos, neg))
             if ok(value):
-                self._ordering = (value, )
+                self._ordering = (value,)
             elif isinstance(value, tuple) and all(ok(v) for v in value):
                 self._ordering = value
             else:
@@ -960,11 +888,9 @@ class QueryObject(object):
         else:
             self._ordering = None
 
-
     @property
     def partition(self):
         return self._partition
-
 
     @partition.setter
     def partition(self, value):
@@ -973,21 +899,17 @@ class QueryObject(object):
         else:
             raise TypeError('Expected a slice or None; got %r' % value)
 
-
     @property
     def offset(self):
         return self._partition.start
-
 
     @property
     def limit(self):
         return self._partition.stop
 
-
     @property
     def step(self):
         return self._partition.step
-
 
     def next(self):
         '''Support for retrieving objects directly from the query object. Of
@@ -1016,7 +938,6 @@ class QueryObject(object):
             delattr(self, '_query_state')
             raise StopIteration
 
-
     def __iter__(self):
         'Creates a subquery'
         raise NotImplementedError
@@ -1038,28 +959,23 @@ class GeneratorToken(object):
     '''
     __slots__ = ('_expression', '_parts')
 
-
     # TODO: Representation of grouping with dicts.
     def __init__(self, expression):
         assert provides_any(expression, ITerm)
         self._expression = expression
         self._parts = []
 
-
     def __eq__(self, other):
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, GeneratorToken):
                 return self._expression == other._expression
 
-
     def __repr__(self):
         return '<tk: %r>' % self._expression
-
 
     @property
     def expression(self):
         return self._expression
-
 
 
 def _query_part_method(target):
@@ -1090,7 +1006,6 @@ def _build_unary_operator(operation):
     return method
 
 
-
 def _build_binary_operator(operation, inverse=False):
     if not inverse:
         method_name = operation._method_name
@@ -1113,7 +1028,6 @@ def _build_binary_operator(operation, inverse=False):
             return result
         method.__name__ = method_name
         return method
-
 
 
 _part_operations = {operation._method_name:
@@ -1152,7 +1066,6 @@ class QueryPart(object):
     '''
     __slots__ = ('_token', '_expression')
 
-
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = kwargs.get('expression')
@@ -1162,11 +1075,9 @@ class QueryPart(object):
             # TODO: assert self._query implements IGeneratorToken and
             #       IQueryPartContainer
 
-
     @property
     def token(self):
         return self._token
-
 
     @token.setter
     def token(self, value):
@@ -1175,11 +1086,9 @@ class QueryPart(object):
         else:
             raise TypeError('`query` attribute only accepts IGeneratorToken objects')
 
-
     @property
     def expression(self):
         return self._expression
-
 
     @expression.setter
     def expression(self, value):
@@ -1187,7 +1096,6 @@ class QueryPart(object):
             self._expression = value
         else:
             raise TypeError('QueryParts wraps IExpressionCapable objects only')
-
 
     def __iter__(self):
         with context(UNPROXIFING_CONTEXT):
@@ -1200,14 +1108,12 @@ class QueryPart(object):
                 bubble._parts.pop(-1)
             return iter(expression)
 
-
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
             result = str(instance)
         return '<qp: %s>' % result
     __repr__ = __str__
-
 
     # TODO: In which interface?
     def __getattribute__(self, attr):
@@ -1225,7 +1131,6 @@ class QueryPart(object):
             bubble.capture_part(result)
             return result
 
-
     # TODO: Again, in which interface?
     @_query_part_method
     def __call__(self, *args, **kwargs):
@@ -1236,7 +1141,6 @@ class QueryPart(object):
                            token=token)
         return result
 
-
     @_query_part_method
     def any_(self, *args):
         from xotl.ql.expressions import any_ as f
@@ -1246,7 +1150,6 @@ class QueryPart(object):
         result = QueryPart(expression=f(instance, *args),
                            token=token)
         return result
-
 
     @_query_part_method
     def all_(self, *args):
@@ -1261,7 +1164,6 @@ class QueryPart(object):
         bubble.capture_part(result)
         return result
 
-
     @_query_part_method
     def min_(self, *args):
         from xotl.ql.expressions import min_ as f
@@ -1271,7 +1173,6 @@ class QueryPart(object):
         result = QueryPart(expression=f(instance, *args),
                            token=token)
         return result
-
 
     @_query_part_method
     def max_(self, *args):
@@ -1283,7 +1184,6 @@ class QueryPart(object):
                            token=token)
         return result
 
-
     @_query_part_method
     def invoke(self, *args):
         from xotl.ql.expressions import invoke as f
@@ -1293,7 +1193,6 @@ class QueryPart(object):
         result = QueryPart(expression=f(instance, *args),
                            token=token)
         return result
-
 
 
 @decorator
@@ -1348,7 +1247,8 @@ def thesefy(target, name=None):
     from xoutil.objects import nameof
     class new_meta(type(target)):
         def __new__(cls, name, bases, attrs):
-            return super(new_meta, cls).__new__(cls, nameof(target), bases, attrs)
+            return super(new_meta, cls).__new__(cls, nameof(target),
+                                                bases, attrs)
         def __iter__(self):
             from types import GeneratorType
             try:

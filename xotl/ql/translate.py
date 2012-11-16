@@ -62,14 +62,12 @@ def _iter_classes(accept=lambda x: True):
                 if isinstance(ob, type) and accept(ob))
 
 
-
 def _filter_by_pkg(pkg_name):
     '''Returns an `accept` filter for _iter_classes that only accepts
     classes of a given package name.'''
     def accept(cls):
         return cls.__module__.startswith(pkg_name)
     return accept
-
 
 
 def _iter_objects(accept=lambda x: True):
@@ -80,7 +78,6 @@ def _iter_objects(accept=lambda x: True):
                 if not isinstance(ob, type) and accept(ob))
 
 
-
 def _instance_of(which):
     '''Returns an `accept` filter for _iter_objects/_iter_classes that only
     accepts objects that are instances of `which`; `which` may be either
@@ -89,7 +86,6 @@ def _instance_of(which):
         return isinstance(ob, which) or (issubclass(which, Interface) and
                                          which.providedBy(ob))
     return accept
-
 
 
 def cofind_tokens(*expressions, **kwargs):
@@ -179,7 +175,6 @@ def cofind_tokens(*expressions, **kwargs):
                     queue.append(msg)
 
 
-
 def cocreate_plan(query, **kwargs):
     '''
     Builds a :term:`query execution plan` for a given query that fetches
@@ -218,7 +213,6 @@ def cocreate_plan(query, **kwargs):
 
     '''
     pass
-
 
 
 def init(settings=None):

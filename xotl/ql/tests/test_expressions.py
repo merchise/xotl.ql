@@ -51,7 +51,6 @@ class BasicTests(unittest.TestCase):
         with context(UNPROXIFING_CONTEXT):
             self.assertTrue(expr == expected, "%s ---- %s" % (expected, expr))
 
-
     def test_target_procotol(self):
         class X(object):
             @staticmethod
@@ -62,7 +61,6 @@ class BasicTests(unittest.TestCase):
         expr = q(1) + x
         self.assertEqual((1, 1978), expr.children)
         self.assertEqual('1 + 1978', str(expr))
-
 
     def test_q_should_keep_it_self_in_expressions(self):
         'When :class:`xotl.ql.expressions.q` is involved in an expression '
@@ -75,7 +73,6 @@ class BasicTests(unittest.TestCase):
 
         expr = q(1) + q("1")
         self.assertEqual([int, unicode], [type(c) for c in expr.children])
-
 
     def test_all_ops(self):
         ok = self.assertEqual
@@ -141,11 +138,9 @@ class BasicTests(unittest.TestCase):
             else:
                 ok(fmt.format(args_str), str(test(*args)))
 
-
     def test_named_children(self):
         from xotl.ql.expressions import new
         self.assertEqual("new(object, a=1)", str(new('object', a=1)))
-
 
     def test_named_children_equivalence(self):
         from xotl.ql.expressions import new
@@ -179,16 +174,12 @@ class ExtensibilityTests(unittest.TestCase):
         self.assertEquals("sin(360)", str(expr))
 
 
-
 class RegressionTests(unittest.TestCase):
     def test_20120814_reversed_ops_should_work(self):
         expr = 1 + (2 + q(3))
         self.assertEquals('1 + (2 + 3)', str(expr))
 
-
     def test_20120822_reversed_eq_and_ne_should_compare_equal(self):
-        from xoutil.context import context
-        from xoutil.proxy import UNPROXIFING_CONTEXT
         expr = 1 == q("2")
         expr2 = q(1) == "2"
         with context(UNPROXIFING_CONTEXT):

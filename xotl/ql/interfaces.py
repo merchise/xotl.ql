@@ -27,13 +27,11 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
            'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
-
 
 
 class IOperator(Interface):
@@ -67,7 +65,6 @@ class IOperator(Interface):
                              'operands should be returned.')
 
 
-
 class ISyntacticallyReversibleOperation(Interface):
     'Operations that follow a "reversed" protocol. Used for BINARY operators.'
     _rmethod_name = Attribute('Like :attr:`IOperator._method_name`, but for '
@@ -76,7 +73,6 @@ class ISyntacticallyReversibleOperation(Interface):
                               'the first operand does not support it because '
                               'of TypeError, but the second operand does, '
                               'i.e: `__radd__` for `1 + q("3")`.')
-
 
 
 class ISynctacticallyCommutativeOperation(Interface):
@@ -107,16 +103,13 @@ class ISynctacticallyCommutativeOperation(Interface):
         is the same as asking `b == a`.
         '''
 
-
 class IExpressionCapable(Interface):
     'Objects that are allowed to be in expressions.'
     def __eq__(other):
         'Support for the binary `==` operator.'
 
-
     def __ne__(other):
         'Support for the binary `!=` operator.'
-
 
     def __lt__(other):
         'Support for the binary `<` operator.'
@@ -124,128 +117,97 @@ class IExpressionCapable(Interface):
     def __gt__(other):
         'Support for the binary `>` operator.'
 
-
     def __le__(other):
         'Support for the binary `<=` operator.'
-
 
     def __ge__(other):
         'Support for the binary `>=` operator.'
 
-
     def __and__(other):
         'Support for the binary `&` operator.'
-
 
     def __rand__(other):
         'Support for the binary `&` operator.'
 
-
     def __or__(other):
         'Support for the binary `|` operator.'
-
 
     def __ror__(other):
         'Support for the binary `|` operator.'
 
-
     def __xor__(other):
         'Support for the binary `^` operator.'
-
 
     def __rxor__(other):
         'Support for the binary `^` operator.'
 
-
     def __add__(other):
         'Support for the binary `+` operator.'
-
 
     def __radd__(other):
         'Support for the binary `+` operator.'
 
-
     def __sub__(other):
         'Support for the binary `-` operator.'
-
 
     def __rsub__(other):
         'Support for the binary `-` operator.'
 
-
     def __mul__(other):
         'Support for the binary `*` operator.'
 
-
     def __rmul__(other):
         'Support for the binary `*` operator.'
-
 
     def __div__(other):
         'Support for the binary `/` operator.'
     __truediv__ = __div__
 
-
     def __rdiv__(other):
         'Support for the binary `/` operator.'
     __rtruediv__ = __rdiv__
 
-
     def __floordiv__(other):
         'Support for the binary `//` operator.'
-
 
     def __rfloordiv__(other):
         'Support for the binary `//` operator.'
 
-
     def __mod__(other):
         'Support for the binary `%` operator.'
-
 
     def __rmod__(other):
         'Support for the binary `%` operator.'
 
-
     def __pow__(other):
         'Support for the binary `**` operator.'
-
 
     def __rpow__(other):
         'Support for the binary `**` operator.'
 
-
     def __lshift__(other):
         'Support for the binary `<<` operator.'
-
 
     def __rlshift__(other):
         'Support for the binary `<<` operator.'
 
-
     def __rshift__(other):
         'Support for the binary `>>` operator.'
-
 
     def __rrshift__(other):
         'Support for the binary `>>` operator.'
 
-
     def __neg__():
         'Support for the unary `-` operator.'
-
 
     def __abs__():
         'Support for the `abs()` functor.'
 
-
     def __pos__():
         'Support for the unary `+` operator.'
 
-
     def __invert__():
         'Support for the `~` operator.'
-
 
 
 class IExpressionTree(IExpressionCapable):
@@ -266,7 +228,7 @@ class IExpressionTree(IExpressionCapable):
                                `**kwargs` idiom in the expressions so that
                                calling a function (see
                                :class:`~xotl.ql.expressions.invoke`) may invoke
-                               represent the invokation of arbitrary python
+                               represent the invocation of arbitrary python
                                functions.
 
                                ''')
@@ -276,7 +238,7 @@ class IQueryPart(IExpressionCapable):
     '''Represents a *possibly* partial (but sound) expression that is been
     attached somehow to a generator token.
 
-    Upon invokation of `these(comprehension)`, several :class:`IGeneratorToken`
+    Upon invocation of `these(comprehension)`, several :class:`IGeneratorToken`
     objects are generated internally whenever there's an *implicit iteration*
     over some supported object (like a :class:`ITerm` instance). This token
     represents the FROM clause we can see in languages like SQL.
@@ -322,10 +284,9 @@ class ITerm(IExpressionCapable):
         :attr:`~IGeneratorToken.expression` attribute should be `self`.
         '''
 
-
     def __getattribute__(attr):
         '''All ITerm instances support the creation of other instances just
-        by accesing an attribute `this.anyattr`.
+        by accessing an attribute `this.anyattr`.
 
         This means that in order to access other *internal* attributes of the
         instance, an execution context is needed.
@@ -346,11 +307,10 @@ class IBoundTerm(ITerm):
     binding = Attribute('The instance to which this term is bound to')
 
 
-
 class IQueryParticlesBubble(Interface):
     '''
     An object used to capture newly created tokens and expressions that
-    ocurr in a :term:`query expression`, when that query expression is used
+    occur in a :term:`query expression`, when that query expression is used
     to create a :term:`query object`.
     '''
     def capture_token(token):
@@ -410,20 +370,16 @@ class IQueryParticlesBubble(Interface):
         :type part: :class:`IQueryPart`
         '''
 
-
     parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
                       'that were captured. ')
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
-
     particles = Attribute('Ordered collection of either tokens or query parts '
                           'that were captured.')
 
 
-
 class IQueryContext(Interface):
     bubble = Attribute('A reference to an :class:`IQueryParticlesBubble`')
-
 
 
 class IGeneratorToken(Interface):
@@ -462,7 +418,6 @@ class IGeneratorToken(Interface):
                            'Usually a :class:`ITerm` instance.')
 
 
-
 class IQueryObject(Interface):
     '''A :term:`query object`.
 
@@ -470,8 +425,8 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`ITerm` or :class:`IExpressionTree` '
-                          'instances.')
+    selection = Attribute('Either a tuple/dict of :class:`ITerm` or '
+                          ':class:`IExpressionTree` instances.')
     tokens = Attribute('Generator tokens that occur in the query',
                        '''When the :term:`query` is processed to create a
                        :term:`query object`, at least one :term:`generator
@@ -480,7 +435,9 @@ class IQueryObject(Interface):
                        :term:`query` may refer to several such locations. For
                        instance in the query::
 
-                           these((book, author) for book in this for author in book.authors)
+                           these((book, author)
+                                 for book in this
+                                 for author in book.authors)
 
                        There are two generator tokens: a) ``this`` and b)
                        ``book.authors``. Those tokens relate to the FROM, and
@@ -492,11 +449,11 @@ class IQueryObject(Interface):
                        <query translator>`.
 
                        ''')
-
     filters = Attribute('A tuple of :class:`IExpressionTree` instances '
                         'that represent the WHERE clauses. They are logically '
                         'and-ed.')
-    ordering = Attribute('A tuple of :ref:`ordering expressions <ordering-expressions>`_.')
+    ordering = Attribute('A tuple of :ref:`ordering expressions '
+                         '<ordering-expressions>`_.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
     params = Attribute('A dict containing other arguments to the query. '
@@ -507,13 +464,11 @@ class IQueryObject(Interface):
                        'generated, and so on. '
                        'See :class:`~xotl.ql.core.these`.')
 
-
     def __iter__():
         '''
         Queries are iterable, but they **must** return ``self`` in this method.
         See :meth:`IQueryObject.next`.
         '''
-
 
     def next():
         '''
@@ -525,7 +480,6 @@ class IQueryObject(Interface):
         '''
 
 
-
 class IQueryTranslator(Interface):
     '''
     A :term:`query translator`.
@@ -533,7 +487,6 @@ class IQueryTranslator(Interface):
 
     def build_plan(query, **kwargs):
         '''Builds a query plan for a query. Returns an IQueryExecutionPlan.'''
-
 
 
 class IQueryExecutionPlan(Interface):
@@ -545,14 +498,12 @@ class IQueryExecutionPlan(Interface):
         '''Executes the plan an retrieves a IDataCursor'''
 
 
-
 class IDataCursor(Interface):
     def next():
         '''Returns the object at the cursor position and moves the cursor
         forward. If the cursor is out of objects raises `StopIteration`.
 
         '''
-
 
 
 class IQueryConfiguration(Interface):
@@ -562,8 +513,7 @@ class IQueryConfiguration(Interface):
                                         'registry for a IQueryTranslator')
 
     def get_translator_for(**predicates):
-        '''Get's the configured translator for a set of *predicates*
-
+        '''Get's the configured translator for a set of *predicates*.
 
         :param app: A string that represents an application (or site)
                     within your system. You may need to merge several
