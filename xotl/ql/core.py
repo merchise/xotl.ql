@@ -1049,7 +1049,7 @@ _part_operations.update({operation._rmethod_name:
 QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
 
 
-@implementer(IQueryPart)
+@implementer(IQueryPart, ITerm)
 @complementor(QueryPartOperations)
 class QueryPart(object):
     '''A class that wraps either :class:`Term` or :class:`ExpressionTree` that
@@ -1068,12 +1068,11 @@ class QueryPart(object):
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
-            self._expression = kwargs.get('expression')
-            # TODO: assert that expression is ExpressionCapable
+            self._expression = expression = kwargs.get('expression')
+            assert IExpressionCapable.providedBy(expression)
             self._token = None
-            self.token = kwargs.get('token')
-            # TODO: assert self._query implements IGeneratorToken and
-            #       IQueryPartContainer
+            self.token = token = kwargs.get('token')
+            assert IGeneratorToken.providedBy(token)
 
     @property
     def token(self):
@@ -1115,7 +1114,6 @@ class QueryPart(object):
         return '<qp: %s>' % result
     __repr__ = __str__
 
-    # TODO: In which interface?
     def __getattribute__(self, attr):
         get = super(QueryPart, self).__getattribute__
         if context[UNPROXIFING_CONTEXT]:
@@ -1131,7 +1129,6 @@ class QueryPart(object):
             bubble.capture_part(result)
             return result
 
-    # TODO: Again, in which interface?
     @_query_part_method
     def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):

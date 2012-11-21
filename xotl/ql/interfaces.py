@@ -297,6 +297,11 @@ class ITerm(IExpressionCapable):
                   is `self`.
         '''
 
+    def __call__(*args, **kwarg):
+        '''When any term other that `this` is called, it should produce
+        an appropiate expression like instance.
+        '''
+
 
 class IBoundTerm(ITerm):
     '''A term that is bound to a single :class:`IGeneratorToken` instance.
