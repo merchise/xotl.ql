@@ -633,6 +633,13 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIn(partner, tokens)
 
 
+class RegressionTests(unittest.TestCase):
+    def test_20121127_unnamed_this_leaked(self):
+        query = these(parent for parent in this if parent.age > 30)
+        term = query.filters[0].children[0]
+        self.assertIs(unboxed(term).parent, query.tokens[0])
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)
