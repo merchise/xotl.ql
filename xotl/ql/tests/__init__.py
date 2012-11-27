@@ -18,6 +18,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 import logging
+import threading
 
 from xoutil.compat import inspect_getfullargspec, iteritems_
 from xoutil.objects import nameof
@@ -43,8 +44,9 @@ def logging_aspect(output_to=None):
             if kwargs:
                 arguments += ', '.join('%s=%r' % (k, v)
                                        for k, v in iteritems_(kwargs))
-            message = 'Called {method}({arguments})'.format(method=method_name,
-                                                            arguments=arguments)
+            message = 'Thread {0}. '.format(threading.current_thread())
+            message += ('Called {method}({arguments})'.
+                        format(method=method_name, arguments=arguments))
             logger = logging.getLogger(cls)
             logger.setLevel(logging.DEBUG)
             if output_to and not logger.handlers:
