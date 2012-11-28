@@ -640,6 +640,36 @@ class RegressionTests(unittest.TestCase):
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(unboxed(term).parent, query.tokens[0])
 
+    def test_named_terms_matches_a_token(self):
+        '''
+        Ensures that all terms are named, and they are bound to a token that is
+        in the query.
+        '''
+        from itertools import izip
+        from xotl.ql.core import thesefy
+        from xotl.ql.translate import cofind_tokens
+
+        @thesefy
+        class Person(object):
+            pass
+
+        @thesefy
+        class Partnership(object):
+            pass
+
+        query = these((person, partner)
+                      for person, partner in izip(Person, Person)
+                      for rel in Partnership
+                      if (rel.subject == person) & (rel.obj == partner)
+                      if person.age > 35)
+
+        tokens = query.tokens
+        matches_token = lambda term: (term.name and (
+                                      term.binding.expression in tokens or
+                                      matches_token(term.parent)))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertTrue(all(matches_token(term)
+                                for term in cofind_tokens(*query.filters)))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
