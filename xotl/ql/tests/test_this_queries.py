@@ -637,7 +637,8 @@ class RegressionTests(unittest.TestCase):
     def test_20121127_unnamed_this_leaked(self):
         query = these(parent for parent in this if parent.age > 30)
         term = query.filters[0].children[0]
-        self.assertIs(unboxed(term).parent, query.tokens[0])
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(unboxed(term).parent, query.tokens[0])
 
 
 if __name__ == "__main__":

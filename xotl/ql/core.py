@@ -224,14 +224,19 @@ class Term(object):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        token = GeneratorToken(expression=self)
         with context(UNPROXIFING_CONTEXT):
             if name:
+                token = GeneratorToken(expression=self)
                 bound_term = Term(name, parent=parent, binding=token)
             else:
+                # When iterating an instance without a name (i.e the `this`
+                # object), we should generate a new name (of those simple
+                # mortals can't use)
                 with context('_INVALID_THESE_NAME'):
-                    bound_term = Term(self._newname(), parent=parent,
-                                      binding=token)
+                    name = self._newname()
+                    term = Term(name, parent=parent)
+                    token = GeneratorToken(expression=term)
+                    bound_term = Term(name, parent=parent, binding=token)
         instance = QueryPart(expression=bound_term, token=token)
         bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
         assert bubble
