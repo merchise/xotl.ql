@@ -22,8 +22,7 @@
 #
 # Created on May 24, 2012
 
-'''
-A pythonic Query Language (Ql).
+'''A pythonic Query Language.
 
 This package provides an abstract query language based on comprehesions. The
 sole goal of this package is to provide the Abstract Synxtax Tree for the
@@ -31,19 +30,21 @@ queries produced using this language.
 
 The query language is composed by only two modules:
 
-- The :mod:`~xotl.ql.expressions` module that defines the core for defining
-  expressions in this language.
+- The :mod:`xotl.ql.expressions` module that defines the core for
+  defining expressions in this language.
 
-- The :mod:`~xotl.ql.these` module defines the entry point for the query
-  language and documents it extensively.
+- The :mod:`xotl.ql.core` module defines the entry point for the
+  query language and documents it extensively.
 
-There's third module :mod:`~xotl.ql.translate` that has some tools
-for aiding the translation of queries in to query plans for real data
+There's third module :mod:`~xotl.ql.translate` that has some tools for
+aiding the translation of queries in to query plans for real data
 stores.
 
 '''
 
-from . import expressions
-from .these import this
+from __future__ import (absolute_import, unicode_literals)
 
-__all__ = (b'this', b'expressions')
+from . import expressions
+from .core import this, these
+
+__all__ = (b'this', b'these', b'expressions')

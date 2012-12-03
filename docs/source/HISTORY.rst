@@ -1,21 +1,21 @@
 Changelog
 =========
 
-2012-07-11. Released version 1.0.2
-----------------------------------
+2012/11/05 - Release 0.1.5
+--------------------------
 
-- First public release, with GPL 3.
-- Adds some comments on future work.
+- Huge revamp of design (again). Introduced the metaphor of "particles
+  bubble" to capture the query expression most precisely.
 
+  A draft of the description of "Internal details..." is provided.
 
-2012-07-04. Released version 1.0.1
-----------------------------------
+2012/10/22 - Release 0.1.4
+--------------------------
 
-- Small bugs fixes
-- Improves documentation
-- Declares :class:`~xotl.ql.expressions.ExpressionTree` inmutable.
+- Huge revamp of design. Now I'm proud to say the query language
+  is almost done in its first stage.
 
-1.0.0
--------------------
+  Introduces QueryPart, loads of documentation has been updated.
+  Tests for design are now almost done, etc...
 
-- Initial release
+  You're encourage to try it!
