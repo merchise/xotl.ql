@@ -52,8 +52,9 @@ __LOG = True
 
 if __LOG:
     import sys
+    from itertools import chain
     from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_before_method
+    from xoutil.aop.classical import weave, _weave_around_method
 
     from xotl.ql.tests import logging_aspect
 
@@ -61,7 +62,8 @@ if __LOG:
     aspect = logging_aspect(sys.stdout)
     weave(aspect, QueryParticlesBubble)
     for attr in iterkeys_(_part_operations):
-        _weave_before_method(QueryPart, aspect, attr, '_before_')
+        _weave_around_method(QueryPart, aspect, attr, '_around_')
+    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
 
 
 if __TEST_DESIGN_DECISIONS:
@@ -242,22 +244,22 @@ if __TEST_DESIGN_DECISIONS:
             with self.assertRaises(IndexError):
                 ok(None)
 
-        def test_query_reutilization_design(self):
-            from xotl.ql.expressions import is_a
-            Person = "Person"
-            persons = these(parent
-                            for parent in this('parent')
-                            if is_a(parent, Person))
-
-            these(parent for parent in persons
-                         if (parent.age < 35) & parent.children)
-
-        def test_iters_produce_a_single_name(self):
-            a1, a2 = next((p, p) for p in this)
-            p1, p2 = next((p, t) for p in this for t in this)
-            with context(UNPROXIFING_CONTEXT):
-                self.assertEqual(a1, a2)
-                self.assertNotEqual(p1, p2)
+#        def test_query_reutilization_design(self):
+#            from xotl.ql.expressions import is_a
+#            Person = "Person"
+#            persons = these(parent
+#                            for parent in this('parent')
+#                            if is_a(parent, Person))
+#
+#            these(parent for parent in persons
+#                         if (parent.age < 35) & parent.children)
+#
+#        def test_iters_produce_a_single_name(self):
+#            a1, a2 = next((p, p) for p in this)
+#            p1, p2 = next((p, t) for p in this for t in this)
+#            with context(UNPROXIFING_CONTEXT):
+#                self.assertEqual(a1, a2)
+#                self.assertNotEqual(p1, p2)
 
 
     class DesignDesitionsRegressionTests(DesignDecisionTestCase):
