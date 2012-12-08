@@ -36,6 +36,7 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 from xotl.ql import this
 from xotl.ql.core import these, provides_any
 from xotl.ql.interfaces import IQueryObject
+from xotl.ql.core import QueryParticlesBubble, QueryPart, _part_operations
 
 
 from zope.interface import implementer
@@ -51,22 +52,22 @@ __LOG = True
 
 if __LOG:
     import sys
+    from itertools import chain
     from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_before_method
+    from xoutil.aop.classical import weave, _weave_around_method
 
-    from xotl.ql.core import QueryParticlesBubble, QueryPart, _part_operations
     from xotl.ql.tests import logging_aspect
 
     # Weave logging aspect into every relevant method during testing
     aspect = logging_aspect(sys.stdout)
     weave(aspect, QueryParticlesBubble)
     for attr in iterkeys_(_part_operations):
-        _weave_before_method(QueryPart, aspect, attr, '_before_')
+        _weave_around_method(QueryPart, aspect, attr, '_around_')
+    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
 
 
 if __TEST_DESIGN_DECISIONS:
     from xotl.ql.interfaces import IQueryPart
-    from xotl.ql.core import QueryParticlesBubble
 
     class DesignDecisionTestCase(unittest.TestCase):
         def setUp(self):
@@ -75,10 +76,8 @@ if __TEST_DESIGN_DECISIONS:
             self.query_context.__enter__()
             self.query_context.bubble = query_state_machine
 
-
         def tearDown(self):
             self.query_context.__exit__(None, None, None)
-
 
 
     class DesignDecisionTests(DesignDecisionTestCase):
@@ -105,8 +104,6 @@ if __TEST_DESIGN_DECISIONS:
             with self.assertRaises(StopIteration):
                 next(qs)
 
-
-
         def test_plain_iter(self):
             t1 = next(iter(this))
             with context(UNPROXIFING_CONTEXT):
@@ -124,7 +121,6 @@ if __TEST_DESIGN_DECISIONS:
                               'The name of the QueryBuilderToken should be '
                               'the same as the name of the actual instance')
 
-
         def test_basic_queries_building(self):
             ok = self.assertEquals
             expr = next(parent.title + parent.name
@@ -139,7 +135,6 @@ if __TEST_DESIGN_DECISIONS:
                "this('parent').spouse.alive", str(parts[-2]))
             with self.assertRaises(IndexError):
                 print(str(parts[-3]))
-
 
         def test_complex_query_building(self):
             parent, child = next((parent.title + parent.name,
@@ -159,11 +154,9 @@ if __TEST_DESIGN_DECISIONS:
             with self.assertRaises(IndexError):
                 print(str(parts[-5]))
 
-
         def test_complex_intermingled_query(self):
             # See below, DesignDecisionRegressionTests
             pass
-
 
         def test_free_terms_are_not_captured(self):
             from xotl.ql.expressions import any_
@@ -178,7 +171,6 @@ if __TEST_DESIGN_DECISIONS:
             with context(UNPROXIFING_CONTEXT):
                 self.assertIn(pname, parts)
 
-
         def test_undetected_particles(self):
             from xotl.ql.expressions import any_
             these(parent
@@ -187,43 +179,12 @@ if __TEST_DESIGN_DECISIONS:
             parts = self.query_state_machine.parts
             self.assertIs(0, len(parts))
 
-
         def test_rigth_bindings(self):
-            query = these((parent, child)
-                          for parent in this('parent')
-                          if parent.children.updated_since(days=1)
-                          for child in parent.children
-                          if child.age < 4)
-            parts = self.query_state_machine.parts
-            bubble_tokens = self.query_state_machine.tokens
-            with context(UNPROXIFING_CONTEXT):
-                parent_token = next(token
-                                    for token in bubble_tokens
-                                    if token.expression == this('parent'))
-                children_token = next(token
-                                    for token in bubble_tokens
-                                    if token.expression != this('parent'))
-            child_age_filter = parts.pop(-1)
-            parent_children_updated_filter = parts.pop(-1)
-            with self.assertRaises(IndexError):
-                parts.pop(-1)
-            with context(UNPROXIFING_CONTEXT):
-                child_age_term = child_age_filter.children[0]
-                self.assertEqual(child_age_term.binding, children_token)
-
-                # Note that: parent.children.updated_since(days=1)
-                # is equivalent to invoke(parent.children.updated_since, days=1)
-                parent_children_term = parent_children_updated_filter.children[0]
-                self.assertEqual(parent_children_term.binding, parent_token)
-                self.assertEqual(dict(days=1),
-                                 parent_children_updated_filter.named_children)
-
-        def test_tokens_as_names(self):
-            next((parent, child)
-                 for parent in this('parent')
-                 if parent.children & parent.children.length() > 4
-                 for child in parent.children
-                 if child.age < 5)
+            these((parent, child)
+                  for parent in this('parent')
+                  if parent.children.updated_since(days=1)
+                  for child in parent.children
+                  if child.age < 4)
             # The query has two filters:
             #
             #    this('parent').children & (count(this('parent').children) > 4)
@@ -238,8 +199,31 @@ if __TEST_DESIGN_DECISIONS:
             #
             # Now the token of the relevant query might help, but then the
             # machine should not strip those tokens from query-parts.
+            parts = self.query_state_machine.parts
+            bubble_tokens = self.query_state_machine.tokens
+            with context(UNPROXIFING_CONTEXT):
+                parent_token = next((token
+                                     for token in bubble_tokens
+                                     if token.expression == this('parent')),
+                                    None)
+                children_token = next((token
+                                       for token in bubble_tokens
+                                       if token.expression != this('parent')),
+                                      None)
+            child_age_filter = parts.pop(-1)
+            parent_children_updated_filter = parts.pop(-1)
+            with self.assertRaises(IndexError):
+                parts.pop(-1)
+            with context(UNPROXIFING_CONTEXT):
+                child_age_term = child_age_filter.children[0]
+                self.assertEqual(child_age_term.binding, children_token)
 
-
+                # Note that: parent.children.updated_since(days=1)
+                # is equivalent to invoke(parent.children.updated_since, days=1)
+                parent_children_term = parent_children_updated_filter.children[0]
+                self.assertEqual(parent_children_term.binding, parent_token)
+                self.assertEqual(dict(days=1),
+                                 parent_children_updated_filter.named_children)
 
         def test_complex_query_building_with_dict(self):
             from xotl.ql.expressions import min_, max_
@@ -260,24 +244,22 @@ if __TEST_DESIGN_DECISIONS:
             with self.assertRaises(IndexError):
                 ok(None)
 
-
-        def test_query_reutilization_design(self):
-            from xotl.ql.expressions import is_a
-            Person = "Person"
-            persons = these(parent
-                            for parent in this('parent')
-                            if is_a(parent, Person))
-
-            these(parent for parent in persons
-                         if (parent.age < 35) & parent.children)
-
-
-        def test_iters_produce_a_single_name(self):
-            a1, a2 = next((p, p) for p in this)
-            p1, p2 = next((p, t) for p in this for t in this)
-            with context(UNPROXIFING_CONTEXT):
-                self.assertEqual(a1, a2)
-                self.assertNotEqual(p1, p2)
+#        def test_query_reutilization_design(self):
+#            from xotl.ql.expressions import is_a
+#            Person = "Person"
+#            persons = these(parent
+#                            for parent in this('parent')
+#                            if is_a(parent, Person))
+#
+#            these(parent for parent in persons
+#                         if (parent.age < 35) & parent.children)
+#
+#        def test_iters_produce_a_single_name(self):
+#            a1, a2 = next((p, p) for p in this)
+#            p1, p2 = next((p, t) for p in this for t in this)
+#            with context(UNPROXIFING_CONTEXT):
+#                self.assertEqual(a1, a2)
+#                self.assertNotEqual(p1, p2)
 
 
     class DesignDesitionsRegressionTests(DesignDecisionTestCase):
@@ -373,8 +355,6 @@ if __TEST_DESIGN_DECISIONS:
             with self.assertRaises(IndexError):
                 ok(None)
 
-
-
         def test_worst_case_must_have_3_filters_and_3_tokens(self):
             from itertools import izip
 
@@ -403,7 +383,6 @@ if __TEST_DESIGN_DECISIONS:
                 ok(None)
 
 
-
 class TestUtilities(unittest.TestCase):
     def _test_class(self, Person):
         from xotl.ql.expressions import is_instance
@@ -428,17 +407,13 @@ class TestUtilities(unittest.TestCase):
             self.assertEqual(q.selection, q1.selection)
             self.assertEqual(q.tokens, q1.tokens)
 
-
     def test_thesefy_good(self):
         from xotl.ql.core import thesefy
 
         @thesefy("Person")
         class Person(object):
             pass
-
-
         self._test_class(Person)
-
 
     def test_thesefy_meta_no_iter(self):
         from xotl.ql.core import thesefy
@@ -449,9 +424,7 @@ class TestUtilities(unittest.TestCase):
         @thesefy("Person")
         class Person(object):
             __metaclass__ = Meta
-
         self._test_class(Person)
-
 
     def test_thesefy_good_meta(self):
         from xotl.ql.core import thesefy
@@ -469,7 +442,6 @@ class TestUtilities(unittest.TestCase):
         q1 = these(who for who in this('Person') if who.age > 30)
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(q.selection, q1.selection)
-
 
     def test_thesefy_doesnot_messup_identities(self):
         from itertools import izip
@@ -500,12 +472,10 @@ class TestUtilities(unittest.TestCase):
             filters.remove(partner_is_a_person)
 
 
-
 class TestThisQueries(unittest.TestCase):
     def setUp(self):
         from xotl.ql.core import QueryParticlesBubble
         setattr(QueryParticlesBubble, '__repr__', lambda self: hex(id(self)))
-
 
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent') if parent.age > 40)
@@ -524,7 +494,6 @@ class TestThisQueries(unittest.TestCase):
             tokens = query.tokens
             self.assertEqual(1, len(tokens))
             self.assertIn(token_expectation, tuple(tokens))
-
 
     def test_basic_queries(self):
         from xotl.ql.expressions import count
@@ -561,7 +530,6 @@ class TestThisQueries(unittest.TestCase):
             self.assertIn(parent_token, tokens)
             self.assertIn(children_token, tokens)
 
-
     def test_complex_query_with_3_tokens(self):
         query = these((parent.title + parent.name,
                        child.name + child.nick, toy.name)
@@ -597,7 +565,6 @@ class TestThisQueries(unittest.TestCase):
                 self.assertIn(t, tokens)
 
 
-
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     '''
     Non-selected tokens should not be forgotten.
@@ -622,7 +589,6 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIn(expected_rel_type, filters)
             self.assertIs(2, len(filters))
 
-
     def test_theres_a_token_for_partnership(self):
         from itertools import izip
         query = these((person, partner)
@@ -638,7 +604,6 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIn(rel, tokens)
             self.assertIn(person, tokens)
             self.assertIn(partner, tokens)
-
 
     def test_worst_case_must_have_3_filters_and_3_tokens(self):
         from itertools import izip
@@ -670,6 +635,43 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIn(partner, tokens)
 
 
+class RegressionTests(unittest.TestCase):
+    def test_20121127_unnamed_this_leaked(self):
+        query = these(parent for parent in this if parent.age > 30)
+        term = query.filters[0].children[0]
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(unboxed(term).parent, query.tokens[0])
+
+    def test_named_terms_matches_a_token(self):
+        '''
+        Ensures that all terms are named, and they are bound to a token that is
+        in the query.
+        '''
+        from itertools import izip
+        from xotl.ql.core import thesefy
+        from xotl.ql.translate import cofind_tokens
+
+        @thesefy
+        class Person(object):
+            pass
+
+        @thesefy
+        class Partnership(object):
+            pass
+
+        query = these((person, partner)
+                      for person, partner in izip(Person, Person)
+                      for rel in Partnership
+                      if (rel.subject == person) & (rel.obj == partner)
+                      if person.age > 35)
+
+        tokens = query.tokens
+        matches_token = lambda term: (term.name and (
+                                      term.binding.expression in tokens or
+                                      matches_token(term.parent)))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertTrue(all(matches_token(term)
+                                for term in cofind_tokens(*query.filters)))
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

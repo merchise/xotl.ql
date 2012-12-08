@@ -46,12 +46,10 @@ class TestThisExpressions(unittest.TestCase):
         'Tests that an unbound this instance has any attribute'
         self.assert_(this.a.b.c is not None)
 
-
     def test_this_anyattribute_str(self):
         'Tests that an unbound this instance has any attribute'
         self.assertEquals('this.a.b.c', str(this.a.b.c))
         self.assertEquals("this('z').a.b.c", str(this('z').a.b.c))
-
 
     def test_calling_functions(self):
         from xotl.ql.expressions import call
@@ -68,13 +66,11 @@ class TestThisExpressions(unittest.TestCase):
         with self.assertRaises(TypeError):
             this('someone')('cannot', 'call', 'me')
 
-
     def test_tautology(self):
         self.assertIs(_true, this('parent') == this('parent'))
         self.assertIs(_true, this == this)
         self.assertIs(_false, this != this)
         self.assertIs(_false, this('parent') != this('parent'))
-
 
     def test_reverse_expressions(self):
         expr = 3 > "1" + this.x
@@ -85,7 +81,6 @@ class TestThisExpressions(unittest.TestCase):
         # since + may not be commutative (like in string concatenation).
         self.assertEqual("(1 + this.x) < 3", str(expr))
 
-
     def test_regression_test_calling_terms_directly(self):
         'Tests that invoke(term, ...) is equivalent to term(...)'
         from xotl.ql.expressions import invoke
@@ -94,11 +89,9 @@ class TestThisExpressions(unittest.TestCase):
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(e1, e2)
 
-
     def test_simple_expression(self):
         expr = this('child').age < this('parent').age
         self.assertEqual("this('child').age < this('parent').age", str(expr))
-
 
     def test_all_ops(self):
         ok = self.assertEqual
@@ -137,7 +130,6 @@ class TestThisExpressions(unittest.TestCase):
                str(test(this('p').age)))
 
 
-
 class RegressionTests(unittest.TestCase):
     def test_this_SHOULD_NOT_be_singletons(self):
         # Making this instances singletons leads to subtle bugs in queries
@@ -158,7 +150,6 @@ class RegressionTests(unittest.TestCase):
         t1 = this('abc', parent=this('efc'))
         t2 = this('abc', parent=this('efc'))
         self.assertIsNot(t1, t2)
-
 
     def test_repr_this(self):
         self.assert_(repr(this).startswith('<this at 0x'))

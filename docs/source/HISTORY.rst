@@ -1,6 +1,20 @@
 Changelog
 =========
 
+2012/12/08 - Release 0.1.6
+--------------------------
+
+- Fixes several bugs. But there's still pending a non-determinancy
+  bug. 
+
+- Improved an explanation of internal details of the current 
+  implementation.
+
+- Starts to comply more closely with PEP8: Use a single blank line to 
+  separate class-level definitions (we used 2); use two blank lines
+  separate module-level definitions.
+
+
 2012/11/05 - Release 0.1.5
 --------------------------
 

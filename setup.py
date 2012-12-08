@@ -54,7 +54,7 @@ setup(name=project_name,
       ],
       keywords=['query language', 'python', 'xotl'],
       author='Merchise Autrement',
-      author_email='',
+      author_email='med.merchise@gmail.com',
       url='http://www.merchise.org',
       license='GNU General Public License version 3 or later (GPLv3+)',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
@@ -64,16 +64,15 @@ setup(name=project_name,
       setup_requires=['setuptools', ],
       install_requires=[
           'xoutil>=1.1.4',
-          'zope.interface',
-          'zope.component',
+          'zope.interface>=3.8.0',
+          'zope.component>=3.11.0',
 
           # For documentation only. But it may be needed for ReadTheDocs
-          'repoze.sphinx.autointerface',
+          'repoze.sphinx.autointerface>=0.7.0',
       ],
-      extra_requires={
-        'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', 'repoze.sphinx.autointerface',]
-      },
-      entry_points="""
-
-      """,
-      )
+      extras_requires={
+        'doc': ['docutils>=0.7',
+                'Sphinx>=1.0.7',
+                'repoze.sphinx.autointerface>=0.7.0']
+      }
+    )
