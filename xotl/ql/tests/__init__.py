@@ -92,6 +92,18 @@ def logging_aspect(output=None):
             cls.log_for(type(self) if self else None, message)
 
         @classmethod
+        def log_cpy_context(cls, self, context=4):
+            import sys
+            import inspect
+            frame = sys._getframe(4)
+            try:
+                _fname, _lno, _fn, code, _idx = inspect.getframeinfo(frame,
+                                                                     context)
+                cls.log_for(self, code)
+            finally:
+                del frame
+
+        @classmethod
         def log_return(cls, self, method, result):
             message = '\t' * cls.get_padding()
             message = '... returned {0}'.format(result)
@@ -110,6 +122,7 @@ def logging_aspect(output=None):
 
         def _around_(self, method, *args, **kwargs):
             LoggingAspect.log_signature(self, method, *args, **kwargs)
+            LoggingAspect.log_cpy_context(self)
             try:
                 LoggingAspect.increase_padding()
                 try:
