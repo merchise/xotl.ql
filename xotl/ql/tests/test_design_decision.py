@@ -32,6 +32,24 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+__LOG = True
+
+if __LOG:
+    import sys
+    from xoutil.compat import iterkeys_
+    from xoutil.aop.classical import weave, _weave_around_method
+
+    from xotl.ql.tests import logging_aspect
+    from xotl.ql.core import _part_operations, QueryPart
+
+    # Weave logging aspect into every relevant method during testing
+    aspect = logging_aspect(sys.stdout)
+    weave(aspect, QueryParticlesBubble)
+    for attr in iterkeys_(_part_operations):
+        _weave_around_method(QueryPart, aspect, attr, '_around_')
+    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
+
+
 class DesignDecisionTestCase(unittest.TestCase):
     def setUp(self):
         self.bubble = bubble = QueryParticlesBubble()
