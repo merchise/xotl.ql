@@ -141,7 +141,7 @@ class DesignDecisionTests(DesignDecisionTestCase):
 
     def test_free_terms_are_not_captured(self):
         from xotl.ql.expressions import any_
-        these(parent
+        next(parent
               for parent in this('parent')
               if parent.name
               if any_(this.children, this.age < 6))
@@ -154,14 +154,14 @@ class DesignDecisionTests(DesignDecisionTestCase):
 
     def test_undetected_particles(self):
         from xotl.ql.expressions import any_
-        these(parent
+        next(parent
               for parent in this('parent')
               if any_(child for child in parent.children if child.age < 6))
         parts = self.bubble.parts
         self.assertIs(0, len(parts))
 
     def test_rigth_bindings(self):
-        these((parent, child)
+        next((parent, child)
               for parent in this('parent')
               if parent.children.updated_since(days=1)
               for child in parent.children
