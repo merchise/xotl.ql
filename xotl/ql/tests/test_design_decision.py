@@ -32,7 +32,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__LOG = True
+__LOG = False
 
 if __LOG:
     import sys
@@ -362,3 +362,39 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
         ok(rel.type == 'partnership')
         with self.assertRaises(IndexError):
             ok(None)
+
+
+class RegressionTestEscapingParticles(DesignDecisionTestCase):
+    def test_free_terms_are_not_captured(self):
+        from xotl.ql.expressions import any_
+        these(parent
+              for parent in this('parent')
+              if parent.name
+              if any_(this.children, this.age < 6))
+
+        parts = self.bubble.parts
+        self.assertIs(0, len(parts))
+
+    def test_rigth_bindings(self):
+        these((parent, child)
+              for parent in this('parent')
+              if parent.children.updated_since(days=1)
+              for child in parent.children
+              if child.age < 4)
+        # The query has two filters:
+        #
+        #    this('parent').children & (count(this('parent').children) > 4)
+        #    this('parent').children.age < 5
+        #
+        # If we regard every term `this('parent').children` as the *token*,
+        # what would be the meaning of the first condition? How do we
+        # distinguish from conditions over the named-token and the
+        # expression that generates the token?
+        # i.e in `for child in parent.children`, the `child` token
+        # is *not* the same as the term `parent.children`.
+        #
+        # Now the token of the relevant query might help, but then the
+        # machine should not strip those tokens from query-parts.
+        parts = self.bubble.parts
+        self.assertEqual(0, len(parts))
+        
