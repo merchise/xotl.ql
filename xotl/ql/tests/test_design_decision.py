@@ -160,7 +160,7 @@ class DesignDecisionTests(DesignDecisionTestCase):
         parts = self.bubble.parts
         self.assertIs(0, len(parts))
 
-    def test_rigth_bindings(self):
+    def test_right_bindings(self):
         next((parent, child)
               for parent in this('parent')
               if parent.children.updated_since(days=1)
@@ -375,7 +375,7 @@ class RegressionTestEscapingParticles(DesignDecisionTestCase):
         parts = self.bubble.parts
         self.assertIs(0, len(parts))
 
-    def test_rigth_bindings(self):
+    def test_right_bindings(self):
         these((parent, child)
               for parent in this('parent')
               if parent.children.updated_since(days=1)
