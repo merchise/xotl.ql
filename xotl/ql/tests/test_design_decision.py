@@ -24,6 +24,7 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 from xotl.ql import this
 from xotl.ql.core import these
 from xotl.ql.core import QueryParticlesBubble
+from xotl.ql.core import _create_and_push_bubble, _pop_bubble
 from xotl.ql.interfaces import IQueryPart
 
 from zope.interface import implementer
@@ -32,7 +33,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__LOG = False
+__LOG = True
 
 if __LOG:
     import sys
@@ -52,13 +53,10 @@ if __LOG:
 
 class DesignDecisionTestCase(unittest.TestCase):
     def setUp(self):
-        self.bubble = bubble = QueryParticlesBubble()
-        self.query_context = context(bubble)
-        self.query_context.__enter__()
-        self.query_context.bubble = bubble
+        self.bubble = _create_and_push_bubble()
 
     def tearDown(self):
-        self.query_context.__exit__(None, None, None)
+        _pop_bubble()
 
 
 class DesignDecisionTests(DesignDecisionTestCase):
@@ -397,4 +395,3 @@ class RegressionTestEscapingParticles(DesignDecisionTestCase):
         # machine should not strip those tokens from query-parts.
         parts = self.bubble.parts
         self.assertEqual(0, len(parts))
-        
