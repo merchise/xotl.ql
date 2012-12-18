@@ -42,6 +42,8 @@ from __future__ import (division as _py3_division,
 import re
 from itertools import count
 
+import threading
+
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
@@ -72,6 +74,51 @@ __author__ = 'manu'
 
 
 __all__ = (b'this', b'these',)
+
+
+# A thread-local namespace to avoid using context. Just to test if this
+# avoid the context's bug.
+_local = threading.local()
+
+
+def _get_bubbles_stack():
+    unset = object()
+    stack = getattr(_local, 'bubbles', unset)
+    if stack is unset:
+        stack = _local.bubbles = []
+    return stack
+
+
+def _create_and_push_bubble():
+    'Creates a bubble and pushes it to the local stack'
+    bubbles = _get_bubbles_stack()
+    bubble = QueryParticlesBubble()
+    bubbles.append(bubble)
+    return bubble
+
+
+def _pop_bubble():
+    'Removes the top-most bubble from the bubble stack'
+    bubbles = _get_bubbles_stack()
+    return bubbles.pop(-1)
+
+
+def _get_current_bubble():
+    'Returns the top-most bubble'
+    bubbles = _get_bubbles_stack()
+    return bubbles[-1]
+
+
+def _emit_part(part):
+    'Emits a particle to the current bubble'
+    bubble = _get_current_bubble()
+    bubble.capture_part(part)
+
+
+def _emit_token(token):
+    'Emits a token to the current bubble'
+    bubble = _get_current_bubble()
+    bubble.capture_token(token)
 
 
 @implementer(ITerm)
@@ -238,9 +285,7 @@ class Term(object):
                     token = GeneratorToken(expression=term)
                     bound_term = Term(name, parent=parent, binding=token)
         instance = QueryPart(expression=bound_term, token=token)
-        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
-        assert bubble
-        bubble.capture_token(token)
+        _emit_token(token)
         yield instance
 
     def __str__(self):
@@ -694,7 +739,7 @@ class QueryParticlesBubble(object):
                     while parts and mergable(expression):
                         top = parts.pop()
                         self._particles.remove(top)
-                self._parts.append(expression)
+                parts.append(expression)
                 self._particles.append(expression)
             else:
                 assert False
@@ -720,6 +765,7 @@ class QueryParticlesBubble(object):
         '''
         tokens = self._tokens
         with context(UNPROXIFING_CONTEXT):
+            assert IGeneratorToken.providedBy(token)
             parts = self._parts
             if parts:
                 top = parts.pop(-1)
@@ -782,10 +828,12 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
-        bubble = QueryParticlesBubble()
-        with context(bubble) as query_context:
-            query_context.bubble = bubble
+        bubble = _create_and_push_bubble()
+        try:
             selected_parts = next(comprehension)
+        finally:
+            b = _pop_bubble()
+            assert b is bubble
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts,)
@@ -988,11 +1036,7 @@ def _query_part_method(target):
     the "active" particle bubble.'''
     def inner(self, *args, **kwargs):
         result = target(self, *args, **kwargs)
-        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
-        if not bubble:
-            bubble = getattr(self, '_bubble', None)
-        assert bubble
-        bubble.capture_part(result)
+        _emit_part(result)
         return result
     return inner
 
@@ -1107,7 +1151,8 @@ class QueryPart(object):
             # XXX: In cases of sub-queries the part will be emitted, but the
             #      iter will be hold, so the token won't be emitted and the
             #      part won't be removed. So we're bringing this check back.
-            bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
+            bubble = _get_current_bubble()
+            assert bubble
             if bubble._parts and expression is bubble._parts[-1]:
                 bubble._parts.pop(-1)
             return iter(expression)
@@ -1129,9 +1174,7 @@ class QueryPart(object):
                 token = get('token')
             result = QueryPart(expression=getattr(instance, attr),
                                token=token)
-            bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
-            assert bubble
-            bubble.capture_part(result)
+            _emit_part(result)
             return result
 
     @_query_part_method
@@ -1161,9 +1204,7 @@ class QueryPart(object):
             token = self.token
         result = QueryPart(expression=f(instance, *args),
                            token=token)
-        bubble = getattr(context[IQueryParticlesBubble], 'bubble', None)
-        assert bubble
-        bubble.capture_part(result)
+        _emit_part(result)
         return result
 
     @_query_part_method

@@ -1,16 +1,27 @@
 Changelog
 =========
 
+2012/12/18 - Release 0.1.7
+--------------------------
+
+- Fixes pending bug that make tests fail randomly. Now this is
+  deemed stable enough!
+
+  Start developing translators!
+
+- Proposing to release a version 0.2, to mark the current level
+  of maturity.
+
 2012/12/08 - Release 0.1.6
 --------------------------
 
 - Fixes several bugs. But there's still pending a non-determinancy
-  bug. 
+  bug.
 
-- Improved an explanation of internal details of the current 
+- Improved an explanation of internal details of the current
   implementation.
 
-- Starts to comply more closely with PEP8: Use a single blank line to 
+- Starts to comply more closely with PEP8: Use a single blank line to
   separate class-level definitions (we used 2); use two blank lines
   separate module-level definitions.
 

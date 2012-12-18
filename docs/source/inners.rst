@@ -120,7 +120,7 @@ The corresponding query object have:
   - ``this('parent').children.age < 6``
 
 Why does in the expression ``child.age < 6`` "mutates" to
-``this('parent').children < 6``. Because, the `__iter__` method of a term (like
+``this('parent').children.age < 6``. Because, the `__iter__` method of a term (like
 ``this('parent').children``) yields a `query part` that wraps the very term,
 and since ``parent.children`` is actually ``this('parent').children``, then
 ``child`` is just a query part that wraps that term.
