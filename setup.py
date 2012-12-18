@@ -39,13 +39,14 @@ from release import VERSION as version
 
 setup(name=project_name,
       version=version,
-      description="The xotl query language",
+      description=("A pythonic query language, with similar goals as "
+                   "LINQ had for C#"),
       long_description=open(os.path.join("docs", "readme.txt")).read(),
       # Get more strings from
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
         "Programming Language :: Python",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: OS Independent",
@@ -55,7 +56,7 @@ setup(name=project_name,
       keywords=['query language', 'python', 'xotl'],
       author='Merchise Autrement',
       author_email='med.merchise@gmail.com',
-      url='http://www.merchise.org',
+      url='http://github.com/merchise-autrement/',
       license='GNU General Public License version 3 or later (GPLv3+)',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       namespace_packages=['xotl', ],
@@ -70,7 +71,7 @@ setup(name=project_name,
           # For documentation only. But it may be needed for ReadTheDocs
           'repoze.sphinx.autointerface>=0.7.0',
       ],
-      extras_requires={
+      extra_requires={
         'doc': ['docutils>=0.7',
                 'Sphinx>=1.0.7',
                 'repoze.sphinx.autointerface>=0.7.0']
