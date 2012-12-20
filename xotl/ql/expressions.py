@@ -6,19 +6,8 @@
 # Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation; either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on May 24, 2012
 
@@ -34,6 +23,7 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         unicode_literals as _py3_unicode)
 
+import operator
 from functools import partial
 
 from xoutil.context import context
@@ -348,6 +338,7 @@ class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     _format = '{0} == {1}'
     _method_name = b'__eq__'
+    _python_operator = operator.eq
 eq = EqualityOperator
 
 
@@ -362,6 +353,7 @@ class NotEqualOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     _format = '{0} != {1}'
     _method_name = b'__ne__'
+    _python_operator = operator.ne
 ne = NotEqualOperator
 
 
@@ -378,6 +370,7 @@ class LogicalAndOperator(Operator):
     arity = BINARY
     _method_name = b'__and__'
     _rmethod_name = b'__rand__'
+    _python_operator = operator.and_
 and_ = LogicalAndOperator
 
 
@@ -394,6 +387,7 @@ class LogicalOrOperator(Operator):
     arity = BINARY
     _method_name = b'__or__'
     _rmethod_name = b'__ror__'
+    _python_operator = operator.or_
 or_ = LogicalOrOperator
 
 
@@ -410,6 +404,7 @@ class LogicalXorOperator(Operator):
     arity = BINARY
     _method_name = b'__xor__'
     _rmethod_name = b'__rxor__'
+    _python_operator = operator.xor
 xor_ = LogicalXorOperator
 
 
@@ -425,6 +420,7 @@ class LogicalNotOperator(Operator):
     _format = 'not {0}'
     arity = UNARY
     _method_name = b'__invert__'
+    _python_operator = operator.invert
 invert = not_ = LogicalNotOperator
 
 
@@ -441,6 +437,7 @@ class AdditionOperator(Operator):
     arity = BINARY
     _method_name = b'__add__'
     _rmethod_name = b'__radd__'
+    _python_operator = operator.add
 add = AdditionOperator
 
 
@@ -450,6 +447,7 @@ class SubstractionOperator(Operator):
     arity = BINARY
     _method_name = b'__sub__'
     _rmethod_name = b'__rsub__'
+    _python_operator = operator.sub
 sub = SubstractionOperator
 
 
@@ -459,6 +457,7 @@ class DivisionOperator(Operator):
     arity = BINARY
     _method_name = b'__div__'
     _rmethod_name = b'__rdiv__'
+    _python_operator = operator.div
 truediv = div = DivisionOperator
 
 
@@ -475,6 +474,7 @@ class MultiplicationOperator(Operator):
     arity = BINARY
     _method_name = b'__mul__'
     _rmethod_name = b'__rmul__'
+    _python_operator = operator.mul
 mul = MultiplicationOperator
 
 
@@ -490,6 +490,7 @@ class LesserThanOperator(Operator):
     _format = '{0} < {1}'
     arity = BINARY
     _method_name = b'__lt__'
+    _python_operator = operator.lt
 lt = LesserThanOperator
 
 
@@ -506,6 +507,7 @@ class LesserOrEqualThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__le__'
+    _python_operator = operator.le
 le = LesserOrEqualThanOperator
 
 
@@ -522,6 +524,7 @@ class GreaterThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__gt__'
+    _python_operator = operator.gt
 gt = GreaterThanOperator
 
 
@@ -538,6 +541,7 @@ class GreaterOrEqualThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__ge__'
+    _python_operator = operator.ge
 ge = GreaterOrEqualThanOperator
 
 
@@ -584,6 +588,7 @@ class FloorDivOperator(Operator):
     arity = BINARY
     _method_name = b'__floordiv__'
     _rmethod_name = b'__rfloordiv__'
+    _python_operator = operator.floordiv
 floordiv = FloorDivOperator
 
 
@@ -600,6 +605,7 @@ class ModOperator(Operator):
     arity = BINARY
     _method_name = b'__mod__'
     _rmethod_name = b'__rmod__'
+    _python_operator = operator.mod
 mod = ModOperator
 
 
@@ -616,6 +622,7 @@ class PowOperator(Operator):
     arity = BINARY
     _method_name = b'__pow__'
     _rmethod_name = b'__rpow__'
+    _python_operator = operator.pow
 pow_ = PowOperator
 
 
@@ -631,6 +638,7 @@ class LeftShiftOperator(Operator):
     arity = BINARY
     _method_name = b'__lshift__'
     _rmethod_name = b'__rlshift__'
+    _python_operator = operator.lshift
 lshift = LeftShiftOperator
 
 
@@ -646,6 +654,7 @@ class RightShiftOperator(Operator):
     arity = BINARY
     _method_name = b'__rshift__'
     _rmethod_name = b'__rrshift__'
+    _python_operator = operator.rshift
 rshift = RightShiftOperator
 
 
@@ -709,6 +718,7 @@ class PositiveUnaryOperator(Operator):
     _format = '+{0}'
     arity = UNARY
     _method_name = b'__pos__'
+    _python_operator = operator.pos
 pos = PositiveUnaryOperator
 
 
@@ -724,6 +734,7 @@ class NegateUnaryOperator(Operator):
     _format = '-{0}'
     arity = UNARY
     _method_name = b'__neg__'
+    _python_operator = operator.neg
 neg = NegateUnaryOperator
 
 
@@ -739,6 +750,7 @@ class AbsoluteValueUnaryFunction(Operator):
     _format = 'abs({0})'
     arity = UNARY
     _method_name = b'__abs__'
+    _python_operator = abs
 abs_ = AbsoluteValueUnaryFunction
 
 
@@ -914,48 +926,6 @@ class EndsWithOperator(FunctorOperator):
 endswith = EndsWithOperator
 
 
-class StringFormatFunction(FunctorOperator):
-    '''
-    A function to apply formatting.
-
-    .. note::
-
-       This function is distinct in signature/purpose to the builtin `format`
-       function. It resembles more to the `format` method of string objects,
-       but is a standalone operation.
-
-    The purpose of this function is provide an easy replacement for the case
-    of formatting several expression tokens. It's not possible to use the mod
-    (`%`) operator to express the expression "format a tuple of ..." like in::
-
-        "%s aka %" % (name, alias)
-
-    Example::
-
-        >>> strformat('{0} alas {1}, {a}', 1, 2, a=1)    # doctest: +ELLIPSIS
-        <expression 'strformat({0} alas {1}, {a}, 1, 2, a=1)' ...>
-
-    .. todo::
-
-       Would not it be the same as ``call('{0} alas {1}'.format, 1, 2)``?
-
-       Unlike :class:`startswith` and :class:`endswith`, which are easily
-       replaced in queries, because they are deemed to be used in queries
-       like::
-
-           these(person for person in this if person.name.startswith('Manu'))
-
-       string formatting will be most likely used in the *selection* (the
-       projection in the relational slang) like::
-
-           these(strformat('Your name is: {0}', person.name)
-                 for person in this)
-    '''
-    arity = N_ARITY
-    _format = 'strformat({0}{1})'
-strformat = StringFormatFunction
-
-
 class AverageFunction(FunctorOperator):
     '''
     The ``avg(*args)`` operation. There're two possible interpretations:
@@ -984,6 +954,7 @@ class NewObjectFunction(FunctorOperator):
     '''
     arity = N_ARITY
     _format = 'new({0}{1})'
+    _method_name = b'_newobject'
 new = NewObjectFunction
 
 

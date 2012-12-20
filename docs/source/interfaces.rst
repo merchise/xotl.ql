@@ -22,19 +22,18 @@ Query objects interfaces
 the :class:`IQueryObject` below.
 
 .. autointerface:: IQueryObject
-   :members: selection, tokens, filters, ordering, partition, params
-
-.. autointerface:: IQueryTranslator
-
-.. autointerface:: IQueryExecutionPlan
+   :members: selection, tokens, filters, ordering, partition, params, __iter__, next
 
 .. autointerface:: IGeneratorToken
    :members: expression
 
-.. autointerface:: IExpressionTree
-   :members: operation, children, named_children
+Expression language API
+-----------------------
 
 .. autointerface:: IExpressionCapable
+
+.. autointerface:: IExpressionTree
+   :members: operation, children, named_children
 
 .. autointerface:: ITerm
    :members: name, parent, __iter__, __getattribute__
@@ -51,6 +50,13 @@ the :class:`IQueryObject` below.
 .. autointerface:: ISynctacticallyCommutativeOperation
    :members: equivalence_test
 
+Translation API
+---------------
+
+.. autointerface:: IQueryTranslator
+
+.. autointerface:: IQueryExecutionPlan
+
 
 Internal API
 ============
@@ -60,7 +66,7 @@ comprehensions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
 .. autointerface:: IQueryPart
-   :members: token, expression
+   :members: expression
 
 .. autointerface:: IQueryParticlesBubble
    :members: capture_part, capture_token, parts, tokens, particles

@@ -6,19 +6,8 @@
 # Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 3 of the  License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on Jul 2, 2012
 
@@ -176,7 +165,8 @@ def cofind_tokens(*expressions, **kwargs):
 
 
 def cocreate_plan(query, **kwargs):
-    '''
+    '''**Not implemented yet**. The documentation provided is just an idea.
+
     Builds a :term:`query execution plan` for a given query that fetches
     objects from Python's VM memory.
 
@@ -193,8 +183,8 @@ def cocreate_plan(query, **kwargs):
                          if parent.children & (parent.age > 34)
                          for child in parent.children if child.age < 5)
 
-        The `parent.children` generator tokens is *derived* from the token
-        `this`, so there should be a relation between the two.
+       The `parent.children` generator tokens is *derived* from the token
+       `this`, so there should be a relation between the two.
 
        .. todo::
 

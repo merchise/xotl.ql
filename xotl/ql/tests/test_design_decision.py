@@ -33,7 +33,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__LOG = True
+__LOG = False
 
 if __LOG:
     import sys

@@ -246,6 +246,57 @@ class TestThisQueries(unittest.TestCase):
                 self.assertIn(t, tokens)
 
 
+from xotl.ql.expressions import OperatorType, UNARY, BINARY, N_ARITY
+_tests = {}
+
+
+def _build_unary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age))
+        expected = operator(this('p').age)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    return test
+
+
+def _build_binary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age, parent.check))
+        expected = operator(this('p').age, this('p').check)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    return test
+
+
+def _build_nary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age, parent.check, parent.names))
+        expected = operator(this('p').age, this('p').check, this('p').names)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    return test
+
+
+for op in OperatorType.operators:
+    if getattr(op, 'arity', None) is UNARY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_unary_test(op)
+    elif getattr(op, 'arity', None) is BINARY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_binary_test(op)
+    elif getattr(op, 'arity', None) is N_ARITY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_nary_test(op)
+
+TestAllOperations = type(b'TestAllOperations', (unittest.TestCase, ), _tests)
+
+
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     '''
     Non-selected tokens should not be forgotten.

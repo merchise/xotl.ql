@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.interfaces
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -235,13 +235,8 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a *possibly* partial (but sound) expression that is been
-    attached somehow to a generator token.
-
-    Upon invocation of `these(comprehension)`, several :class:`IGeneratorToken`
-    objects are generated internally whenever there's an *implicit iteration*
-    over some supported object (like a :class:`ITerm` instance). This token
-    represents the FROM clause we can see in languages like SQL.
+    '''Represents a *possibly* partial (but sound) expression that is being
+    constructed inside a query expression.
 
     Expression trees are powerful enough to capture the semantics of query
     parts. But, since we don't have the control of how Python does is execution
@@ -253,15 +248,12 @@ class IQueryPart(IExpressionCapable):
     details of the procedure.
 
     '''
-    token = Attribute('A reference to the generator token instance to which '
-                      'this part has been attached.')
-
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
-                           'itself. The intension of this attribute '
+                           'itself. The intention of this attribute '
                            'is to allow clients extract cleaned-up '
                            'versions of the expression without '
-                           'the query-related stuff.')
+                           'the query-building related stuff.')
 
 
 class ITerm(IExpressionCapable):
@@ -380,11 +372,11 @@ class IQueryParticlesBubble(Interface):
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
     particles = Attribute('Ordered collection of either tokens or query parts '
-                          'that were captured.')
-
-
-class IQueryContext(Interface):
-    bubble = Attribute('A reference to an :class:`IQueryParticlesBubble`')
+                          'that were captured.',
+                          'This property holds a list of all particles '
+                          'not matter their types in the order they were '
+                          'captured. This is intended to be used to '
+                          'perform optimizations for translators. ')
 
 
 class IGeneratorToken(Interface):

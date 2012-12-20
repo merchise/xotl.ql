@@ -1,0 +1,45 @@
+*#
+.#*
+# Python + Eclipse
+*.pyc
+*.pyo
+*.*~
+*.*~*
+.project
+.pydevproject
+.settings/
+build/
+dist/
+
+# Python Coverage files generate by nose
+.coverage
+
+# Ditz stuff
+.ditz-config
+
+# Git cacharra
+*.orig
+
+# sqlite3
+*.db
+
+# Buildout
+# TODO: Must be included locally in "Buildout" projects
+# src/
+# parts/
+# bin/
+# develop-eggs/
+# apache/
+# var/
+# .installed.cfg
+# .mr.developer.cfg
+
+# Paquetes .egg-info
+*.egg-info/
+
+# Python Rope for Emacs
+.ropeproject/
+
+# Ficheros de backup del VPP
+*.vpp~*
+*.vpp.*

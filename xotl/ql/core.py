@@ -6,19 +6,8 @@
 # Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation; either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on May 24, 2012
 
@@ -56,7 +45,7 @@ from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
@@ -239,27 +228,6 @@ class Term(object):
             >>> (parent, child)    # doctest: +ELLIPSIS
             (<...this('parent')...>, <...this('parent').children...>)
 
-        A `token` object is attached to each part::
-
-            >>> from xoutil.proxy import unboxed
-            >>> unboxed(parent).token        # doctest: +ELLIPSIS
-            <token: <this('parent') at 0x...>>
-
-        The attached `token` object is different for each part if those parts
-        are generated from different generators token (see
-        :class:`~xotl.ql.interfaces.IGeneratorToken`).
-
-            >>> unboxed(parent).token is not unboxed(child).token
-            True
-
-        However, in a query with a single generator token (only one `for`), the
-        `token` object is shared::
-
-            >>> parent, children = next((parent, parent.children)
-            ...                            for parent in this('parent'))
-            >>> unboxed(parent).token is unboxed(children).token
-            True
-
         .. warning::
 
            We have used `next` here directly over the comprehensions, but the
@@ -284,7 +252,7 @@ class Term(object):
                     term = Term(name, parent=parent)
                     token = GeneratorToken(expression=term)
                     bound_term = Term(name, parent=parent, binding=token)
-        instance = QueryPart(expression=bound_term, token=token)
+        instance = QueryPart(expression=bound_term)
         _emit_token(token)
         yield instance
 
@@ -1038,21 +1006,17 @@ def _query_part_method(target):
         result = target(self, *args, **kwargs)
         _emit_part(result)
         return result
+    inner.__name__ = target.__name__
     return inner
 
 
 def _build_unary_operator(operation):
     method_name = operation._method_name
-    @_query_part_method
     def method(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=operation(instance),
-                           token=token)
+        result = QueryPart(expression=operation(self))
         return result
     method.__name__ = method_name
-    return method
+    return _query_part_method(method)
 
 
 def _build_binary_operator(operation, inverse=False):
@@ -1061,32 +1025,26 @@ def _build_binary_operator(operation, inverse=False):
     else:
         method_name = operation._rmethod_name
     if method_name:
-        @_query_part_method
-        def method(self, other):
-            with context(UNPROXIFING_CONTEXT):
-                instance = self.expression
-                token = self.token
-                if IQueryPart.providedBy(other):
-                    other = other.expression
+        def method(self, *others):
             if not inverse:
-                result = QueryPart(expression=operation(instance, other),
-                                   token=token)
+                result = QueryPart(expression=operation(self, *others))
             else:
-                result = QueryPart(expression=operation(other, instance),
-                                   token=token)
+                assert operation._arity == BINARY
+                other = others[0]
+                result = QueryPart(expression=operation(other, self))
             return result
         method.__name__ = method_name
-        return method
+        return _query_part_method(method)
 
 
 _part_operations = {operation._method_name:
                     _build_unary_operator(operation)
                  for operation in OperatorType.operators
-                    if getattr(operation, 'arity', None) == UNARY}
+                    if getattr(operation, 'arity', None) is UNARY}
 _part_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) is BINARY})
+                        if getattr(operation, 'arity', None) in (BINARY, N_ARITY)})
 
 _part_operations.update({operation._rmethod_name:
                         _build_binary_operator(operation, True)
@@ -1096,6 +1054,12 @@ _part_operations.update({operation._rmethod_name:
 
 
 QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
+
+
+class _QueryPartType(type):
+    def _target_(self, part):
+        from xoutil.proxy import unboxed
+        return unboxed(part).expression
 
 
 @implementer(IQueryPart, ITerm)
@@ -1113,26 +1077,13 @@ class QueryPart(object):
     general case are both expressions.
 
     '''
-    __slots__ = ('_token', '_expression')
+    __metaclass__ = _QueryPartType
+    __slots__ = ('_expression')
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = expression = kwargs.get('expression')
             assert IExpressionCapable.providedBy(expression)
-            self._token = None
-            self.token = token = kwargs.get('token')
-            assert IGeneratorToken.providedBy(token)
-
-    @property
-    def token(self):
-        return self._token
-
-    @token.setter
-    def token(self, value):
-        if not self._token and provides_any(value, IGeneratorToken):
-            self._token = value
-        else:
-            raise TypeError('`query` attribute only accepts IGeneratorToken objects')
 
     @property
     def expression(self):
@@ -1171,9 +1122,7 @@ class QueryPart(object):
         else:
             with context(UNPROXIFING_CONTEXT):
                 instance = get('expression')
-                token = get('token')
-            result = QueryPart(expression=getattr(instance, attr),
-                               token=token)
+            result = QueryPart(expression=getattr(instance, attr))
             _emit_part(result)
             return result
 
@@ -1181,62 +1130,8 @@ class QueryPart(object):
     def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=instance(*args, **kwargs),
-                           token=token)
+        result = QueryPart(expression=instance(*args, **kwargs))
         return result
-
-    @_query_part_method
-    def any_(self, *args):
-        from xotl.ql.expressions import any_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
-        return result
-
-    @_query_part_method
-    def all_(self, *args):
-        from xotl.ql.expressions import all_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
-        _emit_part(result)
-        return result
-
-    @_query_part_method
-    def min_(self, *args):
-        from xotl.ql.expressions import min_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
-        return result
-
-    @_query_part_method
-    def max_(self, *args):
-        from xotl.ql.expressions import max_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
-        return result
-
-    @_query_part_method
-    def invoke(self, *args):
-        from xotl.ql.expressions import invoke as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
-        return result
-
 
 @decorator
 def thesefy(target, name=None):

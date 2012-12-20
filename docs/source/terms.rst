@@ -211,3 +211,11 @@ Terms and glossary
        from. We may then, relax the "persistence" requirement from a component
        to be considered a storage. For instance, a `memcached` server may be
        considered a key-value storage, that a query translator may target.
+
+   thread-local object
+
+       A thread-local object is an instance of the ``threading.local``
+       class. An instance of this class acts like a global variable, but it
+       holds values local to a given thread; so, each thread has its own
+       "global" variable. Please refer to Python's documentation for more
+       information.

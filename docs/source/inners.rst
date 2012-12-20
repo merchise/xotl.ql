@@ -215,13 +215,14 @@ part `qp<child.age < 6>`, the term `child.age` is bound to the token from which
 How does :class:`~xotl.ql.core.these` builds a query object?
 ============================================================
 
-When creating a query object, :class:`xotl.ql.core.these` wraps the entire
-comprehension in an :term:`execution context` that hosts a special "particles
-bubble" [#bubble]_. The particles bubble captures every "emitted" expression
-and token (a particle).
+When creating a query object, :class:`xotl.ql.core.these` creates a stack of
+"particles bubbles" [#bubble]_ before drawing any object from the generator
+object (i.e before calling `next` to the generator object). The bubble captures
+every expression and token that are emitted in the making of expressions that
+happen inside the query expression.
 
-Let's see how the whole thing works. Let's step by our algorithm when it is
-processing the following query expression::
+Let's see how the whole thing works by looking at how it would process the
+following query expression::
 
   these((person.name, partner.name)
         for person in this('person')
@@ -232,152 +233,160 @@ processing the following query expression::
 
 
 When the shown sentence is executed, Python creates a `generator object` and
-invokes ``these`` with the generator as its sole argument. Then the following
-steps are performed in the given order:
+invokes the callable ``these`` with the generator as its sole argument. Then
+the following steps are performed in the given order:
 
-- An instance of a :class:`~xotl.ql.interfaces.IQueryParticlesBubble` is
-  created, and is placed as key (and assigned to
-  :attr:`xotl.ql.interfaces.IQueryContext.bubble`) of an execution context.
+1. An instance of a :class:`~xotl.ql.interfaces.IQueryParticlesBubble` is
+   created, and is pushed to a :term:`thread-local <thread-local object>` stack
+   of bubbles.
 
-- Inside the context, `these` calls ``next(comprehension)``, and then Python
-  calls the `__iter__` method of ``this('person')``.
+2. Then `these` calls ``next(comprehension)``, and then Python calls the
+   `__iter__` method of ``this('person')``.
 
-  This method creates the token `tk<person>` and bounds the term to it. This
-  token is emitted and captured by the particles bubble in context.
+   This method creates the token `tk<person>` and bounds the term to it. This
+   token is emitted and captured by the top-most bubble in the thread-local
+   stack.
 
-  Then it also builds the query part `qp<person>` and yields it. This query
-  part is not emitted because `__iter__` knows it won't make any sense.
+   Then it also builds the query part `qp<person>` and yields it. This query
+   part is not emitted because `__iter__` knows it won't make any sense.
 
-- Python now calls the `__iter__` method of ``this('partner')``, this will
-  create the token `tk<partner>` and the query part `qp<partner>`; this query
-  part is yielded. Again only the token `tk<partner>` is emitted and captured
-  in the bubble.
+3. Python now calls the `__iter__` method of ``this('partner')``, this will
+   create the token `tk<partner>` and the query part `qp<partner>`; this query
+   part is yielded. Again only the token `tk<partner>` is emitted and captured
+   by the bubble.
 
-- Once more, Python calls the `__iter__` method of ``this('relation')``, which
-  build `tk<relation>` and yields `qp<relation>`. The bubble captures the token
-  `tk<relation>`.
+4. Once more, Python calls the `__iter__` method of ``this('relation')``, which
+   build `tk<relation>` and yields `qp<relation>`. The bubble captures the token
+   `tk<relation>`.
 
-  At this point it's Python, not our program, who has the handle of these three
-  query parts, and they have references to their corresponding tokens. But our
-  bubbles has captured all the tokens.
+   At this point it's Python, not our program, who has the handle of these
+   three query parts. But our bubbles has captured all the tokens.
 
-- Now Python beings to process the `ifs`. The comprehension-local variable
-  ``rel`` refers to the query part `qp<relation>`. So, when trying to get
-  ``rel.type``, Python calls the `__getattribute__` method of the query part
-  `qp<relation>`, who delegates the call to its contained term
-  ``this('relation')`` and then wraps the result into another query part
-  `qp<relation.type>` and emits the query part (and is captured by the bubble.)
+5. Now Python beings to process the `ifs`. The comprehension-local variable
+   ``rel`` refers to the query part `qp<relation>`. So, when trying to get
+   ``rel.type``, Python calls the `__getattribute__` method of the query part
+   `qp<relation>`, who delegates the call to its contained
+   :attr:`~xotl.ql.interfaces.IQueryPart.expression` which is
+   ``this('relation')``, and then wraps the result into another query part
+   `qp<relation.type>` and emits the query part (and is captured by the
+   bubble.)
 
-  Finally `qp<relation.type>` is returned (to Python).
+   Finally `qp<relation.type>` is returned (to Python).
 
-- Now Python calls the `__eq__` method of `qp<relation.type>` and passes the
-  string ``'partnership'`` as its sole positional argument.
+6. Now Python calls the `__eq__` method of `qp<relation.type>` and passes the
+   string ``'partnership'`` as its sole positional argument.
 
-  The query part, delegates the `__eq__` call its contained term
-  ``this('relation').type``. This returns the :term:`expression tree`
-  ``eq(this('relation').type, 'partnership')``. Now we create another query
-  part `qp<eq(relation.type, 'partnership')>`, and emit it.
+   The query part, delegates the `__eq__` call its contained expression
+   ``this('relation').type``. This returns the :term:`expression tree`
+   ``eq(this('relation').type, 'partnership')``. Now we create another query
+   part `qp<eq(relation.type, 'partnership')>`, and emit it.
 
-  The bubble realizes that this newly emitted query part's expression
-  *contains* (see :meth:`~xotl.ql.interfaces.IQueryParticlesBubble.capture_part`)
-  the previously captured expression ``this('relation').type``; so it forgets
-  about this "contained" expression, and just keep the bigger one.
+   The bubble realizes that this newly emitted query part's expression
+   *contains* (see
+   :meth:`~xotl.ql.interfaces.IQueryParticlesBubble.capture_part`) the
+   previously captured expression ``this('relation').type``; so it forgets
+   about this "contained" expression, and just keep the bigger one.
 
-  We then return the query part `qp<eq(...)>` (to Python).
+   We then return the query part `qp<eq(...)>` (to Python).
 
-- Since Python knows that the first `if` is entirely processed it moves to the
-  second `if` (cause it regards the returned query part as True).
+7. Since Python knows that the first `if` is entirely processed it moves to the
+   second `if` (cause it regards the returned query part as True).
 
-  .. note::
+   .. note::
 
-     At this point our code does not know that the `if` has finished, since
-     it's Python who has the control of how the expression is parsed, not us.
+      At this point our code does not know that the `if` has finished, since
+      it's Python who has the control of how the expression is parsed, not us.
 
+8. .. _five-steps:
 
-- .. _five-steps:
+   Python, following it's priority rules, determines that it will run the
+   following steps:
 
-  Python, following it's priority rules, determines that it will run the
-  following steps:
+   1. Compute `qp<relation>.subject`, by calling `__getattribute__` to
+      `qp<relation>`.
 
-  1. Compute `qp<relation>.subject`, by calling `__getattribute__` to
-     `qp<relation>`.
+   2. Compute ``operator.eq(``\ **1.**\ ``, qp<person>)``
 
-  2. Compute ``operator.eq(``\ **1.**\ ``, qp<person>)``
+      meaning it will proceed as if calling the function ``operator.eq`` with
+      the result of step 1. as its first argument and `qp<person>` as the
+      second. See the module :ref:`operator <module-operator>` of the standard
+      library.
 
-     meaning it will proceed as if calling the function ``operator.eq`` with
-     the result of step 1. as its first argument and `qp<person>` as the
-     second. See the module :ref:`operator <module-operator>` of the standard
-     library.
+   3. Compute ``qp<relation>.object``
 
-  3. Compute ``qp<relation>.object``
+   4. Compute ``operator.eq(``\ **3.**\ ``, qp<partner>)``
 
-  4. Compute ``operator.eq(``\ **3.**\ ``, qp<partner>)``
+   5. An finally compute ``operator.and_(``\ **2.**, **4.**\ ``)``
 
-  5. An finally compute ``operator.and_(``\ **2.**, **4.**\ ``)``
+   The steps 1. and 3. are quite similar to how the `rel.type` is
+   processed. For the step 2. notice that the first argument is
+   `qp<relation.subject>`, so Python invokes the method `__eq__` of this query
+   part with `qp<person>` as its argument.
 
-  The steps 1. and 3. are quite similar to how the `rel.type` is processed. For
-  the step 2. notice that the first argument is `qp<relation.subject>`, so
-  Python invokes the method `__eq__` of this query part with `qp<person>` as
-  its argument.
+   The query part notices that this argument is also a part and extracts its
+   :attr:`~xotl.ql.interfaces.IQueryPart.expression` (in this case
+   ``this('person')``) before proceeding. Then it delegates the
+   ``operator.eq()`` to its own `expression` (``this('relation').subject``)
+   with ``this('person')`` as the second argument.
 
-  The query part notices that this argument is also a part and extracts its
-  :attr:`~xotl.ql.interfaces.IQueryPart.expression` (in this case
-  ``this('person')``) before proceeding. Then it delegates the
-  ``operator.eq()`` to its own `expression` (``this('relation').subject``) with
-  ``this('person')`` as the second argument.
+   The result is wrapped inside a new query part `qp<eq(relation.subject,
+   person)>`. The created query parts are all emitted, and captured by our
+   bubble, and upon capture they are inspected to find out if they *contain*
+   previously emitted parts, and if they do, only the bigger ones are kept.
 
-  The result is wrapped inside a new query part `qp<eq(relation.subject,
-  person)>`. The created query parts are all emitted, and captured by our
-  bubble, and upon capture they are inspected to find out if they *contain*
-  previously emitted parts, and if they do, only the bigger are kept.
+   The query part is returned.
 
-  The query part is returned.
+9. After Python does the previously sketched steps, it now turns its attention
+   to building the *selection* ``(person.name, partner.name)`` tuple.
 
-- After Python does the previously sketched steps, it now turns its attention
-  to building the *selection* ``(person.name, partner.name)`` tuple.
+   .. note::
 
-  .. note::
+      Once again our program has no idea that all the `ifs` are done, and that
+      it will now be asked to build *selection* expressions.
 
-     Once again our program has no idea that all the `ifs` are done, and that
-     it will now be asked to build *selection* expressions.
+   Again, Python calls `__getattribute__` to `qp<person>` to get its `name`
+   attribute; this call creates yet another part emits that query part. Since
+   that query part does not contain any previously emitted part (actually,
+   since we use *is* comparison there will never be a case in which parts that
+   occur in different syntactical units are confused although they may be
+   equivalent -- i.e different `ifs`, or different elements in the selection
+   won't be merged and thus their boundaries will be established.)
 
-  Again, Python calls `__getattribute__` to `qp<person>` to get its `name`
-  attribute; this call creates yet another part emits that query part. Since
-  that query part does not contain any previously emitted part (actually, since
-  we use *is* comparison there will never be a case in which parts from
-  separated are confused although they may be equivalent -- i.e different
-  `ifs`, or different elements in the selection won't be merged and thus their
-  boundaries will be established.)
+   Then, Python calls `__getattribute__` to `qp<partner>` to get its `name`
+   attribute. Again, the part is emitted.
 
-  Then, Python calls `__getattribute__` to `qp<partner>` to get its `name`
-  attribute. Again, the part is emitted.
+10. Now the `next(comprehesion)` returns the tuple. If we were to call `next`
+    again it would raise a StopIteration exception, since
+    :meth:`xotl.ql.interfaces.ITerm.__iter__` should yield a single query part.
 
-- Now the `next(comprehesion)` returns the tuple. If we were to call `next`
-  again it would raise a StopIteration exception, since
-  :meth:`xotl.ql.interfaces.ITerm.__iter__` should yield a single query part.
+11. :func:`~xotl.ql.core.these` now regains control and it pops top-most bubble
+    from thread-local stack. If we inspect its
+    :attr:`~xotl.ql.interfaces.IQueryParticlesBubble.parts` we'll find the
+    following expressions in the given order:
 
-- :func:`~xotl.ql.core.these` now regains control and if we inspect the
-  :attr:`~xotl.ql.interfaces.IQueryParticlesBubble.parts` we'll find the
-  following expressions in the given order:
+    1. ``relation.type == 'partnership'``, where the term `relation.type` is
+       bound to `tk<relation>`.
 
-  1. ``relation.type == 'partnership'``, the term `relation.type` is bound to
-     `tk<relation>`.
+    2. ``(relation.subject == person) & (relation.object == partner)``, where
+       the terms `relation.*` are bound to `tk<relation>`, the term `person` is
+       bound to `tk<person>` and the term `partner` is bound to `tk<partner>`.
 
-  2. ``(relation.subject == person) & (relation.object == partner)``, the terms
-     `relation.*` are bound to `tk<relation>`; the term `person` is bound to
-     `tk<person>` and the term `partner` is bound to `tk<partner>`.
+    3. ``person.name``
 
-  3. ``person.name``
+    4. ``partner.name``
 
-  4. ``partner.name``
+12. Now :func:`~!xotl.ql.core.these` inspect the tuple of selected expressions,
+    and if they are at the end of the captured parts in the bubble, those parts
+    are disregarded.
 
-- Now :func:`~!xotl.ql.core.these` inspect the selected expressions, and if
-  they are at the end of the captured parts, those parts are disregarded.
+13. Finally, the :term:`query object` is created and the selections are simply
+    assigned, the :attr:`~xotl.ql.interfaces.IQueryObject.tokens` are those
+    captured by our bubble, and the captured parts are assigned to the
+    attribute :attr:`~xotl.ql.interfaces.IQueryObject.filters`.
 
-  Then, the :term:`query object` is created with all the captured
-  :attr:`~xotl.ql.interfaces.IQueryObject.tokens` assigned, and the left
-  captured parts assigned to the attribute
-  :attr:`~xotl.ql.interfaces.IQueryObject.filters`.
+    .. Before returning the query, `these` post-process each filter by walking its
+    .. expression tree, and invoking the :ref:`sub-queries protocol
+    .. <subquery-protocol>`.
 
 Footnotes
 =========
