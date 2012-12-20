@@ -258,6 +258,7 @@ def _build_unary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
     return test
 
 
@@ -269,6 +270,7 @@ def _build_binary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
     return test
 
 
@@ -280,6 +282,7 @@ def _build_nary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
+    test.__name__ = b'test_for_{0}'.format(op.__name__)
     return test
 
 
