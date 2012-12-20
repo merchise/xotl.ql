@@ -56,7 +56,7 @@ from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
@@ -1039,14 +1039,17 @@ def _build_binary_operator(operation, inverse=False):
         method_name = operation._rmethod_name
     if method_name:
         @_query_part_method
-        def method(self, other):
+        def method(self, *others):
             with context(UNPROXIFING_CONTEXT):
                 instance = self.expression
-                if IQueryPart.providedBy(other):
-                    other = other.expression
+                is_querypart = IQueryPart.providedBy
+                extract = lambda which: which.expression if is_querypart(which) else which
+                others = tuple(extract(which) for which in others)
             if not inverse:
-                result = QueryPart(expression=operation(instance, other))
+                result = QueryPart(expression=operation(instance, *others))
             else:
+                assert operation._arity == BINARY
+                other = others[0]
                 result = QueryPart(expression=operation(other, instance))
             return result
         method.__name__ = method_name
@@ -1056,11 +1059,11 @@ def _build_binary_operator(operation, inverse=False):
 _part_operations = {operation._method_name:
                     _build_unary_operator(operation)
                  for operation in OperatorType.operators
-                    if getattr(operation, 'arity', None) == UNARY}
+                    if getattr(operation, 'arity', None) is UNARY}
 _part_operations.update({operation._method_name:
                         _build_binary_operator(operation)
                       for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) is BINARY})
+                        if getattr(operation, 'arity', None) in (BINARY, N_ARITY)})
 
 _part_operations.update({operation._rmethod_name:
                         _build_binary_operator(operation, True)
@@ -1141,48 +1144,6 @@ class QueryPart(object):
             instance = self.expression
         result = QueryPart(expression=instance(*args, **kwargs))
         return result
-
-    @_query_part_method
-    def any_(self, *args):
-        from xotl.ql.expressions import any_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=f(instance, *args))
-        return result
-
-    @_query_part_method
-    def all_(self, *args):
-        from xotl.ql.expressions import all_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=f(instance, *args))
-        _emit_part(result)
-        return result
-
-    @_query_part_method
-    def min_(self, *args):
-        from xotl.ql.expressions import min_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=f(instance, *args))
-        return result
-
-    @_query_part_method
-    def max_(self, *args):
-        from xotl.ql.expressions import max_ as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=f(instance, *args))
-        return result
-
-    @_query_part_method
-    def invoke(self, *args):
-        from xotl.ql.expressions import invoke as f
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            result = QueryPart(expression=f(instance, *args))
-        return result
-
 
 @decorator
 def thesefy(target, name=None):
