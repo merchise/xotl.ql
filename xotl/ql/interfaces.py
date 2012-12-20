@@ -253,9 +253,6 @@ class IQueryPart(IExpressionCapable):
     details of the procedure.
 
     '''
-    token = Attribute('A reference to the generator token instance to which '
-                      'this part has been attached.')
-
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
                            'itself. The intention of this attribute '

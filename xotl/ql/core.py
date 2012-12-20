@@ -239,27 +239,6 @@ class Term(object):
             >>> (parent, child)    # doctest: +ELLIPSIS
             (<...this('parent')...>, <...this('parent').children...>)
 
-        A `token` object is attached to each part::
-
-            >>> from xoutil.proxy import unboxed
-            >>> unboxed(parent).token        # doctest: +ELLIPSIS
-            <token: <this('parent') at 0x...>>
-
-        The attached `token` object is different for each part if those parts
-        are generated from different generators token (see
-        :class:`~xotl.ql.interfaces.IGeneratorToken`).
-
-            >>> unboxed(parent).token is not unboxed(child).token
-            True
-
-        However, in a query with a single generator token (only one `for`), the
-        `token` object is shared::
-
-            >>> parent, children = next((parent, parent.children)
-            ...                            for parent in this('parent'))
-            >>> unboxed(parent).token is unboxed(children).token
-            True
-
         .. warning::
 
            We have used `next` here directly over the comprehensions, but the
@@ -284,7 +263,7 @@ class Term(object):
                     term = Term(name, parent=parent)
                     token = GeneratorToken(expression=term)
                     bound_term = Term(name, parent=parent, binding=token)
-        instance = QueryPart(expression=bound_term, token=token)
+        instance = QueryPart(expression=bound_term)
         _emit_token(token)
         yield instance
 
@@ -1047,9 +1026,7 @@ def _build_unary_operator(operation):
     def method(self):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=operation(instance),
-                           token=token)
+        result = QueryPart(expression=operation(instance))
         return result
     method.__name__ = method_name
     return method
@@ -1065,15 +1042,12 @@ def _build_binary_operator(operation, inverse=False):
         def method(self, other):
             with context(UNPROXIFING_CONTEXT):
                 instance = self.expression
-                token = self.token
                 if IQueryPart.providedBy(other):
                     other = other.expression
             if not inverse:
-                result = QueryPart(expression=operation(instance, other),
-                                   token=token)
+                result = QueryPart(expression=operation(instance, other))
             else:
-                result = QueryPart(expression=operation(other, instance),
-                                   token=token)
+                result = QueryPart(expression=operation(other, instance))
             return result
         method.__name__ = method_name
         return method
@@ -1113,26 +1087,12 @@ class QueryPart(object):
     general case are both expressions.
 
     '''
-    __slots__ = ('_token', '_expression')
+    __slots__ = ('_expression')
 
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = expression = kwargs.get('expression')
             assert IExpressionCapable.providedBy(expression)
-            self._token = None
-            self.token = token = kwargs.get('token')
-            assert IGeneratorToken.providedBy(token)
-
-    @property
-    def token(self):
-        return self._token
-
-    @token.setter
-    def token(self, value):
-        if not self._token and provides_any(value, IGeneratorToken):
-            self._token = value
-        else:
-            raise TypeError('`query` attribute only accepts IGeneratorToken objects')
 
     @property
     def expression(self):
@@ -1171,9 +1131,7 @@ class QueryPart(object):
         else:
             with context(UNPROXIFING_CONTEXT):
                 instance = get('expression')
-                token = get('token')
-            result = QueryPart(expression=getattr(instance, attr),
-                               token=token)
+            result = QueryPart(expression=getattr(instance, attr))
             _emit_part(result)
             return result
 
@@ -1181,9 +1139,7 @@ class QueryPart(object):
     def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=instance(*args, **kwargs),
-                           token=token)
+        result = QueryPart(expression=instance(*args, **kwargs))
         return result
 
     @_query_part_method
@@ -1191,9 +1147,7 @@ class QueryPart(object):
         from xotl.ql.expressions import any_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
+        result = QueryPart(expression=f(instance, *args))
         return result
 
     @_query_part_method
@@ -1201,9 +1155,7 @@ class QueryPart(object):
         from xotl.ql.expressions import all_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
+        result = QueryPart(expression=f(instance, *args))
         _emit_part(result)
         return result
 
@@ -1212,9 +1164,7 @@ class QueryPart(object):
         from xotl.ql.expressions import min_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
+        result = QueryPart(expression=f(instance, *args))
         return result
 
     @_query_part_method
@@ -1222,9 +1172,7 @@ class QueryPart(object):
         from xotl.ql.expressions import max_ as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
+        result = QueryPart(expression=f(instance, *args))
         return result
 
     @_query_part_method
@@ -1232,9 +1180,7 @@ class QueryPart(object):
         from xotl.ql.expressions import invoke as f
         with context(UNPROXIFING_CONTEXT):
             instance = self.expression
-            token = self.token
-        result = QueryPart(expression=f(instance, *args),
-                           token=token)
+            result = QueryPart(expression=f(instance, *args))
         return result
 
 
