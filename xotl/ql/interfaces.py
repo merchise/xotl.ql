@@ -258,10 +258,10 @@ class IQueryPart(IExpressionCapable):
 
     expression = Attribute('The expression that this part stands for.'
                            'This expression should not be a query part '
-                           'itself. The intension of this attribute '
+                           'itself. The intention of this attribute '
                            'is to allow clients extract cleaned-up '
                            'versions of the expression without '
-                           'the query-related stuff.')
+                           'the query-building related stuff.')
 
 
 class ITerm(IExpressionCapable):
