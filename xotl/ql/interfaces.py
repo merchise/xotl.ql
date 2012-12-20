@@ -372,7 +372,11 @@ class IQueryParticlesBubble(Interface):
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
     particles = Attribute('Ordered collection of either tokens or query parts '
-                          'that were captured.')
+                          'that were captured.',
+                          'This property holds a list of all particles '
+                          'not matter their types in the order they were '
+                          'captured. This is intended to be used to '
+                          'perform optimizations for translators. ')
 
 
 class IGeneratorToken(Interface):
