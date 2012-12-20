@@ -383,10 +383,6 @@ class IQueryParticlesBubble(Interface):
                           'that were captured.')
 
 
-class IQueryContext(Interface):
-    bubble = Attribute('A reference to an :class:`IQueryParticlesBubble`')
-
-
 class IGeneratorToken(Interface):
     '''In the :term:`query object`, a single :term:`generator token`.
 
