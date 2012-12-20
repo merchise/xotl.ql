@@ -246,33 +246,52 @@ class TestThisQueries(unittest.TestCase):
                 self.assertIn(t, tokens)
 
 
-class TestAllOperations(unittest.TestCase):
-    def test_unary_ops(self):
-        from xotl.ql.expressions import OperatorType, UNARY
-        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is UNARY]
-        for op in ops:
-            query = these(parent for parent in this('p') if op(parent.age))
-            expected = op(this('p').age)
-            with context(UNPROXIFING_CONTEXT):
-                self.assertEqual(expected, query.filters[0])
+from xotl.ql.expressions import OperatorType, UNARY, BINARY, N_ARITY
+_tests = {}
 
-    def test_binary_ops(self):
-        from xotl.ql.expressions import OperatorType, BINARY
-        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is BINARY]
-        for op in ops:
-            query = these(parent for parent in this('p') if op(parent.age, parent.name))
-            expected = op(this('p').age, this('p').name)
-            with context(UNPROXIFING_CONTEXT):
-                self.assertEqual(expected, query.filters[0])
 
-    def test_nary_ops(self):
-        from xotl.ql.expressions import OperatorType, N_ARITY
-        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is N_ARITY]
-        for op in ops:
-            query = these(parent for parent in this('p') if op(parent.age, parent.children, parent.which))
-            expected = op(this('p').age, this('p').children, this('p').which)
-            with context(UNPROXIFING_CONTEXT):
-                self.assertEqual(expected, query.filters[0])
+def _build_unary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age))
+        expected = operator(this('p').age)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    return test
+
+
+def _build_binary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age, parent.check))
+        expected = operator(this('p').age, this('p').check)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    return test
+
+
+def _build_nary_test(op):
+    def test(self):
+        operator = getattr(op, '_python_operator', op)
+        query = these(parent for parent in this('p') if operator(parent.age, parent.check, parent.names))
+        expected = operator(this('p').age, this('p').check, this('p').names)
+        self.assertIs(1, len(query.filters))
+        with context(UNPROXIFING_CONTEXT):
+            self.assertEqual(expected, query.filters[0])
+    return test
+
+
+for op in OperatorType.operators:
+    if getattr(op, 'arity', None) is UNARY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_unary_test(op)
+    elif getattr(op, 'arity', None) is BINARY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_binary_test(op)
+    elif getattr(op, 'arity', None) is N_ARITY:
+        _tests['test_for_{0}'.format(op.__name__)] = _build_nary_test(op)
+
+TestAllOperations = type(b'TestAllOperations', (unittest.TestCase, ), _tests)
 
 
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):

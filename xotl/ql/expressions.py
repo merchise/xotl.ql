@@ -34,6 +34,7 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         unicode_literals as _py3_unicode)
 
+import operator
 from functools import partial
 
 from xoutil.context import context
@@ -348,6 +349,7 @@ class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     _format = '{0} == {1}'
     _method_name = b'__eq__'
+    _python_operator = operator.eq
 eq = EqualityOperator
 
 
@@ -362,6 +364,7 @@ class NotEqualOperator(Operator, BinaryCommutativeOperatorMixin):
     '''
     _format = '{0} != {1}'
     _method_name = b'__ne__'
+    _python_operator = operator.ne
 ne = NotEqualOperator
 
 
@@ -378,6 +381,7 @@ class LogicalAndOperator(Operator):
     arity = BINARY
     _method_name = b'__and__'
     _rmethod_name = b'__rand__'
+    _python_operator = operator.and_
 and_ = LogicalAndOperator
 
 
@@ -394,6 +398,7 @@ class LogicalOrOperator(Operator):
     arity = BINARY
     _method_name = b'__or__'
     _rmethod_name = b'__ror__'
+    _python_operator = operator.or_
 or_ = LogicalOrOperator
 
 
@@ -410,6 +415,7 @@ class LogicalXorOperator(Operator):
     arity = BINARY
     _method_name = b'__xor__'
     _rmethod_name = b'__rxor__'
+    _python_operator = operator.xor
 xor_ = LogicalXorOperator
 
 
@@ -425,6 +431,7 @@ class LogicalNotOperator(Operator):
     _format = 'not {0}'
     arity = UNARY
     _method_name = b'__invert__'
+    _python_operator = operator.invert
 invert = not_ = LogicalNotOperator
 
 
@@ -441,6 +448,7 @@ class AdditionOperator(Operator):
     arity = BINARY
     _method_name = b'__add__'
     _rmethod_name = b'__radd__'
+    _python_operator = operator.add
 add = AdditionOperator
 
 
@@ -450,6 +458,7 @@ class SubstractionOperator(Operator):
     arity = BINARY
     _method_name = b'__sub__'
     _rmethod_name = b'__rsub__'
+    _python_operator = operator.sub
 sub = SubstractionOperator
 
 
@@ -459,6 +468,7 @@ class DivisionOperator(Operator):
     arity = BINARY
     _method_name = b'__div__'
     _rmethod_name = b'__rdiv__'
+    _python_operator = operator.div
 truediv = div = DivisionOperator
 
 
@@ -475,6 +485,7 @@ class MultiplicationOperator(Operator):
     arity = BINARY
     _method_name = b'__mul__'
     _rmethod_name = b'__rmul__'
+    _python_operator = operator.mul
 mul = MultiplicationOperator
 
 
@@ -490,6 +501,7 @@ class LesserThanOperator(Operator):
     _format = '{0} < {1}'
     arity = BINARY
     _method_name = b'__lt__'
+    _python_operator = operator.lt
 lt = LesserThanOperator
 
 
@@ -506,6 +518,7 @@ class LesserOrEqualThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__le__'
+    _python_operator = operator.le
 le = LesserOrEqualThanOperator
 
 
@@ -522,6 +535,7 @@ class GreaterThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__gt__'
+    _python_operator = operator.gt
 gt = GreaterThanOperator
 
 
@@ -538,6 +552,7 @@ class GreaterOrEqualThanOperator(Operator):
     _associative = True
     arity = BINARY
     _method_name = b'__ge__'
+    _python_operator = operator.ge
 ge = GreaterOrEqualThanOperator
 
 
@@ -584,6 +599,7 @@ class FloorDivOperator(Operator):
     arity = BINARY
     _method_name = b'__floordiv__'
     _rmethod_name = b'__rfloordiv__'
+    _python_operator = operator.floordiv
 floordiv = FloorDivOperator
 
 
@@ -600,6 +616,7 @@ class ModOperator(Operator):
     arity = BINARY
     _method_name = b'__mod__'
     _rmethod_name = b'__rmod__'
+    _python_operator = operator.mod
 mod = ModOperator
 
 
@@ -616,6 +633,7 @@ class PowOperator(Operator):
     arity = BINARY
     _method_name = b'__pow__'
     _rmethod_name = b'__rpow__'
+    _python_operator = operator.pow
 pow_ = PowOperator
 
 
@@ -631,6 +649,7 @@ class LeftShiftOperator(Operator):
     arity = BINARY
     _method_name = b'__lshift__'
     _rmethod_name = b'__rlshift__'
+    _python_operator = operator.lshift
 lshift = LeftShiftOperator
 
 
@@ -646,6 +665,7 @@ class RightShiftOperator(Operator):
     arity = BINARY
     _method_name = b'__rshift__'
     _rmethod_name = b'__rrshift__'
+    _python_operator = operator.rshift
 rshift = RightShiftOperator
 
 
@@ -709,6 +729,7 @@ class PositiveUnaryOperator(Operator):
     _format = '+{0}'
     arity = UNARY
     _method_name = b'__pos__'
+    _python_operator = operator.pos
 pos = PositiveUnaryOperator
 
 
@@ -724,6 +745,7 @@ class NegateUnaryOperator(Operator):
     _format = '-{0}'
     arity = UNARY
     _method_name = b'__neg__'
+    _python_operator = operator.neg
 neg = NegateUnaryOperator
 
 
@@ -739,6 +761,7 @@ class AbsoluteValueUnaryFunction(Operator):
     _format = 'abs({0})'
     arity = UNARY
     _method_name = b'__abs__'
+    _python_operator = abs
 abs_ = AbsoluteValueUnaryFunction
 
 
