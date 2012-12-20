@@ -3,8 +3,10 @@ Contributors and acknowlegment
 
 The following are the main contributors so far to this release:
 
-- Medardo Rodríquez <http://twitter.org/merchise/> provided most of the conceptual
-  framework and validated and tested the query language.
+- `Manuel Vázquez <http://twitter.org/mvaled/>`_ has got his hands dirty by
+  programming this bunch of releases.
 
-- Manuel Vázquez <http://twitter.org/mvaled/> programmed most of the first
-  release.
+- `Medardo Rodríquez <http://twitter.org/merchise/>`_ provided most of the
+  conceptual framework, came with the idea of using comprehension syntax and
+  has mentored the programmer.
+
