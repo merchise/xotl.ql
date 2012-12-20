@@ -914,48 +914,6 @@ class EndsWithOperator(FunctorOperator):
 endswith = EndsWithOperator
 
 
-class StringFormatFunction(FunctorOperator):
-    '''
-    A function to apply formatting.
-
-    .. note::
-
-       This function is distinct in signature/purpose to the builtin `format`
-       function. It resembles more to the `format` method of string objects,
-       but is a standalone operation.
-
-    The purpose of this function is provide an easy replacement for the case
-    of formatting several expression tokens. It's not possible to use the mod
-    (`%`) operator to express the expression "format a tuple of ..." like in::
-
-        "%s aka %" % (name, alias)
-
-    Example::
-
-        >>> strformat('{0} alas {1}, {a}', 1, 2, a=1)    # doctest: +ELLIPSIS
-        <expression 'strformat({0} alas {1}, {a}, 1, 2, a=1)' ...>
-
-    .. todo::
-
-       Would not it be the same as ``call('{0} alas {1}'.format, 1, 2)``?
-
-       Unlike :class:`startswith` and :class:`endswith`, which are easily
-       replaced in queries, because they are deemed to be used in queries
-       like::
-
-           these(person for person in this if person.name.startswith('Manu'))
-
-       string formatting will be most likely used in the *selection* (the
-       projection in the relational slang) like::
-
-           these(strformat('Your name is: {0}', person.name)
-                 for person in this)
-    '''
-    arity = N_ARITY
-    _format = 'strformat({0}{1})'
-strformat = StringFormatFunction
-
-
 class AverageFunction(FunctorOperator):
     '''
     The ``avg(*args)`` operation. There're two possible interpretations:
@@ -984,6 +942,7 @@ class NewObjectFunction(FunctorOperator):
     '''
     arity = N_ARITY
     _format = 'new({0}{1})'
+    _method_name = b'_newobject'
 new = NewObjectFunction
 
 
