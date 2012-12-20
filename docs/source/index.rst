@@ -34,13 +34,13 @@ Contents:
    overview
    expressions
    core
-   query-api
    interfaces
    translate
    thoughts
    inners
    terms
    references
+   next-release-goals
    HISTORY
    credits
    license

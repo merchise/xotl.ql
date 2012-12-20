@@ -1,6 +1,22 @@
 Changelog
 =========
 
+2012/12/20 - Release 0.1.8
+--------------------------
+
+- Fixed a bug discovered while cleaning up the implementation. Arguments for
+  N_ARITY functions where not being properly handled.
+
+  This was fixed actually by simplifying :class:`xotl.ql.core.QueryPart` to
+  implement the :ref:`target protocol <target-protocol>` to extract is
+  expressions.
+
+- Improves and updates documentation.
+
+- Provides a "wish list" for future releases in :ref:`Next releases goals
+  <next-releases-goals>`.
+
+
 2012/12/18 - Release 0.1.7
 --------------------------
 

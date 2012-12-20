@@ -176,7 +176,8 @@ def cofind_tokens(*expressions, **kwargs):
 
 
 def cocreate_plan(query, **kwargs):
-    '''
+    '''**Not implemented yet**. The documentation provided is just an idea.
+
     Builds a :term:`query execution plan` for a given query that fetches
     objects from Python's VM memory.
 
@@ -193,8 +194,8 @@ def cocreate_plan(query, **kwargs):
                          if parent.children & (parent.age > 34)
                          for child in parent.children if child.age < 5)
 
-        The `parent.children` generator tokens is *derived* from the token
-        `this`, so there should be a relation between the two.
+       The `parent.children` generator tokens is *derived* from the token
+       `this`, so there should be a relation between the two.
 
        .. todo::
 
