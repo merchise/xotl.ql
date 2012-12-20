@@ -235,13 +235,8 @@ class IExpressionTree(IExpressionCapable):
 
 
 class IQueryPart(IExpressionCapable):
-    '''Represents a *possibly* partial (but sound) expression that is been
-    attached somehow to a generator token.
-
-    Upon invocation of `these(comprehension)`, several :class:`IGeneratorToken`
-    objects are generated internally whenever there's an *implicit iteration*
-    over some supported object (like a :class:`ITerm` instance). This token
-    represents the FROM clause we can see in languages like SQL.
+    '''Represents a *possibly* partial (but sound) expression that is being
+    constructed inside a query expression.
 
     Expression trees are powerful enough to capture the semantics of query
     parts. But, since we don't have the control of how Python does is execution
