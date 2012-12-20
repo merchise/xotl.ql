@@ -1017,19 +1017,17 @@ def _query_part_method(target):
         result = target(self, *args, **kwargs)
         _emit_part(result)
         return result
+    inner.__name__ = target.__name__
     return inner
 
 
 def _build_unary_operator(operation):
     method_name = operation._method_name
-    @_query_part_method
     def method(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=operation(instance))
+        result = QueryPart(expression=operation(self))
         return result
     method.__name__ = method_name
-    return method
+    return _query_part_method(method)
 
 
 def _build_binary_operator(operation, inverse=False):
@@ -1038,22 +1036,16 @@ def _build_binary_operator(operation, inverse=False):
     else:
         method_name = operation._rmethod_name
     if method_name:
-        @_query_part_method
         def method(self, *others):
-            with context(UNPROXIFING_CONTEXT):
-                instance = self.expression
-                is_querypart = IQueryPart.providedBy
-                extract = lambda which: which.expression if is_querypart(which) else which
-                others = tuple(extract(which) for which in others)
             if not inverse:
-                result = QueryPart(expression=operation(instance, *others))
+                result = QueryPart(expression=operation(self, *others))
             else:
                 assert operation._arity == BINARY
                 other = others[0]
-                result = QueryPart(expression=operation(other, instance))
+                result = QueryPart(expression=operation(other, self))
             return result
         method.__name__ = method_name
-        return method
+        return _query_part_method(method)
 
 
 _part_operations = {operation._method_name:
@@ -1075,6 +1067,12 @@ _part_operations.update({operation._rmethod_name:
 QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
 
 
+class _QueryPartType(type):
+    def _target_(self, part):
+        from xoutil.proxy import unboxed
+        return unboxed(part).expression
+
+
 @implementer(IQueryPart, ITerm)
 @complementor(QueryPartOperations)
 class QueryPart(object):
@@ -1090,6 +1088,7 @@ class QueryPart(object):
     general case are both expressions.
 
     '''
+    __metaclass__ = _QueryPartType
     __slots__ = ('_expression')
 
     def __init__(self, **kwargs):
