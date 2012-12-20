@@ -246,6 +246,35 @@ class TestThisQueries(unittest.TestCase):
                 self.assertIn(t, tokens)
 
 
+class TestAllOperations(unittest.TestCase):
+    def test_unary_ops(self):
+        from xotl.ql.expressions import OperatorType, UNARY
+        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is UNARY]
+        for op in ops:
+            query = these(parent for parent in this('p') if op(parent.age))
+            expected = op(this('p').age)
+            with context(UNPROXIFING_CONTEXT):
+                self.assertEqual(expected, query.filters[0])
+
+    def test_binary_ops(self):
+        from xotl.ql.expressions import OperatorType, BINARY
+        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is BINARY]
+        for op in ops:
+            query = these(parent for parent in this('p') if op(parent.age, parent.name))
+            expected = op(this('p').age, this('p').name)
+            with context(UNPROXIFING_CONTEXT):
+                self.assertEqual(expected, query.filters[0])
+
+    def test_nary_ops(self):
+        from xotl.ql.expressions import OperatorType, N_ARITY
+        ops = [op for op in OperatorType.operators if getattr(op, 'arity', None) is N_ARITY]
+        for op in ops:
+            query = these(parent for parent in this('p') if op(parent.age, parent.children, parent.which))
+            expected = op(this('p').age, this('p').children, this('p').which)
+            with context(UNPROXIFING_CONTEXT):
+                self.assertEqual(expected, query.filters[0])
+
+
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     '''
     Non-selected tokens should not be forgotten.
