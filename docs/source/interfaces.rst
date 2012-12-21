@@ -61,8 +61,8 @@ Translation API
 Internal API
 ============
 
-This section describes the internal interfaces used when processing
-comprehensions in order to build the queries. Documenting this "internal" is
+This section describes the internal interfaces used when processing query
+expressions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
 .. autointerface:: IQueryPart

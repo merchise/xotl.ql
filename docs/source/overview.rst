@@ -27,10 +27,7 @@ operator>`.
 The query language relies heavily upon the expression language. The core of the
 query language itself is just a combination of:
 
-- the expression language used inside Python's generator expressions and/or
-  dictionary comprehensions (we shall use the term :term:`comprehension` to
-  refer both to generator expressions and dictionary comprehensions when the
-  difference would not matter);
+- the expression language used inside Python's generator expressions;
 
 - the :data:`~xotl.ql.core.this` object; and
 
@@ -42,7 +39,7 @@ Let's see a query::
   >>> from xotl.ql.expressions import count
   >>> parents = these(parent for parent in this if count(parent.children) > 2)
 
-As you can see queries are just normal python comprehensions (usually over the
+As you can see queries are just normal generator expressions (usually over the
 :data:`~xotl.ql.core.this` object) wrapped inside the
 :class:`~xotl.ql.core.these` function.
 

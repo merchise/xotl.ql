@@ -136,7 +136,7 @@ Terms and glossary
        The term `query` is used in this documentation with two meanings that
        depend on the context:
 
-       a) The comprehension as seen in the code that express what is
+       a) The generator expression as seen in the code that express what is
 	  intended to fetch from the storage(s).
 
 	  In the most part of this documentation the term `query` will refer to

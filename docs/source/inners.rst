@@ -11,7 +11,7 @@ Restrictions and goals of the procedure for constructing query objects
 ======================================================================
 
 When processing a query expression, all that is passed to the
-:class:`~xotl.ql.core.these` callable is a comprehension (and possible some
+:class:`~xotl.ql.core.these` callable is a generator object (and possible some
 keyword arguments that are irrelevant for the purposes of this
 description). The key point is that *we're not in control of how Python does
 the job of interpreting the real query expression*.
@@ -240,8 +240,8 @@ the following steps are performed in the given order:
    created, and is pushed to a :term:`thread-local <thread-local object>` stack
    of bubbles.
 
-2. Then `these` calls ``next(comprehension)``, and then Python calls the
-   `__iter__` method of ``this('person')``.
+2. Then `these` calls ``next(generator)``, and then Python calls the `__iter__`
+   method of ``this('person')``.
 
    This method creates the token `tk<person>` and bounds the term to it. This
    token is emitted and captured by the top-most bubble in the thread-local
@@ -262,10 +262,10 @@ the following steps are performed in the given order:
    At this point it's Python, not our program, who has the handle of these
    three query parts. But our bubbles has captured all the tokens.
 
-5. Now Python beings to process the `ifs`. The comprehension-local variable
-   ``rel`` refers to the query part `qp<relation>`. So, when trying to get
-   ``rel.type``, Python calls the `__getattribute__` method of the query part
-   `qp<relation>`, who delegates the call to its contained
+5. Now Python beings to process the `ifs`. The generator expression local
+   variable ``rel`` refers to the query part `qp<relation>`. So, when trying to
+   get ``rel.type``, Python calls the `__getattribute__` method of the query
+   part `qp<relation>`, who delegates the call to its contained
    :attr:`~xotl.ql.interfaces.IQueryPart.expression` which is
    ``this('relation')``, and then wraps the result into another query part
    `qp<relation.type>` and emits the query part (and is captured by the
