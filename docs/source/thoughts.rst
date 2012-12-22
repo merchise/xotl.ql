@@ -140,7 +140,8 @@ One may read this graph as:
 
 How does one tell whether the label of the edge is an attribute name or value?
 There's no such thing as attribute name or attribute value in this setting. One
-may tell a *terminal* label because the node it points to has outgoing edges.
+may tell a *terminal* label because the node it points to has no outgoing
+edges.
 
 In Python, the object model is more elaborate in this regard, but we can figure
 it as objects, which has attributes, and those attributes' values are other
@@ -162,13 +163,13 @@ This is unlikely since we don't expect strings to have attributes
 [#str-python]_. However, there's nothing in the UnQL paper that limits us to do
 so but our own common sense.
 
-The following figure shows with color-layers the how the movie database may be
+The following figure shows with color-layers how the movie database may be
 interpreted:
 
 .. image:: figs/unql-data-layers.png
 
 The language UnQL uses variable binding and pattern matching. The very first
-query the offer is the following (I included the braces for better
+query they offer is the following (I included the braces for better
 readability):
 
 .. code-block:: unql
@@ -176,15 +177,15 @@ readability):
    select t
    where {R1 => \t} <- DB
 
-The query select all trees ``t`` that are point which are below an edge with
-label ``R1`` from the root of the DB. If we fix that level 1 labels are
-actually types this query may be written in `xotl.ql` like this:
+The query select all trees ``t`` which are below an edge with label ``R1`` from
+the root of the DB. If we fix that level 1 labels are actually types this query
+may be written in `xotl.ql` like this:
 
 .. code-block:: python
 
    (t for t in this if is_instance(t, R1))
 
-If don't make the assumption of level 1 labels being types, may the other
+If we don't make the assumption of level 1 labels being types, then the other
 option is to assume is an attribute name:
 
 .. code-block:: python
