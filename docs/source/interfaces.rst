@@ -69,4 +69,4 @@ important because we feel will ease the understanding of how `xotl.ql` works.
    :members: expression
 
 .. autointerface:: IQueryParticlesBubble
-   :members: capture_part, capture_token, parts, tokens, particles
+   :members: capture_part, capture_token, parts, tokens
