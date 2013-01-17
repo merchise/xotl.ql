@@ -125,7 +125,7 @@ class TestUtilities(unittest.TestCase):
             self.assertEqual(q.selection, q1.selection)
 
     def test_thesefy_doesnot_messup_identities(self):
-        from itertools import izip
+        from xoutil.iterators import izip
         from xotl.ql.core import thesefy
         from xotl.ql.expressions import is_a
 
@@ -258,7 +258,7 @@ def _build_unary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
-    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    test.__name__ = str('test_for_{0}'.format(op.__name__))
     return test
 
 
@@ -270,7 +270,7 @@ def _build_binary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
-    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    test.__name__ = str('test_for_{0}'.format(op.__name__))
     return test
 
 
@@ -282,7 +282,7 @@ def _build_nary_test(op):
         self.assertIs(1, len(query.filters))
         with context(UNPROXIFING_CONTEXT):
             self.assertEqual(expected, query.filters[0])
-    test.__name__ = b'test_for_{0}'.format(op.__name__)
+    test.__name__ = str('test_for_{0}'.format(op.__name__))
     return test
 
 
@@ -294,7 +294,8 @@ for op in OperatorType.operators:
     elif getattr(op, 'arity', None) is N_ARITY:
         _tests['test_for_{0}'.format(op.__name__)] = _build_nary_test(op)
 
-TestAllOperations = type(b'TestAllOperations', (unittest.TestCase, ), _tests)
+TestAllOperations = type(str('TestAllOperations'), (unittest.TestCase, ),
+                         _tests)
 
 
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
@@ -308,7 +309,7 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
 
     '''
     def test_is_a_partnership_is_not_forgotten(self):
-        from itertools import izip
+        from xoutil.iterators import izip
         query = these((person, partner)
                       for person, partner in izip(this('person'),
                                                   this('partner'))
@@ -322,7 +323,7 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIs(2, len(filters))
 
     def test_theres_a_token_for_partnership(self):
-        from itertools import izip
+        from xoutil.iterators import izip
         query = these((person, partner)
                       for person, partner in izip(this('person'),
                                                   this('partner'))
@@ -338,7 +339,7 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
             self.assertIn(partner, tokens)
 
     def test_worst_case_must_have_3_filters_and_3_tokens(self):
-        from itertools import izip
+        from xoutil.iterators import izip
         query = these(person
                       for person, partner in izip(this('person'),
                                                   this('partner'))
@@ -379,7 +380,7 @@ class RegressionTests(unittest.TestCase):
         Ensures that all terms are named, and they are bound to a token that is
         in the query.
         '''
-        from itertools import izip
+        from xoutil.iterators import izip
         from xotl.ql.core import thesefy
         from xotl.ql.translate import cofind_tokens
 

@@ -34,6 +34,7 @@ import unittest
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.types import Unset
+from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
 from xotl.ql.translate import init
@@ -76,7 +77,7 @@ class TransitiveRelationDescriptor(object):
 @thesefy
 class Entity(object):
     def __init__(self, **attrs):
-        for k, v in attrs.iteritems():
+        for k, v in iteritems_(attrs):
             setattr(self, k, v)
 
 
