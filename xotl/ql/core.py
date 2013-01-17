@@ -217,11 +217,13 @@ class Term(object):
             raise TypeError()
 
     def __iter__(self):
-        '''
-        Yields a single instance of :class:`query part
+        '''Yields a single instance of :class:`query part
         <xotl.ql.interfaces.IQueryPart>` that wraps `self`.
 
         This allows an idiomatic way to express queries::
+
+            # A bubble is needed `these` automatically puts one around.
+            >>> bubble = _create_and_push_bubble()
 
             >>> parent, child = next((parent, child)
             ...                            for parent in this('parent')
@@ -236,6 +238,7 @@ class Term(object):
 
            Queries must be built by calling the :func:`these` passing the
            comprehension as its first argument.
+
         '''
         with context(UNPROXIFING_CONTEXT):
             name = self.name
@@ -1171,6 +1174,7 @@ def thesefy(target, name=None):
         >>> expected_is = is_instance(this('Entity'), Entity)
         >>> expected_filter = this('Entity').name.startswith('A')
 
+        >>> from xoutil.proxy import unboxed
         >>> any(unboxed(expected_is) == f for f in filters)
         True
 
