@@ -37,7 +37,8 @@ from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
-from xoutil.decorators import decorator
+from xoutil.decorator.meta import decorator
+from xoutil.decorator.compat import metaclass
 from xoutil.aop.basic import complementor
 
 from zope.component import getUtility
@@ -62,7 +63,7 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__all__ = (b'this', b'these',)
+__all__ = (str('this'), str('these'),)
 
 
 # A thread-local namespace to avoid using context. Just to test if this
@@ -850,12 +851,11 @@ class _QueryObjectType(type):
 
 
 @implementer(IQueryObject)
+@metaclass(_QueryObjectType)
 class QueryObject(object):
     '''
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
-    __metaclass__ = _QueryObjectType
-
     def __init__(self):
         self._selection = None
         self.tokens = None
@@ -943,7 +943,7 @@ class QueryObject(object):
             conf = getUtility(IQueryConfiguration)
             name = getattr(conf, 'default_translator_name', None)
             translator = getUtility(IQueryTranslator,
-                                    name if name else b'default')
+                                    name if name else str('default'))
             query_plan = translator.build_plan(self)
             state = self._query_state = query_plan()
         result = next(state, (Unset, Unset))
@@ -978,8 +978,6 @@ class GeneratorToken(object):
     retrieve the filters related to this generator token.
 
     '''
-    __slots__ = ('_expression', '_parts')
-
     # TODO: Representation of grouping with dicts.
     def __init__(self, expression):
         assert provides_any(expression, ITerm)
@@ -1053,7 +1051,7 @@ _part_operations.update({operation._rmethod_name:
                            getattr(operation, '_rmethod_name', None)})
 
 
-QueryPartOperations = type(b'QueryPartOperations', (object,), _part_operations)
+QueryPartOperations = type(str('QueryPartOperations'), (object,), _part_operations)
 
 
 class _QueryPartType(type):
@@ -1063,6 +1061,7 @@ class _QueryPartType(type):
 
 
 @implementer(IQueryPart, ITerm)
+@metaclass(_QueryPartType)
 @complementor(QueryPartOperations)
 class QueryPart(object):
     '''A class that wraps either :class:`Term` or :class:`ExpressionTree` that
@@ -1077,9 +1076,6 @@ class QueryPart(object):
     general case are both expressions.
 
     '''
-    __metaclass__ = _QueryPartType
-    __slots__ = ('_expression')
-
     def __init__(self, **kwargs):
         with context(UNPROXIFING_CONTEXT):
             self._expression = expression = kwargs.get('expression')
@@ -1183,6 +1179,7 @@ def thesefy(target, name=None):
 
     '''
     from xoutil.objects import nameof
+    from xoutil.decorator.compat import metaclass
     class new_meta(type(target)):
         def __new__(cls, name, bases, attrs):
             return super(new_meta, cls).__new__(cls, nameof(target),
@@ -1208,7 +1205,8 @@ def thesefy(target, name=None):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
+    @metaclass(new_meta)
     class new_class(target):
-        __metaclass__ = new_meta
-    new_class.__doc__ = getattr(target, '__doc__', None)
+        pass
+    # new_class.__doc__ = getattr(target, '__doc__', None)
     return new_class
