@@ -28,8 +28,9 @@ from __future__ import (division as _py3_division,
 
 from xoutil.context import context
 from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
+from xoutil.modules import modulemethod
 
-from zope.interface import Interface
+from zope.interface import Interface, implementer
 
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.interfaces import (ITerm,
@@ -222,26 +223,26 @@ def cocreate_plan(query, **kwargs):
     pass
 
 
-def init(settings=None):
-    '''Registers the implementation in this module as an IQueryTranslator for
-    an object model we call "Python Object Model". Also we register this model
-    as the default for the current :term:`registry`.
+@modulemethod
+def init(self, settings=None):
+    '''Registers the implementation in this module as an
+    IQueryTranslator for an object model we call "Python Object
+    Model". Also we register this model as the default for the
+    current :term:`registry`.
 
     .. warning::
 
-       Don't call this method in your own code, since it will override all
-       of your query-related configuration.
+       Don't call this method in your own code, since it will
+       override all of your query-related configuration.
 
-       This is only intended to allow testing of the translation common
-       framework by configuring query translator that searches over Python's VM
-       memory.
+       This is only intended to allow testing of the translation
+       common framework by configuring query translator that searches
+       over Python's VM memory.
 
     '''
-    import sys
     from zope.component import getSiteManager
     from zope.interface import directlyProvides
     from .interfaces import IQueryConfiguration
-    self = sys.modules[__name__]
     directlyProvides(self, IQueryConfiguration, IQueryTranslator)
     manager = getSiteManager()
     configurator = manager.queryUtility(IQueryConfiguration)
