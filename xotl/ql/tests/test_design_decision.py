@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.tests.test_design_decision
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012, 2013 Merchise Autrement
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
