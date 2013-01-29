@@ -43,22 +43,29 @@ class TransitiveRelationDescriptor(object):
     def __init__(self, name, target=None):
         self.name = name
         self.internal_name = '_' + name
+        self.target = target
 
     def __get__(self, instance, cls):
         if instance is None:
             return self
         else:
-            result = getattr(instance, self.internal_name, [])
+            result = getattr(instance, self.internal_name, None)
             if result:
-                current = result
-                while current:
-                    current = getattr(current, self.name, Unset)
-                    if current and current not in result:
-                        result.append(current)
+                queue = [result]
+                result = [result]
+                while queue:
+                    current = queue.pop(0)
+                    children = getattr(current, self.name, Unset)
+                    queue.extend(child for child in children if child not in queue)
+                    result.extend(child for child in children if child not in result)
             return result
 
     def __set__(self, instance, value):
-        setattr(instance, self.internal_name, value)
+        if value is None:
+            delattr(instance, self.internal_name)
+        else:
+            assert self.target is None or isinstance(value, self.target)
+            setattr(instance, self.internal_name, [value])
 
 
 @thesefy
