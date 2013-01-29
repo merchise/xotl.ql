@@ -222,6 +222,62 @@ def cocreate_plan(query, **kwargs):
     '''
     pass
 
+def _to_python_expression(expression):
+    with context(UNPROXIFING_CONTEXT):
+        if ITerm.providedBy(expression):
+            parent = expression.parent
+            if parent is None:
+                return expression.name
+            else:
+                return _to_python_expression(expression.parent) + '.' + expression.name
+        elif IExpressionTree.providedBy(expression):
+            operation = expression.operation
+            result = operation.arity.formatter(operation,
+                                               expression.children,
+                                               expression.named_children,
+                                               _str=_to_python_expression)
+            return result
+        else:
+            return repr(expression)
+
+
+def evaluate(expression, table):
+    expr = _to_python_expression(expression)
+    return eval(expr, table, table)
+
+
+def naive_translation(query, **kwargs):
+    '''Does a naive translation to Python's VM memory.
+    '''
+    class _new(object): pass
+    def new(cls, *args, **attrs):
+        if cls == object:
+            from xoutil.compat import iteritems_
+            result = _new()
+            for k, v in iteritems_(attrs):
+                setattr(result, k, v)
+            return result
+        else:
+            return cls(*args, **attrs)
+
+    def plan():
+        table = {'is_instance': lambda x, y: isinstance(x, y),
+                 'all': all,
+                 'any': any,
+                 'max': max,
+                 'min': min,
+                 'length': len,
+                 'count': len,
+                 'abs': abs,
+                 'call': lambda t, *args, **kwargs: t(*args, **kwargs),
+                 'new': new
+        }
+        # Since tokens are actually stored in the same order they are
+        # found in the query expression, there's no risk in using the
+        # given order to fetch the objects.
+        pass
+    return plan
+
 
 @modulemethod
 def init(self, settings=None):
