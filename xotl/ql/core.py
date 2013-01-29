@@ -276,6 +276,9 @@ class Term(object):
     def __repr__(self):
         return '<%s at 0x%x>' % (str(self), id(self))
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __eq__(self, other):
         '''
             >>> with context(UNPROXIFING_CONTEXT):
@@ -972,13 +975,8 @@ these = QueryObject
 
 @implementer(IGeneratorToken)
 class GeneratorToken(object):
-    '''
-    Represents a token in the syntactical tree that is used as generator.
-
-    This object is also an :class:`~xotl.ql.interfaces.IQueryPartContainer`,
-    because in this implementation we need to record each time an
-    :class:`~xotl.ql.interfaces.IQueryPart` is created in order to later
-    retrieve the filters related to this generator token.
+    '''Represents a token in the syntactical tree that is used as
+    generator. See :class:`xotl.ql.interfaces.IGeneratorToken`.
 
     '''
     # TODO: Representation of grouping with dicts.
@@ -991,6 +989,11 @@ class GeneratorToken(object):
         with context(UNPROXIFING_CONTEXT):
             if isinstance(other, GeneratorToken):
                 return self._expression == other._expression
+
+    def __hash__(self):
+        with context(UNPROXIFING_CONTEXT):
+            signature = '<tk: %s>' % str(self._expression)
+        return hash(signature)
 
     def __repr__(self):
         return '<tk: %r>' % self._expression
@@ -1131,6 +1134,12 @@ class QueryPart(object):
             instance = self.expression
         result = QueryPart(expression=instance(*args, **kwargs))
         return result
+
+    def __hash__(self):
+        with context(UNPROXIFING_CONTEXT):
+            instance = self.expression
+            ct = hash(type(self))
+        return hash(instance) + ct
 
 @decorator
 def thesefy(target, name=None):

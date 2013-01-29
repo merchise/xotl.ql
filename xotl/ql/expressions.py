@@ -30,6 +30,7 @@ from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
 from xoutil.decorator.compat import metaclass
+from xoutil.compat import py3k as _py3k
 
 from zope.interface import implementer, directlyProvides
 
@@ -44,25 +45,25 @@ __author__ = 'manu'
 
 class UNARY(object):
     @classmethod
-    def formatter(cls, operation, children, kw=None):
+    def formatter(cls, operation, children, kw=None, _str=str):
         str_format = operation._format
         child = children[0]
-        return str_format.format(str(child) if not isinstance(child,
+        return str_format.format(_str(child) if not isinstance(child,
                                                           ExpressionTree)
-                                        else '(%s)' % child)
+                                        else '(%s)' % _str(child))
 
 
 class BINARY(object):
     @classmethod
-    def formatter(cls, operation, children, kw=None):
+    def formatter(cls, operation, children, kw=None, _str=str):
         str_format = operation._format
         child1, child2 = children[:2]
-        return str_format.format(str(child1) if not isinstance(child1,
+        return str_format.format(_str(child1) if not isinstance(child1,
                                                           ExpressionTree)
-                                        else '(%s)' % child1,
-                            str(child2) if not isinstance(child2,
+                                        else '(%s)' % _str(child1),
+                            _str(child2) if not isinstance(child2,
                                                           ExpressionTree)
-                                        else '(%s)' % child2)
+                                        else '(%s)' % _str(child2))
 
 
 class N_ARITY(object):
@@ -80,16 +81,16 @@ class N_ARITY(object):
         <expression 'print(1, 2)' ...>
     '''
     @classmethod
-    def formatter(cls, operation, children, kwargs=None):
+    def formatter(cls, operation, children, kwargs=None, _str=str):
         str_format = operation._format
-        args = ', '.join((str(child) if not isinstance(child,
+        args = ', '.join((_str(child) if not isinstance(child,
                                                           ExpressionTree)
-                                        else '(%s)' % child)
+                                        else '(%s)' % _str(child))
                          for child in children)
         if '{1}' in str_format:
             kwargs = {} if kwargs is None else kwargs
             if kwargs:
-                kwargs = ", " + ', '.join("%s=%s" % (k, v)
+                kwargs = ", " + ', '.join("%s=%s" % (k, _str(v))
                                           for k, v in kwargs.items())
                 return str_format.format(args, kwargs)
             else:
@@ -256,7 +257,10 @@ class _FunctorOperatorType(OperatorType):
             name = getattr(self, '_method_name', None)
             method = getattr(unboxed(head), name, None) if name else None
             if method and not stack[(head, method)]:
-                func = getattr(method, 'im_func', method)
+                func = getattr(method, 'im_func', None)
+                if not func:   # Py3k
+                    func = getattr(method, '__func__', None)
+                assert func is not None
                 with stack((head, method)):
                     if tail:
                         return func(head, *tail, **named)
@@ -457,10 +461,10 @@ class DivisionOperator(Operator):
     '''The expression `a / b`.'''
     _format = '{0} / {1}'
     arity = BINARY
-    _method_name = str('__div__')
-    _rmethod_name = str('__rdiv__')
-    # XXX [manu]: In Py3k operator.div does not exists, but in Python 2 `/` is
-    # operator.div.
+    # XXX [manu]: In Py3k the division operator / is always truediv, in fact,
+    #             div alone does not exists.
+    _method_name = str('__div__') if not _py3k else str('__truediv__')
+    _rmethod_name = str('__rdiv__') if not _py3k else str('__rtruediv__')
     _python_operator = getattr(operator, 'div', operator.truediv)
 truediv = div = DivisionOperator
 
@@ -1116,6 +1120,13 @@ class ExpressionTree(object):
     def named_children(self):
         'A dictionary that contains the named operands in the expression.'
         return dict(self._named_children)
+
+    def __hash__(self):
+        from xoutil.compat import iteritems_
+        children_signature = tuple(hash(c) for c in self.children)
+        named_children_signature = tuple(sorted((n, hash(c)) for n, c in iteritems_(self.named_children)))
+        signature = (hash(self.operation), children_signature, named_children_signature)
+        return hash(signature)
 
     def __eq__(self, other):
         '''
