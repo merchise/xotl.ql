@@ -88,8 +88,16 @@ def date_property(internal_attr_name):
     def setter(self, value):
         from datetime import datetime
         if not isinstance(value, datetime):
-            import dateutil.parser
-            value = dateutil.parser.parse(value)
+            from re import compile
+            pattern = compile(r'(\d{4})-(\d{1,2})-(\d{1,2})')
+            match = pattern.match(value)
+            if match:
+                year, month, day = match.groups()
+                value = datetime(year=int(year),
+                                 month=int(month),
+                                 day=int(day))
+            else:
+                raise ValueError('Invalid date')
         setattr(self, internal_attr_name, value)
 
     def fdel(self):
