@@ -84,8 +84,13 @@ class TestThisExpressions(unittest.TestCase):
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
-                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              mul, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        try:
+            from operator import div
+        except ImportError:
+            # Py3k only
+            from operator import truediv as div
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
                         (lt, '{0} < {1}'),

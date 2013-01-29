@@ -106,7 +106,6 @@ def date_property(internal_attr_name):
     return property(getter, setter, fdel)
 
 
-
 def age_property(start_attr_name, end_attr_name=None):
     '''Creates a property for calculating the `age` given an
     attribute that holds the starting date of the event.
@@ -133,6 +132,7 @@ class Place(Entity):
     located_in = TransitiveRelationDescriptor('located-in')
     foundation_date = date_property('_foundation_date')
     age = age_property('foundation_date')
+Place.located_in.target = Place
 
 
 class Person(Entity):
@@ -175,13 +175,13 @@ select_aged_entities = these(who for who in Entity if who.age)
 
 # Three days after I (manu) wrote this query, I started to appear in the
 # results ;)
-select_old_entities = these(who for who in Entity if who.age > 34)
+select_old_entities = these(who for who in Entity if who.age >= 34)
 
 
 
 class TestTranslatorTools(unittest.TestCase):
     def test_cofind_tokens(self):
-        from itertools import izip
+        from xoutil.compat import izip
         from xotl.ql.expressions import is_a
         from xotl.ql.translate import cofind_tokens
 

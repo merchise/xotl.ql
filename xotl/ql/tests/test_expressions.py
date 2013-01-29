@@ -54,20 +54,26 @@ class BasicTests(unittest.TestCase):
     def test_q_should_keep_it_self_in_expressions(self):
         'When :class:`xotl.ql.expressions.q` is involved in an expression '
         'it should remove itself from it'
+        from xoutil.compat import _unicode
         expr = q(1) + "1"
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
         expr = 1 + q("1")
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
         expr = q(1) + q("1")
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
-                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              mul, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        try:
+            from operator import div
+        except ImportError:
+            # Py3k
+            from operator import truediv as div
         from xotl.ql.expressions import count, min_, max_, all_, any_, length
         from xotl.ql.expressions import contains, is_instance, invoke, new
         from xotl.ql.expressions import startswith, endswith
@@ -151,7 +157,7 @@ class ExtensibilityTests(unittest.TestCase):
             '''
             _format = 'sin({0})'
             arity = UNARY
-            _method_name = b'_sin'
+            _method_name = str('_sin')
         sin = SinFunction
 
         class ZeroObject(object):

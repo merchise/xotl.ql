@@ -313,7 +313,7 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
     '''
 
     def test_is_a_partnership_is_not_forgotten(self):
-        from itertools import izip
+        from xoutil.compat import izip
         next((person, partner)
              for person, partner in izip(this('person'),
                                          this('partner'))
@@ -335,7 +335,7 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
             ok(None)
 
     def test_worst_case_must_have_3_filters_and_3_tokens(self):
-        from itertools import izip
+        from xoutil.compat import izip
 
         next(person
              for person, partner in izip(this('person'),
