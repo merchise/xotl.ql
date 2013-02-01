@@ -6,6 +6,28 @@ Terms and glossary
 
 .. glossary::
 
+
+   AST
+   Abstract Syntax Tree
+
+     A tree structure that represents a *program* in source form as a tree of
+     syntactical elements; but removes several too concrete elements of the
+     syntaxis; for instance in AST sentences separator are often removed and a
+     subtree for each individual sentence appears.
+
+     :term:`Query objects <query object>` and :term:`expression trees
+     <expression tree>` resamble an AST.
+
+     See more on http://en.wikipedia.org/Abstract_Syntax_Tree
+
+   CST
+   Concrete Syntax Tree
+
+     A tree structure that represents a *program* in source form as a tree of
+     all its syntactical elements.
+
+     See more on http://en.wikipedia.org/Concrete_Syntax_Tree
+
    data set
 
      An object that represents the result of executing a :term:`query` against
@@ -173,8 +195,6 @@ Terms and glossary
        storage <storage>`. A CouchDB translator, for instance may simply
        translate the whole query to a CouchDB view and return a plan that just
        involves quering that view.
-
-       There no (serious) translators implemented on this package.
 
    query execution plan
 
