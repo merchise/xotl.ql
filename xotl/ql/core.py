@@ -746,9 +746,8 @@ class QueryParticlesBubble(object):
                 top = parts.pop(-1)
                 if token.expression is not top:
                     parts.append(top)
-        if token not in tokens:
-            tokens.append(token)
-            self._particles.append(token)
+        tokens.append(token)
+        self._particles.append(token)
 
 
 class _QueryObjectType(type):
@@ -823,7 +822,7 @@ class _QueryObjectType(type):
                 selection.append(expr)
             query = self()
             query.selection = tuple(reversed(selection))
-            query.tokens = tuple(set(token.expression for token in tokens))
+            query.tokens = tuple(token.expression for token in tokens)
             query.filters = tuple(set(filters))
             query.ordering = kwargs.get('ordering', None)
             partition = kwargs.get('partition', None)

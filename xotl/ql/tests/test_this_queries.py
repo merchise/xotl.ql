@@ -395,6 +395,16 @@ class RegressionTests(unittest.TestCase):
             self.assertTrue(all(matches_token(term)
                                 for term in cofind_tokens(*query.filters)))
 
+
+class RegressionTest20130201(unittest.TestCase):
+    def test_loosing_tokens(self):
+        query = these((child, brother)
+                      for parent in this
+                      for child in parent.children
+                      for brother in parent.children
+                      if child is not brother)
+        self.assertIs(3, len(query.tokens))
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)
