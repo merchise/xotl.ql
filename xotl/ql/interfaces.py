@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.interfaces
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -284,7 +284,6 @@ class ITerm(IExpressionCapable):
         instance, an execution context is needed.
 
         :param attr: The name of the object to access.
-        :type attr: unicode or str
         :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
