@@ -752,9 +752,9 @@ class QueryParticlesBubble(object):
 
 
 class _QueryObjectType(type):
-    def these(self, comprehension, **kwargs):
+    def build_from_generator(self, comprehension, **kwargs):
         '''Builds a :term:`query object` from a :term:`query expression` given
-        by a comprehension.
+        by a generator object.
 
         :param comprehension: The :term:`query expression` to be processed.
 
@@ -848,7 +848,7 @@ class _QueryObjectType(type):
             first_arg, args = args[0], args[1:]
             if not args:
                 if isinstance(first_arg, GeneratorType):
-                    return self.these(first_arg, **kwargs)
+                    return self.build_from_generator(first_arg, **kwargs)
                 # TODO: Other types of queries
 
         result = super(self, self).__new__(self)

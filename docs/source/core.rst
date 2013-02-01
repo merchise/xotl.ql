@@ -126,12 +126,12 @@ type is a subclass of the class :class:`Term`:
    This class implements :class:`xotl.ql.interfaces.ITerm`
 
 .. autoclass:: _QueryObjectType
-   :members: these
+   :members: build_from_generator
 
 .. class:: these(generator, **kwargs)
 
-   An alias to the :class`QueryObject`, you may use either as a constructor for
-   :term:`query objects <query object>`. However we use both names for
+   An alias to the :class:`QueryObject`, you may use either as a constructor
+   for :term:`query objects <query object>`. However we use both names for
    different purposes:
 
    - We use :class:`these` with the `(generator, ...)` signature only to get a
@@ -149,7 +149,7 @@ type is a subclass of the class :class:`Term`:
       way of creating instances (:term:`query objects <query object>`), if you
       pass a single positional argument which is of type `GeneratorType` and
       possibly many others keyword arguments, the metaclass will use its
-      :meth:`_QueryObjectType.these` method.
+      :meth:`_QueryObjectType.build_from_generator` method.
 
 
 .. autoclass:: QueryObject
