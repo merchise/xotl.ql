@@ -321,7 +321,7 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
              if rel.type == 'partnership'
              if (rel.subject == person) & (rel.object == partner))
         parts = self.bubble.parts
-        tokens = self.bubble.tokens
+        tokens = [tk.expression for tk in self.bubble.tokens]
         ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
         person = this('person')
         partner = this('partner')
@@ -346,7 +346,7 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
              if rel.object == partner
              if partner.age > 32)
         parts = self.bubble.parts
-        tokens = self.bubble.tokens
+        tokens = [tk.expression for tk in self.bubble.tokens]
         ok = lambda x: self.assertEqual(str(x), str(parts.pop(-1)))
         person = this('person')
         partner = this('partner')
