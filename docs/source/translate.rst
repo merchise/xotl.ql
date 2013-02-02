@@ -15,7 +15,6 @@ Translation is the process by which a :term:`query object` is translated to a
 Utilities provided by :mod:`xotl.ql.translate` module
 =====================================================
 
-.. autofunction:: cofind_tokens(expr, accept=None)
+.. autofunction:: cotraverse_expression(expr, accept=None)
 
 .. autofunction:: cocreate_plan(query, **kwargs)
-

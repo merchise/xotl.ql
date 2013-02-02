@@ -86,7 +86,7 @@ def _instance_of(which):
     return accept
 
 
-def cofind_tokens(*expressions, **kwargs):
+def cotraverse_expression(*expressions, **kwargs):
     '''Coroutine that traverses expression trees an yields every node that
     matched the `accept` predicate. If `accept` is None it defaults to accept
     only :class:`~xotl.ql.interface.ITerm` instances that have a non-None
@@ -106,8 +106,8 @@ def cofind_tokens(*expressions, **kwargs):
     - A single callable value, which will replace `accept`.
 
     - A single non callable value, which will be considered *another*
-      expression to process. Notice this won't make `cofind_tokens` to stop
-      considering all the nodes from previous expressions. However, the
+      expression to process. Notice this won't make `cotraverse_expression` to
+      stop considering all the nodes from previous expressions. However, the
       expression might be explored before other later generated children of the
       previous expressions.
 
@@ -123,11 +123,11 @@ def cofind_tokens(*expressions, **kwargs):
     objects indirectly via a Relation object::
 
         >>> from xotl.ql.core import thesefy
-        >>> @thesefy('person')
+        >>> @thesefy()
         ... class Person(object):
         ...     pass
 
-        >>> @thesefy('relation')
+        >>> @thesefy()
         ... class Relation(object):
         ...    pass
 
@@ -149,7 +149,7 @@ def cofind_tokens(*expressions, **kwargs):
     - `rel.subject`, `person`, `rel.obj` and `partner` in the explicit
        filter::
 
-        >>> len(list(cofind_tokens(*query.filters)))
+        >>> len(list(cotraverse_expression(*query.filters)))
         7
 
     '''

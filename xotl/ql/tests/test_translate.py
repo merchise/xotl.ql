@@ -180,10 +180,10 @@ select_old_entities = these(who for who in Entity if who.age >= 34)
 
 
 class TestTranslatorTools(unittest.TestCase):
-    def test_cofind_tokens(self):
+    def test_cotraverse_expression(self):
         from xoutil.compat import izip
         from xotl.ql.expressions import is_a
-        from xotl.ql.translate import cofind_tokens
+        from xotl.ql.translate import cotraverse_expression
 
         @thesefy
         class Person(object):
@@ -217,7 +217,7 @@ class TestTranslatorTools(unittest.TestCase):
 
             # there are 4 named instances in the left filter
             # (rel.subject == person) & (rel.obj == partner)
-            self.assertIs(4, len(list(cofind_tokens(filters[0]))))
+            self.assertIs(4, len(list(cotraverse_expression(filters[0]))))
 
 
 

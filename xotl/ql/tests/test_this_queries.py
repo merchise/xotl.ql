@@ -371,7 +371,7 @@ class RegressionTests(unittest.TestCase):
         '''
         from xoutil.iterators import izip
         from xotl.ql.core import thesefy
-        from xotl.ql.translate import cofind_tokens
+        from xotl.ql.translate import cotraverse_expression
 
         @thesefy
         class Person(object):
@@ -393,7 +393,7 @@ class RegressionTests(unittest.TestCase):
                                       matches_token(term.parent)))
         with context(UNPROXIFING_CONTEXT):
             self.assertTrue(all(matches_token(term)
-                                for term in cofind_tokens(*query.filters)))
+                                for term in cotraverse_expression(*query.filters)))
 
 
 class RegressionTest20130201(unittest.TestCase):
