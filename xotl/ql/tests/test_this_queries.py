@@ -405,6 +405,20 @@ class RegressionTest20130201(unittest.TestCase):
                       if child is not brother)
         self.assertIs(3, len(query.tokens))
 
+    def test_right_bindings_for_each_term(self):
+        query = these((child, brother)
+                      for parent in this
+                      for child in parent.children
+                      for brother in parent.children
+                      if child is not brother)
+
+        child, brother = query.selection
+        # XXX: This assume the order of the tokens is mantained!!!
+        _this, child_token, brother_token = tuple(query.tokens)
+        self.assertIs(unboxed(child).binding, child_token)
+        self.assertIs(unboxed(brother).binding, brother_token)
+
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main(verbosity=2)
