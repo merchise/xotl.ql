@@ -246,12 +246,81 @@ def evaluate(expression, table):
     return eval(expr, table, table)
 
 
+def cmp_tokens(t1, t2, equivalence=True):
+    '''Compares two generator tokens.
+
+    This is partial compare operator. A token `t1 < t2` only if t1's expression
+    is in the parent-chain of t2's expression.
+
+    If `equivalence` is True the comparison between expressions will be made
+    with the `eq` operation; otherwise `is` will be used.
+
+    Examples::
+
+        >>> from xotl.ql.core import this, these, GeneratorToken
+        >>> t1 = GeneratorToken(this('a').b.c)
+        >>> t2 = GeneratorToken(this('b').b.c.d)
+        >>> t3 = GeneratorToken(this('a').b)
+
+        >>> cmp_tokens(t1, t3)
+        1
+
+        # But if equivalence is False neither t1 < t3 nor t3 < t1 holds.
+        >>> cmp_tokens(t1, t3, False)
+        0
+
+        # Since t1 and t2 have no comon ancestor, they are not ordered.
+        >>> cmp_tokens(t1, t2)
+        0
+
+        >>> query = these((child, brother)
+        ...               for parent in this
+        ...               for child in parent.children
+        ...               for brother in parent.children
+        ...               if child is not brother)
+
+        >>> t1, t2, t3 = query.tokens
+
+        >>> cmp_tokens(t1, t2)
+        -1
+
+        >>> cmp_tokens(t2, t3)
+        0
+    '''
+    import operator
+    if equivalence:
+        test = operator.eq
+    else:
+        test = operator.is_
+    with context(UNPROXIFING_CONTEXT):
+        e1 = t1.expression
+        e2 = t2.expression
+        if test(e1, e2):
+            return 0
+        else:
+            t = e1
+            while t and not test(t, e2):
+                t = t.parent
+            if t:
+                return 1
+            t = e2
+            while t and not test(t, e1):
+                t = t.parent
+            if t:
+                return -1
+            else:
+                return 0
+
+
 def naive_translation(query, **kwargs):
     '''Does a naive translation to Python's VM memory.
     '''
     class _new(object): pass
     def new(cls, *args, **attrs):
         if cls == object:
+            if args:
+                raise TypeError("'object' expects no positional arguments; "
+                                "{0} were provided".format(len(args)))
             from xoutil.compat import iteritems_
             result = _new()
             for k, v in iteritems_(attrs):
@@ -259,6 +328,17 @@ def naive_translation(query, **kwargs):
             return result
         else:
             return cls(*args, **attrs)
+
+    def cmp(a, b):
+        from .interfaces import IGeneratorToken, IExpressionCapable
+        if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
+            return cmp_tokens(a, b)
+        elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
+            return cmp_tk_filter(a, b)
+        elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
+            return -cmp_tk_filter(b, a)
+        else:
+            return 0
 
     def plan():
         table = {'is_instance': lambda x, y: isinstance(x, y),
@@ -275,6 +355,10 @@ def naive_translation(query, **kwargs):
         # Since tokens are actually stored in the same order they are
         # found in the query expression, there's no risk in using the
         # given order to fetch the objects.
+        #
+        # The algorithm is simple; first we "intertwine" tokens and filters
+        # using a (stable) partial order: a filter comes before a token if and
+        # only if neither of it's terms is bound to the token.
         pass
     return plan
 
