@@ -822,7 +822,7 @@ class _QueryObjectType(type):
                 selection.append(expr)
             query = self()
             query.selection = tuple(reversed(selection))
-            query.tokens = tuple(token.expression for token in tokens)
+            query.tokens = tuple(tokens)
             query.filters = tuple(set(filters))
             query.ordering = kwargs.get('ordering', None)
             partition = kwargs.get('partition', None)

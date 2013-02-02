@@ -161,7 +161,7 @@ class TestThisQueries(unittest.TestCase):
             self.assertEqual(1, len(filters))
             self.assertIn(filter_expectation, filters)
 
-            tokens = query.tokens
+            tokens = [tk.expression for tk in query.tokens]
             self.assertEqual(1, len(tokens))
             self.assertIn(token_expectation, tuple(tokens))
 
@@ -195,7 +195,7 @@ class TestThisQueries(unittest.TestCase):
             self.assertIn(parent_age_test, filters)
             self.assertIn(children_age_test, filters)
 
-            tokens = query.tokens
+            tokens = [tk.expression for tk in query.tokens]
             self.assertEqual(2, len(tokens))
             self.assertIn(parent_token, tokens)
             self.assertIn(children_token, tokens)
@@ -218,7 +218,7 @@ class TestThisQueries(unittest.TestCase):
         expected_filters = [((p.age > 32) & (c.age < 5) | (t.type == 'laptop')),
                             p.children, c.toys]
 
-        tokens = query.tokens
+        tokens = [tk.expression for tk in query.tokens]
         expected_tokens = [p, c, t]
 
         selection = query.selection
@@ -319,7 +319,7 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
                       for rel in this('relation')
                       if rel.type == 'partnership'
                       if (rel.subject == person) & (rel.object == partner))
-        tokens = list(query.tokens)
+        tokens = [tk.expression for tk in query.tokens]
         person, partner, rel = this('person'), this('partner'), this('relation')
         with context(UNPROXIFING_CONTEXT):
             self.assertIs(3, len(tokens))
@@ -338,7 +338,7 @@ class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
                       if rel.object == partner
                       if partner.age > 32)
         filters = list(query.filters)
-        tokens = list(query.tokens)
+        tokens = [tk.expression for tk in query.tokens]
         person, partner, rel = this('person'), this('partner'), this('relation')
         expected_rel_type_filter = rel.type == 'partnership'
         expected_rel_subject_filter = rel.subject == person
@@ -362,7 +362,7 @@ class RegressionTests(unittest.TestCase):
         query = these(parent for parent in this if parent.age > 30)
         term = query.filters[0].children[0]
         with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(unboxed(term).parent, query.tokens[0])
+            self.assertEqual(unboxed(term).parent, query.tokens[0].expression)
 
     def test_named_terms_matches_a_token(self):
         '''
@@ -387,7 +387,7 @@ class RegressionTests(unittest.TestCase):
                       if (rel.subject == person) & (rel.obj == partner)
                       if person.age > 35)
 
-        tokens = query.tokens
+        tokens = [tk.expression for tk in query.tokens]
         matches_token = lambda term: (term.name and (
                                       term.binding.expression in tokens or
                                       matches_token(term.parent)))

@@ -417,13 +417,19 @@ class IQueryObject(Interface):
     '''
     selection = Attribute('Either a tuple/dict of :class:`ITerm` or '
                           ':class:`IExpressionTree` instances.')
-    tokens = Attribute('Generator tokens that occur in the query',
-                       '''When the :term:`query` is processed to create a
-                       :term:`query object`, at least one :term:`generator
-                       token` is created to represent a single, named
-                       "location" from where objects are drawn. However a
-                       :term:`query` may refer to several such locations. For
-                       instance in the query::
+
+    tokens = Attribute('Generator tokens (:class:`IGeneratorToken`) that '
+                       'occur in the query',
+
+                       '''A (probably unordered) list of :class:`generator
+                       tokens <IGeneratorToken>` that ocurr in the query.
+
+                       When a :term:`query expression` is processed to
+                       create a :term:`query object`, at least one
+                       :term:`generator token` is created to represent a
+                       single, named "location" from where objects are
+                       drawn. However a :term:`query expression` may have many
+                       such locations. For instance in the query::
 
                            these((book, author)
                                  for book in this
