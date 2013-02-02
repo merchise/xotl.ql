@@ -24,7 +24,7 @@ from xoutil.types import Unset
 from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
-from xotl.ql.translate import init
+from xotl.ql.translation import init
 
 
 __docstring_format__ = 'rst'
@@ -183,7 +183,7 @@ class TestTranslatorTools(unittest.TestCase):
     def test_cotraverse_expression(self):
         from xoutil.compat import izip
         from xotl.ql.expressions import is_a
-        from xotl.ql.translate import cotraverse_expression
+        from xotl.ql.translation import cotraverse_expression
 
         @thesefy
         class Person(object):

@@ -246,31 +246,34 @@ def evaluate(expression, table):
     return eval(expr, table, table)
 
 
-def cmp_tokens(t1, t2, equivalence=True):
-    '''Compares two generator tokens.
+def cmp_terms(t1, t2, strict=False):
+    '''Compares two terms in a partial order.
 
-    This is partial compare operator. A token `t1 < t2` only if t1's expression
-    is in the parent-chain of t2's expression.
+    This is *partial* compare operator. A term `t1 < t2` if and only if `t1` is
+    in the parent-chain of `t2`.
 
-    If `equivalence` is True the comparison between expressions will be made
-    with the `eq` operation; otherwise `is` will be used.
+    If `strict` is False the comparison between expressions will be made with
+    the `eq` operation; otherwise `is` will be used.
+
+    If either `t1` or `t2` are generator tokens it's
+    :attr:`~xotl.ql.interfaces.IGeneratorToken.expression` is used instead.
 
     Examples::
 
-        >>> from xotl.ql.core import this, these, GeneratorToken
-        >>> t1 = GeneratorToken(this('a').b.c)
-        >>> t2 = GeneratorToken(this('b').b.c.d)
-        >>> t3 = GeneratorToken(this('a').b)
+        >>> from xotl.ql.core import this, these
+        >>> t1 = this('a').b.c
+        >>> t2 = this('b').b.c.d
+        >>> t3 = this('a').b
 
-        >>> cmp_tokens(t1, t3)
+        >>> cmp_terms(t1, t3)
         1
 
         # But if equivalence is False neither t1 < t3 nor t3 < t1 holds.
-        >>> cmp_tokens(t1, t3, False)
+        >>> cmp_terms(t1, t3, True)
         0
 
         # Since t1 and t2 have no comon ancestor, they are not ordered.
-        >>> cmp_tokens(t1, t2)
+        >>> cmp_terms(t1, t2)
         0
 
         >>> query = these((child, brother)
@@ -281,35 +284,60 @@ def cmp_tokens(t1, t2, equivalence=True):
 
         >>> t1, t2, t3 = query.tokens
 
-        >>> cmp_tokens(t1, t2)
+        >>> cmp_terms(t1.expression, t2.expression)
         -1
 
-        >>> cmp_tokens(t2, t3)
+        >>> cmp_terms(t2.expression, t3.expression)
         0
+
     '''
     import operator
-    if equivalence:
+    if not strict:
         test = operator.eq
     else:
         test = operator.is_
     with context(UNPROXIFING_CONTEXT):
-        e1 = t1.expression
-        e2 = t2.expression
-        if test(e1, e2):
+        from ..interfaces import IGeneratorToken
+        if IGeneratorToken.providedBy(t1):
+            t1 = t1.expression
+        if IGeneratorToken.providedBy(t2):
+            t2 = t2.expression
+        if test(t1, t2):
             return 0
         else:
-            t = e1
-            while t and not test(t, e2):
+            t = t1
+            while t and not test(t, t2):
                 t = t.parent
             if t:
                 return 1
-            t = e2
-            while t and not test(t, e1):
+            t = t2
+            while t and not test(t, t1):
                 t = t.parent
             if t:
                 return -1
             else:
                 return 0
+
+def token_before_filter(tk, expr):
+    '''
+    '''
+    with context(UNPROXIFING_CONTEXT):
+        signature = tuple(cmp_terms(tk, term) for term in cotraverse_expression(expr))
+        if any(mark == -1 for mark in signature):
+            return True
+        else:
+            return False
+
+def cmp(a, b):
+    from ..interfaces import IGeneratorToken, IExpressionCapable
+    if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
+        return cmp_terms(a, b)
+    elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
+        return -1 if token_before_filter(a, b) else 0
+    elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
+        return 1 if token_before_filter(b, a) else 0
+    else:
+        return 0
 
 
 def naive_translation(query, **kwargs):
@@ -328,17 +356,6 @@ def naive_translation(query, **kwargs):
             return result
         else:
             return cls(*args, **attrs)
-
-    def cmp(a, b):
-        from .interfaces import IGeneratorToken, IExpressionCapable
-        if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
-            return cmp_tokens(a, b)
-        elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
-            return cmp_tk_filter(a, b)
-        elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
-            return -cmp_tk_filter(b, a)
-        else:
-            return 0
 
     def plan():
         table = {'is_instance': lambda x, y: isinstance(x, y),
@@ -382,7 +399,7 @@ def init(self, settings=None):
     '''
     from zope.component import getSiteManager
     from zope.interface import directlyProvides
-    from .interfaces import IQueryConfiguration
+    from ..interfaces import IQueryConfiguration
     directlyProvides(self, IQueryConfiguration, IQueryTranslator)
     manager = getSiteManager()
     configurator = manager.queryUtility(IQueryConfiguration)

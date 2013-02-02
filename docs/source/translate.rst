@@ -2,8 +2,6 @@
 A common query translation framework and translation test bed
 =============================================================
 
-.. module:: xotl.ql.translate
-
 Translation
 ===========
 
@@ -12,9 +10,11 @@ Translation is the process by which a :term:`query object` is translated to a
 :term:`storage`.
 
 
-Utilities provided by :mod:`xotl.ql.translate` module
-=====================================================
+Contents
+========
 
-.. autofunction:: cotraverse_expression(expr, accept=None)
+.. toctree::
+   :glob:
+   :maxdepth: 1
 
-.. autofunction:: cocreate_plan(query, **kwargs)
+   translation/*

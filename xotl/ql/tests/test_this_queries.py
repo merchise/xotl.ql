@@ -371,7 +371,7 @@ class RegressionTests(unittest.TestCase):
         '''
         from xoutil.iterators import izip
         from xotl.ql.core import thesefy
-        from xotl.ql.translate import cotraverse_expression
+        from xotl.ql.translation import cotraverse_expression
 
         @thesefy
         class Person(object):
