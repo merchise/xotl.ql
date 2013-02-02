@@ -573,8 +573,8 @@ class IsInstanceOperator(FunctorOperator):
     The `a is_a B` operator::
 
          >>> e = is_a(1, int)
-         >>> str(e)
-         "is_a(1, <type 'int'>)"
+         >>> str(e)   # doctest: +ELLIPSIS
+         "is_a(1, <...'int'>)"
 
     '''
     _format = 'is_a({0}, {1})'
@@ -958,7 +958,7 @@ class NewObjectFunction(FunctorOperator):
     The expression for building a new object.
 
        >>> new(object, a=1, b=2)          # doctest: +ELLIPSIS
-       <expression 'new(<type 'object'>, a=1, b=2)' ...>
+       <expression 'new(<...'object'>, a=1, b=2)' ...>
     '''
     arity = N_ARITY
     _format = 'new({0}{1})'
@@ -1205,8 +1205,8 @@ class q(object):
         True
 
         >>> expr = age + q(10)
-        >>> [type(child) for child in expr.children]
-        [<type 'str'>, <type 'int'>]
+        >>> [type(child) for child in expr.children]    # doctest: +ELLIPSIS
+        [<...'str'>, <...'int'>]
 
     '''
     r = lambda f: lambda self, other: f(other, self)
