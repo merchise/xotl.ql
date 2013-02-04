@@ -244,18 +244,17 @@ class Term(object):
             name = self.name
             parent = self.parent
         with context(UNPROXIFING_CONTEXT):
-            if name:
-                token = GeneratorToken(expression=self)
-                bound_term = Term(name, parent=parent, binding=token)
-            else:
+            if not name:
                 # When iterating an instance without a name (i.e the `this`
                 # object), we should generate a new name (of those simple
                 # mortals can't use)
                 with context('_INVALID_THESE_NAME'):
                     name = self._newname()
-                    term = Term(name, parent=parent)
-                    token = GeneratorToken(expression=term)
-                    bound_term = Term(name, parent=parent, binding=token)
+                    bound_term = Term(name, parent=parent, binding=None)
+            else:
+                bound_term = Term(name, parent=parent, binding=None)
+            token = GeneratorToken(expression=bound_term)
+            bound_term.binding = token
         instance = QueryPart(expression=bound_term)
         _emit_token(token)
         yield instance
@@ -1000,6 +999,10 @@ class GeneratorToken(object):
     @property
     def expression(self):
         return self._expression
+
+    @expression.setter
+    def expression(self, value):
+        self._expression = value
 
 
 def _query_part_method(target):
