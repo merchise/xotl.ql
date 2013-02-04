@@ -284,10 +284,10 @@ def cmp_terms(t1, t2, strict=False):
 
         >>> t1, t2, t3 = query.tokens
 
-        >>> cmp_terms(t1.expression, t2.expression)
+        >>> cmp_terms(t1, t2)
         -1
 
-        >>> cmp_terms(t2.expression, t3.expression)
+        >>> cmp_terms(t2, t3)
         0
 
     '''
@@ -318,20 +318,82 @@ def cmp_terms(t1, t2, strict=False):
             else:
                 return 0
 
+
 def token_before_filter(tk, expr):
-    '''
+    '''Partial order (`<`) compare function between a token (or term) and an
+    expression.
+
+    A token or term *is before* and expression if it is before any of the terms
+    in the expression.
+
+    Examples::
+
+        >>> from xotl.ql import this, these
+
+        >>> query = these((parent, child)
+        ...               for parent in this
+        ...               if parent.children
+        ...               for child in parent.children
+        ...               if child.age < 5
+        ...               for dummy in parent.children)
+
+        >>> parent_token, children_token, dummy_token = query.tokens
+        >>> expr1, expr2 = query.filters
+
+        >>> token_before_filter(children_token, expr1)
+        False
+
+        >>> token_before_filter(children_token, expr2)
+        True
+
+        >>> token_before_filter(parent_token, expr2)
+        True
+
+        >>> token_before_filter(dummy_token, expr2)
+        False
+
     '''
     with context(UNPROXIFING_CONTEXT):
-        signature = tuple(cmp_terms(tk, term) for term in cotraverse_expression(expr))
+        signature = tuple(cmp_terms(tk, term, True) for term in cotraverse_expression(expr))
         if any(mark == -1 for mark in signature):
             return True
         else:
             return False
 
 def cmp(a, b):
+    '''Partial compare function between tokens and expressions.
+
+    Examples::
+
+       >>> from xotl.ql import this, these
+       >>> query = these((parent, child)
+       ...               for parent in this
+       ...               for child in parent.children
+       ...               if parent.age > 34
+       ...               if child.age < 6)
+
+       >>> parent_token, children_token = query.tokens
+       >>> expr1, expr2 = query.filters
+
+       >>> cmp(parent_token, expr1)
+       -1
+
+       >>> cmp(children_token, parent_token)
+       1
+
+       >>> cmp(expr1, children_token)
+       0
+
+       >>> import functools
+       >>> l = [expr1, expr2, parent_token, children_token]
+       >>> l.sort(key=functools.cmp_to_key(cmp))
+       >>> expected = [parent_token, expr1, children_token, expr2]
+       >>> all(l[i] is expected[i] for i in (0, 1, 2, 3))
+       True
+    '''
     from ..interfaces import IGeneratorToken, IExpressionCapable
     if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
-        return cmp_terms(a, b)
+        return cmp_terms(a, b, True)
     elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
         return -1 if token_before_filter(a, b) else 0
     elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
