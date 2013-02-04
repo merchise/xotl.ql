@@ -6,24 +6,13 @@
 # Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 3 of the  License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
-# more details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on Jul 2, 2012
 
 '''
-The main purporses of this module are two:
+The main purposes of this module are two:
 
 - To provide common query/expression translation framework from query objects
   to data store languages.
@@ -62,14 +51,12 @@ def _iter_classes(accept=lambda x: True):
                 if isinstance(ob, type) and accept(ob))
 
 
-
 def _filter_by_pkg(pkg_name):
     '''Returns an `accept` filter for _iter_classes that only accepts
     classes of a given package name.'''
     def accept(cls):
         return cls.__module__.startswith(pkg_name)
     return accept
-
 
 
 def _iter_objects(accept=lambda x: True):
@@ -80,7 +67,6 @@ def _iter_objects(accept=lambda x: True):
                 if not isinstance(ob, type) and accept(ob))
 
 
-
 def _instance_of(which):
     '''Returns an `accept` filter for _iter_objects/_iter_classes that only
     accepts objects that are instances of `which`; `which` may be either
@@ -89,7 +75,6 @@ def _instance_of(which):
         return isinstance(ob, which) or (issubclass(which, Interface) and
                                          which.providedBy(ob))
     return accept
-
 
 
 def cofind_tokens(*expressions, **kwargs):
@@ -117,20 +102,20 @@ def cofind_tokens(*expressions, **kwargs):
     - A dict that may have `expr` and `accept` keys.
 
     The default behavior helps to catch all named ITerm instances in an
-    expression. This is usefull for finding every "name" in a query, which may
+    expression. This is useful for finding every "name" in a query, which may
     no appear in the query selection. For instance we, may have a model that
     relates Person objects indirectly via a Relation object::
 
         >>> from xotl.ql.core import thesefy
-        >>> @thesefy
+        >>> @thesefy('person')
         ... class Person(object):
         ...     pass
 
-        >>> @thesefy
+        >>> @thesefy('relation')
         ... class Relation(object):
         ...    pass
 
-    Then the following query::
+    Then, for the following query::
 
         >>> from xotl.ql.core import these
         >>> from itertools import izip
@@ -139,10 +124,19 @@ def cofind_tokens(*expressions, **kwargs):
         ...               for rel in Relation
         ...               if (rel.subject == person) & (rel.obj == partner))
 
-    would have two selections::
+    if we need to find every single named term in the filters of the query,
+    we would see that there are seven:
 
-        >>> person, partner = query.selection
+        - `person`, `partner` and `rel` (as given by the `is_instance(...)`
+          filters ``@thesefy`` injects)
+
+        - `rel.subject`, `person`, `rel.obj` and `partner` in the explicit
+          filter.
+
+        >>> len(list(cofind_tokens(*query.filters)))
+        7
     '''
+    is_expression = IExpressionTree.providedBy
     accept = kwargs.get('accept', lambda x: _instance_of(ITerm)(x) and x.name)
     with context(UNPROXIFING_CONTEXT):
         queue = list(expressions)
@@ -151,7 +145,7 @@ def cofind_tokens(*expressions, **kwargs):
             msg = None
             if accept(current):
                 msg = yield current
-            if IExpressionTree.providedBy(current):
+            if is_expression(current):
                 queue.extend(current.children)
                 named_children = current.named_children
                 queue.extend(named_children[key] for key in named_children)
@@ -170,9 +164,9 @@ def cofind_tokens(*expressions, **kwargs):
                     queue.append(msg)
 
 
-
 def cocreate_plan(query, **kwargs):
-    '''
+    '''**Not implemented yet**. The documentation provided is just an idea.
+
     Builds a :term:`query execution plan` for a given query that fetches
     objects from Python's VM memory.
 
@@ -185,17 +179,17 @@ def cocreate_plan(query, **kwargs):
        parent of another). For instance in the query::
 
            query = these((parent, child)
-                           for parent in this
-                           if parent.children & (parent.age > 34)
-                           for child in parent.children if child.age < 5)
+                         for parent in this
+                         if parent.children & (parent.age > 34)
+                         for child in parent.children if child.age < 5)
 
-        The `parent.children` generator tokens is *derived* from the token
-        `this`, so there should be a relation between the two.
+       The `parent.children` generator tokens is *derived* from the token
+       `this`, so there should be a relation between the two.
 
        .. todo::
 
           If we allow to have subqueries, it's not clear how to correlate
-          tokens. A given token may be whole query::
+          tokens. A given token may be a whole query::
 
               p = these((parent, partner)
                         for parent in this('parent')
@@ -207,9 +201,8 @@ def cocreate_plan(query, **kwargs):
          Since all examples so far of sub-queries as generators tokens are not
          quite convincing, we won't consider that.
 
-
     '''
-
+    pass
 
 
 def init(settings=None):
@@ -223,14 +216,16 @@ def init(settings=None):
        of your query-related configuration.
 
        This is only intended to allow testing of the translation common
-       framework by installing query translator that searches over Python's VM
+       framework by configuring query translator that searches over Python's VM
        memory.
 
     '''
     import sys
     from zope.component import getSiteManager
-    from .interfaces import IQueryConfiguration, IQueryTranslator
+    from zope.interface import directlyProvides
+    from .interfaces import IQueryConfiguration
     self = sys.modules[__name__]
+    directlyProvides(self, IQueryConfiguration, IQueryTranslator)
     manager = getSiteManager()
     configurator = manager.queryUtility(IQueryConfiguration)
     if configurator:
@@ -238,5 +233,3 @@ def init(settings=None):
     else:
         manager.registerUtility(self, IQueryConfiguration)
     manager.registerUtility(self, IQueryTranslator)
-
-

@@ -3,22 +3,11 @@
 #----------------------------------------------------------------------
 # setup
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on 2012-06-29
 
@@ -39,13 +28,14 @@ from release import VERSION as version
 
 setup(name=project_name,
       version=version,
-      description="The xotl query language",
+      description=("A pythonic query language, with similar goals as "
+                   "LINQ had for C#"),
       long_description=open(os.path.join("docs", "readme.txt")).read(),
       # Get more strings from
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
         "Programming Language :: Python",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: OS Independent",
@@ -54,8 +44,8 @@ setup(name=project_name,
       ],
       keywords=['query language', 'python', 'xotl'],
       author='Merchise Autrement',
-      author_email='',
-      url='http://www.merchise.org',
+      author_email='med.merchise@gmail.com',
+      url='http://github.com/merchise-autrement/',
       license='GNU General Public License version 3 or later (GPLv3+)',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       namespace_packages=['xotl', ],
@@ -64,16 +54,15 @@ setup(name=project_name,
       setup_requires=['setuptools', ],
       install_requires=[
           'xoutil>=1.1.4',
-          'zope.interface',
-          'zope.component',
+          'zope.interface>=3.8.0',
+          'zope.component>=3.11.0',
 
           # For documentation only. But it may be needed for ReadTheDocs
-          'repoze.sphinx.autointerface',
+          'repoze.sphinx.autointerface>=0.7.0',
       ],
       extra_requires={
-        'doc': ['docutils>=0.7', 'Sphinx>=1.0.7', 'repoze.sphinx.autointerface',]
-      },
-      entry_points="""
-
-      """,
-      )
+        'doc': ['docutils>=0.7',
+                'Sphinx>=1.0.7',
+                'repoze.sphinx.autointerface>=0.7.0']
+      }
+    )

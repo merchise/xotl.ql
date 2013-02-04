@@ -142,6 +142,8 @@ language. But, in time, we may refactor this class out of this module.
    This class implements :class:`xotl.ql.interfaces.IExpressionCapable`.
 
 
+.. _target-protocol:
+
 The `_target_` protocol for expressions
 ---------------------------------------
 
@@ -445,10 +447,6 @@ Included operations
 .. autoclass:: MaxFunction
 
 .. autoclass:: max_
-
-.. autoclass:: StringFormatFunction
-
-.. autoclass:: strformat
 
 .. autoclass:: InvokeFunction
 

@@ -6,11 +6,11 @@ The query language and the `this` object
 
 .. module:: xotl.ql.core
 
-The basic query language uses comprehensions to express both the SELECT part
-and FILTER part of a query.
+The basic query language uses generator expressions to express both the SELECT
+part and FILTER part of a query.
 
-In a :term:`query expression` (comprehension) the :data:`this` objects stand
-for the entire universe of objects *unless otherwise restricted by filter
+In a :term:`query expression` (generator expression) the :data:`this` objects
+stand for the entire universe of objects *unless otherwise restricted by filter
 expressions*. For instance::
 
     >>> from xotl.ql.expressions import count, is_a
@@ -60,7 +60,7 @@ each child yielded by `parent.children`. But using the first interpretation for
 
 
 :class:`!Term` instances may be *named*, thus allowing to select different
-objects in a single query. When used in comprehensions, `this` automatically
+objects in a single query. When used in query expressions, `this` automatically
 yields a single uniquely named :class:`Term` instance. So, you don't need to
 specify a name by your self::
 
@@ -128,14 +128,14 @@ type is a subclass of the class :class:`Term`:
 .. autoclass:: _QueryObjectType
    :members: these
 
-.. class:: these(comprehension, **kwargs)
+.. class:: these(generator, **kwargs)
 
    An alias to the :class`QueryObject`, you may use either as a constructor for
    :term:`query objects <query object>`. However we use both names for
    different purposes:
 
-   - We use :class:`these` with the `(comprehension, ...)` signature only to
-     get a :term:`query object` from a :term:`query expression`.
+   - We use :class:`these` with the `(generator, ...)` signature only to get a
+     :term:`query object` from a :term:`query expression`.
 
    - We use :class:`QueryObject` without any arguments, to build a bare
      :term:`query object` that may be filled afterward.
