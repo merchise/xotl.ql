@@ -249,7 +249,7 @@ def evaluate(expression, table):
 def cmp_terms(t1, t2, strict=False):
     '''Compares two terms in a partial order.
 
-    This is *partial* compare operator. A term `t1 < t2` if and only if `t1` is
+    This is a *partial* compare operator. A term `t1 < t2` if and only if `t1` is
     in the parent-chain of `t2`.
 
     If `strict` is False the comparison between expressions will be made with
