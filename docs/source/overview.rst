@@ -6,8 +6,8 @@ Overview
 
 A running system often needs to retrieve objects from a single or several
 sources. Those sources are often databases, but that is by no means a universal
-truth; for instance, in a distributed environments objects may reside in other
-types of software components.
+truth; for instance, in a distributed environments objects might reside in
+other types of software components.
 
 A query language assists programmers in the task of retrieving those objects
 or, at least, get a handle to those objects (like a proxy to an object in a
@@ -57,9 +57,9 @@ This would retrieve every "parent" whose children are all more than 10 years
 
    Logical operations `and`, `or`, and `not` are encoded using the operators:
    `&`, `|`, and `~` respectively; but since in Python those are bit-wise
-   operations they don't have the same priority as the keywords so you may have
-   to use parentheses: ``(count(this.children) > 0) & (count(this.children) <
-   4)``.
+   operations they don't have the same priority the keywords do, so you might
+   have to use parentheses: ``(count(this.children) > 0) &
+   (count(this.children) < 4)``.
 
    You may use the function-like operators :class:`xotl.ql.expressions.and_`,
    :class:`xotl.ql.expressions.or_`, and :class:`xotl.ql.expressions.not_` if
@@ -86,7 +86,7 @@ For instance, given a data model that honors transitive relations such as `is
 and that `C is located in B`, then asking for every place that is located in
 `A`, both `B` and `C` should be found.
 
-One may encode such a query in a program like the following::
+One might encode such a query in a program like the following::
 
   >>> def is_located_in(place, container):
   ...    'Creates the expression that asserts that `place` is inside a `container`'
@@ -95,8 +95,8 @@ One may encode such a query in a program like the following::
   ...    else:
   ...        return place.located_in == container
 
-  >>> inside = lambda(who: these(place for place in this
-  ...                            if is_located_in(place, who))
+  >>> inside = lambda who: (these(place for place in this
+  ...                             if is_located_in(place, who))
 
   >>> inside_a = inside('A')
 
@@ -104,7 +104,7 @@ It's expected that such a query will look up in the all the containment tree
 derived form the `located-in` relation, to fetch all places which are inside
 `A` either directly or indirectly.
 
-In this model, just the use of `located_in.name == 'A'` would imply a recursive
+In this model, just the use of `located_in.name == "A"` would imply a recursive
 computation; and such knowledge comes only from the object/store model and not
 the query language by itself. Other models (for instance the relational model)
 might not find more than directly related objects.
@@ -115,12 +115,14 @@ configuration (specially how to communicate with storage systems).
 
 As of the date of writing `xotl.ql` does not provides any (useful)
 translator. Such components will reside in other packages. It is foreseeable
-that `xotl` (the project that gives host to `xotl.ql`) may include a translator
-(or partial a implementation of it) for the :term:`OMCaF` object model.
+that `xotl` (the project that gives host to `xotl.ql`) might include a
+translator (or partial a implementation of it) for the :term:`OMCaF` object
+model.
 
 Nevertheless the module :mod:`xotl.ql.translate` does contains an
 implementation of a translator that fetches objects from the Python VM, and
 provides some functions to traverse the Query AST.
+
 
 Retrieving objects
 ------------------
