@@ -1,8 +1,8 @@
 .. _api-ref:
 
-=============
-API reference
-=============
+==========================================
+:mod:`xotl.ql.interfaces` - API Interfaces
+==========================================
 
 .. module:: xotl.ql.interfaces
 

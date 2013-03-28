@@ -32,12 +32,13 @@ Contents:
 ---------
 
 .. toctree::
+   :glob:
    :maxdepth: 1
 
    overview
    expressions
    core
-   interfaces
+   api/*
    translate
    thoughts
    inners
