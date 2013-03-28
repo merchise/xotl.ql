@@ -28,8 +28,8 @@ What's new in this release?
 .. include:: history/changes-0.1.9.rst
 
 
-Contents:
----------
+Core Contents:
+--------------
 
 .. toctree::
    :glob:
@@ -39,17 +39,23 @@ Contents:
    expressions
    core
    api/*
-   translate
-   thoughts
-   inners
+   translation/*
    terms
-   references
    next-release-goals
-   changes/index
    HISTORY
    credits
    license
 
+Additional documents:
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   thoughts
+   inners
+   references
+   changes/index
 
 What does xotl mean?
 --------------------
@@ -64,12 +70,3 @@ It is expected that `xotl` will use `xotl.ql` to:
 - Express predicates defining object relationships
 - Query the object store (of course!)
 - Update the object store.
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-* :ref:`glossary`
