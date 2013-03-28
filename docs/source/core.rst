@@ -104,4 +104,35 @@ Providing a name may ease debugging tasks, and clarify log messages.
      ...    expr == expr2
      False
 
+
+Order, limits and offsets
+=========================
+
+So far, the query language presented does not allow for expressing neither
+limits, offsets and order-by clauses. But rest sure those things are
+possible. When expressing a query :class:`~xotl.ql.core.these` allows to pass
+many keyword arguments, which are kept in the :class:`query object
+<xotl.ql.interfaces.IQueryObject>` returned.
+
+
+Limits and offsets
+------------------
+
+To set limits and offsets you may pass the `partition` keyword argument a
+`slice` object. Every possible combination in python itself is possible here as
+well.
+
+Alternatively, you may provide one (or several) of the keyword arguments:
+`limit`, `offset` and `step`. This arguments are used then to create the
+`slice` object. If you provide the `partition` argument, these ones will be
+ignored (and a warning will be logged).
+
+Compliant :term:`query translators` are required to:
+
+- Raise a `TypeError` if they don't support `partition` and one is provided.
+
+- Raise a `TypeError` if they don't support any of the `partition's` components
+  that is not None (e.g. a translator may not support a step bigger than 1)
+
+- Document those expectations.
 .. _CouchDB: http://couchdb.apache.org/
