@@ -229,8 +229,8 @@ Terms and glossary
 
        In general, a storage is a place from which one could draw objects
        from. We may then, relax the "persistence" requirement from a component
-       to be considered a storage. For instance, a `memcached` server may be
-       considered a key-value storage, that a query translator may target.
+       to be considered a storage. For instance, a `memcached` server could be
+       considered a key-value storage, that a query translator might target.
 
    thread-local object
 
