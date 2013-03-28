@@ -746,8 +746,9 @@ class _QueryObjectType(type):
         :param comprehension: The :term:`query expression` to be processed.
         :type comprehension: GeneratorType
 
-        :param ordering: The ordering expressions.
-        :type ordering: A tuple of ordering expressions.
+        :param ordering: A function that receives as many arguments as there
+             are selections in the query and returns a tuple of :ref:`ordering
+             expressions <ordering-expressions>`.
 
         :param partition: A slice `(offset, limit, step)` that represents the
                           part of the result set to be retrieved.
@@ -794,20 +795,31 @@ class _QueryObjectType(type):
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts,)
-            selected_parts = tuple(reversed(selected_parts))
             selection = []
-            tokens = bubble.tokens
             filters = bubble.parts
-            for part in selected_parts:
+            # Selections that are parts' were emitted last and are disguised as
+            # filters at the top of the bubble.parts, this should be fixed:
+            for part in reversed(selected_parts):
                 expr = part.expression
                 if filters and expr is filters[-1]:
                     filters.pop(-1)
                 selection.append(expr)
             query = self()
             query.selection = tuple(reversed(selection))
+            tokens = bubble.tokens
             query.tokens = tuple(tokens)
             query.filters = tuple(set(filters))
-            query.ordering = kwargs.get('ordering', None)
+        # Step out ot the context for a moment in order to create the ordering
+        # expressions (otherwise things like term.attr would fail).
+        orderby = kwargs.get('ordering', None)
+        if orderby:
+            # from xoutil.proxy import unboxed
+            ordering = orderby(*query.selection)
+        else:
+            ordering = None
+        # Now continue inside a comfortable execution context.
+        with context(UNPROXIFING_CONTEXT):
+            query.ordering = ordering
             partition = kwargs.get('partition', None)
             offset = kwargs.get('offset', None)
             limit = kwargs.get('limit', None)

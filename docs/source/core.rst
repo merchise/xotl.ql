@@ -135,4 +135,65 @@ Compliant :term:`query translators` are required to:
   that is not None (e.g. a translator may not support a step bigger than 1)
 
 - Document those expectations.
+
+
+.. _ordering-expressions:
+
+Expressing order instructions
+-----------------------------
+
+To instruct a capable query translator to order the result you may pass the
+`ordering` keyword argument to :class:`~xotl.ql.core.these`.
+
+The argument's type **must** be a callable (usually a lambda expression) that
+receives as many positional arguments as selected elements are in the query and
+returns either:
+
+- A single *unary expression*, i.e. an expression tree of which its top most
+  operator is one of :class:`xotl.ql.expressions.PositiveUnaryOperator` or
+  :class:`xotl.ql.expressions.NegativeUnaryOperator`.
+
+- A tuple of unary expressions of those.
+
+Collectively those unary expressions are called "ordering expressions" in the
+context of the interface :class:`xotl.ql.interface.IQueryObject`.
+
+.. note::
+
+   What you pass to the `ordering` argument of :class:`~xotl.ql.core.these` are
+   not the ordering expressions themselves, but a procedure to build them from
+   the selection.
+
+   What you get in the query's :attr:`xotl.ql.interfaces.IQueryObject.ordering`
+   attribute are the ordering expressions as returned by the given procedure.
+
+Nothing more is enforced.
+
+Compliant :term:`query translators <query translator>` are required to:
+
+- Treat *positive* unary expressions as an *ascending* ordering request.
+
+- Treat *negative* unary expressions as a *descending* ordering request.
+
+- Further validate the expressions and raise a `TypeError` if any expression
+  violates the type expectations of the translator. This entails the
+  requirement to clearly document those expectations.
+
+This last requirement is need because the only type check that `xotl.ql` does
+on `ordering` expressions is that they are *unary* ones, it is possible to
+order by not only by *single term expressions*, but by more complex ones.
+
+For instance a query may ask for ordering based on the result of the ratio
+between the maximum value of an attribute in a sub-collection and other
+attribute::
+
+     from xotl.ql.expressions import max_
+     query = these((parent for parent in this),
+        ordering=lambda parent: +(max_(child.age for child in parent.children)/parent.age))
+
+But some translators might be unable to correctly translate this kind of
+ordering expression; maybe because the storage does not allow it or because the
+translation process itself is not designed for such use cases.
+
+
 .. _CouchDB: http://couchdb.apache.org/
