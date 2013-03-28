@@ -1060,13 +1060,23 @@ ExpressionTreeOperations = type(str('ExpressionTreeOperations'), (object,),
                                 _expr_operations)
 
 
-# The _target_ protocol for expressions.
+# The _xotl_target_ (aka _target_) protocol for expressions.
 def _extract_target(which):
-    if context['FLEXIBLE_TARGET_PROTOCOL']:
-        target = getattr(which, '_target_', lambda x: x)
+    from xoutil.types import Unset
+    func = getattr(type(which), '_xotl_target_', Unset)
+    if func is Unset:
+        func = getattr(type(which), '_target_', Unset)
+        if func is not Unset:
+            import warnings
+            from xoutil.objects import full_nameof
+            warnings.warn('The _target_ protocol has been renamed to '
+                          '_xotl_target_ and in future versions it will be'
+                          ' removed. Please update %s.' %
+                          full_nameof(type(which)))
+    if func:
+        return func(which)
     else:
-        target = getattr(type(which), '_target_', lambda x: x)
-    return target(which)
+        return which
 
 
 @implementer(IExpressionTree)
@@ -1092,7 +1102,7 @@ class ExpressionTree(object):
 
             >>> class X(object):
             ...    @classmethod
-            ...    def _target_(cls, self):
+            ...    def _xotl_target_(cls, self):
             ...        return 123
 
             >>> add(X(), 1978)    # doctest: +ELLIPSIS
@@ -1266,7 +1276,7 @@ class q(object):
                number_like, string_like]
 
     @classmethod
-    def _target_(cls, self):
+    def _xotl_target_(cls, self):
         'Supports the target protocol for expressions'
         with context(UNPROXIFING_CONTEXT):
             return self.target

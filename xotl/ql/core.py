@@ -1063,7 +1063,7 @@ QueryPartOperations = type(str('QueryPartOperations'), (object,), _part_operatio
 
 
 class _QueryPartType(type):
-    def _target_(self, part):
+    def _xotl_target_(self, part):
         from xoutil.proxy import unboxed
         return unboxed(part).expression
 

@@ -43,7 +43,7 @@ class BasicTests(unittest.TestCase):
     def test_target_procotol(self):
         class X(object):
             @staticmethod
-            def _target_(self):
+            def _xotl_target_(self):
                 return 1978
 
         x = X()
