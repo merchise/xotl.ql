@@ -12,18 +12,13 @@ internal query API, used to those that need to build extensions of the query
 language, please refer to :ref:`query-api`.
 
 As we've said, at the core of the Query Language is the `this` object, whose
-type is a subclass of the class :class:`Term`:
-
-.. autodata:: this(name, **kwargs)
-
+type is a subclass of the class :class:`Term` explained below:
+v.. autodata:: this(name, **kwargs)
 
 .. autoclass:: Term
    :members: name, parent, root_parent,  __iter__
 
    This class implements :class:`xotl.ql.interfaces.ITerm`
-
-.. autoclass:: _QueryObjectType
-   :members: build_from_generator
 
 .. class:: these(generator, **kwargs)
 
@@ -31,27 +26,31 @@ type is a subclass of the class :class:`Term`:
    for :term:`query objects <query object>`. However we use both names for
    different purposes:
 
-   - We use :class:`these` with the `(generator, ...)` signature only to get a
-     :term:`query object` from a :term:`query expression`.
+   - We use :class:`these` with the `(query expression, ...)` signature only to
+     get a :term:`query object` from a :term:`query expression` in a style that
+     looks like a function call.
 
-   - We use :class:`QueryObject` without any arguments, to build a bare
+   - We use :class:`QueryObject` without any arguments to build a bare
      :term:`query object` that may be filled afterward.
-
-     The only valid signature is the one of :class:`these`, any other signature
-     will produce a `TypeError`.
 
    .. note::
 
-      The metaclass :class:`_QueryObjectType` of :class:`these` hooks into the
-      way of creating instances (:term:`query objects <query object>`), if you
-      pass a single positional argument which is of type `GeneratorType` and
-      possibly many others keyword arguments, the metaclass will use its
-      :meth:`_QueryObjectType.build_from_generator` method.
+      When providing any arguments the only valid signature is the one showed
+      in this page. If you pass any arguments, you *must* ensure that:
 
+      - There is a **single** positional argument of type `GeneratorType`
+      - Any other argument is a *keyword argument*.
+
+      Any other signature raises a TypeError. See
+      :meth:`_QueryObjectType.build_from_generator` for more.
 
 .. autoclass:: QueryObject
 
 .. autoclass:: GeneratorToken
+
+.. autoclass:: _QueryObjectType
+   :members: build_from_generator
+
 
 Implementation Details
 ======================

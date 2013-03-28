@@ -730,7 +730,7 @@ class PositiveUnaryOperator(Operator):
 pos = PositiveUnaryOperator
 
 
-class NegateUnaryOperator(Operator):
+class NegativeUnaryOperator(Operator):
     '''
     The `-56` unary operator::
 
@@ -743,7 +743,7 @@ class NegateUnaryOperator(Operator):
     arity = UNARY
     _method_name = str('__neg__')
     _python_operator = operator.neg
-neg = NegateUnaryOperator
+neg = NegativeUnaryOperator
 
 
 class AbsoluteValueUnaryFunction(Operator):

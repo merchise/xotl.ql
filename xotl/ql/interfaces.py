@@ -449,7 +449,7 @@ class IQueryObject(Interface):
                         'that represent the WHERE clauses. They are logically '
                         'and-ed.')
     ordering = Attribute('A tuple of :ref:`ordering expressions '
-                         '<ordering-expressions>`_.')
+                         '<ordering-expressions>`.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
     params = Attribute('A dict containing other arguments to the query. '

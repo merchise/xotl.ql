@@ -133,7 +133,7 @@
 
 .. autoclass:: pos
 
-.. autoclass:: NegateUnaryOperator
+.. autoclass:: NegativeUnaryOperator
 
 .. autoclass:: neg
 

@@ -218,26 +218,15 @@ class Term(object):
 
     def __iter__(self):
         '''Yields a single instance of :class:`query part
-        <xotl.ql.interfaces.IQueryPart>` that wraps `self`.
+        <xotl.ql.interfaces.IQueryPart>` that wraps the current term instance.
 
         This allows an idiomatic way to express queries::
 
-            # A bubble is needed `these` automatically puts one around.
-            >>> bubble = _create_and_push_bubble()
+            query_expression = ((parent, child)
+                                for parent in this('parent')
+                                for child in parent.children)
 
-            >>> parent, child = next((parent, child)
-            ...                            for parent in this('parent')
-            ...                            for child in parent.children)
-            >>> (parent, child)    # doctest: +ELLIPSIS
-            (<...this('parent')...>, <...this('parent').children...>)
-
-        .. warning::
-
-           We have used `next` here directly over the comprehensions, but the
-           query language **does not** support this kind of construction.
-
-           Queries must be built by calling the :func:`these` passing the
-           comprehension as its first argument.
+        See :class:`these`.
 
         '''
         with context(UNPROXIFING_CONTEXT):
@@ -755,6 +744,7 @@ class _QueryObjectType(type):
         by a generator object.
 
         :param comprehension: The :term:`query expression` to be processed.
+        :type comprehension: GeneratorType
 
         :param ordering: The ordering expressions.
         :type ordering: A tuple of ordering expressions.
@@ -773,17 +763,11 @@ class _QueryObjectType(type):
         :param offset: Individually express the offset of the `partition`
                        parameter.
 
-        :type offset: int or None
-
         :param limit: Individually express the limit of the `partition`
                       parameter.
 
-        :type limit: int or None
-
         :param step: Individually express the step of the `partition`
                      parameter.
-
-        :type step: int or None
 
         :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
                   represents the QueryObject expressed by the `comprehension`
@@ -795,7 +779,7 @@ class _QueryObjectType(type):
         .. note::
 
            All others keyword arguments are copied to the
-           :attr:`~xotl.ql.interface.IQueryObject.params` attribute, so that
+           :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute, so that
            :term:`query translators <query translator>` may use them.
 
         '''
