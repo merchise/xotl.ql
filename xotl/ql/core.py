@@ -808,7 +808,7 @@ class _QueryObjectType(type):
             query.selection = tuple(reversed(selection))
             tokens = bubble.tokens
             query.tokens = tuple(tokens)
-            query.filters = tuple(set(filters))
+            query.filters = tuple(filters)
         # Step out ot the context for a moment in order to create the ordering
         # expressions (otherwise things like term.attr would fail).
         orderby = kwargs.get('ordering', None)
