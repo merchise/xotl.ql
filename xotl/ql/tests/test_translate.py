@@ -24,11 +24,32 @@ from xoutil.types import Unset
 from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
-from xotl.ql.translation import init
+from xotl.ql.translation import init, token_before_filter
 
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
+
+
+__LOG = False
+
+
+if __LOG:
+    import sys
+    from itertools import chain
+    from xoutil.compat import iterkeys_
+    from xoutil.aop.classical import weave, _weave_around_method
+
+    from xotl.ql.tests import logging_aspect
+    from xotl.ql.core import QueryParticlesBubble, _part_operations, QueryPart
+
+    # Weave logging aspect into every relevant method during testing
+    aspect = logging_aspect(sys.stdout)
+    weave(aspect, QueryParticlesBubble)
+    for attr in iterkeys_(_part_operations):
+        _weave_around_method(QueryPart, aspect, attr, '_around_')
+    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
+
 
 
 # Initialize and configure the query translation components provided by the
@@ -178,7 +199,6 @@ select_aged_entities = these(who for who in Entity if who.age)
 select_old_entities = these(who for who in Entity if who.age >= 34)
 
 
-
 class TestTranslatorTools(unittest.TestCase):
     def test_cotraverse_expression(self):
         from xoutil.compat import izip
@@ -220,6 +240,30 @@ class TestTranslatorTools(unittest.TestCase):
             self.assertIs(4, len(list(cotraverse_expression(filters[0]))))
 
 
+class TestOrderingExpressions(unittest.TestCase):
+    def test_token_before_filter(self):
+        query = these((parent, child)
+                      for parent in this
+                      if parent.children
+                      for child in parent.children
+                      if child.age < 5
+                      for dummy in parent.children)
+
+
+        parent, child = query.selection
+        parent_token, children_token, dummy_token = query.tokens
+        expr1, expr2 = query.filters
+
+        def ok(e1, e2):
+            with context(UNPROXIFING_CONTEXT):
+                assert e1 == e2
+        ok(expr1, parent.children)
+        ok(expr2, child.age < 5)
+
+        assert not token_before_filter(children_token, expr1), repr((children_token, expr1, expr2))
+        assert token_before_filter(children_token, expr2, True)
+        assert token_before_filter(parent_token, expr2, True)
+        assert not token_before_filter(dummy_token, expr2, True)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

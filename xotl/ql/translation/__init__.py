@@ -319,46 +319,20 @@ def cmp_terms(t1, t2, strict=False):
                 return 0
 
 
-def token_before_filter(tk, expr):
+def token_before_filter(tk, expr, strict=False):
     '''Partial order (`<`) compare function between a token (or term) and an
     expression.
 
-    A token or term *is before* and expression if it is before any of the terms
+    A token or term *is before* an expression if it is before any of the terms
     in the expression.
-
-    Examples::
-
-        >>> from xotl.ql import this, these
-
-        >>> query = these((parent, child)
-        ...               for parent in this
-        ...               if parent.children
-        ...               for child in parent.children
-        ...               if child.age < 5
-        ...               for dummy in parent.children)
-
-        >>> parent_token, children_token, dummy_token = query.tokens
-        >>> expr1, expr2 = query.filters
-
-        >>> token_before_filter(children_token, expr1)
-        False
-
-        >>> token_before_filter(children_token, expr2)
-        True
-
-        >>> token_before_filter(parent_token, expr2)
-        True
-
-        >>> token_before_filter(dummy_token, expr2)
-        False
-
     '''
     with context(UNPROXIFING_CONTEXT):
-        signature = tuple(cmp_terms(tk, term, True) for term in cotraverse_expression(expr))
+        signature = tuple(cmp_terms(tk, term, strict) for term in cotraverse_expression(expr))
         if any(mark == -1 for mark in signature):
             return True
         else:
             return False
+
 
 def cmp(a, b):
     '''Partial compare function between tokens and expressions.
