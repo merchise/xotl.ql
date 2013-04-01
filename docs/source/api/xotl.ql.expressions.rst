@@ -166,3 +166,7 @@
 .. autoclass:: AverageFunction
 
 .. autoclass:: avg
+
+.. autoclass:: NewObjectFunction
+
+.. autoclass:: new

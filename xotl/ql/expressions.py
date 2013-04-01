@@ -954,11 +954,11 @@ avg = AverageFunction
 
 
 class NewObjectFunction(FunctorOperator):
-    '''
-    The expression for building a new object.
+    '''The expression for building a new object.
 
        >>> new(object, a=1, b=2)          # doctest: +ELLIPSIS
        <expression 'new(<...'object'>, a=1, b=2)' ...>
+
     '''
     arity = N_ARITY
     _format = 'new({0}{1})'
