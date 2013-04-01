@@ -1191,6 +1191,10 @@ def thesefy(target, name=None):
     '''
     class new_meta(type(target)):
         def __new__(cls, name, bases, attrs):
+            from xoutil.iterators import dict_update_new
+            baseattrs = {'__doc__': getattr(bases[0], '__doc__', ''),
+                         '__module__': getattr(bases[0], '__module__', '')}
+            dict_update_new(attrs, baseattrs)
             return super(new_meta, cls).__new__(cls, name, bases, attrs)
         def __iter__(self):
             from types import GeneratorType
@@ -1213,7 +1217,5 @@ def thesefy(target, name=None):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
-    new_class = new_meta(target.__name__,
-                         (target, ),
-                         {'__doc__': getattr(target, '__doc__', None)})
+    new_class = new_meta(target.__name__, (target, ), {})
     return new_class
