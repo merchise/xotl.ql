@@ -53,6 +53,25 @@ if __LOG:
     _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
 
 
+
+def test_thesefy_when_inherited_uses_the_right_name():
+    from xotl.ql.core import thesefy
+    from xotl.ql.expressions import is_instance
+
+    class Base(object):
+        pass
+
+    @thesefy
+    class Entity(Base):
+        pass
+
+    class Person(Entity):
+        pass
+
+    assert Person.__name__ == 'Person'
+
+
+
 class TestUtilities(unittest.TestCase):
     def _test_class(self, Person):
         from xotl.ql.expressions import is_instance
