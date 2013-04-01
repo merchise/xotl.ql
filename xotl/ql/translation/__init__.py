@@ -35,7 +35,7 @@ from xoutil.compat import iteritems_
 
 from zope.interface import Interface
 
-from xotl.ql.core import Term
+from xotl.ql.core import Term, GeneratorToken
 from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY
@@ -70,6 +70,7 @@ from xotl.ql.expressions import InvokeFunction
 from xotl.ql.expressions import NewObjectFunction
 
 from xotl.ql.interfaces import (ITerm,
+                                IGeneratorToken,
                                 IExpressionTree,
                                 IQueryObject,
                                 IQueryTranslator,
@@ -334,7 +335,6 @@ def cmp_terms(t1, t2, strict=False):
     else:
         test = operator.is_
     with context(UNPROXIFING_CONTEXT):
-        from ..interfaces import IGeneratorToken
         if IGeneratorToken.providedBy(t1):
             t1 = t1.expression
         if IGeneratorToken.providedBy(t2):
@@ -360,16 +360,17 @@ def token_before_filter(tk, expr, strict=False):
     '''Partial order (`<`) compare function between a token (or term) and an
     expression.
 
-    A token or term *is before* an expression if it is before any of the terms
-    in the expression.
+    A token *is before* an expression if it is (or is before of) the binding of
+    the terms in the expression.
+
     '''
     with context(UNPROXIFING_CONTEXT):
-        signature = tuple(cmp_terms(tk, term, strict) for term in cotraverse_expression(expr))
-        if any(mark == -1 for mark in signature):
-            return True
-        else:
-            return False
-
+        def check(term):
+            if tk is term.binding:
+                return True
+            else:
+                return cmp_terms(tk, term.binding, strict) == -1
+        return any(check(term) for term in cotraverse_expression(expr))
 
 def cmp(a, b):
     '''Partial compare function between tokens and expressions.
