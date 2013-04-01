@@ -191,12 +191,17 @@ manolito = Person(name='Manuel Vázquez Piñero',
                   lives_in=lisa)
 
 
-select_manus = these(who for who in Person if who.name.startswith('Manuel '))
-select_aged_entities = these(who for who in Entity if who.age)
-
 # Three days after I (manu) wrote this query, I started to appear in the
 # results ;)
-select_old_entities = these(who for who in Entity if who.age >= 34)
+def test_naive_plan():
+    from xotl.ql.translation import naive_translation
+    select_old_entities = these(who
+                                for who in Entity
+                                if who.name.starswith('Manuel'))
+    plan = naive_translation(select_old_entities)
+    result = plan()
+    assert manu in result
+    assert manolito in result
 
 
 class TestTranslatorTools(unittest.TestCase):
@@ -264,6 +269,20 @@ class TestOrderingExpressions(unittest.TestCase):
         assert token_before_filter(children_token, expr2, True)
         assert token_before_filter(parent_token, expr2, True)
         assert not token_before_filter(dummy_token, expr2, True)
+
+
+def test_regression_test_token_before_filter_20130401():
+    '''
+    '''
+    query = these(who
+                  for who in Entity
+                  if who.name.starswith('Manuel'))
+    is_entity_filter, name_filter = query.filters
+    token = query.tokens[0]
+    assert len(query.tokens) == 1
+    assert token_before_filter(token, is_entity_filter, True)
+    assert token_before_filter(token, name_filter, True)
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
