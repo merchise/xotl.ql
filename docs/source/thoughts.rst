@@ -293,6 +293,6 @@ Footnotes
 
 .. Links ..
 
-.. _RDFcheck: http://www.w3c.org/Semantics/
+.. _RDF: http://www.w3c.org/Semantics/
 .. _CouchDB: http://apache.org/couchdb
 .. _Couchbase: http://www.couchbase.com/
