@@ -193,7 +193,7 @@ manolito = Person(name='Manuel Vázquez Piñero',
 
 # Three days after I (manu) wrote this query, I started to appear in the
 # results ;)
-def test_naive_plan():
+def test_naive_plan_no_join():
     from xotl.ql.translation import naive_translation
     select_old_entities = these(who
                                 for who in Entity
@@ -202,6 +202,20 @@ def test_naive_plan():
     result = plan()
     assert manu in result
     assert manolito in result
+
+
+def test_ridiculous_join():
+    from itertools import product
+    from xotl.ql.translation import naive_translation
+    select_old_entities = these((who, who2)
+                                for who in Person
+                                for who2 in Person)
+    plan = naive_translation(select_old_entities)
+    result = plan()
+    source = (elsa, manu, denia, pedro, yade, manolito)
+    for pair in product(source, source):
+        assert pair in result
+
 
 
 class TestTranslatorTools(unittest.TestCase):

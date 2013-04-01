@@ -3,7 +3,7 @@
 # --------------------------------------------------
 # xotl.ql
 # --------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -34,6 +34,6 @@ stores.
 from __future__ import (absolute_import, unicode_literals)
 
 from . import expressions
-from .core import this, these
+from .core import this, these, thesefy
 
-__all__ = (b'this', b'these', b'expressions')
+__all__ = (str('this'), str('these'), str('thesefy'), str('expressions'))
