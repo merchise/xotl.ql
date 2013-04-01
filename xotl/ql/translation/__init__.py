@@ -27,12 +27,48 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 from xoutil.context import context
-from xoutil.proxy import unboxed, UNPROXIFING_CONTEXT
+from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.modules import modulemethod
+from xoutil.types import Unset
+from xoutil.decorator import memoized_property
+from xoutil.compat import iteritems_
 
-from zope.interface import Interface, implementer
+from zope.interface import Interface
 
+from xotl.ql.core import Term
+from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
+from xotl.ql.expressions import UNARY, BINARY
+
+from xotl.ql.expressions import EqualityOperator
+from xotl.ql.expressions import NotEqualOperator
+from xotl.ql.expressions import LogicalAndOperator
+from xotl.ql.expressions import LogicalOrOperator
+from xotl.ql.expressions import LogicalXorOperator
+from xotl.ql.expressions import LogicalNotOperator
+from xotl.ql.expressions import AdditionOperator
+from xotl.ql.expressions import SubstractionOperator
+from xotl.ql.expressions import DivisionOperator
+from xotl.ql.expressions import MultiplicationOperator
+from xotl.ql.expressions import FloorDivOperator
+from xotl.ql.expressions import ModOperator
+from xotl.ql.expressions import PowOperator
+from xotl.ql.expressions import LeftShiftOperator
+from xotl.ql.expressions import RightShiftOperator
+from xotl.ql.expressions import LesserThanOperator
+from xotl.ql.expressions import LesserOrEqualThanOperator
+from xotl.ql.expressions import GreaterThanOperator
+from xotl.ql.expressions import GreaterOrEqualThanOperator
+from xotl.ql.expressions import ContainsExpressionOperator
+from xotl.ql.expressions import IsInstanceOperator
+from xotl.ql.expressions import LengthFunction
+from xotl.ql.expressions import CountFunction
+from xotl.ql.expressions import PositiveUnaryOperator
+from xotl.ql.expressions import NegativeUnaryOperator
+from xotl.ql.expressions import AbsoluteValueUnaryFunction
+from xotl.ql.expressions import InvokeFunction
+from xotl.ql.expressions import NewObjectFunction
+
 from xotl.ql.interfaces import (ITerm,
                                 IExpressionTree,
                                 IQueryObject,
@@ -222,6 +258,7 @@ def cocreate_plan(query, **kwargs):
     '''
     pass
 
+
 def _to_python_expression(expression):
     with context(UNPROXIFING_CONTEXT):
         if ITerm.providedBy(expression):
@@ -376,35 +413,268 @@ def cmp(a, b):
         return 0
 
 
+def get_term_vm_path(term):
+    '''Gets the root and the "path" of a term in the VM.
+
+    The root is actually the token to which this term is bound to.
+
+    The path is a list of identifiers which are traversal steps from the
+    root. For instance::
+
+          these(child for parent in this
+                      if parent.children & (parent.age > 33)
+                      for child in parent.children
+                      if child.age < 5)
+
+    The term `child.age` in the last filter is actually encoded by the names:
+    parent, children, age; but since this term is bound to `parent.children`,
+    only `age` is part of the path.
+
+    '''
+    with context(UNPROXIFING_CONTEXT):
+        token = term.binding
+        root = token.expression
+        res = []
+        current = term
+        while current and current is not root:
+            res.insert(0, current.name)
+            current = current.parent
+        return (root, res)
+
+
+def _build_unary_operator(operation):
+    import operator
+    method_name = operation._method_name
+    if method_name.startswith('__'):
+        real_operation = getattr(operator, method_name[2:-2], None)
+    else:
+        real_operation = getattr(operator, method_name, None)
+    if real_operation:
+        def method(self):
+            return real_operation(self._get_current_value())
+        method.__name__ = method_name
+        return method
+    else:
+        import warnings
+        warnings.warn('Skipping %s' % method_name)
+
+def _build_binary_operator(operation):
+    import operator
+    method_name = operation._method_name
+    if method_name.startswith('__'):
+        key = method_name[2:-2]
+        if key in ('and', 'or'):
+            key += '_'
+        real_operation = getattr(operator, key, None)
+    else:
+        real_operation = getattr(operator, method_name, None)
+    if real_operation:
+        def method(self, other):
+            value = self._get_current_value()
+            if isinstance(other, var):
+                other = other._get_current_value()
+            return real_operation(value, other)
+        method.__name__ = method_name
+        return method
+    else:
+        import warnings
+        warnings.warn('Skipping %s' % method_name)
+
+
+def _build_rbinary_operator(operation):
+    import operator
+    method_name = getattr(operation, '_method_name', None)
+    if method_name:
+        if method_name.startswith('__'):
+            key = method_name[2:-2]
+            if key in ('and', 'or'):
+                key += '_'
+            real_operation = getattr(operator, key)
+        else:
+            real_operation = getattr(operator, method_name)
+        def method(self, other):
+            value = self._get_current_value()
+            if isinstance(other, var):
+                other = other._get_current_value()
+            return real_operation(value, other)
+        method.__name__ = getattr(operation, '_rmethod_name')
+        return method
+    else:
+        import warnings
+        warnings.warn('Skipping %s for %s' % (method_name,
+                                              getattr(operation,
+                                                      '_rmethod_name')))
+
+
+_expr_operations = {operation._method_name: _build_unary_operator(operation)
+                    for operation in OperatorType.operators
+                    if getattr(operation, 'arity', None) == UNARY}
+_expr_operations.update({operation._method_name:
+                        _build_binary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY})
+_expr_operations.update({operation._rmethod_name:
+                        _build_rbinary_operator(operation)
+                      for operation in OperatorType.operators
+                        if getattr(operation, 'arity', None) is BINARY and
+                           getattr(operation, '_rmethod_name', None)})
+
+_var = type(str('_var'), (object,), _expr_operations)
+class var(_var):
+    '''Represents a variable in the VM's memory.
+
+    This basically implements the mapping between a syntatical ITerm and its
+    current value in the VM.
+
+    When a filter like ``parent.age < 32`` is translated it will be translated
+    to something like ``var(parent.age, VM).__lt__(32)``. So the main job of
+    `var` is to provide an object that behaves like the one in the VM.
+
+    '''
+    def __init__(self, term, vm):
+        self.term = term
+        self.vm = vm
+
+    def _get_current_value(self, override=None, default=Unset):
+        '''Gets the current value in the VM.'''
+        vm = override or self.vm
+        term = self.term
+        root, path = get_term_vm_path(term)
+        current = vm[root]
+        while current is not Unset and path:
+            step = path.pop(0)
+            current = getattr(current, step, Unset)
+        if current is Unset:
+            if default is not Unset:
+                return default
+            else:
+                raise AttributeError(step)
+        else:
+            return current
+
+    def _contains_(self, what):
+        value = self._get_current_value()
+        if isinstance(what, var):
+            what = what._get_current_value()
+        return what in value
+
+    def __len__(self):
+        value = self._get_current_value()
+        return len(value)
+
+    def _is_a(self, what):
+        value = self._get_current_value()
+        if isinstance(what, var):
+            what = what._get_current_value()
+        return isinstance(value, what)
+
+    def startswith(self, preffix):
+        value = self._get_current_value()
+        if isinstance(preffix, var):
+            preffix = preffix._get_current_value()
+        return value.startswith(preffix)
+
+    def endswith(self, suffix):
+        value = self._get_current_value()
+        if isinstance(suffix, var):
+            suffix = suffix._get_current_value()
+        return value.startswith(suffix)
+
+    def __call__(self, *args, **kwargs):
+        value = self._get_current_value()
+        extract = lambda x: x._get_current_value() if isinstance(x, var) else x
+        _args = (extract(a) for a in args)
+        _kwargs = {k: extract(v) for k, v in kwargs.items()}
+        return value(*_args, **_kwargs)
+
+    # TODO: all_, any_, min_, max_,
+    # @classmethod
+    # def possible_subquery(cls, func, self, *args):
+    #     first, rest = args[0], args[1:]
+    #     extract = lambda x: x._get_current_value() if isinstance(x, var) else x
+    #     _args = (extract(a) for a in args)
+    #     if rest:
+    #         return func(*_args)
+    #     else:
+    #         # TODO:
+    #         return func(iter(first))
+
+
+class _object(object):
+    '''The type for objects build by ``new(object, ...)``.'''
+    def __init__(self, **kwargs):
+        for k, v in iteritems_(kwargs):
+            setattr(self, k, v)
+
+
+def new(t, **kwargs):
+    '''The implementation of the `new` function operation.'''
+    if t == object:
+        return _object(**kwargs)
+    else:
+        return t(**kwargs)
+
+
+class vmfilter(object):
+    '''Represents a filter ready to be executed in the VM current state.'''
+
+    table = {EqualityOperator: lambda x, y: x == y,
+             NotEqualOperator: lambda x, y: x != y,
+             LogicalAndOperator: lambda x, y: x & y,
+             LogicalOrOperator: lambda x, y: x | y,
+             LogicalXorOperator: lambda x, y: x ^ x,
+             LogicalNotOperator: lambda x: ~x,
+             AdditionOperator: lambda x, y: x + y,
+             SubstractionOperator: lambda x, y: x - y,
+             DivisionOperator: lambda x, y: x/y,
+             MultiplicationOperator: lambda x, y: x*y,
+             FloorDivOperator: lambda x, y: x//y,
+             ModOperator: lambda x, y: x % y,
+             PowOperator: lambda x, y: x**y,
+             LeftShiftOperator: lambda x, y: x << y,
+             RightShiftOperator: lambda x, y: x >> y,
+             LesserThanOperator: lambda x, y: x < y,
+             LesserOrEqualThanOperator: lambda x, y: x <= y,
+             GreaterThanOperator: lambda x, y: x > y,
+             GreaterOrEqualThanOperator: lambda x, y: x >= y,
+             ContainsExpressionOperator: lambda x, y: y in x,
+             IsInstanceOperator: lambda x, y: x._is_a(y),
+             LengthFunction: lambda x: len(x),
+             CountFunction: lambda x: len(x),
+             PositiveUnaryOperator: lambda x: +x,
+             NegativeUnaryOperator: lambda x: -x,
+             AbsoluteValueUnaryFunction: lambda x: abs(x),
+             InvokeFunction: lambda m, *a, **kw: m(*a, **kw),
+             NewObjectFunction: new}
+
+    def __init__(self, filter, vm):
+        self.filter = filter
+        self.vm = vm
+        self._tree = None
+
+    @memoized_property
+    def tree(self):
+        def e(node):
+            if isinstance(node, Term):
+                return var(node, self.vm)
+            if isinstance(node, ExpressionTree):
+                _args = tuple(e(x) for x in node.children)
+                _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
+                assert node.operation in self.table, 'I don\'t know how to translate %r' % node.operation
+                return lambda: self.table[node.operation](*_args, **_kwargs)
+            return node # assumed to be as is
+        return e(self.filter)
+
+    def __call__(self):
+        tree = self.tree
+        return tree()
+
+
 def naive_translation(query, **kwargs):
     '''Does a naive translation to Python's VM memory.
     '''
-    class _new(object): pass
-    def new(cls, *args, **attrs):
-        if cls == object:
-            if args:
-                raise TypeError("'object' expects no positional arguments; "
-                                "{0} were provided".format(len(args)))
-            from xoutil.compat import iteritems_
-            result = _new()
-            for k, v in iteritems_(attrs):
-                setattr(result, k, v)
-            return result
-        else:
-            return cls(*args, **attrs)
-
     def plan():
-        table = {'is_instance': lambda x, y: isinstance(x, y),
-                 'all': all,
-                 'any': any,
-                 'max': max,
-                 'min': min,
-                 'length': len,
-                 'count': len,
-                 'abs': abs,
-                 'call': lambda t, *args, **kwargs: t(*args, **kwargs),
-                 'new': new
-        }
+        pass
         # Since tokens are actually stored in the same order they are
         # found in the query expression, there's no risk in using the
         # given order to fetch the objects.
