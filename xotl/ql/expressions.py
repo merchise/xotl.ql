@@ -141,6 +141,11 @@ class _boolean(type):
     __ror__ = __or__
 
 
+    def __bool__(self):
+        return True if self is _true else False
+    __nonzero__ = __bool__
+
+
 @metaclass(_boolean)
 class _true(object):
     pass
