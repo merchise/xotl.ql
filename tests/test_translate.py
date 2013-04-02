@@ -17,6 +17,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 import unittest
+import pytest
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -36,7 +37,6 @@ __LOG = False
 
 if __LOG:
     import sys
-    from itertools import chain
     from xoutil.compat import iterkeys_
     from xoutil.aop.classical import weave, _weave_around_method
 
@@ -193,29 +193,90 @@ manolito = Person(name='Manuel Vázquez Piñero',
 
 # Three days after I (manu) wrote this query, I started to appear in the
 # results ;)
-def test_naive_plan_no_join():
+def test_naive_plan_no_join(**kwargs):
+    from xoutil.iterators import dict_update_new
     from xotl.ql.translation import naive_translation
     select_old_entities = these(who
                                 for who in Entity
-                                if who.name.starswith('Manuel'))
-    plan = naive_translation(select_old_entities)
+                                if who.name.startswith('Manuel'))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(select_old_entities, **kwargs)
     result = plan()
-    assert manu in result
-    assert manolito in result
+    assert (manu, ) in result
+    assert (manolito, ) in result
+    assert (yade, ) not in result
 
 
-def test_ridiculous_join():
+def test_ridiculous_join(**kwargs):
     from itertools import product
+    from xoutil.iterators import dict_update_new
     from xotl.ql.translation import naive_translation
     select_old_entities = these((who, who2)
                                 for who in Person
                                 for who2 in Person)
-    plan = naive_translation(select_old_entities)
-    result = plan()
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(select_old_entities, **kwargs)
+    result = list(plan())
     source = (elsa, manu, denia, pedro, yade, manolito)
     for pair in product(source, source):
         assert pair in result
 
+class B(object):
+    a = [1, 2]
+
+class X(object):
+    def __init__(self):
+        self.b = B()
+
+#@pytest.xfail()
+def test_traversing_by_nonexistent_attribute(**kwargs):
+    from xoutil.iterators import dict_update_new
+    from xotl.ql.translation import naive_translation
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+
+    # There's no `childs` attribute in Persons
+    query = these(child for parent in Person
+                        if parent.childs & (parent.age > 30)
+                        for child in parent.childs
+                        if child.age < 10)
+    plan = naive_translation(query, **kwargs)
+    assert list(plan()) == []
+
+    # And much less a `foobar`
+    query = these(parent for parent in Person if parent.foobar)
+    plan = naive_translation(query, **kwargs)
+    assert list(plan()) == []
+
+    # And traversing through a non-existing stuff doesn't make
+    # any sense either, but should not fail
+    query = these(foos.name
+                  for person in Person
+                  for foos in person.foobars)
+    plan = naive_translation(query, **kwargs)
+    assert list(plan()) == []
+
+    # However either trying to traverse to a second level without testing
+    # should fail
+    query = these(a for p in this for a in p.b.a)
+    plan = naive_translation(query, **kwargs)
+    with pytest.raises(AttributeError):
+        list(plan())
+
+    # The same query in a safe fashion
+    query = these(a
+                  for p in this
+                  if p.b & p.b.a
+                  for a in p.b.a)
+    plan = naive_translation(query, **kwargs)
+    assert list(plan()) == []
+
+
+    # Now let's rerun the plan after we create some object that matches
+    x = X()
+    # Currently this is failing cause each result yielded from a query is
+    # encoded in a tuple. Probably this is the expected behavior. Currently I
+    # just allow it to fail to remind me that I must address this question.
+    assert list(plan()) == x.b.a
 
 
 class TestTranslatorTools(unittest.TestCase):
