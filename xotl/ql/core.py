@@ -113,10 +113,19 @@ def _emit_token(token):
 
 @implementer(ITerm)
 class Term(object):
-    '''
-    The type of the :obj:`this` symbol: an unnamed object that may placed in
+    '''The type of the :obj:`this` symbol: an unnamed object that may placed in
     queries and whose interpretation depends on the query context and the
     context in which `this` symbol is used inside the query itself.
+
+    :param name: The name of the term. It sould be a valid Python identifier.
+
+
+    :param parent: Another :class:`ITerm` instance this term is "drawn"
+                   from.
+
+    :param binding: The :class:`IGeneratorToken` this term is bound to in a
+                    query context.
+
     '''
 
     _counter = count(1)
@@ -196,6 +205,28 @@ class Term(object):
     @classmethod
     def _newname(cls):
         return '::i{count}'.format(count=next(cls._counter))
+
+    def clone(self, **kwargs):
+        '''Clones the current term with possible variations.
+
+        If keyword arguments are passed those will be used to modify the cloned
+        term.
+
+        '''
+        try:
+            self.validate_name(self.name)
+            should_invalidate = False
+        except:
+            should_invalidate = True
+        attrs = dict(name=self.name, parent=self.parent,
+                     binding=self.binding)
+        attrs.update(kwargs)
+        if should_invalidate:
+            with context('_INVALID_THESE_NAME'):
+                result = Term(**attrs)
+        else:
+            result = Term(**attrs)
+        return result
 
     def __getattribute__(self, attr):
         # Notice we can't use the __getattr__ way because then things like

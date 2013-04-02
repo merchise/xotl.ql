@@ -16,7 +16,7 @@ type is a subclass of the class :class:`Term` explained below:
 v.. autodata:: this(name, **kwargs)
 
 .. autoclass:: Term
-   :members: name, parent, root_parent,  __iter__
+   :members: name, parent, root_parent,  __iter__, clone
 
    This class implements :class:`xotl.ql.interfaces.ITerm`
 
