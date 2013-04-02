@@ -36,6 +36,7 @@ from xoutil.compat import iteritems_
 from zope.interface import Interface
 
 from xotl.ql.core import Term, GeneratorToken
+from xotl.ql.expressions import _false, _true
 from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY
@@ -67,47 +68,88 @@ from xotl.ql.expressions import PositiveUnaryOperator
 from xotl.ql.expressions import NegativeUnaryOperator
 from xotl.ql.expressions import AbsoluteValueUnaryFunction
 from xotl.ql.expressions import InvokeFunction
-from xotl.ql.expressions import NewObjectFunction
 
 from xotl.ql.interfaces import (ITerm,
                                 IGeneratorToken,
                                 IExpressionTree,
-                                IQueryObject,
-                                IQueryTranslator,
-                                IQueryExecutionPlan)
+                                IQueryTranslator)
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-def _iter_classes(accept=lambda x: True):
+_avoid_modules = ('xotl.ql.*',
+                  'xoutil.*',
+                  'py.*',
+
+                  # The name of the builtins module is different in Pythons
+                  # versions.
+                  type(1).__module__)
+
+
+def defined(who, modules):
+    '''Checks if `who` (or its class) is defined in any of the given
+    `modules`.
+
+    The `modules` sequence may contains elements *ending* in ".*" to signify a
+    package.
+
+    '''
+    with context(UNPROXIFING_CONTEXT):
+        try:
+            mod = who.__module__
+        except AttributeError:
+            mod = type(who).__module__
+    def check(target):
+        if target.endswith('.*'):
+            return mod.startswith(target[:-2])
+        else:
+            return mod == target
+    return any(check(target) for target in modules)
+
+
+def _iter_classes(accept=None, use_ignores=False):
     '''Iterates over all the classes currently in Python's VM memory
     for which `accept(cls)` returns True.
 
+    If use_ignores is True classes and objects of types defined in xotl.ql's
+    modules and builtins will be also ignored.
+
     '''
     import gc
+    if use_ignores:
+        filterby = lambda x: x.__module__ not in _avoid_modules and (not accept or accept(x))
+    else:
+        filterby = accept
     return (ob for ob in gc.get_objects()
-                if isinstance(ob, type) and accept(ob))
+                if isinstance(ob, type) and (not filterby or filterby(ob)))
 
 
-def _filter_by_pkg(pkg_name):
-    '''Returns an `accept` filter for _iter_classes that only accepts classes
-    of a given package name.
+# Real signature is _filter_by_pkg(*pkg_names, negate=False)
+def _filter_by_pkg(*pkg_names, **kwargs):
+    '''Returns an `accept` filter for _iter_classes/_iter_objects that only
+    accepts classes/objects defined in pkg_names.
 
     '''
+    negate = kwargs.get('negate', False)
     def accept(cls):
-        return cls.__module__.startswith(pkg_name)
+        result = defined(cls, pkg_names)
+        return result if not negate else not result
     return accept
 
 
-def _iter_objects(accept=lambda x: True):
+def _iter_objects(accept=None, use_ignores=False):
     '''Iterates over all objects currently in Python's VM memory for which
     ``accept(ob)`` returns True.
 
     '''
     import gc
-    return (ob for ob in gc.get_objects
-                if not isinstance(ob, type) and accept(ob))
+    if use_ignores:
+        filterby = lambda x: type(x).__module__ not in _avoid_modules and (not accept or accept(x))
+    else:
+        filterby = accept
+    return (ob for ob in gc.get_objects()
+                if not isinstance(ob, type) and (not filterby or filterby(ob)))
 
 
 def _instance_of(which):
@@ -372,7 +414,7 @@ def token_before_filter(tk, expr, strict=False):
                 return cmp_terms(tk, term.binding, strict) == -1
         return any(check(term) for term in cotraverse_expression(expr))
 
-def cmp(a, b):
+def cmp(a, b, strict=False):
     '''Partial compare function between tokens and expressions.
 
     Examples::
@@ -403,15 +445,16 @@ def cmp(a, b):
        >>> all(l[i] is expected[i] for i in (0, 1, 2, 3))
        True
     '''
-    from ..interfaces import IGeneratorToken, IExpressionCapable
-    if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
-        return cmp_terms(a, b, True)
-    elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
-        return -1 if token_before_filter(a, b) else 0
-    elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
-        return 1 if token_before_filter(b, a) else 0
-    else:
-        return 0
+    from ..interfaces import IExpressionCapable
+    with context(UNPROXIFING_CONTEXT):
+        if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
+            return cmp_terms(a, b, strict)
+        elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
+            return -1 if token_before_filter(a, b, strict) else 0
+        elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
+            return 1 if token_before_filter(b, a, strict) else 0
+        else:
+            return 0
 
 
 def get_term_vm_path(term):
@@ -440,7 +483,7 @@ def get_term_vm_path(term):
         while current and current is not root:
             res.insert(0, current.name)
             current = current.parent
-        return (root, res)
+        return (token, res)
 
 
 def _build_unary_operator(operation):
@@ -452,7 +495,7 @@ def _build_unary_operator(operation):
         real_operation = getattr(operator, method_name, None)
     if real_operation:
         def method(self):
-            return real_operation(self._get_current_value())
+            return real_operation(self._get_current_value(default=_false))
         method.__name__ = method_name
         return method
     else:
@@ -471,9 +514,9 @@ def _build_binary_operator(operation):
         real_operation = getattr(operator, method_name, None)
     if real_operation:
         def method(self, other):
-            value = self._get_current_value()
+            value = self._get_current_value(default=_false)
             if isinstance(other, var):
-                other = other._get_current_value()
+                other = other._get_current_value(default=_false)
             return real_operation(value, other)
         method.__name__ = method_name
         return method
@@ -494,9 +537,9 @@ def _build_rbinary_operator(operation):
         else:
             real_operation = getattr(operator, method_name)
         def method(self, other):
-            value = self._get_current_value()
+            value = self._get_current_value(default=_false)
             if isinstance(other, var):
-                other = other._get_current_value()
+                other = other._get_current_value(default=_false)
             return real_operation(value, other)
         method.__name__ = getattr(operation, '_rmethod_name')
         return method
@@ -541,17 +584,41 @@ class var(_var):
         vm = override or self.vm
         term = self.term
         root, path = get_term_vm_path(term)
-        current = vm[root]
+        current = vm.get(root, Unset)
+        step = None
         while current is not Unset and path:
             step = path.pop(0)
             current = getattr(current, step, Unset)
         if current is Unset:
             if default is not Unset:
                 return default
+            elif not path:
+                # XXX: We return _false if the path was completely consumed,
+                # i.e: the failure point is the last attribute. I (manu) think
+                # is less astonishing to return a falsy value than to fail. Of
+                # course this works only for truth-testing; for traversing, a
+                # _false token should yield nothing.
+                return _false
             else:
-                raise AttributeError(step)
+                raise AttributeError(step or root)
         else:
             return current
+
+    def __and__(self, other):
+        value = self._get_current_value(default=_false)
+        if value is _false:
+            return _false
+        if isinstance(other, var):
+            other = other._get_current_value(default=_false)
+        return bool(value) and bool(other)
+
+    def __or__(self, other):
+        value = self._get_current_value(default=_false)
+        if value is _true:
+            return _true
+        if isinstance(other, var):
+            other = other._get_current_value(default=_false)
+        return bool(value) or bool(other)
 
     def _contains_(self, what):
         value = self._get_current_value()
@@ -587,6 +654,12 @@ class var(_var):
         _args = (extract(a) for a in args)
         _kwargs = {k: extract(v) for k, v in kwargs.items()}
         return value(*_args, **_kwargs)
+
+    def __bool__(self):
+        value = self._get_current_value()
+        return bool(value)
+    __nonzero__ = __bool__
+
 
     # TODO: all_, any_, min_, max_,
     # @classmethod
@@ -645,8 +718,7 @@ class vmfilter(object):
              PositiveUnaryOperator: lambda x: +x,
              NegativeUnaryOperator: lambda x: -x,
              AbsoluteValueUnaryFunction: lambda x: abs(x),
-             InvokeFunction: lambda m, *a, **kw: m(*a, **kw),
-             NewObjectFunction: new}
+             InvokeFunction: lambda m, *a, **kw: m(*a, **kw)}
 
     def __init__(self, filter, vm):
         self.filter = filter
@@ -666,24 +738,143 @@ class vmfilter(object):
             return node # assumed to be as is
         return e(self.filter)
 
-    def __call__(self):
+
+    def _exec(self, instruction):
+        inst, args = instruction[0], instruction[1:]
+        if inst == 'set':
+            which, what = args
+            self.vm[which] = what
+            return ('del', which)
+        elif inst == 'del':
+            which = args[0]
+            del self.vm[which]
+
+    # @contextlib.contextmanager
+    # def modify_vm(self, pre=None, post=None):
+    #     if pre:
+    #         _post = self._exec(pre)
+    #         if not post and _post:
+    #             post = _post
+    #     yield self
+    #     if post:
+    #         self._exec(post)
+
+    def __call__(self, pre=None, post=None):
         tree = self.tree
-        return tree()
+        if isinstance(tree, var):
+            return tree
+        else:
+            return tree()
+
+    def chain(self, source):
+        for ob in source:
+            res = self()
+            if bool(res):
+                yield
+
+
+class vmtoken(object):
+    def __init__(self, token, vm, only=None):
+        self.token = token
+        self.vm = vm
+        self.only = only
+
+    def _getsource(self):
+        only = self.only
+        token = self.token
+        term = token.expression
+        with context(UNPROXIFING_CONTEXT):
+            parent = term.parent
+        use_ignores = True
+        if only:
+            from xoutil.compat import str_base
+            if isinstance(only, str_base):
+                only = (only, )
+            accept = _filter_by_pkg(*only)
+        else:
+            accept = None
+        if not parent:
+            source =_iter_objects(accept=accept, use_ignores=use_ignores)
+        else:
+            # The term here probably a.b.c is bound to itself, so we must
+            # create a var with the binding changed to the parent binding.
+            with context(UNPROXIFING_CONTEXT):
+                parent = term.parent
+                binding = parent.binding
+                # import ipdb; ipdb.set_trace()
+                term = term.clone(binding=binding)
+            tk = var(term, self.vm)
+            source = (ob for ob in tk._get_current_value(default=[]))
+        return source
+
+    def __iter__(self):
+        vm = self.vm
+        token = self.token
+        for ob in self._getsource():
+            vm[token] = ob
+            yield
+
+    def chain(self, previous):
+        for inst in previous:
+            for own in iter(self):
+                yield
 
 
 def naive_translation(query, **kwargs):
     '''Does a naive translation to Python's VM memory.
     '''
+    only = kwargs.get('only', None)
+    def mix(filters, tokens):
+        '''Intertwines tokens and filters.'''
+        # TODO: Improve algorithm.
+        if not filters:
+            return tokens
+        result = list(filters + tokens)
+        for i in range(len(result)-1):
+            for j in range(i+1, len(result)):
+                if cmp(result[i], result[j]) > 0:
+                    result[i], result[j] = result[j], result[i]
+        return result
+
+    def select(sel, vm):
+        from xotl.ql.expressions import _false
+        result = []
+        selectors = (sel, ) if not isinstance(sel, tuple) else sel
+        for s in selectors:
+            if isinstance(s, Term):
+                result.append(var(s, vm)._get_current_value())
+            else:
+                result.append(vmfilter(s, vm)())
+        if any(res is _false for res in result):
+            return _false
+        if isinstance(sel, tuple):
+            return tuple(result)
+        else:
+            assert len(result) == 1
+            return result[0]
+
     def plan():
-        pass
-        # Since tokens are actually stored in the same order they are
-        # found in the query expression, there's no risk in using the
-        # given order to fetch the objects.
-        #
         # The algorithm is simple; first we "intertwine" tokens and filters
         # using a (stable) partial order: a filter comes before a token if and
         # only if neither of it's terms is bound to the token.
-        pass
+        #
+        # The we just build several chained generators that either produce
+        # (affect the vm) or filter.
+        #
+        from xotl.ql.expressions import _false
+        parts = mix(query.filters, query.tokens)
+        vm = {}
+        assert isinstance(parts[0], GeneratorToken), parts
+        result = vmtoken(parts.pop(0), vm, only=only)
+        while parts:
+            part = parts.pop(0)
+            if isinstance(part, GeneratorToken):
+                result = vmtoken(part, vm, only=only).chain(result)
+            else:
+                result = vmfilter(part, vm).chain(result)
+        return (select(query.selection, vm)
+                for _ in result
+                if select(query.selection, vm) is not _false)
     return plan
 
 
