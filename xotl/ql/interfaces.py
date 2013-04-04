@@ -415,8 +415,9 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`ITerm` or '
-                          ':class:`IExpressionTree` instances.')
+    selection = Attribute('Either a tuple/list of :class:`ITerm` or '
+                          ':class:`IExpressionTree` instances; or a '
+                          'single ITerm/IExpressionTree.')
 
     tokens = Attribute('Generator tokens (:class:`IGeneratorToken`) that '
                        'occur in the query',

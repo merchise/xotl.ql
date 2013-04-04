@@ -820,6 +820,7 @@ class _QueryObjectType(type):
         bubble = _create_and_push_bubble()
         try:
             selected_parts = next(comprehension)
+            selected_parts_type = type(selected_parts)
         finally:
             b = _pop_bubble()
             assert b is bubble
@@ -836,7 +837,11 @@ class _QueryObjectType(type):
                     filters.pop(-1)
                 selection.append(expr)
             query = self()
-            query.selection = tuple(reversed(selection))
+            if issubclass(selected_parts_type, (list, tuple)):
+                query.selection = selected_parts_type(reversed(selection))
+            else:
+                assert len(selection) == 1
+                query.selection = selection[0]
             tokens = bubble.tokens
             query.tokens = tuple(tokens)
             query.filters = tuple(filters)
@@ -845,7 +850,7 @@ class _QueryObjectType(type):
         orderby = kwargs.get('ordering', None)
         if orderby:
             # from xoutil.proxy import unboxed
-            ordering = orderby(*query.selection)
+            ordering = orderby(*selection)
         else:
             ordering = None
         # Now continue inside a comfortable execution context.
@@ -903,8 +908,8 @@ class QueryObject(object):
     def selection(self, value):
         ok = lambda v: isinstance(v, (ExpressionTree, Term))
         if ok(value):
-            self._selection = (value,)
-        elif isinstance(value, tuple) and all(ok(v) for v in value):
+            self._selection = value
+        elif isinstance(value, (tuple, list)) and all(ok(v) for v in value):
             self._selection = value
         # TODO: Include dict
         else:

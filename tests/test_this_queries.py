@@ -80,8 +80,9 @@ class TestUtilities(unittest.TestCase):
                   limit=100)
         # We assume that Person has been thesefied with thesefy('Person')
         who = domain = this('Person')
-        q1 = these(w for w in domain if is_instance(w, Person)
-                        if w.age > 30)
+        q1 = these(w for w in domain
+                   if is_instance(w, Person)
+                   if w.age > 30)
 
         is_filter = is_instance(who, Person)
         age_filter = who.age > 30
@@ -169,7 +170,9 @@ class TestThisQueries(unittest.TestCase):
     def test_most_basic_query(self):
         query = these(parent for parent in this('parent') if parent.age > 40)
         self.assertTrue(provides_any(query, IQueryObject))
-        (p, ) = query.selection
+        # Since the query selects a single object, a single object must be
+        # placed as the selection (not a tuple!).
+        p = query.selection
         token_expectation = p_expected = this('parent')
         filter_expectation = this('parent').age > 40
 

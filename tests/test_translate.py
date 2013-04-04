@@ -204,9 +204,9 @@ def test_naive_plan_no_join(**kwargs):
     dict_update_new(kwargs, dict(only='test_translate.*'))
     plan = naive_translation(select_old_entities, **kwargs)
     result = plan()
-    assert (manu, ) in result
-    assert (manolito, ) in result
-    assert (yade, ) not in result
+    assert manu in result
+    assert manolito in result
+    assert yade not in result
 
 
 def test_ridiculous_join(**kwargs):
