@@ -188,6 +188,28 @@ those term were there.
    Furthermore, leaving this resolution mechanism to operators, leaves open the
    possibility to multiple interpretations.
 
+   20130404 -- Update
+
+   Actually choosing an interpretation for an ambiguous operator should not
+   exactly reside in the operator itself as the proposed protocol might
+   address. Doing so effectively removes the ambiguity and our work will be
+   vane.
+
+   So currently my ideas on the topic are:
+
+   - There should be a *chain-able* protocol and several mixins for each
+     possible interpretation (that are not mixed-in by default).
+
+   - Upon processing a query, translators *may* inject a *chain of* some of
+     those mixins (or their owns) into the operators, according to the
+     interpretations the translation could handle.
+
+
+   - There should not be a :attr:`xotl.ql.interfaces.IQueryObject.queries`
+     since full IQueryObject instances will be hold in the
+     :attr:`~xotl.ql.interfaces.IExpressionTree.children` attribute of
+     expressions.
+
 
 Notation
 ========
