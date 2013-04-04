@@ -24,8 +24,8 @@ Goals
 Release 0.2.0
 -------------
 
-- Finish the implementation of the module :mod:`xotl.ql.translate`. Allowed not
-  be optimized, just a working testbed for queries.
+- Finish the implementation of the module :mod:`xotl.ql.translation`. Allowed
+  not be optimized, just a working testbed for queries.
 
 - Provide a protocol for addressing sub-queries as proposed in :ref:`the
   discussion remarks <free-terms>` of the `"Free" terms` section.
