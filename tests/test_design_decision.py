@@ -365,13 +365,16 @@ class DesignDesitionRegressionForgottenTokensAndFilters(DesignDecisionTestCase):
 class RegressionTestEscapingParticles(DesignDecisionTestCase):
     def test_free_terms_are_not_captured(self):
         from xotl.ql.expressions import any_
-        these(parent
+        next((parent
               for parent in this('parent')
               if parent.name
-              if any_(this.children, this.age < 6))
+              if any_(this.children, this.age < 6)), None)
 
         parts = self.bubble.parts
-        self.assertIs(0, len(parts))
+        self.assertIs(1, len(parts)) # Only parent.name should captured
+        expected = this('parent').name
+        with context(UNPROXIFING_CONTEXT):
+            assert expected == parts[0]
 
     def test_right_bindings(self):
         these((parent, child)
