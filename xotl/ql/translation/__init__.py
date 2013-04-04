@@ -324,12 +324,6 @@ def cmp(a, b, strict=False):
        >>> cmp(expr1, children_token)
        0
 
-       >>> import functools
-       >>> l = [expr1, expr2, parent_token, children_token]
-       >>> l.sort(key=functools.cmp_to_key(cmp))
-       >>> expected = [parent_token, expr1, children_token, expr2]
-       >>> all(l[i] is expected[i] for i in (0, 1, 2, 3))
-       True
     '''
     from ..interfaces import IExpressionCapable
     with context(UNPROXIFING_CONTEXT):

@@ -1,0 +1,1 @@
+- Hooray! We have now a test-bed :mod:`translator <xotl.ql.translation>`.
