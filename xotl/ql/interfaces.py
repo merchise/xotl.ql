@@ -21,7 +21,7 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_imports)
 
-from zope.interface import Interface, Attribute, invariant
+from zope.interface import Interface, Attribute
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -422,7 +422,7 @@ class IQueryObject(Interface):
                        'occur in the query',
 
                        '''A (probably unordered) list of :class:`generator
-                       tokens <IGeneratorToken>` that ocurr in the query.
+                       tokens <IGeneratorToken>` that occurs in the query.
 
                        When a :term:`query expression` is processed to
                        create a :term:`query object`, at least one

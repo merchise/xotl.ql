@@ -25,7 +25,9 @@ from xoutil.types import Unset
 from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
-from xotl.ql.translation import init, token_before_filter
+from xotl.ql.translation import token_before_filter
+
+from xotl.ql.translation.py import init
 
 
 __docstring_format__ = 'rst'
@@ -195,7 +197,7 @@ manolito = Person(name='Manuel Vázquez Piñero',
 # results ;)
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
-    from xotl.ql.translation import naive_translation
+    from xotl.ql.translation.py import naive_translation
     select_old_entities = these(who
                                 for who in Entity
                                 if who.name.startswith('Manuel'))
@@ -210,7 +212,7 @@ def test_naive_plan_no_join(**kwargs):
 def test_ridiculous_join(**kwargs):
     from itertools import product
     from xoutil.iterators import dict_update_new
-    from xotl.ql.translation import naive_translation
+    from xotl.ql.translation.py import naive_translation
     select_old_entities = these((who, who2)
                                 for who in Person
                                 for who2 in Person)
@@ -231,7 +233,7 @@ class X(object):
 #@pytest.xfail()
 def test_traversing_by_nonexistent_attribute(**kwargs):
     from xoutil.iterators import dict_update_new
-    from xotl.ql.translation import naive_translation
+    from xotl.ql.translation.py import naive_translation
     dict_update_new(kwargs, dict(only='test_translate.*'))
 
     # There's no `childs` attribute in Persons
