@@ -52,7 +52,7 @@ setup(name=project_name,
       zip_safe=False,
       setup_requires=['setuptools', ],
       install_requires=[
-          'xoutil>=1.2.0',
+          'xoutil>=1.2.3dev',
           'zope.interface>=3.8.0',
           'zope.component>=3.11.0',
 
