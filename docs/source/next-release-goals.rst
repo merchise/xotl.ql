@@ -28,4 +28,4 @@ Release 0.2.0
   be optimized, just a working testbed for queries.
 
 - Provide a protocol for addressing sub-queries as proposed in :ref:`the
-  discussion remarks <free-term>` of the `"Free" terms` section.
+  discussion remarks <free-terms>` of the `"Free" terms` section.
