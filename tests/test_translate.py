@@ -281,76 +281,92 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
     assert list(plan()) == x.b.a
 
 
-class TestTranslatorTools(unittest.TestCase):
-    def test_cotraverse_expression(self):
-        from xoutil.compat import izip
-        from xotl.ql.expressions import is_a
-        from xotl.ql.translation import cotraverse_expression
+def test_cotraverse_expression():
+    from xoutil.compat import izip
+    from xotl.ql.expressions import is_a
+    from xotl.ql.translation import cotraverse_expression
 
-        @thesefy
-        class Person(object):
-            pass
+    @thesefy
+    class Person(object):
+        pass
 
-        @thesefy
-        class Partnership(object):
-            pass
+    @thesefy
+    class Partnership(object):
+        pass
 
-        query = these((person, partner)
-                      for person, partner in izip(Person, Person)
-                      for rel in Partnership
-                      if (rel.subject == person) & (rel.obj == partner))
-        filters = list(query.filters)
-        person, partner = query.selection
-        person_is_a_person = is_a(person, Person)
-        partner_is_a_person = is_a(partner, Person)
+    query = these((person, partner)
+                  for person, partner in izip(Person, Person)
+                  for rel in Partnership
+                  if (rel.subject == person) & (rel.obj == partner))
+    filters = list(query.filters)
+    person, partner = query.selection
+    person_is_a_person = is_a(person, Person)
+    partner_is_a_person = is_a(partner, Person)
+    with context(UNPROXIFING_CONTEXT):
+        assert person != partner
+        assert person_is_a_person in filters
+        assert partner_is_a_person in filters
+        filters.remove(person_is_a_person)
+        filters.remove(partner_is_a_person)
+        # left filter are is_a(rel, Partnership) and the explicit we see in
+        # the query expression
+        assert 2 == len(filters)
+
+        rel_is_a = next(f for f in filters
+                        if f.operation == is_a)
+        filters.remove(rel_is_a)
+
+        # there are 4 named instances in the left filter
+        # (rel.subject == person) & (rel.obj == partner)
+        assert 4 == len(list(cotraverse_expression(filters[0])))
+
+
+def test_cotraverse_expression_reintroduction():
+    from xotl.ql.translation import cotraverse_expression
+    expr1 = this.a + (this.b + this.c)  # To make `+` association from right,
+                                        # so that traversing gets a, b and then
+                                        # c.
+    expr2 = this.d + this.e
+    expr3 = this.f * this.g
+    routine = cotraverse_expression(expr1, expr2)
+    result = []
+    result.append(next(routine))
+    result.append(routine.send(expr3))
+    term = next(routine, None)
+    while term:
+        result.append(term)
+        term = next(routine, None)
+    expected = [this.a, this.b, this.c, this.d, this.e, this.f, this.g]
+    with context(UNPROXIFING_CONTEXT):
+        assert result == expected
+
+
+def test_token_before_filter():
+    query = these((parent, child)
+                  for parent in this
+                  if parent.children
+                  for child in parent.children
+                  if child.age < 5
+                  for dummy in parent.children)
+
+
+    parent, child = query.selection
+    parent_token, children_token, dummy_token = query.tokens
+    expr1, expr2 = query.filters
+
+    def ok(e1, e2):
         with context(UNPROXIFING_CONTEXT):
-            self.assertNotEqual(person, partner)
-            self.assertIn(person_is_a_person, filters)
-            self.assertIn(partner_is_a_person, filters)
-            filters.remove(person_is_a_person)
-            filters.remove(partner_is_a_person)
-            # left filter are is_a(rel, Partnership) and the explicit we see in
-            # the query expression
-            self.assertIs(2, len(filters))
+            assert e1 == e2
+    ok(expr1, parent.children)
+    ok(expr2, child.age < 5)
 
-            rel_is_a = next(f for f in filters
-                            if f.operation == is_a)
-            filters.remove(rel_is_a)
-
-            # there are 4 named instances in the left filter
-            # (rel.subject == person) & (rel.obj == partner)
-            self.assertIs(4, len(list(cotraverse_expression(filters[0]))))
-
-
-class TestOrderingExpressions(unittest.TestCase):
-    def test_token_before_filter(self):
-        query = these((parent, child)
-                      for parent in this
-                      if parent.children
-                      for child in parent.children
-                      if child.age < 5
-                      for dummy in parent.children)
-
-
-        parent, child = query.selection
-        parent_token, children_token, dummy_token = query.tokens
-        expr1, expr2 = query.filters
-
-        def ok(e1, e2):
-            with context(UNPROXIFING_CONTEXT):
-                assert e1 == e2
-        ok(expr1, parent.children)
-        ok(expr2, child.age < 5)
-
-        assert not token_before_filter(children_token, expr1), repr((children_token, expr1, expr2))
-        assert token_before_filter(children_token, expr2, True)
-        assert token_before_filter(parent_token, expr2, True)
-        assert not token_before_filter(dummy_token, expr2, True)
+    assert not token_before_filter(children_token, expr1), repr((children_token, expr1, expr2))
+    assert token_before_filter(children_token, expr2, True)
+    assert token_before_filter(parent_token, expr2, True)
+    assert not token_before_filter(dummy_token, expr2, True)
 
 
 def test_regression_test_token_before_filter_20130401():
-    '''
-    '''
     query = these(who
                   for who in Entity
                   if who.name.starswith('Manuel'))
