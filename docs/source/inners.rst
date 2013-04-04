@@ -367,22 +367,19 @@ the following steps are performed in the given order:
       it will now be asked to build *selection* expressions.
 
    Again, Python calls `__getattribute__` to `qp<person>` to get its `name`
-   attribute; this call creates yet another part emits that query part. Since
-   that query part does not contain any previously emitted part (actually,
-   since we use *is* comparison there will never be a case in which parts that
-   occur in different syntactical units are confused although they may be
-   equivalent -- i.e different `ifs`, or different elements in the selection
-   won't be merged and thus their boundaries will be established.)
+   attribute; this call creates yet another part and emits it. Since that query
+   part does not contain any previously emitted part [#never-happens]_ this
+   part is placed on top of the bubble and not merged with any previous part.
 
    Then, Python calls `__getattribute__` to `qp<partner>` to get its `name`
-   attribute. Again, the part is emitted.
+   attribute. Again, the part is emitted (and not merged -- it can't be.)
 
 10. Now the `next(comprehesion)` returns the tuple. If we were to call `next`
     again it would raise a StopIteration exception, since
     :meth:`xotl.ql.interfaces.ITerm.__iter__` should yield a single query part.
 
-11. :func:`~xotl.ql.core.these` now regains control and it pops top-most bubble
-    from thread-local stack. If we inspect its
+11. :func:`~xotl.ql.core.these` now regains control and it pops the top-most
+    bubble from a thread-local stack. If we inspect its
     :attr:`~xotl.ql.interfaces.IQueryParticlesBubble.parts` we'll find the
     following expressions in the given order:
 
@@ -396,6 +393,9 @@ the following steps are performed in the given order:
     3. ``person.name``
 
     4. ``partner.name``
+
+    Notice, that the selection parts are the top (bottom in the list) of this
+    bubble. So...
 
 12. Now :func:`~!xotl.ql.core.these` inspect the tuple of selected expressions,
     and if they are at the end of the captured parts in the bubble, those parts
@@ -418,3 +418,11 @@ Footnotes
 	     expression, and our bubble captures them all and stores them so
 	     that we are able to create the query object from those pieces (and
 	     their order).
+
+
+.. [#never-happens] Actually, since we use *is* comparison there will never be
+		    a case in which parts that occur in different syntactical
+		    units are confused although they may be equivalent -- i.e
+		    different `ifs`, or different elements in the selection
+		    won't be merged and thus their logical boundaries will be
+		    kept.
