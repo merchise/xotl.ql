@@ -25,7 +25,7 @@ above.
 What's new in this release?
 ---------------------------
 
-.. include:: history/changes-0.1.9.rst
+.. include:: history/changes-0.2.0.rst
 
 
 Core Contents:
