@@ -223,9 +223,9 @@ class Term(object):
         attrs.update(kwargs)
         if should_invalidate:
             with context('_INVALID_THESE_NAME'):
-                result = Term(**attrs)
+                result = type(self)(**attrs)
         else:
-            result = Term(**attrs)
+            result = type(self)(**attrs)
         return result
 
     def __getattribute__(self, attr):
