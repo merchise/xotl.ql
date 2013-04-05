@@ -81,3 +81,60 @@ def test_sorting_with_cmp():
         if i < len(sorted_parts) + 1:
             for after in sorted_parts[i+1:]:
                 assert _k(part) <= _k(after), (part, after)
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_cotraverse_expression():
+    from xoutil.compat import izip
+    from xotl.ql.expressions import is_a
+    from xotl.ql.translation import cotraverse_expression
+
+    @thesefy
+    class Person(object):
+        pass
+
+    @thesefy
+    class Partnership(object):
+        pass
+
+    query = these((person, partner)
+                  for person, partner in izip(Person, Person)
+                  for rel in Partnership
+                  if (rel.subject == person) & (rel.obj == partner))
+    filters = list(query.filters)
+    person, partner = query.selection
+    person_is_a_person = is_a(person, Person)
+    partner_is_a_person = is_a(partner, Person)
+    rel_token = query.tokens[-1]
+    rel_subject = rel_token.expression.subject
+    rel_obj = rel_token.expression.obj
+    with context(UNPROXIFING_CONTEXT):
+        assert person != partner
+        assert person_is_a_person in filters
+        assert partner_is_a_person in filters
+        expected_terms_order = [person, partner, rel_token.expression, rel_subject, person, rel_obj, partner]
+        assert expected_terms_order == list(cotraverse_expression(query))
+
+    assert UNPROXIFING_CONTEXT not in context
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_cotraverse_expression_reintroduction():
+    from xotl.ql.translation import cotraverse_expression
+    expr1 = this.a + (this.b + this.c)  # To make `+` association from right,
+                                        # so that traversing gets a, b and then
+                                        # c.
+    expr2 = this.d + this.e
+    expr3 = this.f * this.g
+    routine = cotraverse_expression(expr1, expr2)
+    result = []
+    result.append(next(routine))
+    result.append(routine.send(expr3))
+    term = next(routine, None)
+    while term:
+        result.append(term)
+        term = next(routine, None)
+    expected = [this.a, this.b, this.c, this.d, this.e, this.f, this.g]
+    with context(UNPROXIFING_CONTEXT):
+        assert result == expected
+    assert UNPROXIFING_CONTEXT not in context

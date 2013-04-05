@@ -72,6 +72,7 @@ from xotl.ql.expressions import InvokeFunction
 from xotl.ql.interfaces import (ITerm,
                                 IGeneratorToken,
                                 IExpressionTree,
+                                IQueryObject,
                                 IQueryTranslator)
 
 __docstring_format__ = 'rst'
@@ -140,15 +141,26 @@ def cotraverse_expression(*expressions, **kwargs):
     ones.
 
     '''
-    from xoutil.types import is_collection
-    from xoutil.objects import get_and_del_key
     is_expression = IExpressionTree.providedBy
+    def push(queues, items):
+        from xoutil.types import is_collection
+        is_queryobject = IQueryObject.providedBy
+        if not is_collection(items):
+            items = (items, )
+        for item in items:
+            if is_expression(item):
+                queues.append([item])
+            elif is_queryobject(item):
+                queues.extend([f] for f in item.filters)
+
+    from xoutil.objects import get_and_del_key
     accept = get_and_del_key(kwargs, 'accept',
                              default=lambda x: _instance_of(ITerm)(x) and x.name)
     if kwargs != {}:
         raise TypeError('Invalid signature for cotraverse_expression')
+    queues = []
     with context(UNPROXIFING_CONTEXT):
-        queues = [[e] for e in expressions]
+        push(queues, expressions)
         while queues:
             queue = queues.pop(0)
             while queue:
@@ -172,52 +184,8 @@ def cotraverse_expression(*expressions, **kwargs):
                     else:
                         exprs = msg
                     if exprs:
-                        if is_collection(exprs):
-                            queues.extend([e] for e in exprs)
-                        else:
-                            queues.append([exprs])
+                        push(queues, exprs)
 
-
-def cocreate_plan(query, **kwargs):
-    '''**Not implemented yet**. The documentation provided is just an idea.
-
-    Builds a :term:`query execution plan` for a given query that fetches
-    objects from Python's VM memory.
-
-    This function is meant to be general enough so that other may use
-    it as a base for building their :term:`translators <query
-    translator>`.
-
-    It works like this:
-
-    1. First it inspect the tokens and their relations (if a token is
-       the parent of another). For instance in the query::
-
-           query = these((parent, child)
-                         for parent in this
-                         if parent.children & (parent.age > 34)
-                         for child in parent.children if child.age < 5)
-
-       The `parent.children` generator tokens is *derived* from the
-       token `this`, so there should be a relation between the two.
-
-       .. todo::
-
-          If we allow to have subqueries, it's not clear how to
-          correlate tokens. A given token may be a whole query::
-
-              p = these((parent, partner)
-                        for parent in this('parent')
-                        for partner, _ in subquery((partner, partner.depth())
-                                            for partner in this
-                                            if contains(partner.related_to,
-                                                        parent)))
-
-          Since all examples so far of sub-queries as generators
-          tokens are not quite convincing, we won't consider that.
-
-    '''
-    pass
 
 def cmp_terms(t1, t2, strict=False):
     '''Compares two terms in a partial order.
