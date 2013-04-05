@@ -25,9 +25,6 @@ The following function is thought to help out the task of traversing a filters
 and yield those of interest for the translator (i.e finding the top-most
 generator token that is related to a table in a relational model).
 
-.. note:: Although we use the Python 3.2+ syntax in the signature, this
-	  function works the same in Python 2.7.
-
 .. autofunction:: cotraverse_expression(*expressions, accept=None)
 
 
