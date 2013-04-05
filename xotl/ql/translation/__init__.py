@@ -92,6 +92,14 @@ def _instance_of(which):
     return accept
 
 
+def _is_instance_of(who, *types):
+    '''Tests is who is an instance of any `types`. `types` may contains both
+    classes and Interfaces.
+
+    '''
+    return any(_instance_of(w)(who) for w in types)
+
+
 def cotraverse_expression(*expressions, **kwargs):
     '''Coroutine that traverses expression trees an yields every node that
     matched the `accept` predicate. If `accept` is None it defaults to accept
@@ -283,6 +291,46 @@ def cmp_terms(t1, t2, strict=False):
                 return 0
 
 
+def get_term_path(term):
+    '''Returns a tuple of all the names in the path to a term.
+
+    For example: The path of ``this('p').a.b.c`` is ``('p', 'a', 'b', 'c')``
+
+    The unnamed term ``this`` is treated specially by returning None. For
+    example: the path of ``this.a`` is ``(None, 'a')``.
+
+    '''
+    with context(UNPROXIFING_CONTEXT):
+        from xotl.ql.core import this
+        res = []
+        current = term
+        while current:
+            if current is not this:
+                res.insert(0, current.name)
+            else:
+                res.insert(0, None)
+            current = current.parent
+        return tuple(res)
+
+
+def get_term_signature(term):
+    '''Returns the path "signature" of a term (or token).
+
+    For a bound term this a tuple `(path of binding, path of term)`; if the
+    terms is not bound this is a tuple `((), path of the term)`.
+
+    '''
+    if _is_instance_of(term, IGeneratorToken):
+        term = term.expression
+    with context(UNPROXIFING_CONTEXT):
+        binding = term.binding
+    if binding:
+        bpath = get_term_path(binding.expression)
+    else:
+        bpath = ()
+    return (bpath, get_term_path(term))
+
+
 def token_before_filter(tk, expr, strict=False):
     '''Partial order (`<`) compare function between a token (or term) and an
     expression.
@@ -301,7 +349,18 @@ def token_before_filter(tk, expr, strict=False):
 
 
 def cmp(a, b, strict=False):
-    '''Partial compare function between tokens and expressions.
+    '''Compare function between tokens and expressions.
+
+    The following rules are used to make this compare function total:
+
+    - When two terms are not orderable in the sense of :func:`cmp_terms`, they
+      are compared by its signature (see :func:`get_term_signature`).
+
+    - If token is not before than a filter, then it is after; this is to say,
+      that under this function terms and expressions are never regarded as
+      equals.
+
+    - Any two expressions are considered equal.
 
     Examples::
 
@@ -322,16 +381,25 @@ def cmp(a, b, strict=False):
        1
 
        >>> cmp(expr1, children_token)
-       0
+       -1
 
     '''
     from ..interfaces import IExpressionCapable
     with context(UNPROXIFING_CONTEXT):
-        if IGeneratorToken.providedBy(a) and IGeneratorToken.providedBy(b):
-            return cmp_terms(a, b, strict)
-        elif IGeneratorToken.providedBy(a) and IExpressionCapable.providedBy(b):
-            return -1 if token_before_filter(a, b, strict) else 0
-        elif IExpressionCapable.providedBy(a) and IGeneratorToken.providedBy(b):
-            return 1 if token_before_filter(b, a, strict) else 0
-        else:
+        if _is_instance_of(a, ITerm, IGeneratorToken) and _is_instance_of(b, ITerm, IGeneratorToken):
+            res = cmp_terms(a, b, strict)
+            if res == 0:
+                a_sign, b_sign = get_term_signature(a), get_term_signature(b)
+                if a_sign < b_sign:
+                    res = -1
+                elif a_sign > b_sign:
+                    res = 1
+                else:
+                    res = 0
+            return res
+        elif _is_instance_of(a, ITerm, IGeneratorToken) and _is_instance_of(b, IExpressionCapable):
+            return -1 if token_before_filter(a, b, strict) else 1
+        elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, ITerm, IGeneratorToken):
+            return 1 if token_before_filter(b, a, strict) else -1
+        elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, IExpressionCapable):
             return 0
