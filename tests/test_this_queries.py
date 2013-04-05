@@ -305,9 +305,11 @@ for op in OperatorType.operators:
     elif getattr(op, 'arity', None) is N_ARITY:
         _tests['test_for_{0}'.format(op.__name__)] = _build_nary_test(op)
 
-TestAllOperations = type(str('TestAllOperations'), (unittest.TestCase, ),
+AllOperationsBase = type(str('AllOperationsBase'), (object, ),
                          _tests)
 
+class TestAllOperations(unittest.TestCase, AllOperationsBase):
+    pass
 
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     '''
