@@ -513,23 +513,13 @@ def naive_translation(query, **kwargs):
 
     def mix(filters, tokens):
         '''Intertwines tokens and filters.'''
-        # TODO: Improve algorithm.
         if not filters:
             return tokens
-        # result = list(filters + tokens)
-        # for i in range(len(result)-1):
-        #     for j in range(i+1, len(result)):
-        #         if translation.cmp(result[i], result[j]) > 0:
-        #             result[i], result[j] = result[j], result[i]
-        # return result
-        with context(UNPROXIFING_CONTEXT):
-            return list(sorted(tokens + filters,
-                               key=functools.cmp_to_key(trans.cmp)))
+        return list(sorted(tokens + filters,
+                           key=functools.cmp_to_key(trans.cmp)))
 
     sorted_parts = mix(query.filters, query.tokens)
     assert isinstance(sorted_parts[0], GeneratorToken), sorted_parts
-    _k = functools.cmp_to_key(trans.cmp)
-    assert all(_k(sorted_parts[i]) <= _k(sorted_parts[i+1]) for i in range(len(sorted_parts) - 1))
 
     def select(sel, vm):
         from xotl.ql.expressions import _false

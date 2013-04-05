@@ -351,37 +351,18 @@ def token_before_filter(tk, expr, strict=False):
 def cmp(a, b, strict=False):
     '''Compare function between tokens and expressions.
 
-    The following rules are used to make this compare function total:
+    The following rules are used to make this compare function *less* partial:
 
     - When two terms are not orderable in the sense of :func:`cmp_terms`, they
       are compared by its signature (see :func:`get_term_signature`).
 
-    - If token is not before than a filter, then it is after; this is to say,
-      that under this function terms and expressions are never regarded as
-      equals.
+    - If token is not before than a filter in the sense of
+      :func:`token_before_filter`, then if it's before only if it's also before
+      any of the terms in the expression, otherwise the token is *after* the
+      expression. This means that a token and an expressions are never regarded
+      as equal.
 
     - Any two expressions are considered equal.
-
-    Examples::
-
-       >>> from xotl.ql import this, these
-       >>> query = these((parent, child)
-       ...               for parent in this
-       ...               for child in parent.children
-       ...               if parent.age > 34
-       ...               if child.age < 6)
-
-       >>> parent_token, children_token = query.tokens
-       >>> expr1, expr2 = query.filters
-
-       >>> cmp(parent_token, expr1)
-       -1
-
-       >>> cmp(children_token, parent_token)
-       1
-
-       >>> cmp(expr1, children_token)
-       -1
 
     '''
     from ..interfaces import IExpressionCapable
@@ -398,8 +379,11 @@ def cmp(a, b, strict=False):
                     res = 0
             return res
         elif _is_instance_of(a, ITerm, IGeneratorToken) and _is_instance_of(b, IExpressionCapable):
-            return -1 if token_before_filter(a, b, strict) else 1
+            if token_before_filter(a, b, strict):
+                return -1
+            else:
+                return -1 if any(cmp(a, tk, strict) == -1 for tk in cotraverse_expression(b)) else 1
         elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, ITerm, IGeneratorToken):
-            return 1 if token_before_filter(b, a, strict) else -1
+            return -cmp(b, a, strict)
         elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, IExpressionCapable):
             return 0

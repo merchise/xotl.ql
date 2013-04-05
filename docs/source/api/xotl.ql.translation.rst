@@ -51,28 +51,9 @@ fact into account to optimize the query plan.
 
 The following functions are utilities to accomplish this.
 
-.. warning:: The logic behinds those function actually establish a *partial*
-	     order between in the domain of terms and expressions. But being
-	     partial means that some of those object are not comparable under
-	     this order.
+.. autofunction:: get_term_path
 
-	     Currently :func:`cmp` and :func:`cmp_terms` return ``0`` in the
-	     case of non-comparable subjects. This fools Python's sorting
-	     heuristics that consider that equality is transitive (ie. if
-	     `a==b` and `b==c` then `a==c`) but this does not hold in this
-	     case.
-
-	     So *DON'T* use those functions neither as an argument to `sorted`,
-	     `list.sort` or `functools.cmp_to_key` functions: you won't get the
-	     expected results.
-
-	     I don't know any Python's library that deals with partial orders
-	     and implements a stable order algorithm. One may try to encode
-	     this in a DAG and do a topological sorting, but I don't believe is
-	     worthy since the amount of terms/expressions to be compared in a
-	     query is quite small; and since query objects are deemed
-	     inmutable, a cache from query objects to query plans is possible
-	     to keep.
+.. autofunction:: get_term_signature
 
 .. autofunction:: cmp_terms(term1, term2, strict=False)
 
