@@ -155,8 +155,10 @@ class DesignDecisionTests(DesignDecisionTestCase):
         next(parent
               for parent in this('parent')
               if any_(child for child in parent.children if child.age < 6))
+
         parts = self.bubble.parts
-        self.assertIs(0, len(parts))
+        # `child.age < 6` should not be leaked.
+        assert 1 == len(parts)
 
     def test_right_bindings(self):
         next((parent, child)

@@ -311,6 +311,16 @@ AllOperationsBase = type(str('AllOperationsBase'), (object, ),
 class TestAllOperations(unittest.TestCase, AllOperationsBase):
     pass
 
+
+def test_for_generator_as_sole_argument():
+    import types
+    from xotl.ql.expressions import all_
+    query = these(parent for parent in this
+                  if all_(child.age < 5 for child in parent.children))
+    assert len(query.filters) == 3
+    assert isinstance(query.filters[0].children[0], types.GeneratorType)
+
+
 class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
     '''
     Non-selected tokens should not be forgotten.
