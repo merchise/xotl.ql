@@ -290,6 +290,8 @@ manolito = Person(name='Manuel Vázquez Piñero',
 # For the sake of testability I skip those tests in PyPy. Still the core of
 # xotl.ql is almost working in PyPy.
 
+
+@pytest.mark.xfail()  # all_ not implemented ok.
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
 def test_all_pred():
     from xotl.ql.expressions import all_

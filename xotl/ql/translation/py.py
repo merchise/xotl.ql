@@ -438,6 +438,26 @@ class vminstr(object):
                 x = x()
             else:
                 assert False
+            if not bool(x):
+                return False
+            if isinstance(y, var):
+                y = y._get_current_value(default=False)
+            elif callable(y):
+                y = y()
+            else:
+                assert False
+            if bool(y):
+                return True
+            return False
+
+        @codefor(LogicalOrOperator)
+        def or_(self, x, y):
+            if isinstance(x, var):
+                x = x._get_current_value(default=False)
+            elif callable(x):
+                x = x()
+            else:
+                assert False
             if bool(x):
                 return True
             if isinstance(y, var):
@@ -450,12 +470,24 @@ class vminstr(object):
                 return True
             return False
 
+        @codefor(LogicalXorOperator)
+        def xor_(self, x, y):
+            return self.or_(x, y) and not self.and_(x, y)
+
+
+        @codefor(LogicalNotOperator)
+        def not_(self, x):
+            if isinstance(x, var):
+                x = x._get_current_value(default=False)
+            elif callable(x):
+                x = x()
+            else:
+                assert False
+            return not bool(x)
+
         table.update({
             EqualityOperator: lambda self, x, y: x == y,
             NotEqualOperator: lambda self, x, y: x != y,
-            LogicalOrOperator: lambda self, x, y: x | y,
-            LogicalXorOperator: lambda self, x, y: x ^ x,
-            LogicalNotOperator: lambda self, x: ~x,
             AdditionOperator: lambda self, x, y: x + y,
             SubstractionOperator: lambda self, x, y: x - y,
             DivisionOperator: lambda self, x, y: x/y,
