@@ -415,10 +415,10 @@ class vminstr(object):
                 return func(result for result in plan())
             return inner
 
-        all_ = codefor(AllFunction)(sub_query_method(all))
-        any_ = codefor(AnyFunction)(sub_query_method(any))
-        min_ = codefor(MinFunction)(sub_query_method(min))
-        max_ = codefor(MaxFunction)(sub_query_method(max))
+        # all_ = codefor(AllFunction)(sub_query_method(all))
+        # any_ = codefor(AnyFunction)(sub_query_method(any))
+        # min_ = codefor(MinFunction)(sub_query_method(min))
+        # max_ = codefor(MaxFunction)(sub_query_method(max))
         # sum_ = codefor(SumFunction)(sub_query_method(sum))
 
         def avg(vals):
