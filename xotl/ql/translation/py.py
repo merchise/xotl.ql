@@ -406,13 +406,14 @@ class vminstr(object):
             def inner(self, *args):
                 from types import GeneratorType
                 from xotl.ql.core import these
-                query, rest = args
+                query, rest = args[0], args[1:]
                 if rest:
                     return func(args)
                 if isinstance(query, GeneratorType):
                     query = these(query)
                 plan = naive_translation(query, vm=dict(self.vm))
                 return func(result for result in plan())
+            return inner
 
         all_ = codefor(AllFunction)(sub_query_method(all))
         any_ = codefor(AnyFunction)(sub_query_method(any))
@@ -601,7 +602,7 @@ def naive_translation(query, **kwargs):
         # (affect the vm) or filter.
         #
         from xotl.ql.expressions import _false
-        parts = sorted_parts[:]
+        parts = list(sorted_parts[:])
         vm = plan_kwargs.get('vm', None) or kwargs.get('vm', None) or {}
         result = vmtoken(parts.pop(0), vm, only=only)
         while parts:
