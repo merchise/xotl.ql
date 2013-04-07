@@ -9,7 +9,7 @@ in this language looks like this::
 
     >>> query = these(child
     ...               for parent in this
-    ...               if parent.children & parent.age > 32
+    ...               if parent.children & (parent.age > 32)
     ...               for child in parent.children
     ...               if child.age < 6)
 
@@ -32,4 +32,3 @@ What does xotl mean?
 The word "xotl" is a Nahuatl word that means foundation, base. The `xotl`
 package comprises the foundation for building reliable systems: both
 frameworks, libraries and an object model that allows to build complex systems.
-

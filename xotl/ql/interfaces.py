@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.interfaces
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -21,7 +21,7 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_imports)
 
-from zope.interface import Interface, Attribute, invariant
+from zope.interface import Interface, Attribute
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -30,7 +30,7 @@ __author__ = 'manu'
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
-           'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
+           'IExpressionTree', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
@@ -233,29 +233,6 @@ class IExpressionTree(IExpressionCapable):
 
                                ''')
 
-
-class IQueryPart(IExpressionCapable):
-    '''Represents a *possibly* partial (but sound) expression that is being
-    constructed inside a query expression.
-
-    Expression trees are powerful enough to capture the semantics of query
-    parts. But, since we don't have the control of how Python does is execution
-    of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryParticlesBubble` that a new query
-    part is being created.
-
-    See the documentation for :class:`xotl.ql.core.QueryPart` to see the
-    details of the procedure.
-
-    '''
-    expression = Attribute('The expression that this part stands for.'
-                           'This expression should not be a query part '
-                           'itself. The intention of this attribute '
-                           'is to allow clients extract cleaned-up '
-                           'versions of the expression without '
-                           'the query-building related stuff.')
-
-
 class ITerm(IExpressionCapable):
     '''ITerm instances are meant to represent the *whole* universe of objects.
 
@@ -270,10 +247,11 @@ class ITerm(IExpressionCapable):
 
     def __iter__():
         '''ITerm instances should be iterable. Also this should yield a single
-        instance of a :class:`IQueryPart` whose :attr:`~IQueryPart.expression`
-        should have a bound copy of `self`. The :attr:`~IBoundTerm.binding`
+        instance of a :class:`IBoundTerm`. The :attr:`~IBoundTerm.binding`
         should be made to an instance of a :class:`IGeneratorToken`, whose
-        :attr:`~IGeneratorToken.expression` attribute should be `self`.
+        :attr:`~IGeneratorToken.expression` attribute should be the bound term
+        itself.
+
         '''
 
     def __getattribute__(attr):
@@ -284,7 +262,6 @@ class ITerm(IExpressionCapable):
         instance, an execution context is needed.
 
         :param attr: The name of the object to access.
-        :type attr: unicode or str
         :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
@@ -364,19 +341,13 @@ class IQueryParticlesBubble(Interface):
            lost.
 
         :param part: The emitted query part
-        :type part: :class:`IQueryPart`
+        :type part: :class:`IExpressionCapable`
         '''
 
-    parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
-                      'that were captured. ')
+    parts = Attribute('Ordered collection of :class:`IExpressionCapable` '
+                      'instances that were captured. ')
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
-    particles = Attribute('Ordered collection of either tokens or query parts '
-                          'that were captured.',
-                          'This property holds a list of all particles '
-                          'not matter their types in the order they were '
-                          'captured. This is intended to be used to '
-                          'perform optimizations for translators. ')
 
 
 class IGeneratorToken(Interface):
@@ -422,15 +393,22 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`ITerm` or '
-                          ':class:`IExpressionTree` instances.')
-    tokens = Attribute('Generator tokens that occur in the query',
-                       '''When the :term:`query` is processed to create a
-                       :term:`query object`, at least one :term:`generator
-                       token` is created to represent a single, named
-                       "location" from where objects are drawn. However a
-                       :term:`query` may refer to several such locations. For
-                       instance in the query::
+    selection = Attribute('Either a tuple/list of :class:`ITerm` or '
+                          ':class:`IExpressionTree` instances; or a '
+                          'single ITerm/IExpressionTree.')
+
+    tokens = Attribute('Generator tokens (:class:`IGeneratorToken`) that '
+                       'occur in the query',
+
+                       '''A (probably unordered) list of :class:`generator
+                       tokens <IGeneratorToken>` that occurs in the query.
+
+                       When a :term:`query expression` is processed to
+                       create a :term:`query object`, at least one
+                       :term:`generator token` is created to represent a
+                       single, named "location" from where objects are
+                       drawn. However a :term:`query expression` may have many
+                       such locations. For instance in the query::
 
                            these((book, author)
                                  for book in this
@@ -450,7 +428,7 @@ class IQueryObject(Interface):
                         'that represent the WHERE clauses. They are logically '
                         'and-ed.')
     ordering = Attribute('A tuple of :ref:`ordering expressions '
-                         '<ordering-expressions>`_.')
+                         '<ordering-expressions>`.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
     params = Attribute('A dict containing other arguments to the query. '

@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.1.9
+-------------
+
+.. include:: history/changes-0.1.9.rst
+
+
+
 2012/12/20 - Release 0.1.8
 --------------------------
 

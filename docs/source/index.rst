@@ -3,47 +3,70 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to `xotl.ql` documentation!
-===================================
+Welcome to the documentation of xotl.ql: A *pythonic* query language!
+=====================================================================
 
-The word "xotl" is a Nahuatl word that means foundation, base. The `xotl`
-package comprises the foundation for building reliable systems: both
-frameworks, libraries and an object model that allows to build complex systems.
+This package provides an implementation of a query language for Python.
+The query language is based on Python's generator expression. A query
+in this language looks like this::
 
-This package `xotl.ql` implements a query language for python that is intended
-to be used in `xotl` to express the semantics for retrieving objects. It's
-distributed independently to allow other to use this language in their own
-projects. It's expected that many pieces of `xotl` may be distributed this
-way.
+    >>> from xotl.ql import these, this
+
+    >>> query = these(child
+    ...               for parent in this
+    ...               if parent.children & (parent.age > 32)
+    ...               for child in parent.children
+    ...               if child.age < 6)
+
+The result of the :class:`~xotl.ql.core.these` callable is a :term:`query
+object` that "describes" at the syntactical level the :term:`query expression`
+above.
+
+What's new in this release?
+---------------------------
+
+.. include:: history/changes-0.2.0.rst
 
 
-Contents:
----------
+Core Contents:
+--------------
 
 .. toctree::
+   :glob:
    :maxdepth: 1
 
    overview
    expressions
    core
-   interfaces
-   translate
-   thoughts
-   inners
+   api/*
+   translation/*
    terms
-   references
    next-release-goals
    HISTORY
    credits
    license
 
+Additional documents:
+---------------------
 
+.. toctree::
+   :maxdepth: 1
 
-Indices and tables
-==================
+   thoughts
+   inners
+   references
+   changes/index
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-* :ref:`glossary`
+What does xotl mean?
+--------------------
 
+The word "xotl" is a Nahuatl word that means foundation, base. The `xotl`
+package comprises the foundation for building reliable systems, frameworks, and
+libraries. It also provides an object model that allows to build complex
+systems.
+
+It is expected that `xotl` will use `xotl.ql` to:
+
+- Express predicates defining object relationships
+- Query the object store (of course!)
+- Update the object store.

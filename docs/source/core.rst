@@ -4,13 +4,11 @@
 The query language and the `this` object
 ========================================
 
-.. module:: xotl.ql.core
+The basic query language uses generator expressions to express both the SELECT
+part and FILTER part of a query.
 
-The basic query language uses comprehensions to express both the SELECT part
-and FILTER part of a query.
-
-In a :term:`query expression` (comprehension) the :data:`this` objects stand
-for the entire universe of objects *unless otherwise restricted by filter
+In a :term:`query expression` (generator expression) the :data:`this` objects
+stand for the entire universe of objects *unless otherwise restricted by filter
 expressions*. For instance::
 
     >>> from xotl.ql.expressions import count, is_a
@@ -60,7 +58,7 @@ each child yielded by `parent.children`. But using the first interpretation for
 
 
 :class:`!Term` instances may be *named*, thus allowing to select different
-objects in a single query. When used in comprehensions, `this` automatically
+objects in a single query. When used in query expressions, `this` automatically
 yields a single uniquely named :class:`Term` instance. So, you don't need to
 specify a name by your self::
 
@@ -107,61 +105,95 @@ Providing a name may ease debugging tasks, and clarify log messages.
      False
 
 
-External API for the query language
-===================================
+Order, limits and offsets
+=========================
 
-In this section we give the details of the (external) query API. For the
-internal query API, used to those that need to build extensions of the query
-language, please refer to :ref:`query-api`.
-
-As we've said, at the core of the Query Language is the `this` object, whose
-type is a subclass of the class :class:`Term`:
-
-.. autodata:: this(name, **kwargs)
+So far, the query language presented does not allow for expressing neither
+limits, offsets and order-by clauses. But rest sure those things are
+possible. When expressing a query :class:`~xotl.ql.core.these` allows to pass
+many keyword arguments, which are kept in the :class:`query object
+<xotl.ql.interfaces.IQueryObject>` returned.
 
 
-.. autoclass:: Term
-   :members: name, parent, root_parent,  __iter__
+Limits and offsets
+------------------
 
-   This class implements :class:`xotl.ql.interfaces.ITerm`
+To set limits and offsets you may pass the `partition` keyword argument a
+`slice` object. Every possible combination in python itself is possible here as
+well.
 
-.. autoclass:: _QueryObjectType
-   :members: these
+Alternatively, you may provide one (or several) of the keyword arguments:
+`limit`, `offset` and `step`. This arguments are used then to create the
+`slice` object. If you provide the `partition` argument, these ones will be
+ignored (and a warning will be logged).
 
-.. class:: these(comprehension, **kwargs)
+Compliant :term:`query translators` are required to:
 
-   An alias to the :class`QueryObject`, you may use either as a constructor for
-   :term:`query objects <query object>`. However we use both names for
-   different purposes:
+- Raise a `TypeError` if they don't support `partition` and one is provided.
 
-   - We use :class:`these` with the `(comprehension, ...)` signature only to
-     get a :term:`query object` from a :term:`query expression`.
+- Raise a `TypeError` if they don't support any of the `partition's` components
+  that is not None (e.g. a translator may not support a step bigger than 1)
 
-   - We use :class:`QueryObject` without any arguments, to build a bare
-     :term:`query object` that may be filled afterward.
-
-     The only valid signature is the one of :class:`these`, any other signature
-     will produce a `TypeError`.
-
-   .. note::
-
-      The metaclass :class:`_QueryObjectType` of :class:`these` hooks into the
-      way of creating instances (:term:`query objects <query object>`), if you
-      pass a single positional argument which is of type `GeneratorType` and
-      possibly many others keyword arguments, the metaclass will use its
-      :meth:`_QueryObjectType.these` method.
+- Document those expectations.
 
 
-.. autoclass:: QueryObject
+.. _ordering-expressions:
 
-.. autoclass:: GeneratorToken
+Expressing order instructions
+-----------------------------
 
-Implementation Details
-======================
+To instruct a capable query translator to order the result you may pass the
+`ordering` keyword argument to :class:`~xotl.ql.core.these`.
 
-.. autoclass:: QueryPart
-   :members:
+The argument's type **must** be a callable (usually a lambda expression) that
+receives as many positional arguments as selected elements are in the query and
+returns either:
 
+- A single *unary expression*, i.e. an expression tree of which its top most
+  operator is one of :class:`xotl.ql.expressions.PositiveUnaryOperator` or
+  :class:`xotl.ql.expressions.NegativeUnaryOperator`.
+
+- A tuple of unary expressions of those.
+
+Collectively those unary expressions are called "ordering expressions" in the
+context of the interface :class:`xotl.ql.interface.IQueryObject`.
+
+.. note::
+
+   What you pass to the `ordering` argument of :class:`~xotl.ql.core.these` are
+   not the ordering expressions themselves, but a procedure to build them from
+   the selection.
+
+   What you get in the query's :attr:`xotl.ql.interfaces.IQueryObject.ordering`
+   attribute are the ordering expressions as returned by the given procedure.
+
+Nothing more is enforced.
+
+Compliant :term:`query translators <query translator>` are required to:
+
+- Treat *positive* unary expressions as an *ascending* ordering request.
+
+- Treat *negative* unary expressions as a *descending* ordering request.
+
+- Further validate the expressions and raise a `TypeError` if any expression
+  violates the type expectations of the translator. This entails the
+  requirement to clearly document those expectations.
+
+This last requirement is need because the only type check that `xotl.ql` does
+on `ordering` expressions is that they are *unary* ones, it is possible to
+order by not only by *single term expressions*, but by more complex ones.
+
+For instance a query may ask for ordering based on the result of the ratio
+between the maximum value of an attribute in a sub-collection and other
+attribute::
+
+     from xotl.ql.expressions import max_
+     query = these((parent for parent in this),
+        ordering=lambda parent: +(max_(child.age for child in parent.children)/parent.age))
+
+But some translators might be unable to correctly translate this kind of
+ordering expression; maybe because the storage does not allow it or because the
+translation process itself is not designed for such use cases.
 
 
 .. _CouchDB: http://couchdb.apache.org/

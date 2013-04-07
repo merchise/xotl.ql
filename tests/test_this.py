@@ -3,23 +3,11 @@
 #----------------------------------------------------------------------
 # xotl.ql.tests.test_this
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012, 2013 Merchise Autrement
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License (GPL) as published by the
-# Free Software Foundation;  either version 2  of  the  License, or (at
-# your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301, USA.
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on May 25, 2012
 
@@ -96,8 +84,13 @@ class TestThisExpressions(unittest.TestCase):
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
-                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              mul, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        try:
+            from operator import div
+        except ImportError:
+            # Py3k only
+            from operator import truediv as div
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
                         (lt, '{0} < {1}'),

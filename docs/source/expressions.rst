@@ -1,12 +1,9 @@
-.. module:: xotl.ql.expressions
-
 .. testsetup::
 
    from xotl.ql.interfaces import ISyntacticallyReversibleOperation
    from xotl.ql.expressions import *
 
 .. _expression-lang:
-
 ========================
 The Expressions Language
 ========================
@@ -16,19 +13,20 @@ This module provides the building blocks for creating :term:`expression trees
 themselves, this classes does not attempt to provide anything else than what
 it's deem needed to have an Abstract Syntax Tree (AST).
 
-Each expression is represented by an instance of an :class:`ExpressionTree`. An
-expression tree has two core attributes:
+Each expression is represented by an instance of an
+:class:`xotl.ql.expressions.ExpressionTree`. An expression tree has two core
+attributes:
 
-- The :attr:`~ExpressionTree.operation` attribute contains a reference to the
-  any of the classes that derive from :class:`Operator`.
+- The :attr:`~xotl.ql.expressions.ExpressionTree.operation` attribute contains
+  a reference to the any of the classes that derive from :class:`Operator`.
 
-- The :attr:`~ExpressionTree.children` attribute always contains a tuple
-  with objects to which the operation is applied.
+- The :attr:`~xotl.ql.expressions.ExpressionTree.children` attribute always
+  contains a tuple with objects to which the operation is applied.
 
 Operation classes should have the following attributes:
 
-- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`, or
-  :class:`UNARY`.
+- `_arity`, which can be any of :class:`xotl.ql.expressions.N_ARITY`,
+:class:`xotl.ql.expressions.BINARY`, or :class:`xotl.ql.expressions.UNARY`.
 
 - `_format`, which should be a string that specifies how to format the
   operation when str is invoked to print the expression. The format should
@@ -69,10 +67,10 @@ Objects in expressions
 ----------------------
 
 In order to have any kind of objects in expressions, we provide a very
-ligth-weight transparent wrapper :class:`q`. This simple receives an object as
-it's wrapped, and pass every attribute lookup to is wrapped object but also
-implements the creation of expressions with the supported operations. The
-expression above could be constructed like::
+ligth-weight transparent wrapper :class:`xotl.ql.expressions.q`. This simple
+receives an object as it's wrapped, and pass every attribute lookup to is
+wrapped object but also implements the creation of expressions with the
+supported operations. The expression above could be constructed like::
 
     >>> expr2 = (q(1) == q(2)) & (q(2) == q(3))
     >>> str(expr2)
@@ -136,7 +134,7 @@ For the time being, we keep the q-objects as they allows to test our expression
 language. But, in time, we may refactor this class out of this module.
 
 
-.. autoclass:: q
+.. autoclass:: xotl.ql.expressions.q
    :members:
 
    This class implements :class:`xotl.ql.interfaces.IExpressionCapable`.
@@ -144,99 +142,30 @@ language. But, in time, we may refactor this class out of this module.
 
 .. _target-protocol:
 
-The `_target_` protocol for expressions
----------------------------------------
+The `_xotl_target_` protocol for expressions
+--------------------------------------------
 
 Expression trees support a custom protocol for placing operands inside
-expressions. If any operand's class implements a method `_target_` it will be
-called with the operand as its unique argument, and use its result in place of
-the operand:
+expressions. If any *operand's class* implements a method `_xotl_target_` it
+will be called with the operand as its unique argument, and use its result in
+place of the operand:
 
 .. doctest::
 
    >>> class X(object):
    ...    @classmethod
-   ...    def _target_(cls, self):
+   ...    def _xotl_target_(cls, self):
    ...        return 1
 
    >>> q(1) + X()  # doctest: +ELLIPSIS
    <expression '1 + 1' at 0x...>
 
-This protocol will work with if `_target_` is either a method, a classmethod or
-a staticmethod defined *in the class* object. It won't work if the `_target_`
-method is injected into the instance:
+.. note::
 
-.. doctest::
-
-   >>> class X(object):
-   ...     pass
-
-   >>> def _target_(self):
-   ...     return "invisible"
-
-   >>> x = X()
-   >>> setattr(x, '_target_', _target_)
-   >>> q(1) + x   # doctest: +ELLIPSIS
-   <expression '1 + <...X object at 0x...>' at 0x...>
-
-.. todo::
-
-   Do we really need this restriction? Wouldn't it be better to allow
-   flexibility?
-
-   I'm implementing a `FLEXIBLE_TARGET_PROTOCOL` execution context to testbed
-   the lifting of this restriction:
-
-   .. doctest::
-
-      >>> from xoutil.context import context
-      >>> with context('FLEXIBLE_TARGET_PROTOCOL'):    # doctest: +ELLIPSIS
-      ...    q(20) + x
-      <expression '20 + invisible' at 0x...>
-
-
-   **Response**
-
-   :class:`q` objects proxy all it attributes to the proxy target, so in those
-   cases, working at the instance level may result in unpredictable results
-   depending on whether the target has or not a _target_:
-
-   .. doctest::
-
-      >>> with context('FLEXIBLE_TARGET_PROTOCOL'):
-      ...    expr = q('string') + q(1)
-
-      >>> [type(x) for x in expr.children]  # doctest: +ELLIPSIS
-      [<class '...q'>, <class '...q'>]
-
-   Notice that the type of these objects is :class:`q` since they delegated the
-   `_target_` protocol to their targets, and they don't implement the
-   `_target_` protocol. At the class level, :class:`q` implements the
-   `_target_` protocol with a `classmethod` and this would work as expected:
-
-   .. doctest::
-
-      >>> expr = q('string') + q(1)
-      >>> [type(x) for x in expr.children]
-      [<type 'str'>, <type 'int'>]
-
-
-   That's probably why we should not work at the instance level.
-
-
-Implementation via a metaclass also works:
-
-.. doctest::
-
-   >>> class MetaX(type):
-   ...     def _target_(cls, self):
-   ...         return 12
-
-   >>> class X(object):
-   ...     __metaclass__ = MetaX
-
-   >>> q(1) + X()    # doctest: +ELLIPSIS
-   <expression '1 + 12' at 0x...>
+   This protocol only works if `_xotl_target_` is either an attribute (method,
+   a classmethod or a staticmethod) defined **in the class** object (or its
+   metaclass). It won't work if the `_xotl_target_` method is injected into the
+   instance.
 
 This is the protocol used by `q`-objects to get themselves out of expressions.
 
@@ -244,10 +173,12 @@ This is the protocol used by `q`-objects to get themselves out of expressions.
 About the operations supported in expression
 --------------------------------------------
 
-Almost all normal operations are supported by
-expressions. :class:`ExpressionTree` uses the known :ref:`python protocols
-<py:datamodel>` to allow the composition of expressions using an natural
-(idiomatic) form, so::
+Almost all normal operations are supported by expressions (please refer to the
+:mod:`API for the expression language <xotl.ql.expressions>` for the complete
+list of supported operations and
+functions). :class:`xotl.ql.expressions.ExpressionTree` uses the known
+:ref:`python protocols <py:datamodel>` to allow the composition of expressions
+using an natural (idiomatic) form, so::
 
     expression <operator> object
 
@@ -271,192 +202,32 @@ The ``<operator>`` can be any of the supported operations, i.e:
   support ``len``. The ``~`` is proposed to encode the `not` logical operator;
   but its true meaning depends of the used query translator.
 
-.. autoclass:: OperatorType(type)
+.. autoclass:: xotl.ql.expressions.OperatorType(type)
    :members:
 
-   This is the metaclass for the class :class:`Operator` it automatically
-   injects documentation about
+   This is the metaclass for the class :class:`xotl.ql.expressions.Operator` it
+   automatically injects documentation about
    :class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation` and
    :class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`, so there's
    no need to explicitly declare which interfaces the class support in every
    operator class.
 
 
-.. autoclass:: Operator
+.. autoclass:: xotl.ql.expressions.Operator
    :members:
 
    Classes derived from this class should provide directly the interface
    :class:`xotl.ql.interfaces.IOperator`.
 
 
-.. autoclass:: FunctorOperator
+.. autoclass:: xotl.ql.expressions.FunctorOperator
    :members:
 
-.. autoclass:: ExpressionTree
+.. autoclass:: xotl.ql.expressions.ExpressionTree
    :members: operation, children, named_children
 
    This class implements the interface
    :class:`xotl.ql.interfaces.IExpressionTree`.
-
-
-Included operations
--------------------
-
-.. autoclass:: EqualityOperator
-
-.. autoclass:: eq
-
-.. autoclass:: NotEqualOperator
-
-.. autoclass:: ne
-
-.. autoclass:: LogicalAndOperator
-
-.. autoclass:: and_
-
-.. autoclass:: LogicalOrOperator
-
-.. autoclass:: or_
-
-.. autoclass:: LogicalXorOperator
-
-.. autoclass:: xor_
-
-.. autoclass:: LogicalNotOperator
-
-.. autoclass:: not_
-
-.. autoclass:: invert
-
-.. autoclass:: AdditionOperator
-
-.. autoclass:: add
-
-.. autoclass:: SubstractionOperator
-
-.. autoclass:: sub
-
-.. autoclass:: DivisionOperator
-
-.. autoclass:: div
-
-.. autoclass:: truediv
-
-.. autoclass:: MultiplicationOperator
-
-.. autoclass:: mul
-
-.. autoclass:: LesserThanOperator
-
-.. autoclass:: lt
-
-.. autoclass:: LesserOrEqualThanOperator
-
-.. autoclass:: le
-
-.. autoclass:: GreaterThanOperator
-
-.. autoclass:: gt
-
-.. autoclass:: GreaterOrEqualThanOperator
-
-.. autoclass:: ge
-
-.. autoclass:: ContainsExpressionOperator
-
-.. autoclass:: contains
-
-.. warning:
-
-   Despite we could use the `__contains__` protocol for testing containment,
-   Python always convert the returned value to a bool and thus destroys the
-   expression tree.
-
-   If you need an expression that expresses a containment test, you **must**
-   use the :class:`in_` operator like this::
-
-       in_(item, collection)
-
-
-.. autoclass:: IsInstanceOperator
-
-.. autoclass:: is_a
-
-.. autoclass:: is_instance
-
-.. autoclass:: StartsWithOperator
-
-.. autoclass:: startswith
-
-.. autoclass:: EndsWithOperator
-
-.. autoclass:: endswith
-
-.. autoclass:: FloorDivOperator
-
-.. autoclass:: floordiv
-
-.. autoclass:: ModOperator
-
-.. autoclass:: mod
-
-.. autoclass:: PowOperator
-
-.. autoclass:: pow_
-
-.. autoclass:: LeftShiftOperator
-
-.. autoclass:: lshift
-
-.. autoclass:: RightShiftOperator
-
-.. autoclass:: rshift
-
-.. autoclass:: LengthFunction
-
-.. autoclass:: length
-
-.. autoclass:: CountFunction
-
-.. autoclass:: count
-
-.. autoclass:: PositiveUnaryOperator
-
-.. autoclass:: pos
-
-.. autoclass:: NegateUnaryOperator
-
-.. autoclass:: neg
-
-.. autoclass:: AbsoluteValueUnaryFunction
-
-.. autoclass:: abs_
-
-.. autoclass:: AllFunction
-
-.. autoclass:: all_
-
-.. autoclass:: AnyFunction
-
-.. autoclass:: any_
-
-.. autoclass:: MinFunction
-
-.. autoclass:: min_
-
-.. autoclass:: MaxFunction
-
-.. autoclass:: max_
-
-.. autoclass:: InvokeFunction
-
-.. autoclass:: call
-
-.. autoclass:: invoke
-
-.. autoclass:: AverageFunction
-
-.. autoclass:: avg
 
 
 .. _extending-expressions-lang:
@@ -493,3 +264,17 @@ implementing the `_sin` method on some special object::
   >>> zero = ZeroObject()
   >>> sin(zero)     # doctest: +ELLIPSIS
   <expression 'sin(360)' ...>
+
+
+.. _resolve-arguments-protocol:
+
+The protocol for resolving ambiguous signatures
+-----------------------------------------------
+
+Functions like :class:`~xotl.ql.expressions.all_`
+:class:`~xotl.ql.expressions.any_` could have several signatures, one of them
+being a subquery-like expression. In order to have chance to process the
+subquery if the operator implements the `_resolve_arguments` method (see
+:class:`xotl.ql.expressions.ResolveSubQueryMixin`) it will be called before any
+other processing is done to children (like the target protocol explained
+before).

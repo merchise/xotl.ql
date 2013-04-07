@@ -1,8 +1,8 @@
 .. _api-ref:
 
-=============
-API reference
-=============
+==========================================
+:mod:`xotl.ql.interfaces` - API Interfaces
+==========================================
 
 .. module:: xotl.ql.interfaces
 
@@ -22,7 +22,8 @@ Query objects interfaces
 the :class:`IQueryObject` below.
 
 .. autointerface:: IQueryObject
-   :members: selection, tokens, filters, ordering, partition, params, __iter__, next
+   :members: selection, tokens, filters, ordering, partition, params, __iter__,
+	     next
 
 .. autointerface:: IGeneratorToken
    :members: expression
@@ -61,12 +62,9 @@ Translation API
 Internal API
 ============
 
-This section describes the internal interfaces used when processing
-comprehensions in order to build the queries. Documenting this "internal" is
+This section describes the internal interfaces used when processing query
+expressions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
-.. autointerface:: IQueryPart
-   :members: expression
-
 .. autointerface:: IQueryParticlesBubble
-   :members: capture_part, capture_token, parts, tokens, particles
+   :members: capture_part, capture_token, parts, tokens

@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.expressions
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -29,8 +29,10 @@ from functools import partial
 from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
+from xoutil.decorator.compat import metaclass
+from xoutil.compat import py3k as _py3k
 
-from zope.interface import implements, directlyProvides
+from zope.interface import implementer, directlyProvides
 
 from xotl.ql.interfaces import (IOperator, IExpressionTree,
                                 ISyntacticallyReversibleOperation,
@@ -41,27 +43,34 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+#: When expressions are created inside this context, they will look for a :
+#`bubble` key in the context, if found it will call the `capture_expression` of
+#: the bubble; if there's no bubble a warning will logged (cause there should
+#: be a bubble in this context.)
+EXPRESSION_CONTEXT = object()
+
+
 class UNARY(object):
     @classmethod
-    def formatter(cls, operation, children, kw=None):
+    def formatter(cls, operation, children, kw=None, _str=str):
         str_format = operation._format
         child = children[0]
-        return str_format.format(str(child) if not isinstance(child,
+        return str_format.format(_str(child) if not isinstance(child,
                                                           ExpressionTree)
-                                        else '(%s)' % child)
+                                        else '(%s)' % _str(child))
 
 
 class BINARY(object):
     @classmethod
-    def formatter(cls, operation, children, kw=None):
+    def formatter(cls, operation, children, kw=None, _str=str):
         str_format = operation._format
         child1, child2 = children[:2]
-        return str_format.format(str(child1) if not isinstance(child1,
+        return str_format.format(_str(child1) if not isinstance(child1,
                                                           ExpressionTree)
-                                        else '(%s)' % child1,
-                            str(child2) if not isinstance(child2,
+                                        else '(%s)' % _str(child1),
+                            _str(child2) if not isinstance(child2,
                                                           ExpressionTree)
-                                        else '(%s)' % child2)
+                                        else '(%s)' % _str(child2))
 
 
 class N_ARITY(object):
@@ -79,16 +88,16 @@ class N_ARITY(object):
         <expression 'print(1, 2)' ...>
     '''
     @classmethod
-    def formatter(cls, operation, children, kwargs=None):
+    def formatter(cls, operation, children, kwargs=None, _str=str):
         str_format = operation._format
-        args = ', '.join((str(child) if not isinstance(child,
+        args = ', '.join((_str(child) if not isinstance(child,
                                                           ExpressionTree)
-                                        else '(%s)' % child)
+                                        else '(%s)' % _str(child))
                          for child in children)
         if '{1}' in str_format:
             kwargs = {} if kwargs is None else kwargs
             if kwargs:
-                kwargs = ", " + ', '.join("%s=%s" % (k, v)
+                kwargs = ", " + ', '.join("%s=%s" % (k, _str(v))
                                           for k, v in kwargs.items())
                 return str_format.format(args, kwargs)
             else:
@@ -139,12 +148,19 @@ class _boolean(type):
     __ror__ = __or__
 
 
+    def __bool__(self):
+        return True if self is _true else False
+    __nonzero__ = __bool__
+
+
+@metaclass(_boolean)
 class _true(object):
-    __metaclass__ = _boolean
+    pass
 
 
+@metaclass(_boolean)
 class _false(object):
-    __metaclass__ = _boolean
+    pass
 
 
 class OperatorType(type):
@@ -216,6 +232,7 @@ class OperatorType(type):
         return self._method_name
 
 
+@metaclass(OperatorType)
 class Operator(object):
     '''
     The base class of every operation that may involved in a expression.
@@ -225,8 +242,6 @@ class Operator(object):
     perform to the :attr:`operands <ExpressionTree.children>`.
 
     '''
-    __metaclass__ = OperatorType
-
 
 class _FunctorOperatorType(OperatorType):
     '''
@@ -248,13 +263,19 @@ class _FunctorOperatorType(OperatorType):
     implementation: creating an expression of the type `(opfunction, *args)`.
     '''
     def __call__(self, *children, **named):
+        resolve_arguments = getattr(self, '_resolve_arguments', None)
+        if resolve_arguments:
+            children, named = resolve_arguments(*children, **named)
         if children:
             stack = context
             head, tail = children[0], children[1:]
             name = getattr(self, '_method_name', None)
             method = getattr(unboxed(head), name, None) if name else None
             if method and not stack[(head, method)]:
-                func = getattr(method, 'im_func', method)
+                func = getattr(method, 'im_func', None)
+                if not func:   # Py3k
+                    func = getattr(method, '__func__', None)
+                assert func is not None
                 with stack((head, method)):
                     if tail:
                         return func(head, *tail, **named)
@@ -268,6 +289,7 @@ class _FunctorOperatorType(OperatorType):
                                                               **named)
 
 
+@metaclass(_FunctorOperatorType)
 class FunctorOperator(Operator):
     '''
     The base class for operations that are invoked explicitly by the
@@ -290,7 +312,6 @@ class FunctorOperator(Operator):
     infinity recursion if an operand implements a protocol but calls the
     operator to build the final expression.
     '''
-    __metaclass__ = _FunctorOperatorType
 
 
 class BinaryCommutativeOperatorMixin(object):
@@ -337,7 +358,7 @@ class EqualityOperator(Operator, BinaryCommutativeOperatorMixin):
 
     '''
     _format = '{0} == {1}'
-    _method_name = b'__eq__'
+    _method_name = str('__eq__')
     _python_operator = operator.eq
 eq = EqualityOperator
 
@@ -352,7 +373,7 @@ class NotEqualOperator(Operator, BinaryCommutativeOperatorMixin):
 
     '''
     _format = '{0} != {1}'
-    _method_name = b'__ne__'
+    _method_name = str('__ne__')
     _python_operator = operator.ne
 ne = NotEqualOperator
 
@@ -368,8 +389,8 @@ class LogicalAndOperator(Operator):
     '''
     _format = '{0} and {1}'
     arity = BINARY
-    _method_name = b'__and__'
-    _rmethod_name = b'__rand__'
+    _method_name = str('__and__')
+    _rmethod_name = str('__rand__')
     _python_operator = operator.and_
 and_ = LogicalAndOperator
 
@@ -385,8 +406,8 @@ class LogicalOrOperator(Operator):
     '''
     _format = '{0} or {1}'
     arity = BINARY
-    _method_name = b'__or__'
-    _rmethod_name = b'__ror__'
+    _method_name = str('__or__')
+    _rmethod_name = str('__ror__')
     _python_operator = operator.or_
 or_ = LogicalOrOperator
 
@@ -402,8 +423,8 @@ class LogicalXorOperator(Operator):
     '''
     _format = '{0} xor {1}'
     arity = BINARY
-    _method_name = b'__xor__'
-    _rmethod_name = b'__rxor__'
+    _method_name = str('__xor__')
+    _rmethod_name = str('__rxor__')
     _python_operator = operator.xor
 xor_ = LogicalXorOperator
 
@@ -419,7 +440,7 @@ class LogicalNotOperator(Operator):
     '''
     _format = 'not {0}'
     arity = UNARY
-    _method_name = b'__invert__'
+    _method_name = str('__invert__')
     _python_operator = operator.invert
 invert = not_ = LogicalNotOperator
 
@@ -435,8 +456,8 @@ class AdditionOperator(Operator):
     '''
     _format = '{0} + {1}'
     arity = BINARY
-    _method_name = b'__add__'
-    _rmethod_name = b'__radd__'
+    _method_name = str('__add__')
+    _rmethod_name = str('__radd__')
     _python_operator = operator.add
 add = AdditionOperator
 
@@ -445,8 +466,8 @@ class SubstractionOperator(Operator):
     '''The expression `a - b`.'''
     _format = '{0} - {1}'
     arity = BINARY
-    _method_name = b'__sub__'
-    _rmethod_name = b'__rsub__'
+    _method_name = str('__sub__')
+    _rmethod_name = str('__rsub__')
     _python_operator = operator.sub
 sub = SubstractionOperator
 
@@ -455,9 +476,11 @@ class DivisionOperator(Operator):
     '''The expression `a / b`.'''
     _format = '{0} / {1}'
     arity = BINARY
-    _method_name = b'__div__'
-    _rmethod_name = b'__rdiv__'
-    _python_operator = operator.div
+    # XXX [manu]: In Py3k the division operator / is always truediv, in fact,
+    #             div alone does not exists.
+    _method_name = str('__div__') if not _py3k else str('__truediv__')
+    _rmethod_name = str('__rdiv__') if not _py3k else str('__rtruediv__')
+    _python_operator = getattr(operator, 'div', operator.truediv)
 truediv = div = DivisionOperator
 
 
@@ -472,8 +495,8 @@ class MultiplicationOperator(Operator):
     '''
     _format = '{0} * {1}'
     arity = BINARY
-    _method_name = b'__mul__'
-    _rmethod_name = b'__rmul__'
+    _method_name = str('__mul__')
+    _rmethod_name = str('__rmul__')
     _python_operator = operator.mul
 mul = MultiplicationOperator
 
@@ -489,7 +512,7 @@ class LesserThanOperator(Operator):
     '''
     _format = '{0} < {1}'
     arity = BINARY
-    _method_name = b'__lt__'
+    _method_name = str('__lt__')
     _python_operator = operator.lt
 lt = LesserThanOperator
 
@@ -506,7 +529,7 @@ class LesserOrEqualThanOperator(Operator):
     _format = '{0} <= {1}'
     _associative = True
     arity = BINARY
-    _method_name = b'__le__'
+    _method_name = str('__le__')
     _python_operator = operator.le
 le = LesserOrEqualThanOperator
 
@@ -523,7 +546,7 @@ class GreaterThanOperator(Operator):
     _format = '{0} > {1}'
     _associative = True
     arity = BINARY
-    _method_name = b'__gt__'
+    _method_name = str('__gt__')
     _python_operator = operator.gt
 gt = GreaterThanOperator
 
@@ -540,7 +563,7 @@ class GreaterOrEqualThanOperator(Operator):
     _format = '{0} >= {1}'
     _associative = True
     arity = BINARY
-    _method_name = b'__ge__'
+    _method_name = str('__ge__')
     _python_operator = operator.ge
 ge = GreaterOrEqualThanOperator
 
@@ -556,7 +579,7 @@ class ContainsExpressionOperator(FunctorOperator):
     '''
     _format = 'contains({0}, {1})'
     arity = BINARY
-    _method_name = b'_contains_'
+    _method_name = str('_contains_')
 contains = ContainsExpressionOperator
 
 
@@ -565,13 +588,13 @@ class IsInstanceOperator(FunctorOperator):
     The `a is_a B` operator::
 
          >>> e = is_a(1, int)
-         >>> str(e)
-         "is_a(1, <type 'int'>)"
+         >>> str(e)   # doctest: +ELLIPSIS
+         "is_a(1, <...'int'>)"
 
     '''
     _format = 'is_a({0}, {1})'
     arity = BINARY
-    _method_name = b'_is_a'
+    _method_name = str('_is_a')
 is_a = is_instance = IsInstanceOperator
 
 
@@ -586,8 +609,8 @@ class FloorDivOperator(Operator):
     '''
     _format = '{0} // {1}'
     arity = BINARY
-    _method_name = b'__floordiv__'
-    _rmethod_name = b'__rfloordiv__'
+    _method_name = str('__floordiv__')
+    _rmethod_name = str('__rfloordiv__')
     _python_operator = operator.floordiv
 floordiv = FloorDivOperator
 
@@ -603,8 +626,8 @@ class ModOperator(Operator):
     '''
     _format = '{0} mod {1}'
     arity = BINARY
-    _method_name = b'__mod__'
-    _rmethod_name = b'__rmod__'
+    _method_name = str('__mod__')
+    _rmethod_name = str('__rmod__')
     _python_operator = operator.mod
 mod = ModOperator
 
@@ -620,8 +643,8 @@ class PowOperator(Operator):
     '''
     _format = '{0}**{1}'
     arity = BINARY
-    _method_name = b'__pow__'
-    _rmethod_name = b'__rpow__'
+    _method_name = str('__pow__')
+    _rmethod_name = str('__rpow__')
     _python_operator = operator.pow
 pow_ = PowOperator
 
@@ -636,8 +659,8 @@ class LeftShiftOperator(Operator):
     '''
     _format = '{0} << {1}'
     arity = BINARY
-    _method_name = b'__lshift__'
-    _rmethod_name = b'__rlshift__'
+    _method_name = str('__lshift__')
+    _rmethod_name = str('__rlshift__')
     _python_operator = operator.lshift
 lshift = LeftShiftOperator
 
@@ -652,8 +675,8 @@ class RightShiftOperator(Operator):
     '''
     _format = '{0} >> {1}'
     arity = BINARY
-    _method_name = b'__rshift__'
-    _rmethod_name = b'__rrshift__'
+    _method_name = str('__rshift__')
+    _rmethod_name = str('__rrshift__')
     _python_operator = operator.rshift
 rshift = RightShiftOperator
 
@@ -678,7 +701,7 @@ class LengthFunction(FunctorOperator):
     '''
     _format = 'length({0})'
     arity = UNARY
-    _method_name = b'length'
+    _method_name = str('length')
 length = LengthFunction
 
 
@@ -702,7 +725,7 @@ class CountFunction(FunctorOperator):
     '''
     _format = 'count({0})'
     arity = UNARY
-    _method_name = b'_count'
+    _method_name = str('_count')
 count = CountFunction
 
 
@@ -717,12 +740,12 @@ class PositiveUnaryOperator(Operator):
     '''
     _format = '+{0}'
     arity = UNARY
-    _method_name = b'__pos__'
+    _method_name = str('__pos__')
     _python_operator = operator.pos
 pos = PositiveUnaryOperator
 
 
-class NegateUnaryOperator(Operator):
+class NegativeUnaryOperator(Operator):
     '''
     The `-56` unary operator::
 
@@ -733,9 +756,9 @@ class NegateUnaryOperator(Operator):
     '''
     _format = '-{0}'
     arity = UNARY
-    _method_name = b'__neg__'
+    _method_name = str('__neg__')
     _python_operator = operator.neg
-neg = NegateUnaryOperator
+neg = NegativeUnaryOperator
 
 
 class AbsoluteValueUnaryFunction(Operator):
@@ -749,12 +772,51 @@ class AbsoluteValueUnaryFunction(Operator):
     '''
     _format = 'abs({0})'
     arity = UNARY
-    _method_name = b'__abs__'
+    _method_name = str('__abs__')
     _python_operator = abs
 abs_ = AbsoluteValueUnaryFunction
 
 
-class AllFunction(FunctorOperator):
+class ResolveSubQueryMixin(object):
+    '''Implements a resolution of subqueries.
+
+    If an operation receive a single positional that is generator object, it
+    will be regared as a subquery.
+
+    '''
+    @classmethod
+    def _resolve_arguments(cls, *children, **kwargs):
+        '''Resolves the first and only positional argument as a sub-query by
+        calling :class:`~xotl.ql.core.these`.
+
+        If there is more than one positional argument, or even one keyword
+        argument, or the first argument is not a generator object; then it
+        leaves all the arguments the same.
+
+        '''
+        import types
+        first, rest = children[0], children[1:]
+        if not first or (rest or kwargs):
+            return children, kwargs
+        else:
+            if isinstance(first, types.GeneratorType):
+                from xotl.ql.core import these
+                first = these(first)
+                # XXX: If this operation itself is enclosed in a
+                # EXPRESSION_CONTEXT it might have occurred that a part
+                # (actually a token's term) was emitted but then used as the
+                # generator, so if the first token's binding original_term *is*
+                # the last emmitted this one should be removed.
+                bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+                if bubble:
+                    parts = bubble._parts
+                    with context(UNPROXIFING_CONTEXT):
+                        term = first.tokens[0].expression
+                        if getattr(term, 'original_term', None) is parts[-1]:
+                            parts.pop(-1)
+            return (first, ), {}
+
+class AllFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The representation of the `all` function.
 
@@ -781,7 +843,7 @@ class AllFunction(FunctorOperator):
             >>> from xotl.ql.core import this
             >>> expr = all_(this.children, this.age > 10)
             >>> str(expr)
-            'all(this.children, this.age > 10)'
+            'all(this.children, (this.age > 10))'
 
     .. warning::
 
@@ -792,11 +854,11 @@ class AllFunction(FunctorOperator):
 
     _format = 'all({0})'
     arity = N_ARITY
-    _method_name = b'all_'
+    _method_name = str('all_')
 all_ = AllFunction
 
 
-class AnyFunction(FunctorOperator):
+class AnyFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The representation of the `any` function. As with :class:`all_` three
     analogous interpretations are possible. For instance::
@@ -809,11 +871,11 @@ class AnyFunction(FunctorOperator):
 
     _format = 'any({0})'
     arity = N_ARITY
-    _method_name = b'any_'
+    _method_name = str('any_')
 any_ = AnyFunction
 
 
-class MinFunction(FunctorOperator):
+class MinFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     A function that takes an expression and represents the minimun of such
     values over the collection.
@@ -851,11 +913,11 @@ class MinFunction(FunctorOperator):
 
     _format = 'min({0})'
     arity = N_ARITY
-    _method_name = b'min_'
+    _method_name = str('min_')
 min_ = MinFunction
 
 
-class MaxFunction(FunctorOperator):
+class MaxFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     A function that takes an expression and represents the maximum of such
     values over the collection.
@@ -867,7 +929,7 @@ class MaxFunction(FunctorOperator):
 
     _format = 'max({0})'
     arity = N_ARITY
-    _method_name = b'max_'
+    _method_name = str('max_')
 max_ = MaxFunction
 
 
@@ -885,7 +947,7 @@ class InvokeFunction(FunctorOperator):
     '''
     _format = 'call({0}{1})'
     arity = N_ARITY
-    _method_name = b'invoke'
+    _method_name = str('invoke')
 invoke = call = InvokeFunction
 
 
@@ -903,7 +965,7 @@ class StartsWithOperator(FunctorOperator):
     '''
     _format = 'startswith({0!r}, {1!r})'
     arity = BINARY
-    _method_name = b'startswith'
+    _method_name = str('startswith')
 startswith = StartsWithOperator
 
 
@@ -922,11 +984,11 @@ class EndsWithOperator(FunctorOperator):
     '''
     _format = 'endswith({0!r}, {1!r})'
     arity = BINARY
-    _method_name = b'endswith'
+    _method_name = str('endswith')
 endswith = EndsWithOperator
 
 
-class AverageFunction(FunctorOperator):
+class AverageFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The ``avg(*args)`` operation. There're two possible interpretations:
 
@@ -941,20 +1003,20 @@ class AverageFunction(FunctorOperator):
     '''
     arity = N_ARITY
     _format = 'avg({0})'
-    _method_name = b'_avg'
+    _method_name = str('_avg')
 avg = AverageFunction
 
 
 class NewObjectFunction(FunctorOperator):
-    '''
-    The expression for building a new object.
+    '''The expression for building a new object.
 
        >>> new(object, a=1, b=2)          # doctest: +ELLIPSIS
-       <expression 'new(<type 'object'>, a=1, b=2)' ...>
+       <expression 'new(<...'object'>, a=1, b=2)' ...>
+
     '''
     arity = N_ARITY
     _format = 'new({0}{1})'
-    _method_name = b'_newobject'
+    _method_name = str('_newobject')
 new = NewObjectFunction
 
 
@@ -1048,19 +1110,30 @@ _expr_operations.update({operation._rmethod_name:
                         if getattr(operation, 'arity', None) is BINARY and
                            getattr(operation, '_rmethod_name', None)})
 
-ExpressionTreeOperations = type(b'ExpressionTreeOperations', (object,),
+ExpressionTreeOperations = type(str('ExpressionTreeOperations'), (object,),
                                 _expr_operations)
 
 
-# The _target_ protocol for expressions.
+# The _xotl_target_ (aka _target_) protocol for expressions.
 def _extract_target(which):
-    if context['FLEXIBLE_TARGET_PROTOCOL']:
-        target = getattr(which, '_target_', lambda x: x)
+    from xoutil.types import Unset
+    func = getattr(type(which), '_xotl_target_', Unset)
+    if func is Unset:
+        func = getattr(type(which), '_target_', Unset)
+        if func is not Unset:
+            import warnings
+            from xoutil.objects import full_nameof
+            warnings.warn('The _target_ protocol has been renamed to '
+                          '_xotl_target_ and in future versions it will be'
+                          ' removed. Please update %s.' %
+                          full_nameof(type(which)))
+    if func:
+        return func(which)
     else:
-        target = getattr(type(which), '_target_', lambda x: x)
-    return target(which)
+        return which
 
 
+@implementer(IExpressionTree)
 @complementor(ExpressionTreeOperations)
 class ExpressionTree(object):
     '''A representation of an expression as an :term:`expression tree`.
@@ -1075,8 +1148,6 @@ class ExpressionTree(object):
     children).
 
     '''
-    implements(IExpressionTree)
-
     __slots__ = ('_op', '_children', '_named_children')
 
     def __init__(self, operation, *children, **named_children):
@@ -1085,7 +1156,7 @@ class ExpressionTree(object):
 
             >>> class X(object):
             ...    @classmethod
-            ...    def _target_(cls, self):
+            ...    def _xotl_target_(cls, self):
             ...        return 123
 
             >>> add(X(), 1978)    # doctest: +ELLIPSIS
@@ -1096,6 +1167,13 @@ class ExpressionTree(object):
         self._children = tuple(_extract_target(child) for child in children)
         self._named_children = {name: _extract_target(value)
                                 for name, value in named_children.items()}
+        _context = context[EXPRESSION_CONTEXT]
+        if _context:
+            try:
+                bubble = _context.data.bubble
+                bubble.capture_part(self)
+            except (AttributeError, KeyError):
+                pass
 
     @property
     def op(self):
@@ -1113,6 +1191,13 @@ class ExpressionTree(object):
     def named_children(self):
         'A dictionary that contains the named operands in the expression.'
         return dict(self._named_children)
+
+    def __hash__(self):
+        from xoutil.compat import iteritems_
+        children_signature = tuple(hash(c) for c in self.children)
+        named_children_signature = tuple(sorted((n, hash(c)) for n, c in iteritems_(self.named_children)))
+        signature = (hash(self.operation), children_signature, named_children_signature)
+        return hash(signature)
 
     def __eq__(self, other):
         '''
@@ -1157,17 +1242,16 @@ def _build_op_class(name, methods_spec):
     def build_meth(func, binary=True):
         def binary_meth(self, other):
             return func(self, other)
-
         def unary_meth(self):
             return func(self)
-
         if binary:
             return binary_meth
         else:
             return unary_meth
-    attrs = {method_name: build_meth(func, binary)
+    attrs = {str(method_name): build_meth(func, binary)
                 for method_name, func, binary in methods_spec}
-    return type(name, (object,), attrs)
+    cls = type(object)
+    return cls(str(name), (object,), attrs)
 
 
 @proxify
@@ -1187,18 +1271,18 @@ class q(object):
     But `q`-objects get out of the way and do not insert them selves into the
     expressions they build. For instance::
 
-        >>> age = q(b'age')
+        >>> age = q(str('age'))
         >>> type(age) is q
         True
 
         >>> expr = age + q(10)
-        >>> [type(child) for child in expr.children]
-        [<type 'str'>, <type 'int'>]
+        >>> [type(child) for child in expr.children]    # doctest: +ELLIPSIS
+        [<...'str'>, <...'int'>]
 
     '''
     r = lambda f: lambda self, other: f(other, self)
 
-    query_fragment = _build_op_class(b'query_fragment',
+    query_fragment = _build_op_class('query_fragment',
                                      (('__and__', and_, True),
                                       ('__or__', or_, True),
                                       ('__rand__', r(and_), True),
@@ -1206,11 +1290,11 @@ class q(object):
                                       ('__xor__', xor_, True),
                                       ('__rxor__', r(xor_), True)))
 
-    comparable_for_equalitity = _build_op_class(b'comparable_for_equalitity',
+    comparable_for_equalitity = _build_op_class('comparable_for_equalitity',
                                                 (('__eq__', eq, True),
                                                  ('__ne__', ne, True)))
 
-    comparable = _build_op_class(b'comparable',
+    comparable = _build_op_class('comparable',
                                  (('__lt__', lt, True),
                                   ('__gt__', gt, True),
                                   ('__le__', le, True),
@@ -1223,7 +1307,7 @@ class q(object):
         def endswith(self, suffix):
             return endswith(self, suffix)
 
-    number_like = _build_op_class(b'number_like',
+    number_like = _build_op_class('number_like',
                                   (('__add__', add, True),
                                    ('__radd__', r(add), True),
                                    ('__sub__', sub, True),
@@ -1253,7 +1337,7 @@ class q(object):
                number_like, string_like]
 
     @classmethod
-    def _target_(cls, self):
+    def _xotl_target_(cls, self):
         'Supports the target protocol for expressions'
         with context(UNPROXIFING_CONTEXT):
             return self.target

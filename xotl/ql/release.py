@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.release
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -17,4 +17,25 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 
-VERSION = '0.1.8'
+VERSION = '0.2.0'
+
+def dev_tag():
+    result = ''
+    import os
+    fn = os.path.abspath(os.path.join(__file__, '..', '..', '..', 'setup.cfg'))
+    if os.path.exists(fn):
+        try:
+            import configparser
+        except:
+            import ConfigParser as configparser
+        parser = configparser.SafeConfigParser()
+        parser.read([fn])
+        try:
+            res = parser.get(str('egg_info'), str('tag_build'))
+        except:
+            res = None
+        if res:
+            result = res
+    return result
+
+RELEASE_TAG = dev_tag()
