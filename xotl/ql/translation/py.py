@@ -278,17 +278,17 @@ class var(_var):
             step = path.pop(0)
             current = getattr(current, step, Unset)
         if current is Unset:
-            if default is not Unset:
+            if path:
+                raise AttributeError(step or root)
+            elif default is not Unset:
                 return default
-            elif not path:
+            else:
                 # XXX: We return _false if the path was completely consumed,
                 # i.e: the failure point is the last attribute. I (manu) think
                 # is less astonishing to return a falsy value than to fail. Of
                 # course this works only for truth-testing; for traversing, a
                 # _false token should yield nothing.
                 return _false
-            else:
-                raise AttributeError(step or root)
         else:
             return current
 
