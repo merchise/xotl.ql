@@ -20,6 +20,14 @@ Terms and glossary
 
      See more on http://en.wikipedia.org/Abstract_Syntax_Tree
 
+   bound term
+
+      A :term:`term` that is bound to a :term:`generator token`. Inside a query
+      all terms are bound, unless they are :ref:`free terms <free-terms>` drawn
+      directly from the :obj:`xotl.ql.core.this` object.
+
+      The `this` object is never bound to any token.
+
    CST
    Concrete Syntax Tree
 

@@ -46,11 +46,10 @@ from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CONTEXT
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
-                                IQueryPart,
                                 IExpressionTree,
                                 IExpressionCapable,
                                 IQueryTranslator,
@@ -68,47 +67,58 @@ __all__ = (str('this'), str('these'),)
 
 # A thread-local namespace to avoid using context. Just to test if this
 # avoid the context's bug.
-_local = threading.local()
+# _local = threading.local()
 
 
-def _get_bubbles_stack():
-    unset = object()
-    stack = getattr(_local, 'bubbles', unset)
-    if stack is unset:
-        stack = _local.bubbles = []
-    return stack
+# def _get_bubbles_stack():
+#     unset = object()
+#     stack = getattr(_local, 'bubbles', unset)
+#     if stack is unset:
+#         stack = _local.bubbles = []
+#     return stack
 
 
-def _create_and_push_bubble():
-    'Creates a bubble and pushes it to the local stack'
-    bubbles = _get_bubbles_stack()
-    bubble = QueryParticlesBubble()
-    bubbles.append(bubble)
-    return bubble
+# def _create_and_push_bubble():
+#     'Creates a bubble and pushes it to the local stack'
+#     bubbles = _get_bubbles_stack()
+#     bubble = QueryParticlesBubble()
+#     bubbles.append(bubble)
+#     return bubble
 
 
-def _pop_bubble():
-    'Removes the top-most bubble from the bubble stack'
-    bubbles = _get_bubbles_stack()
-    return bubbles.pop(-1)
+# def _pop_bubble():
+#     'Removes the top-most bubble from the bubble stack'
+#     bubbles = _get_bubbles_stack()
+#     return bubbles.pop(-1)
 
 
-def _get_current_bubble():
-    'Returns the top-most bubble'
-    bubbles = _get_bubbles_stack()
-    return bubbles[-1]
+# def _get_current_bubble():
+#     'Returns the top-most bubble'
+#     bubbles = _get_bubbles_stack()
+#     return bubbles[-1]
 
 
-def _emit_part(part):
+def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
-    bubble = _get_current_bubble()
-    bubble.capture_part(part)
+    # bubble = _get_current_bubble()
+    # bubble.capture_part(part)
+    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    if bubble:
+        bubble.capture_part(part)
+    elif not quiet:
+        raise RuntimeError('There should be context')
 
 
-def _emit_token(token):
+def _emit_token(token, quiet=False):
     'Emits a token to the current bubble'
-    bubble = _get_current_bubble()
-    bubble.capture_token(token)
+    # bubble = _get_current_bubble()
+    # bubble.capture_token(token)
+    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    if bubble:
+        bubble.capture_token(token)
+    elif not quiet:
+        raise RuntimeError('There should be context')
+
 
 
 @implementer(ITerm)
@@ -236,7 +246,9 @@ class Term(object):
             context[UNPROXIFING_CONTEXT]):
             return get(attr)
         else:
-            return Term(name=attr, parent=self)
+            result = Term(name=attr, parent=self)
+            _emit_part(result, True)
+            return result
 
     def __call__(self, *args, **kwargs):
         with context(UNPROXIFING_CONTEXT):
@@ -248,8 +260,8 @@ class Term(object):
             raise TypeError()
 
     def __iter__(self):
-        '''Yields a single instance of :class:`query part
-        <xotl.ql.interfaces.IQueryPart>` that wraps the current term instance.
+        '''Yields a single instance of a :class:`bound term
+        <xotl.ql.interfaces.IBoundTerm>` that is a clone of the current.
 
         This allows an idiomatic way to express queries::
 
@@ -275,8 +287,31 @@ class Term(object):
                 bound_term = Term(name, parent=parent, binding=None)
             token = GeneratorToken(expression=bound_term)
             bound_term.binding = token
-        instance = QueryPart(expression=bound_term)
-        _emit_token(token)
+            # XXX: Since bound_terms might span accross subqueries, there might
+            # be several stacked bubbles around. For instance::
+            #
+            #    (parent
+            #        for parent in this('parent')
+            #        if any_(child for child in parent.children if child.age < 6))
+            #
+            # In this case, the enclosed parent.children emits to top-most
+            # bubble, but when the iter is invoked by `any_` to resolve its
+            # argument a second bubble is in place and the hack (XXX) below
+            # won't work. Furthermore, the token's expression is the bound-term
+            # while the emmited part was the original one. So we keep the
+            # original_term so that operations that resolver their arguments as
+            # subquery may remove the escaped part.
+            bound_term.original_term = self
+        instance = bound_term
+        # XXX: When emiting a token in the context of query, if this token's
+        # expression is also a part, then it was emitted without binding, so we
+        # need to manually check this case here
+        bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+        if bubble:
+            parts = bubble._parts
+            if parts and self is parts[-1]:
+                parts.pop(-1)
+            _emit_token(token)
         yield instance
 
     def __str__(self):
@@ -684,6 +719,8 @@ class QueryParticlesBubble(object):
                 return result
         elif ITerm.providedBy(expression):
             return expression.parent is top
+        elif IQueryObject.providedBy(expression):
+            return False
         else:
             raise TypeError('Parts should be either these instance or '
                             'expression trees; not %s' % type(expression))
@@ -722,21 +759,21 @@ class QueryParticlesBubble(object):
            lost.
 
         :param part: The emitted query part
-        :type part: :class:`IQueryPart`
+        :type part: :class:`IExpressionCapable`
         '''
         with context(UNPROXIFING_CONTEXT):
-            if provides_all(part, IQueryPart):
-                expression = part.expression
-                parts = self._parts
-                if parts:
-                    mergable = self.mergable
-                    while parts and mergable(expression):
-                        top = parts.pop()
-                        self._particles.remove(top)
-                parts.append(expression)
-                self._particles.append(expression)
+            if provides_all(part, IExpressionCapable):
+                expression = part
             else:
                 assert False
+            parts = self._parts
+            if parts:
+                mergable = self.mergable
+                while parts and mergable(expression):
+                    top = parts.pop()
+                    self._particles.remove(top)
+            parts.append(expression)
+            self._particles.append(expression)
 
     def capture_token(self, token):
         '''Captures an emitted token.
@@ -817,13 +854,10 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
-        bubble = _create_and_push_bubble()
-        try:
+        with context(EXPRESSION_CONTEXT) as _context:
+            bubble = _context.data.bubble = QueryParticlesBubble()
             selected_parts = next(comprehension)
-            selected_parts_type = type(selected_parts)
-        finally:
-            b = _pop_bubble()
-            assert b is bubble
+        selected_parts_type = type(selected_parts)
         with context(UNPROXIFING_CONTEXT):
             if not isinstance(selected_parts, (list, tuple)):
                 selected_parts = (selected_parts,)
@@ -832,10 +866,9 @@ class _QueryObjectType(type):
             # Selections that are parts' were emitted last and are disguised as
             # filters at the top of the bubble.parts, this should be fixed:
             for part in reversed(selected_parts):
-                expr = part.expression
-                if filters and expr is filters[-1]:
+                if filters and part is filters[-1]:
                     filters.pop(-1)
-                selection.append(expr)
+                selection.append(part)
             query = self()
             if issubclass(selected_parts_type, (list, tuple)):
                 query.selection = selected_parts_type(reversed(selection))
@@ -999,7 +1032,6 @@ class QueryObject(object):
         'Creates a subquery'
         raise NotImplementedError
 
-
 these = QueryObject
 
 
@@ -1037,148 +1069,9 @@ class GeneratorToken(object):
         self._expression = value
 
 
-def _query_part_method(target):
-    '''Decorator of every method in QueryPart that emits its result to
-    the "active" particle bubble.'''
-    def inner(self, *args, **kwargs):
-        result = target(self, *args, **kwargs)
-        _emit_part(result)
-        return result
-    inner.__name__ = target.__name__
-    return inner
-
-
-def _build_unary_operator(operation):
-    method_name = operation._method_name
-    def method(self):
-        result = QueryPart(expression=operation(self))
-        return result
-    method.__name__ = method_name
-    return _query_part_method(method)
-
-
-def _build_binary_operator(operation, inverse=False):
-    if not inverse:
-        method_name = operation._method_name
-    else:
-        method_name = operation._rmethod_name
-    if method_name:
-        def method(self, *others):
-            if not inverse:
-                result = QueryPart(expression=operation(self, *others))
-            else:
-                assert operation._arity == BINARY
-                other = others[0]
-                result = QueryPart(expression=operation(other, self))
-            return result
-        method.__name__ = method_name
-        return _query_part_method(method)
-
-
-_part_operations = {operation._method_name:
-                    _build_unary_operator(operation)
-                 for operation in OperatorType.operators
-                    if getattr(operation, 'arity', None) is UNARY}
-_part_operations.update({operation._method_name:
-                        _build_binary_operator(operation)
-                      for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) in (BINARY, N_ARITY)})
-
-_part_operations.update({operation._rmethod_name:
-                        _build_binary_operator(operation, True)
-                      for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) is BINARY and
-                           getattr(operation, '_rmethod_name', None)})
-
-
-QueryPartOperations = type(str('QueryPartOperations'), (object,), _part_operations)
-
-
-class _QueryPartType(type):
-    def _xotl_target_(self, part):
-        from xoutil.proxy import unboxed
-        return unboxed(part).expression
-
-
-@implementer(IQueryPart, ITerm)
-@metaclass(_QueryPartType)
-@complementor(QueryPartOperations)
-class QueryPart(object):
-    '''A class that wraps either :class:`Term` or :class:`ExpressionTree` that
-    implements the :class:`xotl.ql.interfaces.IQueryPart` interface.
-
-    To build a query object from a comprehension like in::
-
-        these(count(parent.children) for parent in this if parent.age > 34)
-
-    We need to differentiate the IF (``parent.age > 34``) part of the
-    comprehension from the SELECTION (``count(parent.children)``); which in the
-    general case are both expressions.
-
-    '''
-    def __init__(self, **kwargs):
-        with context(UNPROXIFING_CONTEXT):
-            self._expression = expression = kwargs.get('expression')
-            assert IExpressionCapable.providedBy(expression)
-
-    @property
-    def expression(self):
-        return self._expression
-
-    @expression.setter
-    def expression(self, value):
-        if provides_any(value, IExpressionCapable):
-            self._expression = value
-        else:
-            raise TypeError('QueryParts wraps IExpressionCapable objects only')
-
-    def __iter__(self):
-        with context(UNPROXIFING_CONTEXT):
-            expression = self.expression
-            # XXX: In cases of sub-queries the part will be emitted, but the
-            #      iter will be hold, so the token won't be emitted and the
-            #      part won't be removed. So we're bringing this check back.
-            bubble = _get_current_bubble()
-            assert bubble
-            if bubble._parts and expression is bubble._parts[-1]:
-                bubble._parts.pop(-1)
-            return iter(expression)
-
-    def __str__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            result = str(instance)
-        return '<qp: %s>' % result
-    __repr__ = __str__
-
-    def __getattribute__(self, attr):
-        get = super(QueryPart, self).__getattribute__
-        if context[UNPROXIFING_CONTEXT]:
-            return get(attr)
-        else:
-            with context(UNPROXIFING_CONTEXT):
-                instance = get('expression')
-            result = QueryPart(expression=getattr(instance, attr))
-            _emit_part(result)
-            return result
-
-    @_query_part_method
-    def __call__(self, *args, **kwargs):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-        result = QueryPart(expression=instance(*args, **kwargs))
-        return result
-
-    def __hash__(self):
-        with context(UNPROXIFING_CONTEXT):
-            instance = self.expression
-            ct = hash(type(self))
-        return hash(instance) + ct
-
 @decorator
 def thesefy(target, name=None):
-    '''
-    Takes in a class and injects it an `__iter__` so that the class may take
+    '''Takes in a class and injects it an `__iter__` so that the class may take
     part of `this` in :term:`query expressions <query expression>`.
 
         >>> @thesefy
@@ -1196,12 +1089,13 @@ def thesefy(target, name=None):
         ...                if which.name.startswith('A'))
 
     This is only useful if your real class does not have a metaclass of its own
-    that do that. However, if you do have a metaclass with an `__iter__` method
-    it should either return an `IQueryPart` instance or a `generator object`.
+    that does that already. However, if you do have a metaclass with an
+    `__iter__` method it must return a `generator object`: returning anything
+    else and "thesefying" is a TypeError.
 
-    Optionally (usually for debugging purposes only) you may pass a name to
-    the decorator that will be used as the name for the internally generated
-    :class:`Term` instance.
+    Optionally (useful for debugging purposes only) you may pass a name to the
+    decorator that will be used as the name for the internally generated
+    :class:`Term` instance::
 
         >>> @thesefy('Entity')
         ... class Entity(object):
@@ -1211,18 +1105,7 @@ def thesefy(target, name=None):
         >>> q.selection        # doctest: +ELLIPSIS
         (<this('Entity') at 0x...>,)
 
-    This way it's easier to create tests::
-
-        >>> filters = q.filters
-        >>> expected_is = is_instance(this('Entity'), Entity)
-        >>> expected_filter = this('Entity').name.startswith('A')
-
-        >>> from xoutil.proxy import unboxed
-        >>> any(unboxed(expected_is) == f for f in filters)
-        True
-
-        >>> any(unboxed(expected_filter) == f for f in filters)
-        True
+    This way it's easier to create tests.
 
     '''
     class new_meta(type(target)):
@@ -1241,8 +1124,6 @@ def thesefy(target, name=None):
             if isinstance(result, GeneratorType):
                 for item in result:
                     yield item
-            elif result is not Unset and IQueryPart.providedBy(result):
-                    yield result
             elif result is Unset:
                 from xotl.ql.expressions import is_instance
                 query_part = next(iter(this(name)))

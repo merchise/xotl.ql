@@ -17,7 +17,14 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 import unittest
-import pytest
+try:
+    import pytest
+except:
+    class pytest(object):
+        class _mark(object):
+            def __getattr__(self, attr):
+                return lambda *a, **kw: (lambda f: f)
+        mark = _mark()
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -91,6 +98,31 @@ class TransitiveRelationDescriptor(object):
             setattr(instance, self.internal_name, [value])
 
 
+class backref(object):
+    def __init__(self, name, ref):
+        self.name = name
+        self._name = 'backref_%s' % name
+        self.ref = ref
+
+    def __get__(self, inst, cls):
+        if not inst:
+            return self
+        else:
+            return getattr(inst, self._name, None)
+
+    def __set__(self, inst, value):
+        from xoutil.objects import setdefaultattr
+        target = getattr(self, 'target', None)
+        if target and not isinstance(value, target):
+            raise TypeError('Cannot assign %s to %s' % (value, self.name))
+        previous = getattr(inst, self._name, None)
+        if previous:
+            backrefs = getattr(previous, self.ref)
+            backrefs.remove(self)
+        setattr(inst, self._name, value)
+        backrefs = setdefaultattr(value, self.ref, [])
+        backrefs.append(self)
+
 @thesefy
 class Entity(object):
     def __init__(self, **attrs):
@@ -162,6 +194,10 @@ class Person(Entity):
     lives_in = TransitiveRelationDescriptor('located-in', Place)
     birthdate = date_property('_birthdate')
     age = age_property('birthdate')
+    mother = backref('mother', 'children')
+    father = backref('father', 'children')
+Person.mother.target = Person
+Person.father.target = Person
 
 
 cuba = Place(name='Cuba', type='Country')
@@ -171,23 +207,56 @@ cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
 ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
 moron = Place(name='Morón', type='Municipality', located_in=ciego)
 
+
+# So that ages are stable in tests
+def get_birth_date(age):
+    from datetime import datetime, timedelta
+    today = datetime.today()
+    birth = today - timedelta(days=age*365.25)
+    return birth
+
 elsa = Person(name='Elsa Acosta Cabrera',
-              birthdate='1947-10-06',
+              birthdate=get_birth_date(65),
               lives_in=moron)
+
+papi = Person(name='Manuel Vázquez Portal',
+              birthdate=get_birth_date(63))
+
 manu = Person(name='Manuel Vázquez Acosta',
-              birthdate='1978-10-21',
+              birthdate=get_birth_date(34),
               mother=elsa,
+              father=papi,
               lives_in=lisa)
 
 denia = Person(name='Ana Denia Pérez',
-               birthdate='1950-04-01',
+               birthdate=get_birth_date(58),
                lives_in=cotorro)
-pedro = Person(name='Pedro Piñero', birthdate='1950-04-01', lives_in=cotorro)
-yade = Person(name='Yadenis Piñero Pérez', birthdate='1979-05-16',
-              mother=denia, father=pedro, lives_in=lisa)
+
+pedro = Person(name='Pedro Piñero',
+               birthdate=get_birth_date(60),
+               lives_in=cotorro)
+
+yade = Person(name='Yadenis Piñero Pérez',
+              birthdate=get_birth_date(33),
+              mother=denia,
+              father=pedro, lives_in=lisa)
+
+ppp = Person(name='Yobanis Piñero Pérez',
+             birthdate=get_birth_date(36),
+             mother=denia,
+             father=pedro,
+             lives_in=lisa)
+
+pedri = Person(name='Pedrito',
+               birthdate=get_birth_date(10),
+               father=ppp)
+
+carli = Person(name='Carli',
+               birthdate=get_birth_date(8),
+               father=ppp)
 
 manolito = Person(name='Manuel Vázquez Piñero',
-                  birthdate='2007-03-22',
+                  birthdate=get_birth_date(6),
                   mother=yade,
                   father=manu,
                   lives_in=lisa)
@@ -197,7 +266,7 @@ manolito = Person(name='Manuel Vázquez Piñero',
 #    Python 2.7.2 (1.9+dfsg-1, Jun 19 2012, 23:45:31)
 #    [PyPy 1.9.0 with GCC 4.7.0] on linux2)
 #
-# The skipped tests take a long long time to do, that's why we skip them.
+# ... the skipped tests take a long long time to do.
 #
 # You should notice that the translation.py module is NOT considered to be
 # a production module, but a proof of concept for translation from xotl.ql
@@ -220,6 +289,20 @@ manolito = Person(name='Manuel Vázquez Piñero',
 #
 # For the sake of testability I skip those tests in PyPy. Still the core of
 # xotl.ql is almost working in PyPy.
+
+@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+def test_all_pred():
+    from xotl.ql.expressions import all_
+    from xotl.ql.translation.py import naive_translation
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if all_((30 < child.age) & (child.age < 35) for child in parent.children))
+    plan = naive_translation(query)
+    result = list(plan())
+    assert elsa in result
+    assert papi in result
+    assert len(result) == 2
 
 
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))

@@ -2,6 +2,21 @@
 Internal details of the processing of query expressions
 =======================================================
 
+This document **is not** part of the external API of the query language, but a
+description of internal implementation details. The intended audience for this
+document is: programmers that need to extend the core or the expression
+language; and programmers writing new translators.
+
+  **Up-to-date notice:** Since 0.2.0 there's no longer a `query part` concept:
+  If you read this document as it is now, you should observe the following:
+
+  - Whenever you see we mention a `query part` is being created actually a
+    simple :term:`bound term` is being used.
+
+  - Now expressions emit themselves to any bubble lying around (which may be
+    put in a stack o bubbles for sub-query related stuff.)
+
+
 This document explains how it's implemented the "parsing" of a :term:`query
 expression` into a :term:`query object`. It's a rather technical document and
 does not belong to the API, so you may not read it unless you are interested in
@@ -48,23 +63,23 @@ As an example let's analyze the following query expression::
 For this query expression, the query object object should:
 
 - Have for :attr:`~xotl.ql.interfaces.IQuery.tokens` the ones related to
-  `this('person')`, `this('partner')` and `this('relation')`.
+  ``this('person')``, ``this('partner')`` and ``this('relation')``.
 
 - Have for :attr:`~xotl.ql.interfaces.IQuery.selection` the tuple that contains
   the expressions `person.name` and `partner.name`.
 
-  In these expressions, `person` is actually the term `this('person')`, and
-  `partner` is actually the term `this('partner')`
+  In these expressions, `person` is actually the term ``this('person')``, and
+  `partner` is actually the term ``this('partner')``
 
   We'll cover the difference (and relation) of terms and tokens :ref:`later
   <terms-vs-tokens>`.
 
 - Have for :attr:`~xotl.ql.interfaces.IQuery.filters` a list which contains:
 
-  - the expression `rel.type == 'partnership'`, where `rel` stands for the term
-    `this('relation')`
+  - the expression ``rel.type == 'partnership'``, where `rel` stands for the
+    term ``this('relation')``
 
-  - the expression `(rel.subject == person) & (rel.object == partner)`, the
+  - the expression ``(rel.subject == person) & (rel.object == partner)``, the
     terms are the same as before.
 
 If, instead, the query expression were::
@@ -83,9 +98,9 @@ with that kind of equivalence: this query expression is *not* syntactically
 equivalent to the previous one. So, the attribute `filters` changes to a list
 of:
 
-  - the expression `rel.type == 'partnership'`
-  - the expression `rel.subject == person`
-  - the expression `rel.object == partner`
+  - the expression ``rel.type == 'partnership'``
+  - the expression ``rel.subject == person``
+  - the expression ``rel.object == partner``
 
 .. _terms-vs-tokens:
 
@@ -128,8 +143,8 @@ and since ``parent.children`` is actually ``this('parent').children``, then
 Then, how could we tell that ``this('parent').children.updated_since(1)`` is a
 condition over the collection ``this('parent').children`` instead over each
 object drawn from it? How do we tell that ``this('parent').children.age < 6``
-is a condition over objects from and not a condition over the collection
-itself?
+is a condition over objects drawn from the collection and not a condition over
+the collection itself?
 
 The answer is simple: terms that occur in expressions of a query object, are
 usually :class:`bound <xotl.ql.interfaces.IBoundTerm>` to a generator token. If
@@ -150,65 +165,14 @@ operator>` like :class:`all_ <xotl.ql.expressions.AllFunction>` that may take
 bound. Furthermore, the query object building machinery does not even realizes
 those term were there.
 
-.. todo::
+In the following query::
 
-   This issue points to another complex issue. Let's analyze the following
-   query::
+  these(parent
+        for parent in this('parent')
+        if any_(this.children, this.age > 6))
 
-     these(parent for parent in this('parent')
-           if any_(child for child in parent.children if child.age < 6))
-
-   Currently, the query object returned contains a single filter that reflects
-   the ``any_(...)`` condition; but the argument is unprocessed: a blind
-   `generator object`.
-
-   This is partially correct, since if were to "open" the generator, then the
-   parts and tokens emitted by this subquery would merge with the ones of the
-   outer queries and would lead to an mistaken query object. On the other hand,
-   not opening it left *too much* work for :term:`translators <query
-   translator>` that actually belongs to the `query object` building machinery.
-
-   If we were to "open" subqueries, the
-   :class:`xotl.ql.interfaces.IQueryObject` should be changed to have,
-   possibly, an attribute ``queries``; and :class:`xotl.ql.core.these` would
-   have to chose a given interpretation of `any_`.
-
-   Also, if we give the responsability to ``these`` we may hurt the extension
-   point, since ``these`` not have any knowledge of "future" operations.
-
-   The tie breaker seems to provide a mechanism for resolving generator
-   arguments:
-
-   If an operator have implements a given protocol (a subquery protocol), then
-   invoke it to produce subqueries. This operator may call ``these``
-   recursively to obtain the sub-query, this would have the effect of isolating
-   the sub-query elements from the outer queries, and if those subqueries enter
-   also have sub-queries, they will be constructed as well.
-
-   Furthermore, leaving this resolution mechanism to operators, leaves open the
-   possibility to multiple interpretations.
-
-   20130404 -- Update
-
-   Actually choosing an interpretation for an ambiguous operator should not
-   exactly reside in the operator itself as the proposed protocol might
-   address. Doing so effectively removes the ambiguity and our work will be
-   vane.
-
-   So currently my ideas on the topic are:
-
-   - There should be a *chain-able* protocol and several mixins for each
-     possible interpretation (that are not mixed-in by default).
-
-   - Upon processing a query, translators *may* inject a *chain of* some of
-     those mixins (or their owns) into the operators, according to the
-     interpretations the translation could handle.
-
-
-   - There should not be a :attr:`xotl.ql.interfaces.IQueryObject.queries`
-     since full IQueryObject instances will be hold in the
-     :attr:`~xotl.ql.interfaces.IExpressionTree.children` attribute of
-     expressions.
+The terms `this.children` and `this.age` are not bound to any token in the
+query, thus they are free terms.
 
 
 Notation
@@ -220,18 +184,10 @@ compact:
 - we will use the notation `tk<expr>` to represent the generator
   token built by the the expression `expr`;
 
-- and `qp<expr>` to represent a query part with its
-  :attr:`~xotl.ql.interfaces.IQueryPart.expression` equal to `expr`.
+  we'll use the `name of term` instead of the full ``this(name)`` when a term
+  occurs in an expression.
 
-- In both cases, we'll use the `name of term` instead of the full `this(name)`
-  when a term occurs in an expression.
-
-So `tk<parent>` represents a token created with ``this('parent')``, and
-`qp<parent.age > 34>` is a query part that wraps the expression
-``this('parent').age > 34``. To keep the notation simple, will identify a bound
-term with is :attr:`~xotl.ql.interfaces.IBoundTerm.binding`; so in the query
-part `qp<child.age < 6>`, the term `child.age` is bound to the token from which
-`child` is drawn.
+  So `tk<parent>` represents a token created with ``this('parent')``.
 
 
 How does :class:`~xotl.ql.core.these` builds a query object?
@@ -242,6 +198,11 @@ When creating a query object, :class:`xotl.ql.core.these` creates a stack of
 object (i.e before calling `next` to the generator object). The bubble captures
 every expression and token that are emitted in the making of expressions that
 happen inside the query expression.
+
+:class:`Expressions <xotl.ql.expressions.ExpressionTree>` know about bubbles
+and if any bubble is lying around when a new expression is created, the
+expression will be captured. The same happens when a new token is created
+(i.e. by calling `iter` over a term).
 
 Let's see how the whole thing works by looking at how it would process the
 following query expression::

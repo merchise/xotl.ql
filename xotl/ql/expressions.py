@@ -43,6 +43,13 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+#: When expressions are created inside this context, they will look for a :
+#`bubble` key in the context, if found it will call the `capture_expression` of
+#: the bubble; if there's no bubble a warning will logged (cause there should
+#: be a bubble in this context.)
+EXPRESSION_CONTEXT = object()
+
+
 class UNARY(object):
     @classmethod
     def formatter(cls, operation, children, kw=None, _str=str):
@@ -256,6 +263,9 @@ class _FunctorOperatorType(OperatorType):
     implementation: creating an expression of the type `(opfunction, *args)`.
     '''
     def __call__(self, *children, **named):
+        resolve_arguments = getattr(self, '_resolve_arguments', None)
+        if resolve_arguments:
+            children, named = resolve_arguments(*children, **named)
         if children:
             stack = context
             head, tail = children[0], children[1:]
@@ -767,7 +777,46 @@ class AbsoluteValueUnaryFunction(Operator):
 abs_ = AbsoluteValueUnaryFunction
 
 
-class AllFunction(FunctorOperator):
+class ResolveSubQueryMixin(object):
+    '''Implements a resolution of subqueries.
+
+    If an operation receive a single positional that is generator object, it
+    will be regared as a subquery.
+
+    '''
+    @classmethod
+    def _resolve_arguments(cls, *children, **kwargs):
+        '''Resolves the first and only positional argument as a sub-query by
+        calling :class:`~xotl.ql.core.these`.
+
+        If there is more than one positional argument, or even one keyword
+        argument, or the first argument is not a generator object; then it
+        leaves all the arguments the same.
+
+        '''
+        import types
+        first, rest = children[0], children[1:]
+        if not first or (rest or kwargs):
+            return children, kwargs
+        else:
+            if isinstance(first, types.GeneratorType):
+                from xotl.ql.core import these
+                first = these(first)
+                # XXX: If this operation itself is enclosed in a
+                # EXPRESSION_CONTEXT it might have occurred that a part
+                # (actually a token's term) was emitted but then used as the
+                # generator, so if the first token's binding original_term *is*
+                # the last emmitted this one should be removed.
+                bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+                if bubble:
+                    parts = bubble._parts
+                    with context(UNPROXIFING_CONTEXT):
+                        term = first.tokens[0].expression
+                        if getattr(term, 'original_term', None) is parts[-1]:
+                            parts.pop(-1)
+            return (first, ), {}
+
+class AllFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The representation of the `all` function.
 
@@ -809,7 +858,7 @@ class AllFunction(FunctorOperator):
 all_ = AllFunction
 
 
-class AnyFunction(FunctorOperator):
+class AnyFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The representation of the `any` function. As with :class:`all_` three
     analogous interpretations are possible. For instance::
@@ -826,7 +875,7 @@ class AnyFunction(FunctorOperator):
 any_ = AnyFunction
 
 
-class MinFunction(FunctorOperator):
+class MinFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     A function that takes an expression and represents the minimun of such
     values over the collection.
@@ -868,7 +917,7 @@ class MinFunction(FunctorOperator):
 min_ = MinFunction
 
 
-class MaxFunction(FunctorOperator):
+class MaxFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     A function that takes an expression and represents the maximum of such
     values over the collection.
@@ -939,7 +988,7 @@ class EndsWithOperator(FunctorOperator):
 endswith = EndsWithOperator
 
 
-class AverageFunction(FunctorOperator):
+class AverageFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The ``avg(*args)`` operation. There're two possible interpretations:
 
@@ -1118,6 +1167,13 @@ class ExpressionTree(object):
         self._children = tuple(_extract_target(child) for child in children)
         self._named_children = {name: _extract_target(value)
                                 for name, value in named_children.items()}
+        _context = context[EXPRESSION_CONTEXT]
+        if _context:
+            try:
+                bubble = _context.data.bubble
+                bubble.capture_part(self)
+            except (AttributeError, KeyError):
+                pass
 
     @property
     def op(self):

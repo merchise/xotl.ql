@@ -50,10 +50,3 @@ v.. autodata:: this(name, **kwargs)
 
 .. autoclass:: _QueryObjectType
    :members: build_from_generator
-
-
-Implementation Details
-======================
-
-.. autoclass:: QueryPart
-   :members:

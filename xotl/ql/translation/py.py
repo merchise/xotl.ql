@@ -56,12 +56,16 @@ from xotl.ql.expressions import PositiveUnaryOperator
 from xotl.ql.expressions import NegativeUnaryOperator
 from xotl.ql.expressions import AbsoluteValueUnaryFunction
 from xotl.ql.expressions import InvokeFunction
+from xotl.ql.expressions import NewObjectFunction
+from xotl.ql.expressions import AverageFunction
+from xotl.ql.expressions import EndsWithOperator
+from xotl.ql.expressions import StartsWithOperator
+from xotl.ql.expressions import MinFunction
+from xotl.ql.expressions import MaxFunction
+from xotl.ql.expressions import AllFunction
+from xotl.ql.expressions import AnyFunction
 
 from xotl.ql.interfaces import IQueryTranslator
-
-
-from xotl.ql import translation
-from . import cotraverse_expression
 
 __author__ = "Manuel Vázquez Acosta <mva.led@gmail.com>"
 __date__   = "Wed Apr  3 21:22:18 2013"
@@ -373,36 +377,107 @@ def new(t, **kwargs):
         return t(**kwargs)
 
 
-class vmfilter(object):
-    '''Represents a filter ready to be executed in the VM current state.'''
+vminstr_table = {}
+class vminstr(object):
+    '''Represents an instruction tree ready to be executed in the VM current
+    state.
 
-    table = {EqualityOperator: lambda x, y: x == y,
-             NotEqualOperator: lambda x, y: x != y,
-             LogicalAndOperator: lambda x, y: x & y,
-             LogicalOrOperator: lambda x, y: x | y,
-             LogicalXorOperator: lambda x, y: x ^ x,
-             LogicalNotOperator: lambda x: ~x,
-             AdditionOperator: lambda x, y: x + y,
-             SubstractionOperator: lambda x, y: x - y,
-             DivisionOperator: lambda x, y: x/y,
-             MultiplicationOperator: lambda x, y: x*y,
-             FloorDivOperator: lambda x, y: x//y,
-             ModOperator: lambda x, y: x % y,
-             PowOperator: lambda x, y: x**y,
-             LeftShiftOperator: lambda x, y: x << y,
-             RightShiftOperator: lambda x, y: x >> y,
-             LesserThanOperator: lambda x, y: x < y,
-             LesserOrEqualThanOperator: lambda x, y: x <= y,
-             GreaterThanOperator: lambda x, y: x > y,
-             GreaterOrEqualThanOperator: lambda x, y: x >= y,
-             ContainsExpressionOperator: lambda x, y: y in x,
-             IsInstanceOperator: lambda x, y: x._is_a(y),
-             LengthFunction: lambda x: len(x),
-             CountFunction: lambda x: len(x),
-             PositiveUnaryOperator: lambda x: +x,
-             NegativeUnaryOperator: lambda x: -x,
-             AbsoluteValueUnaryFunction: lambda x: abs(x),
-             InvokeFunction: lambda m, *a, **kw: m(*a, **kw)}
+    This is used for both evaluating filters and selections.
+
+    '''
+    class vmcodeset(object):
+        table = vminstr_table
+
+        def codefor(operation):
+            def decorator(func):
+                assert operation not in vminstr_table
+                vminstr_table[operation] = func
+                return func
+            return decorator
+
+        @codefor(NewObjectFunction)
+        def new_object(self, t, **kwargs):
+            if isinstance(t, type):
+                return new(**{arg: value() for arg, value in iteritems_(kwargs)})
+            else:
+                raise TypeError('The first argument to new should be a type. Not %s' % t)
+
+        def sub_query_method(func):
+            def inner(self, *args):
+                from types import GeneratorType
+                from xotl.ql.core import these
+                query, rest = args
+                if rest:
+                    return func(args)
+                if isinstance(query, GeneratorType):
+                    query = these(query)
+                plan = naive_translation(query, vm=dict(self.vm))
+                return func(result for result in plan())
+
+        all_ = codefor(AllFunction)(sub_query_method(all))
+        any_ = codefor(AnyFunction)(sub_query_method(any))
+        min_ = codefor(MinFunction)(sub_query_method(min))
+        max_ = codefor(MaxFunction)(sub_query_method(max))
+        # sum_ = codefor(SumFunction)(sub_query_method(sum))
+
+        def avg(vals):
+            _sum, count = 0, 0
+            for x in vals:
+                _sum += x
+                count += 1
+            return _sum/count
+
+        average = codefor(AverageFunction)(sub_query_method(avg))
+
+        @codefor(LogicalAndOperator)
+        def and_(self, x, y):
+            if isinstance(x, var):
+                x = x._get_current_value(default=False)
+            elif callable(x):
+                x = x()
+            else:
+                assert False
+            if bool(x):
+                return True
+            if isinstance(y, var):
+                y = y._get_current_value(default=False)
+            elif callable(y):
+                y = y()
+            else:
+                assert False
+            if bool(y):
+                return True
+            return False
+
+        table.update({
+            EqualityOperator: lambda self, x, y: x == y,
+            NotEqualOperator: lambda self, x, y: x != y,
+            LogicalOrOperator: lambda self, x, y: x | y,
+            LogicalXorOperator: lambda self, x, y: x ^ x,
+            LogicalNotOperator: lambda self, x: ~x,
+            AdditionOperator: lambda self, x, y: x + y,
+            SubstractionOperator: lambda self, x, y: x - y,
+            DivisionOperator: lambda self, x, y: x/y,
+            MultiplicationOperator: lambda self, x, y: x*y,
+            FloorDivOperator: lambda self, x, y: x//y,
+            ModOperator: lambda self, x, y: x % y,
+            PowOperator: lambda self, x, y: x**y,
+            LeftShiftOperator: lambda self, x, y: x << y,
+            RightShiftOperator: lambda self, x, y: x >> y,
+            LesserThanOperator: lambda self, x, y: x < y,
+            LesserOrEqualThanOperator: lambda self, x, y: x <= y,
+            GreaterThanOperator: lambda self, x, y: x > y,
+            GreaterOrEqualThanOperator: lambda self, x, y: x >= y,
+            ContainsExpressionOperator: lambda self, x, y: y in x,
+            IsInstanceOperator: lambda self, x, y: x._is_a(y),
+            LengthFunction: lambda self, x: len(x),
+            CountFunction: lambda self, x: len(x),
+            PositiveUnaryOperator: lambda self, x: +x,
+            NegativeUnaryOperator: lambda self, x: -x,
+            AbsoluteValueUnaryFunction: lambda self, x: abs(x),
+            InvokeFunction: lambda self, m, *a, **kw: m(*a, **kw)
+        })
+
 
     def __init__(self, filter, vm):
         self.filter = filter
@@ -417,31 +492,10 @@ class vmfilter(object):
             if isinstance(node, ExpressionTree):
                 _args = tuple(e(x) for x in node.children)
                 _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
-                assert node.operation in self.table, 'I don\'t know how to translate %r' % node.operation
-                return lambda: self.table[node.operation](*_args, **_kwargs)
+                assert node.operation in self.vmcodeset.table, 'I don\'t know how to translate %r' % node.operation
+                return lambda: self.vmcodeset.table[node.operation](self, *_args, **_kwargs)
             return node # assumed to be as is
         return e(self.filter)
-
-
-    def _exec(self, instruction):
-        inst, args = instruction[0], instruction[1:]
-        if inst == 'set':
-            which, what = args
-            self.vm[which] = what
-            return ('del', which)
-        elif inst == 'del':
-            which = args[0]
-            del self.vm[which]
-
-    # @contextlib.contextmanager
-    # def modify_vm(self, pre=None, post=None):
-    #     if pre:
-    #         _post = self._exec(pre)
-    #         if not post and _post:
-    #             post = _post
-    #     yield self
-    #     if post:
-    #         self._exec(post)
 
     def __call__(self, pre=None, post=None):
         tree = self.tree
@@ -529,7 +583,7 @@ def naive_translation(query, **kwargs):
             if isinstance(s, Term):
                 result.append(var(s, vm)._get_current_value())
             else:
-                result.append(vmfilter(s, vm)())
+                result.append(vminstr(s, vm)())
         if any(res is _false for res in result):
             return _false
         if isinstance(sel, tuple):
@@ -538,7 +592,7 @@ def naive_translation(query, **kwargs):
             assert len(result) == 1
             return result[0]
 
-    def plan():
+    def plan(**plan_kwargs):
         # The algorithm is simple; first we "intertwine" tokens and filters
         # using a (stable) partial order: a filter comes before a token if and
         # only if neither of it's terms is bound to the token.
@@ -548,14 +602,14 @@ def naive_translation(query, **kwargs):
         #
         from xotl.ql.expressions import _false
         parts = sorted_parts[:]
-        vm = {}
+        vm = plan_kwargs.get('vm', None) or kwargs.get('vm', None) or {}
         result = vmtoken(parts.pop(0), vm, only=only)
         while parts:
             part = parts.pop(0)
             if isinstance(part, GeneratorToken):
                 result = vmtoken(part, vm, only=only).chain(result)
             else:
-                result = vmfilter(part, vm).chain(result)
+                result = vminstr(part, vm).chain(result)
         for _ in result:
             selected = select(query.selection, vm)
             if selected is not _false:

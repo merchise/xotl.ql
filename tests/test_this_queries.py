@@ -25,38 +25,13 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 from xotl.ql import this
 from xotl.ql.core import these, provides_any
 from xotl.ql.interfaces import IQueryObject
-from xotl.ql.core import QueryParticlesBubble, QueryPart, _part_operations
-
-
-from zope.interface import implementer
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-__LOG = False
-
-
-if __LOG:
-    import sys
-    from itertools import chain
-    from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_around_method
-
-    from xotl.ql.tests import logging_aspect
-
-    # Weave logging aspect into every relevant method during testing
-    aspect = logging_aspect(sys.stdout)
-    weave(aspect, QueryParticlesBubble)
-    for attr in iterkeys_(_part_operations):
-        _weave_around_method(QueryPart, aspect, attr, '_around_')
-    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
-
-
-
 def test_thesefy_when_inherited_uses_the_right_name():
     from xotl.ql.core import thesefy
-    from xotl.ql.expressions import is_instance
 
     class Base(object):
         pass
@@ -69,7 +44,6 @@ def test_thesefy_when_inherited_uses_the_right_name():
         pass
 
     assert Person.__name__ == 'Person'
-
 
 
 class TestUtilities(unittest.TestCase):
@@ -162,104 +136,96 @@ class TestUtilities(unittest.TestCase):
             filters.remove(partner_is_a_person)
 
 
-class TestThisQueries(unittest.TestCase):
-    def setUp(self):
-        from xotl.ql.core import QueryParticlesBubble
-        setattr(QueryParticlesBubble, '__repr__', lambda self: hex(id(self)))
+def test_most_basic_query():
+    query = these(parent for parent in this('parent') if parent.age > 40)
+    assert provides_any(query, IQueryObject)
+    # Since the query selects a single object, a single object must be
+    # placed as the selection (not a tuple!).
+    p = query.selection
+    token_expectation = p_expected = this('parent')
+    filter_expectation = this('parent').age > 40
 
-    def test_most_basic_query(self):
-        query = these(parent for parent in this('parent') if parent.age > 40)
-        self.assertTrue(provides_any(query, IQueryObject))
-        # Since the query selects a single object, a single object must be
-        # placed as the selection (not a tuple!).
-        p = query.selection
-        token_expectation = p_expected = this('parent')
-        filter_expectation = this('parent').age > 40
-
-        with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(p, p_expected)
-
-            filters = query.filters
-            self.assertEqual(1, len(filters))
-            self.assertIn(filter_expectation, filters)
-
-            tokens = [tk.expression for tk in query.tokens]
-            self.assertEqual(1, len(tokens))
-            self.assertIn(token_expectation, tuple(tokens))
-
-    def test_basic_queries(self):
-        from xotl.ql.expressions import count
-        query = these((parent.title + parent.name, count(child.toys))
-                        for parent in this('parent')
-                        if parent.age < 40
-                        for child in parent.children
-                        if child.age > 5)
-        self.assertTrue(provides_any(query, IQueryObject))
-
-        (parent_full_name, child_toys) = query.selection
-        full_name_expectation = this('parent').title + this('parent').name
-#        child_name_expectation = this('parent').children.name
-        child_toys_expectation = count(this('parent').children.toys)
-
-        parent_age_test = this('parent').age < 40
-        children_age_test = this('parent').children.age > 5
-
-        parent_token = this('parent')
-        children_token = this('parent').children
-
-        with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(parent_full_name, full_name_expectation)
-#            self.assertEqual(child_name, child_name_expectation)
-            self.assertEqual(child_toys, child_toys_expectation)
-
-            filters = query.filters
-            self.assertEqual(2, len(filters))
-            self.assertIn(parent_age_test, filters)
-            self.assertIn(children_age_test, filters)
-
-            tokens = [tk.expression for tk in query.tokens]
-            self.assertEqual(2, len(tokens))
-            self.assertIn(parent_token, tokens)
-            self.assertIn(children_token, tokens)
-
-    def test_complex_query_with_3_tokens(self):
-        query = these((parent.title + parent.name,
-                       child.name + child.nick, toy.name)
-                      for parent in this('parent')
-                      if parent.children
-                      for child in parent.children
-                      if child.toys
-                      for toy in child.toys
-                      if (parent.age > 32) & (child.age < 5) |
-                         (toy.type == 'laptop'))
-        p = this('parent')
-        c = p.children
-        t = c.toys
+    with context(UNPROXIFING_CONTEXT):
+        assert p == p_expected
 
         filters = query.filters
-        expected_filters = [((p.age > 32) & (c.age < 5) | (t.type == 'laptop')),
-                            p.children, c.toys]
+        assert len(filters) == 1
+        assert filter_expectation in filters
 
         tokens = [tk.expression for tk in query.tokens]
-        expected_tokens = [p, c, t]
+        assert len(tokens) == 1
+        assert token_expectation in tuple(tokens)
 
-        selection = query.selection
-        expected_selection = (p.title + p.name, c.name + c.nick, t.name)
-        with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(selection, expected_selection)
+def test_basic_queries():
+    from xotl.ql.expressions import count
+    query = these((parent.title + parent.name, count(child.toys))
+                    for parent in this('parent')
+                    if parent.age < 40
+                    for child in parent.children
+                    if child.age > 5)
+    assert provides_any(query, IQueryObject)
 
-            self.assertEqual(len(expected_filters), len(filters))
-            for f in expected_filters:
-                self.assertIn(f, filters)
+    (parent_full_name, child_toys) = query.selection
+    full_name_expectation = this('parent').title + this('parent').name
+    child_toys_expectation = count(this('parent').children.toys)
 
-            self.assertEqual(len(expected_tokens), len(tokens))
-            for t in expected_tokens:
-                self.assertIn(t, tokens)
+    parent_age_test = this('parent').age < 40
+    children_age_test = this('parent').children.age > 5
+
+    parent_token = this('parent')
+    children_token = this('parent').children
+
+    with context(UNPROXIFING_CONTEXT):
+        assert parent_full_name == full_name_expectation
+        assert child_toys == child_toys_expectation
+
+        filters = query.filters
+        assert len(filters) == 2
+        assert parent_age_test in filters
+        assert children_age_test in filters
+
+        tokens = [tk.expression for tk in query.tokens]
+        assert len(tokens) == 2
+        assert parent_token in tokens
+        assert children_token in tokens
+
+
+def test_complex_query_with_3_tokens():
+    query = these((parent.title + parent.name,
+                   child.name + child.nick, toy.name)
+                  for parent in this('parent')
+                  if parent.children
+                  for child in parent.children
+                  if child.toys
+                  for toy in child.toys
+                  if (parent.age > 32) & (child.age < 5) | (toy.type == 'laptop'))
+    p = this('parent')
+    c = p.children
+    t = c.toys
+
+    filters = query.filters
+    expected_filters = [((p.age > 32) & (c.age < 5) | (t.type == 'laptop')),
+                        p.children, c.toys]
+
+    tokens = [tk.expression for tk in query.tokens]
+    expected_tokens = [p, c, t]
+
+    selection = query.selection
+    expected_selection = (p.title + p.name, c.name + c.nick, t.name)
+    with context(UNPROXIFING_CONTEXT):
+        assert selection == expected_selection
+
+        assert len(expected_filters) == len(filters)
+        for f in expected_filters:
+            assert f in filters
+
+        assert len(expected_tokens) == len(tokens)
+        for t in expected_tokens:
+            assert t in tokens
 
 
 from xotl.ql.expressions import OperatorType, UNARY, BINARY, N_ARITY
 _tests = {}
-
 
 def _build_unary_test(op):
     def test(self):
@@ -313,146 +279,138 @@ class TestAllOperations(unittest.TestCase, AllOperationsBase):
 
 
 def test_for_generator_as_sole_argument():
-    import types
+    from xotl.ql.core import QueryObject
     from xotl.ql.expressions import all_
     query = these(parent for parent in this
-                  if all_(child.age < 5 for child in parent.children))
+                  if all_(child.age < 5 for child in parent.children)
+                  if all_(parent.children, this.age < 5)
+                  if all_(this.children, this.age < 5))
     assert len(query.filters) == 3
-    assert isinstance(query.filters[0].children[0], types.GeneratorType)
+    assert isinstance(query.filters[0].children[0], QueryObject)
 
 
-class Regression20121030_ForgottenTokensAndFilters(unittest.TestCase):
+# Non-selected tokens should not be forgotten.
+
+# This tests copycats most of the test_thesey_doesnot_messup_identities
+# There's was two related bugs there:
+#    - There should be a token for rel
+#    - There should be a filter `is_instance(rel, Partnetship)`
+
+def test_is_a_partnership_is_not_forgotten():
+    from xoutil.iterators import izip
+    query = these((person, partner)
+                  for person, partner in izip(this('person'),
+                                              this('partner'))
+                  for rel in this('relation')
+                  if rel.type == 'partnership'
+                  if (rel.subject == person) & (rel.object == partner))
+    filters = list(query.filters)
+    expected_rel_type = this('relation').type == 'partnership'
+    with context(UNPROXIFING_CONTEXT):
+        assert expected_rel_type in filters
+        assert len(filters) == 2
+
+def test_theres_a_token_for_partnership():
+    from xoutil.iterators import izip
+    query = these((person, partner)
+                  for person, partner in izip(this('person'),
+                                              this('partner'))
+                  for rel in this('relation')
+                  if rel.type == 'partnership'
+                  if (rel.subject == person) & (rel.object == partner))
+    tokens = [tk.expression for tk in query.tokens]
+    person, partner, rel = this('person'), this('partner'), this('relation')
+    with context(UNPROXIFING_CONTEXT):
+        assert len(tokens) == 3
+        assert rel in tokens
+        assert person in tokens
+        assert partner in tokens
+
+def test_worst_case_must_have_3_filters_and_3_tokens():
+    from xoutil.iterators import izip
+    query = these(person
+                  for person, partner in izip(this('person'),
+                                              this('partner'))
+                  for rel in this('relation')
+                  if rel.type == 'partnership'
+                  if rel.subject == person
+                  if rel.object == partner
+                  if partner.age > 32)
+    filters = list(query.filters)
+    tokens = [tk.expression for tk in query.tokens]
+    person, partner, rel = this('person'), this('partner'), this('relation')
+    expected_rel_type_filter = rel.type == 'partnership'
+    expected_rel_subject_filter = rel.subject == person
+    expected_rel_obj_filter = rel.object == partner
+    expected_partner_age = partner.age > 32
+    with context(UNPROXIFING_CONTEXT):
+        assert len(filters) == 4
+        assert expected_rel_type_filter in filters
+        assert expected_rel_subject_filter in filters
+        assert expected_rel_obj_filter in filters
+        assert expected_partner_age in filters
+
+        assert len(tokens) == 3
+        assert person in tokens
+        assert rel in tokens
+        assert partner in tokens
+
+
+def test_20121127_unnamed_this_leaked():
+    query = these(parent for parent in this if parent.age > 30)
+    term = query.filters[0].children[0]
+    with context(UNPROXIFING_CONTEXT):
+        assert unboxed(term).parent == query.tokens[0].expression
+
+def test_named_terms_matches_a_token():
     '''
-    Non-selected tokens should not be forgotten.
-
-    This tests copycats most of the test_thesey_doesnot_messup_identities
-    There's was two related bugs there:
-       - There should be a token for rel
-       - There should be a filter `is_instance(rel, Partnetship)`
-
+    Ensures that all terms are named, and they are bound to a token that is
+    in the query.
     '''
-    def test_is_a_partnership_is_not_forgotten(self):
-        from xoutil.iterators import izip
-        query = these((person, partner)
-                      for person, partner in izip(this('person'),
-                                                  this('partner'))
-                      for rel in this('relation')
-                      if rel.type == 'partnership'
-                      if (rel.subject == person) & (rel.object == partner))
-        filters = list(query.filters)
-        expected_rel_type = this('relation').type == 'partnership'
-        with context(UNPROXIFING_CONTEXT):
-            self.assertIn(expected_rel_type, filters)
-            self.assertIs(2, len(filters))
+    from xoutil.iterators import izip
+    from xotl.ql.core import thesefy
+    from xotl.ql.translation import cotraverse_expression
 
-    def test_theres_a_token_for_partnership(self):
-        from xoutil.iterators import izip
-        query = these((person, partner)
-                      for person, partner in izip(this('person'),
-                                                  this('partner'))
-                      for rel in this('relation')
-                      if rel.type == 'partnership'
-                      if (rel.subject == person) & (rel.object == partner))
-        tokens = [tk.expression for tk in query.tokens]
-        person, partner, rel = this('person'), this('partner'), this('relation')
-        with context(UNPROXIFING_CONTEXT):
-            self.assertIs(3, len(tokens))
-            self.assertIn(rel, tokens)
-            self.assertIn(person, tokens)
-            self.assertIn(partner, tokens)
+    @thesefy
+    class Person(object):
+        pass
 
-    def test_worst_case_must_have_3_filters_and_3_tokens(self):
-        from xoutil.iterators import izip
-        query = these(person
-                      for person, partner in izip(this('person'),
-                                                  this('partner'))
-                      for rel in this('relation')
-                      if rel.type == 'partnership'
-                      if rel.subject == person
-                      if rel.object == partner
-                      if partner.age > 32)
-        filters = list(query.filters)
-        tokens = [tk.expression for tk in query.tokens]
-        person, partner, rel = this('person'), this('partner'), this('relation')
-        expected_rel_type_filter = rel.type == 'partnership'
-        expected_rel_subject_filter = rel.subject == person
-        expected_rel_obj_filter = rel.object == partner
-        expected_partner_age = partner.age > 32
-        with context(UNPROXIFING_CONTEXT):
-            self.assertIs(4, len(filters))
-            self.assertIn(expected_rel_type_filter, filters)
-            self.assertIn(expected_rel_subject_filter, filters)
-            self.assertIn(expected_rel_obj_filter, filters)
-            self.assertIn(expected_partner_age, filters)
+    @thesefy
+    class Partnership(object):
+        pass
 
-            self.assertIn(person, tokens)
-            self.assertIn(rel, tokens)
-            self.assertIs(3, len(tokens))
-            self.assertIn(partner, tokens)
+    query = these((person, partner)
+                  for person, partner in izip(Person, Person)
+                  for rel in Partnership
+                  if (rel.subject == person) & (rel.obj == partner)
+                  if person.age > 35)
+
+    tokens = [tk.expression for tk in query.tokens]
+    matches_token = lambda term: (term.name and (
+                                  term.binding.expression in tokens or
+                                  matches_token(term.parent)))
+    with context(UNPROXIFING_CONTEXT):
+        assert all(matches_token(term)
+                   for term in cotraverse_expression(*query.filters))
 
 
-class RegressionTests(unittest.TestCase):
-    def test_20121127_unnamed_this_leaked(self):
-        query = these(parent for parent in this if parent.age > 30)
-        term = query.filters[0].children[0]
-        with context(UNPROXIFING_CONTEXT):
-            self.assertEqual(unboxed(term).parent, query.tokens[0].expression)
+def test_loosing_tokens():
+    query = these((child, brother)
+                  for parent in this
+                  for child in parent.children
+                  for brother in parent.children
+                  if child is not brother)
+    assert len(query.tokens) == 3
 
-    def test_named_terms_matches_a_token(self):
-        '''
-        Ensures that all terms are named, and they are bound to a token that is
-        in the query.
-        '''
-        from xoutil.iterators import izip
-        from xotl.ql.core import thesefy
-        from xotl.ql.translation import cotraverse_expression
+def test_right_bindings_for_each_term():
+    query = these((child, brother)
+                  for parent in this
+                  for child in parent.children
+                  for brother in parent.children
+                  if child is not brother)
 
-        @thesefy
-        class Person(object):
-            pass
-
-        @thesefy
-        class Partnership(object):
-            pass
-
-        query = these((person, partner)
-                      for person, partner in izip(Person, Person)
-                      for rel in Partnership
-                      if (rel.subject == person) & (rel.obj == partner)
-                      if person.age > 35)
-
-        tokens = [tk.expression for tk in query.tokens]
-        matches_token = lambda term: (term.name and (
-                                      term.binding.expression in tokens or
-                                      matches_token(term.parent)))
-        with context(UNPROXIFING_CONTEXT):
-            self.assertTrue(all(matches_token(term)
-                                for term in cotraverse_expression(*query.filters)))
-
-
-class RegressionTest20130201(unittest.TestCase):
-    def test_loosing_tokens(self):
-        query = these((child, brother)
-                      for parent in this
-                      for child in parent.children
-                      for brother in parent.children
-                      if child is not brother)
-        self.assertIs(3, len(query.tokens))
-
-    def test_right_bindings_for_each_term(self):
-        query = these((child, brother)
-                      for parent in this
-                      for child in parent.children
-                      for brother in parent.children
-                      if child is not brother)
-
-        child, brother = query.selection
-        # XXX: This assume the order of the tokens is mantained!!!
-        _this, child_token, brother_token = tuple(query.tokens)
-        self.assertIs(unboxed(child).binding, child_token)
-        self.assertIs(unboxed(brother).binding, brother_token)
-
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main(verbosity=2)
+    child, brother = query.selection
+    # XXX: This assume the order of the tokens is mantained!!!
+    _this, child_token, brother_token = tuple(query.tokens)
+    assert unboxed(child).binding is child_token
+    assert unboxed(brother).binding is brother_token

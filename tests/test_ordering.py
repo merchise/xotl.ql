@@ -25,39 +25,12 @@ from __future__ import (division as _py3_division,
 import unittest
 import sys
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
-
 from xotl.ql import this
-from xotl.ql.core import these, provides_any
-from xotl.ql.interfaces import IQueryObject
-from xotl.ql.core import QueryParticlesBubble, QueryPart, _part_operations
+from xotl.ql.core import these
 
-
-from zope.interface import implementer
 
 __author__ = "Manuel Vázquez Acosta <mva.led@gmail.com>"
 __date__   = "Thu Mar 28 15:13:59 2013"
-
-
-__LOG = False
-
-
-if __LOG:
-    import sys
-    from itertools import chain
-    from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_around_method
-
-    from xotl.ql.tests import logging_aspect
-
-    # Weave logging aspect into every relevant method during testing
-    aspect = logging_aspect(sys.stdout)
-    weave(aspect, QueryParticlesBubble)
-    for attr in iterkeys_(_part_operations):
-        _weave_around_method(QueryPart, aspect, attr, '_around_')
-    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
-
 
 
 class TestOrderingExpressions(unittest.TestCase):

@@ -170,3 +170,10 @@
 .. autoclass:: NewObjectFunction
 
 .. autoclass:: new
+
+
+Resolving signatures like :class:`any_` does
+============================================
+
+.. autoclass:: ResolveSubQueryMixin
+   :members: _resolve_arguments

@@ -13,19 +13,20 @@ This module provides the building blocks for creating :term:`expression trees
 themselves, this classes does not attempt to provide anything else than what
 it's deem needed to have an Abstract Syntax Tree (AST).
 
-Each expression is represented by an instance of an :class:`ExpressionTree`. An
-expression tree has two core attributes:
+Each expression is represented by an instance of an
+:class:`xotl.ql.expressions.ExpressionTree`. An expression tree has two core
+attributes:
 
-- The :attr:`~ExpressionTree.operation` attribute contains a reference to the
-  any of the classes that derive from :class:`Operator`.
+- The :attr:`~xotl.ql.expressions.ExpressionTree.operation` attribute contains
+  a reference to the any of the classes that derive from :class:`Operator`.
 
-- The :attr:`~ExpressionTree.children` attribute always contains a tuple
-  with objects to which the operation is applied.
+- The :attr:`~xotl.ql.expressions.ExpressionTree.children` attribute always
+  contains a tuple with objects to which the operation is applied.
 
 Operation classes should have the following attributes:
 
-- `_arity`, which can be any of :class:`N_ARITY`, :class:`BINARY`, or
-  :class:`UNARY`.
+- `_arity`, which can be any of :class:`xotl.ql.expressions.N_ARITY`,
+:class:`xotl.ql.expressions.BINARY`, or :class:`xotl.ql.expressions.UNARY`.
 
 - `_format`, which should be a string that specifies how to format the
   operation when str is invoked to print the expression. The format should
@@ -66,10 +67,10 @@ Objects in expressions
 ----------------------
 
 In order to have any kind of objects in expressions, we provide a very
-ligth-weight transparent wrapper :class:`q`. This simple receives an object as
-it's wrapped, and pass every attribute lookup to is wrapped object but also
-implements the creation of expressions with the supported operations. The
-expression above could be constructed like::
+ligth-weight transparent wrapper :class:`xotl.ql.expressions.q`. This simple
+receives an object as it's wrapped, and pass every attribute lookup to is
+wrapped object but also implements the creation of expressions with the
+supported operations. The expression above could be constructed like::
 
     >>> expr2 = (q(1) == q(2)) & (q(2) == q(3))
     >>> str(expr2)
@@ -133,7 +134,7 @@ For the time being, we keep the q-objects as they allows to test our expression
 language. But, in time, we may refactor this class out of this module.
 
 
-.. autoclass:: q
+.. autoclass:: xotl.ql.expressions.q
    :members:
 
    This class implements :class:`xotl.ql.interfaces.IExpressionCapable`.
@@ -174,9 +175,10 @@ About the operations supported in expression
 
 Almost all normal operations are supported by expressions (please refer to the
 :mod:`API for the expression language <xotl.ql.expressions>` for the complete
-list of supported operations and functions). :class:`ExpressionTree` uses the
-known :ref:`python protocols <py:datamodel>` to allow the composition of
-expressions using an natural (idiomatic) form, so::
+list of supported operations and
+functions). :class:`xotl.ql.expressions.ExpressionTree` uses the known
+:ref:`python protocols <py:datamodel>` to allow the composition of expressions
+using an natural (idiomatic) form, so::
 
     expression <operator> object
 
@@ -200,28 +202,28 @@ The ``<operator>`` can be any of the supported operations, i.e:
   support ``len``. The ``~`` is proposed to encode the `not` logical operator;
   but its true meaning depends of the used query translator.
 
-.. autoclass:: OperatorType(type)
+.. autoclass:: xotl.ql.expressions.OperatorType(type)
    :members:
 
-   This is the metaclass for the class :class:`Operator` it automatically
-   injects documentation about
+   This is the metaclass for the class :class:`xotl.ql.expressions.Operator` it
+   automatically injects documentation about
    :class:`xotl.ql.interfaces.ISyntacticallyReversibleOperation` and
    :class:`xotl.ql.interfaces.ISynctacticallyCommutativeOperation`, so there's
    no need to explicitly declare which interfaces the class support in every
    operator class.
 
 
-.. autoclass:: Operator
+.. autoclass:: xotl.ql.expressions.Operator
    :members:
 
    Classes derived from this class should provide directly the interface
    :class:`xotl.ql.interfaces.IOperator`.
 
 
-.. autoclass:: FunctorOperator
+.. autoclass:: xotl.ql.expressions.FunctorOperator
    :members:
 
-.. autoclass:: ExpressionTree
+.. autoclass:: xotl.ql.expressions.ExpressionTree
    :members: operation, children, named_children
 
    This class implements the interface
@@ -262,3 +264,17 @@ implementing the `_sin` method on some special object::
   >>> zero = ZeroObject()
   >>> sin(zero)     # doctest: +ELLIPSIS
   <expression 'sin(360)' ...>
+
+
+.. _resolve-arguments-protocol:
+
+The protocol for resolving ambiguous signatures
+-----------------------------------------------
+
+Functions like :class:`~xotl.ql.expressions.all_`
+:class:`~xotl.ql.expressions.any_` could have several signatures, one of them
+being a subquery-like expression. In order to have chance to process the
+subquery if the operator implements the `_resolve_arguments` method (see
+:class:`xotl.ql.expressions.ResolveSubQueryMixin`) it will be called before any
+other processing is done to children (like the target protocol explained
+before).

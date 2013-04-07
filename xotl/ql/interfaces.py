@@ -30,7 +30,7 @@ __author__ = 'manu'
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
-           'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
+           'IExpressionTree', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
@@ -233,29 +233,6 @@ class IExpressionTree(IExpressionCapable):
 
                                ''')
 
-
-class IQueryPart(IExpressionCapable):
-    '''Represents a *possibly* partial (but sound) expression that is being
-    constructed inside a query expression.
-
-    Expression trees are powerful enough to capture the semantics of query
-    parts. But, since we don't have the control of how Python does is execution
-    of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryParticlesBubble` that a new query
-    part is being created.
-
-    See the documentation for :class:`xotl.ql.core.QueryPart` to see the
-    details of the procedure.
-
-    '''
-    expression = Attribute('The expression that this part stands for.'
-                           'This expression should not be a query part '
-                           'itself. The intention of this attribute '
-                           'is to allow clients extract cleaned-up '
-                           'versions of the expression without '
-                           'the query-building related stuff.')
-
-
 class ITerm(IExpressionCapable):
     '''ITerm instances are meant to represent the *whole* universe of objects.
 
@@ -270,10 +247,11 @@ class ITerm(IExpressionCapable):
 
     def __iter__():
         '''ITerm instances should be iterable. Also this should yield a single
-        instance of a :class:`IQueryPart` whose :attr:`~IQueryPart.expression`
-        should have a bound copy of `self`. The :attr:`~IBoundTerm.binding`
+        instance of a :class:`IBoundTerm`. The :attr:`~IBoundTerm.binding`
         should be made to an instance of a :class:`IGeneratorToken`, whose
-        :attr:`~IGeneratorToken.expression` attribute should be `self`.
+        :attr:`~IGeneratorToken.expression` attribute should be the bound term
+        itself.
+
         '''
 
     def __getattribute__(attr):
@@ -363,11 +341,11 @@ class IQueryParticlesBubble(Interface):
            lost.
 
         :param part: The emitted query part
-        :type part: :class:`IQueryPart`
+        :type part: :class:`IExpressionCapable`
         '''
 
-    parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
-                      'that were captured. ')
+    parts = Attribute('Ordered collection of :class:`IExpressionCapable` '
+                      'instances that were captured. ')
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
 

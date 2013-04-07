@@ -66,8 +66,5 @@ This section describes the internal interfaces used when processing query
 expressions in order to build the queries. Documenting this "internal" is
 important because we feel will ease the understanding of how `xotl.ql` works.
 
-.. autointerface:: IQueryPart
-   :members: expression
-
 .. autointerface:: IQueryParticlesBubble
    :members: capture_part, capture_token, parts, tokens
