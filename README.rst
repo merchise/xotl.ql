@@ -22,8 +22,8 @@ How to contribute
 -----------------
 
 You may contribute as much as you like, and by any means you feel the project
-may be help. If is code what you may apport; just fork this project make changes
-and place a pull request.
+may be helped. If is code what you may apport; just fork this project make
+changes and place a pull request.
 
 
 What does xotl mean?
