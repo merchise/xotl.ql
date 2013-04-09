@@ -46,7 +46,7 @@ from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CONTEXT
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CAPTURING
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
@@ -67,7 +67,7 @@ __all__ = (str('this'), str('these'),)
 
 def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
-    bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_part(part)
     elif not quiet:
@@ -76,7 +76,7 @@ def _emit_part(part, quiet=False):
 
 def _emit_token(token, quiet=False):
     'Emits a token to the current bubble'
-    bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_token(token)
     elif not quiet:
@@ -268,7 +268,7 @@ class Term(object):
         # XXX: When emiting a token in the context of query, if this token's
         # expression is also a part, then it was emitted without binding, so we
         # need to manually check this case here
-        bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
+        bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
         if bubble:
             parts = bubble._parts
             if parts and self is parts[-1]:
@@ -816,7 +816,7 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
-        with context(EXPRESSION_CONTEXT) as _context:
+        with context(EXPRESSION_CAPTURING) as _context:
             bubble = _context['bubble'] = QueryParticlesBubble()
             selected_parts = next(comprehension)
         selected_parts_type = type(selected_parts)
