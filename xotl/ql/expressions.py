@@ -806,8 +806,8 @@ class ResolveSubQueryMixin(object):
                 # EXPRESSION_CONTEXT it might have occurred that a part
                 # (actually a token's term) was emitted but then used as the
                 # generator, so if the first token's binding original_term *is*
-                # the last emmitted this one should be removed.
-                bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+                # the last part emitted it should be removed from the bubble.
+                bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
                 if bubble:
                     parts = bubble._parts
                     with context(UNPROXIFING_CONTEXT):
@@ -815,6 +815,7 @@ class ResolveSubQueryMixin(object):
                         if getattr(term, 'original_term', None) is parts[-1]:
                             parts.pop(-1)
             return (first, ), {}
+
 
 class AllFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
@@ -1170,10 +1171,14 @@ class ExpressionTree(object):
         _context = context[EXPRESSION_CONTEXT]
         if _context:
             try:
-                bubble = _context.data.bubble
+                bubble = _context['bubble']
                 bubble.capture_part(self)
             except (AttributeError, KeyError):
-                pass
+                import warnings
+                warnings.warn('Since the expression was created inside '
+                              'EXPRESSION_CONTEXT it is expected a bubble key '
+                              'in the context and it was not there! -- %r'
+                              % _context.data.keys())
 
     @property
     def op(self):

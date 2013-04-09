@@ -67,9 +67,7 @@ __all__ = (str('this'), str('these'),)
 
 def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_part(part)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
     if bubble:
         bubble.capture_part(part)
     elif not quiet:
@@ -78,14 +76,11 @@ def _emit_part(part, quiet=False):
 
 def _emit_token(token, quiet=False):
     'Emits a token to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_token(token)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
     if bubble:
         bubble.capture_token(token)
     elif not quiet:
         raise RuntimeError('There should be context')
-
 
 
 @implementer(ITerm)
@@ -261,9 +256,9 @@ class Term(object):
             #        for parent in this('parent')
             #        if any_(child for child in parent.children if child.age < 6))
             #
-            # In this case, the enclosed parent.children emits to top-most
+            # In this case, the enclosed parent.children emits to the top-most
             # bubble, but when the iter is invoked by `any_` to resolve its
-            # argument a second bubble is in place and the hack (XXX) below
+            # argument a second bubble is in place and the hack below (XXX)
             # won't work. Furthermore, the token's expression is the bound-term
             # while the emmited part was the original one. So we keep the
             # original_term so that operations that resolver their arguments as
@@ -273,7 +268,7 @@ class Term(object):
         # XXX: When emiting a token in the context of query, if this token's
         # expression is also a part, then it was emitted without binding, so we
         # need to manually check this case here
-        bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+        bubble = context[EXPRESSION_CONTEXT].get('bubble', None)
         if bubble:
             parts = bubble._parts
             if parts and self is parts[-1]:
@@ -822,7 +817,7 @@ class _QueryObjectType(type):
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
         with context(EXPRESSION_CONTEXT) as _context:
-            bubble = _context.data.bubble = QueryParticlesBubble()
+            bubble = _context['bubble'] = QueryParticlesBubble()
             selected_parts = next(comprehension)
         selected_parts_type = type(selected_parts)
         with context(UNPROXIFING_CONTEXT):
