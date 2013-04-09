@@ -121,7 +121,7 @@ class backref(object):
             backrefs.remove(self)
         setattr(inst, self._name, value)
         backrefs = setdefaultattr(value, self.ref, [])
-        backrefs.append(self)
+        backrefs.append(inst)
 
 @thesefy
 class Entity(object):
