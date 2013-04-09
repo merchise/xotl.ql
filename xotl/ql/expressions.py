@@ -821,6 +821,7 @@ class ResolveSubQueryMixin(object):
                             parts.pop(-1)
             return (first, ), {}
 
+
 class AllFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The representation of the `all` function.
@@ -878,6 +879,18 @@ class AnyFunction(FunctorOperator, ResolveSubQueryMixin):
     arity = N_ARITY
     _method_name = str('any_')
 any_ = AnyFunction
+
+
+class SumFunction(FunctorOperator, ResolveSubQueryMixin):
+    '''Represents the `sum()` function.
+
+    As with :class:`all_` it might have several syntaxes and
+    interpretations.
+
+    '''
+    _format = 'sum({0})'
+    arity = N_ARITY
+sum_ = SumFunction
 
 
 class MinFunction(FunctorOperator, ResolveSubQueryMixin):
