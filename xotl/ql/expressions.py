@@ -147,6 +147,11 @@ class _boolean(type):
             return self
     __ror__ = __or__
 
+    if _py3k:
+        def __lt__(self, other):
+            return _false   # Don't compare me
+        __gt__ = __ge__ = __le__ = __lt__
+
 
     def __bool__(self):
         return True if self is _true else False
