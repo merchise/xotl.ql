@@ -161,7 +161,38 @@ def date_property(internal_attr_name):
     return property(getter, setter, fdel)
 
 
-def age_property(start_attr_name, end_attr_name=None):
+# So that ages are stable in tests
+def get_birth_date(age, today=None):
+    from datetime import datetime, timedelta
+    if today is None:
+        today = datetime.today()
+    birth = today - timedelta(days=age*365)
+    # Brute force
+    if get_age(birth, today) == age:
+        return birth
+    while get_age(birth, today) < age:
+        birth += timedelta(days=1)
+    while get_age(birth, today) > age:
+        birth -= timedelta(days=1)
+    return birth
+
+
+def get_age(birthdate, today=None):
+    from datetime import datetime
+    if today is None:
+        today = datetime.today()
+    age = today - birthdate
+    return age.days / 365
+
+
+def test_ages():
+    import random
+    ages = range(4, 80)
+    ages_seq = (random.choice(ages) for _ in range(100))
+    assert all(get_age(get_birth_date(x)) == x for x in ages_seq)
+
+
+def age_property(start_attr_name, end_attr_name=None, age_attr_name=None):
     '''Creates a property for calculating the `age` given an
     attribute that holds the starting date of the event.
 
@@ -178,8 +209,7 @@ def age_property(start_attr_name, end_attr_name=None):
         end = datetime.today() if not end_attr_name else getattr(self,
                                                                  end_attr_name)
         date = getattr(self, start_attr_name)
-        age = end - date
-        return age.days // 365.25
+        return get_age(date, end)
     return age
 
 
@@ -207,13 +237,6 @@ cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
 ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
 moron = Place(name='Morón', type='Municipality', located_in=ciego)
 
-
-# So that ages are stable in tests
-def get_birth_date(age):
-    from datetime import datetime, timedelta
-    today = datetime.today()
-    birth = today - timedelta(days=age*365.25)
-    return birth
 
 elsa = Person(name='Elsa Acosta Cabrera',
               birthdate=get_birth_date(65),
@@ -291,16 +314,17 @@ manolito = Person(name='Manuel Vázquez Piñero',
 # xotl.ql is almost working in PyPy.
 
 
-@pytest.mark.xfail()  # all_ not implemented ok.
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
-def test_all_pred():
+def test_all_pred(**kwargs):
+    from xoutil.iterators import dict_update_new
     from xotl.ql.expressions import all_
     from xotl.ql.translation.py import naive_translation
     query = these(parent
                   for parent in Person
                   if parent.children
-                  if all_((30 < child.age) & (child.age < 35) for child in parent.children))
-    plan = naive_translation(query)
+                  if all_((30 < child.age) & (child.age < 36) for child in parent.children))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
     result = list(plan())
     assert elsa in result
     assert papi in result
