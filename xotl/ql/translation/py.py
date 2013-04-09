@@ -64,6 +64,7 @@ from xotl.ql.expressions import MinFunction
 from xotl.ql.expressions import MaxFunction
 from xotl.ql.expressions import AllFunction
 from xotl.ql.expressions import AnyFunction
+from xotl.ql.expressions import SumFunction
 
 from xotl.ql.interfaces import IQueryTranslator
 
@@ -422,7 +423,7 @@ class vminstr(object):
         any_ = codefor(AnyFunction)(sub_query_method(any))
         min_ = codefor(MinFunction)(sub_query_method(min))
         max_ = codefor(MaxFunction)(sub_query_method(max))
-        # sum_ = codefor(SumFunction)(sub_query_method(sum))
+        sum_ = codefor(SumFunction)(sub_query_method(sum))
 
         def avg(vals):
             _sum, count = 0, 0
@@ -437,18 +438,10 @@ class vminstr(object):
         def and_(self, x, y):
             if isinstance(x, var):
                 x = x._get_current_value(default=False)
-            elif callable(x):
-                x = x()
-            else:
-                assert False
             if not bool(x):
                 return False
             if isinstance(y, var):
                 y = y._get_current_value(default=False)
-            elif callable(y):
-                y = y()
-            else:
-                assert False
             if bool(y):
                 return True
             return False
@@ -457,18 +450,10 @@ class vminstr(object):
         def or_(self, x, y):
             if isinstance(x, var):
                 x = x._get_current_value(default=False)
-            elif callable(x):
-                x = x()
-            else:
-                assert False
             if bool(x):
                 return True
             if isinstance(y, var):
                 y = y._get_current_value(default=False)
-            elif callable(y):
-                y = y()
-            else:
-                assert False
             if bool(y):
                 return True
             return False
@@ -482,10 +467,6 @@ class vminstr(object):
         def not_(self, x):
             if isinstance(x, var):
                 x = x._get_current_value(default=False)
-            elif callable(x):
-                x = x()
-            else:
-                assert False
             return not bool(x)
 
         table.update({
@@ -529,7 +510,20 @@ class vminstr(object):
                 _args = tuple(e(x) for x in node.children)
                 _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
                 assert node.operation in self.vmcodeset.table, 'I don\'t know how to translate %r' % node.operation
-                return lambda: self.vmcodeset.table[node.operation](self, *_args, **_kwargs)
+                def op():
+                    def extract(x):
+                        import types
+                        if isinstance(x, var):
+                            return x
+                        elif isinstance(x, types.FunctionType):  # TODO: Mark my lambdas
+                            return x()
+                        else:
+                            return x
+                    a = (extract(x) for x in _args)
+                    kw = {k: extract(x) for k, x in iteritems_(_kwargs)}
+                    return self.vmcodeset.table[node.operation](self, *a, **kw)
+                return op
+                #return lambda: self.vmcodeset.table[node.operation](self, *a, **_kwargs)
             return node # assumed to be as is
         return e(self.filter)
 

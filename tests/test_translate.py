@@ -317,7 +317,7 @@ manolito = Person(name='Manuel Vázquez Piñero',
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
 def test_all_pred(**kwargs):
     from xoutil.iterators import dict_update_new
-    from xotl.ql.expressions import all_
+    from xotl.ql.expressions import all_, sum_
     from xotl.ql.translation.py import naive_translation
     query = these(parent
                   for parent in Person
@@ -339,6 +339,19 @@ def test_all_pred(**kwargs):
     plan = naive_translation(query, **kwargs)
     with pytest.raises(SyntaxError):
         result = list(plan())
+
+
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if sum_(child.age for child in parent.children) > 60)
+
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    result = list(plan())
+    assert denia in result
+    assert pedro in result
+    assert len(result) == 2
 
 
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
