@@ -405,12 +405,15 @@ class vminstr(object):
         def sub_query_method(func):
             def inner(self, *args):
                 from types import GeneratorType
+                from xotl.ql.interfaces import IQueryObject
                 from xotl.ql.core import these
                 query, rest = args[0], args[1:]
                 if rest:
-                    return func(args)
+                    raise SyntaxError('%s only accepts query expressions or query objects')
                 if isinstance(query, GeneratorType):
                     query = these(query)
+                elif not IQueryObject.providedBy(query):
+                    raise SyntaxError('%s only accepts query expressions or query objects')
                 plan = naive_translation(query, vm=dict(self.vm))
                 return func(result for result in plan())
             return inner

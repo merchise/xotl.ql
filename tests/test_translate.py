@@ -330,6 +330,16 @@ def test_all_pred(**kwargs):
     assert papi in result
     assert len(result) == 2
 
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if all_(parent.name.startswith('Manu'), parent.age > 30))
+
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    with pytest.raises(SyntaxError):
+        result = list(plan())
+
 
 @pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
