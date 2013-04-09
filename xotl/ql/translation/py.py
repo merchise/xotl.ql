@@ -183,7 +183,7 @@ def _build_unary_operator(operation):
         real_operation = getattr(operator, method_name, None)
     if real_operation:
         def method(self):
-            return real_operation(self._get_current_value(default=_false))
+            return real_operation(self._get_current_value())
         method.__name__ = method_name
         return method
     else:
@@ -202,9 +202,9 @@ def _build_binary_operator(operation):
         real_operation = getattr(operator, method_name, None)
     if real_operation:
         def method(self, other):
-            value = self._get_current_value(default=_false)
+            value = self._get_current_value()
             if isinstance(other, var):
-                other = other._get_current_value(default=_false)
+                other = other._get_current_value()
             return real_operation(value, other)
         method.__name__ = method_name
         return method
@@ -225,9 +225,9 @@ def _build_rbinary_operator(operation):
         else:
             real_operation = getattr(operator, method_name)
         def method(self, other):
-            value = self._get_current_value(default=_false)
+            value = self._get_current_value()
             if isinstance(other, var):
-                other = other._get_current_value(default=_false)
+                other = other._get_current_value()
             return real_operation(value, other)
         method.__name__ = getattr(operation, '_rmethod_name')
         return method
