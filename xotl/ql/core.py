@@ -65,39 +65,6 @@ __author__ = 'manu'
 __all__ = (str('this'), str('these'),)
 
 
-# A thread-local namespace to avoid using context. Just to test if this
-# avoid the context's bug.
-# _local = threading.local()
-
-
-# def _get_bubbles_stack():
-#     unset = object()
-#     stack = getattr(_local, 'bubbles', unset)
-#     if stack is unset:
-#         stack = _local.bubbles = []
-#     return stack
-
-
-# def _create_and_push_bubble():
-#     'Creates a bubble and pushes it to the local stack'
-#     bubbles = _get_bubbles_stack()
-#     bubble = QueryParticlesBubble()
-#     bubbles.append(bubble)
-#     return bubble
-
-
-# def _pop_bubble():
-#     'Removes the top-most bubble from the bubble stack'
-#     bubbles = _get_bubbles_stack()
-#     return bubbles.pop(-1)
-
-
-# def _get_current_bubble():
-#     'Returns the top-most bubble'
-#     bubbles = _get_bubbles_stack()
-#     return bubbles[-1]
-
-
 def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
     # bubble = _get_current_bubble()
