@@ -237,7 +237,6 @@ class Term(object):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        with context(UNPROXIFING_CONTEXT):
             if not name:
                 # When iterating an instance without a name (i.e the `this`
                 # object), we should generate a new name (of those simple
@@ -264,7 +263,6 @@ class Term(object):
             # original_term so that operations that resolver their arguments as
             # subquery may remove the escaped part.
             bound_term.original_term = self
-        instance = bound_term
         # XXX: When emiting a token in the context of query, if this token's
         # expression is also a part, then it was emitted without binding, so we
         # need to manually check this case here
@@ -274,7 +272,7 @@ class Term(object):
             if parts and self is parts[-1]:
                 parts.pop(-1)
             _emit_token(token)
-        yield instance
+        yield bound_term
 
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
