@@ -46,7 +46,7 @@ from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
 from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CONTEXT
+from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CAPTURING
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
@@ -67,9 +67,7 @@ __all__ = (str('this'), str('these'),)
 
 def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_part(part)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_part(part)
     elif not quiet:
@@ -78,14 +76,11 @@ def _emit_part(part, quiet=False):
 
 def _emit_token(token, quiet=False):
     'Emits a token to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_token(token)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_token(token)
     elif not quiet:
         raise RuntimeError('There should be context')
-
 
 
 @implementer(ITerm)
@@ -242,7 +237,6 @@ class Term(object):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        with context(UNPROXIFING_CONTEXT):
             if not name:
                 # When iterating an instance without a name (i.e the `this`
                 # object), we should generate a new name (of those simple
@@ -261,25 +255,24 @@ class Term(object):
             #        for parent in this('parent')
             #        if any_(child for child in parent.children if child.age < 6))
             #
-            # In this case, the enclosed parent.children emits to top-most
+            # In this case, the enclosed parent.children emits to the top-most
             # bubble, but when the iter is invoked by `any_` to resolve its
-            # argument a second bubble is in place and the hack (XXX) below
+            # argument a second bubble is in place and the hack below (XXX)
             # won't work. Furthermore, the token's expression is the bound-term
             # while the emmited part was the original one. So we keep the
             # original_term so that operations that resolver their arguments as
             # subquery may remove the escaped part.
             bound_term.original_term = self
-        instance = bound_term
         # XXX: When emiting a token in the context of query, if this token's
         # expression is also a part, then it was emitted without binding, so we
         # need to manually check this case here
-        bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+        bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
         if bubble:
             parts = bubble._parts
             if parts and self is parts[-1]:
                 parts.pop(-1)
             _emit_token(token)
-        yield instance
+        yield bound_term
 
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
@@ -821,8 +814,8 @@ class _QueryObjectType(type):
         '''
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
-        with context(EXPRESSION_CONTEXT) as _context:
-            bubble = _context.data.bubble = QueryParticlesBubble()
+        with context(EXPRESSION_CAPTURING) as _context:
+            bubble = _context['bubble'] = QueryParticlesBubble()
             selected_parts = next(comprehension)
         selected_parts_type = type(selected_parts)
         with context(UNPROXIFING_CONTEXT):

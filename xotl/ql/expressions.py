@@ -43,11 +43,11 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-#: When expressions are created inside this context, they will look for a :
-#`bubble` key in the context, if found it will call the `capture_expression` of
-#: the bubble; if there's no bubble a warning will logged (cause there should
-#: be a bubble in this context.)
-EXPRESSION_CONTEXT = object()
+# When expressions are created inside this context, they will look for a
+# `bubble` key in the context, if found it will call the `capture_expression`
+# of the bubble; if there's no bubble a warning will logged (cause there should
+# be a bubble in this context.)
+EXPRESSION_CAPTURING = object()
 
 
 class UNARY(object):
@@ -808,11 +808,11 @@ class ResolveSubQueryMixin(object):
                 from xotl.ql.core import these
                 first = these(first)
                 # XXX: If this operation itself is enclosed in a
-                # EXPRESSION_CONTEXT it might have occurred that a part
+                # EXPRESSION_CAPTURING it might have occurred that a part
                 # (actually a token's term) was emitted but then used as the
                 # generator, so if the first token's binding original_term *is*
-                # the last emmitted this one should be removed.
-                bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+                # the last part emitted it should be removed from the bubble.
+                bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
                 if bubble:
                     parts = bubble._parts
                     with context(UNPROXIFING_CONTEXT):
@@ -1185,13 +1185,17 @@ class ExpressionTree(object):
         self._children = tuple(_extract_target(child) for child in children)
         self._named_children = {name: _extract_target(value)
                                 for name, value in named_children.items()}
-        _context = context[EXPRESSION_CONTEXT]
+        _context = context[EXPRESSION_CAPTURING]
         if _context:
             try:
-                bubble = _context.data.bubble
+                bubble = _context['bubble']
                 bubble.capture_part(self)
             except (AttributeError, KeyError):
-                pass
+                import warnings
+                warnings.warn('Since the expression was created inside '
+                              'EXPRESSION_CONTEXT it is expected a bubble key '
+                              'in the context and it was not there! -- %r'
+                              % _context.data.keys())
 
     @property
     def op(self):
