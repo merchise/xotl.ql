@@ -542,12 +542,52 @@ class vminstr(object):
 
 
 class vmtoken(object):
-    def __init__(self, token, vm, only=None):
+    '''Represents a token in the current VM.
+
+    Like :class:`var` for terms, this is used to represent a token and fetch
+    all the objects from it.
+
+    '''
+    def __init__(self, token, vm, query, only=None):
+        from xoutil.compat import str_base
         self.token = token
         self.vm = vm
+        if isinstance(only, str_base):
+            only = (only, )
         self.only = only
+        self._detect_class(query)
 
-    def _getsource(self):
+    def _detect_class(self, query):
+        '''Detects the class for top-level (i.e has no parent) token.
+
+        Finds if there is any filter containing an ``is_instance(token,
+        SomeClass)``. If SomeClass has an attribute `this_instances` and it
+        returns an iterable, it is assumed it will yield all objects from this
+        class.
+
+        '''
+        token = self.token
+        term = token.expression
+        with context(UNPROXIFING_CONTEXT):
+            parent = term.parent
+        if not parent:
+            from xotl.ql.expressions import is_instance, IExpressionTree
+            def matches(node):
+                with context(UNPROXIFING_CONTEXT):
+                    return (IExpressionTree.providedBy(node) and
+                            node.operation is is_instance and
+                            node.children[0] == term)
+
+            from xotl.ql.translation import cotraverse_expression
+            found = next(cotraverse_expression(*query.filters, accept=matches), None)
+            if found:
+                self._token_class = found.children[-1]
+            else:
+                self._token_class = None
+        else:
+            self._token_class = None
+
+    def _build_source(self):
         only = self.only
         token = self.token
         term = token.expression
@@ -555,9 +595,6 @@ class vmtoken(object):
             parent = term.parent
         use_ignores = True
         if only:
-            from xoutil.compat import str_base
-            if isinstance(only, str_base):
-                only = (only, )
             accept = _filter_by_pkg(*only)
         else:
             accept = None
@@ -574,10 +611,38 @@ class vmtoken(object):
             source = (ob for ob in tk._get_current_value(default=[]))
         return source
 
+    @property
+    def source(self):
+        '''The source of objects from this token.
+
+        If then token is a top-level one and is related with a
+        ``is_instance(token, SomeClass)`` filter and
+        ``SomeClass.this_instances`` is a collection, this collection will be
+        the source.
+
+        If the token is a top-level token but the test described above fails,
+        the we use the `gc` module to get every possible object in the Python's
+        memory.
+
+        If the token is not a top-level token, we simply use the attribute's
+        name from the parent token current value.
+
+        '''
+        from xoutil.types import is_collection
+        cls = self._token_class
+        this_instances = getattr(cls, 'this_instances', None)
+        if is_collection(this_instances):
+            if defined(cls, self.only):
+                return iter(this_instances)
+            else:
+                return []
+        else:
+            return self._build_source()
+
     def __iter__(self):
         vm = self.vm
         token = self.token
-        for ob in self._getsource():
+        for ob in self.source:
             vm[token] = ob
             yield
 
@@ -633,11 +698,11 @@ def naive_translation(query, **kwargs):
         from xotl.ql.expressions import _false
         parts = list(sorted_parts[:])
         vm = plan_kwargs.get('vm', None) or kwargs.get('vm', None) or {}
-        result = vmtoken(parts.pop(0), vm, only=only)
+        result = vmtoken(parts.pop(0), vm, query, only=only)
         while parts:
             part = parts.pop(0)
             if isinstance(part, GeneratorToken):
-                result = vmtoken(part, vm, only=only).chain(result)
+                result = vmtoken(part, vm, query, only=only).chain(result)
             else:
                 result = vminstr(part, vm).chain(result)
         for _ in result:

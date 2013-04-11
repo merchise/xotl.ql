@@ -124,7 +124,17 @@ class backref(object):
         backrefs.append(inst)
 
 @thesefy
-class Entity(object):
+class Base(object):
+    pass
+
+class Entity(Base):
+    def __new__(cls, **attrs):
+        from xoutil.objects import setdefaultattr
+        this_instances = setdefaultattr(Entity, 'this_instances', [])
+        res = super(Entity, cls).__new__(cls, **attrs)
+        this_instances.append(res)
+        return res
+
     def __init__(self, **attrs):
         for k, v in iteritems_(attrs):
             setattr(self, k, v)
@@ -236,6 +246,8 @@ lisa = Place(name='La lisa', type='Municipality', located_in=havana)
 cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
 ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
 moron = Place(name='Morón', type='Municipality', located_in=ciego)
+
+assert len(Place.this_instances) == 6
 
 
 elsa = Person(name='Elsa Acosta Cabrera',
