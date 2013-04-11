@@ -124,10 +124,7 @@ class backref(object):
         backrefs.append(inst)
 
 @thesefy
-class Base(object):
-    pass
-
-class Entity(Base):
+class Entity(object):
     def __new__(cls, **attrs):
         from xoutil.objects import setdefaultattr
         this_instances = setdefaultattr(Entity, 'this_instances', [])
