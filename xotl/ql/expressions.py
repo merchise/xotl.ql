@@ -147,6 +147,11 @@ class _boolean(type):
             return self
     __ror__ = __or__
 
+    if _py3k:
+        def __lt__(self, other):
+            return _false   # Don't compare me
+        __gt__ = __ge__ = __le__ = __lt__
+
 
     def __bool__(self):
         return True if self is _true else False
@@ -874,6 +879,18 @@ class AnyFunction(FunctorOperator, ResolveSubQueryMixin):
     arity = N_ARITY
     _method_name = str('any_')
 any_ = AnyFunction
+
+
+class SumFunction(FunctorOperator, ResolveSubQueryMixin):
+    '''Represents the `sum()` function.
+
+    As with :class:`all_` it might have several syntaxes and
+    interpretations.
+
+    '''
+    _format = 'sum({0})'
+    arity = N_ARITY
+sum_ = SumFunction
 
 
 class MinFunction(FunctorOperator, ResolveSubQueryMixin):

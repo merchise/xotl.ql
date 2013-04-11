@@ -1094,5 +1094,6 @@ def thesefy(target, name=None):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
-    new_class = new_meta(target.__name__, (target, ), {})
+    from xoutil.decorator.compat import metaclass
+    new_class = metaclass(new_meta)(target)
     return new_class

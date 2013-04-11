@@ -149,6 +149,10 @@
 
 .. autoclass:: any_
 
+.. autoclass:: SumFunction
+
+.. autoclass:: sum_
+
 .. autoclass:: MinFunction
 
 .. autoclass:: min_

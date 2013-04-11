@@ -121,10 +121,17 @@ class backref(object):
             backrefs.remove(self)
         setattr(inst, self._name, value)
         backrefs = setdefaultattr(value, self.ref, [])
-        backrefs.append(self)
+        backrefs.append(inst)
 
 @thesefy
 class Entity(object):
+    def __new__(cls, **attrs):
+        from xoutil.objects import setdefaultattr
+        this_instances = setdefaultattr(Entity, 'this_instances', [])
+        res = super(Entity, cls).__new__(cls, **attrs)
+        this_instances.append(res)
+        return res
+
     def __init__(self, **attrs):
         for k, v in iteritems_(attrs):
             setattr(self, k, v)
@@ -161,7 +168,38 @@ def date_property(internal_attr_name):
     return property(getter, setter, fdel)
 
 
-def age_property(start_attr_name, end_attr_name=None):
+# So that ages are stable in tests
+def get_birth_date(age, today=None):
+    from datetime import datetime, timedelta
+    if today is None:
+        today = datetime.today()
+    birth = today - timedelta(days=age*365)
+    # Brute force
+    if get_age(birth, today) == age:
+        return birth
+    while get_age(birth, today) < age:
+        birth += timedelta(days=1)
+    while get_age(birth, today) > age:
+        birth -= timedelta(days=1)
+    return birth
+
+
+def get_age(birthdate, today=None):
+    from datetime import datetime
+    if today is None:
+        today = datetime.today()
+    age = today - birthdate
+    return age.days / 365
+
+
+def test_ages():
+    import random
+    ages = range(4, 80)
+    ages_seq = (random.choice(ages) for _ in range(100))
+    assert all(get_age(get_birth_date(x)) == x for x in ages_seq)
+
+
+def age_property(start_attr_name, end_attr_name=None, age_attr_name=None):
     '''Creates a property for calculating the `age` given an
     attribute that holds the starting date of the event.
 
@@ -178,8 +216,7 @@ def age_property(start_attr_name, end_attr_name=None):
         end = datetime.today() if not end_attr_name else getattr(self,
                                                                  end_attr_name)
         date = getattr(self, start_attr_name)
-        age = end - date
-        return age.days // 365.25
+        return get_age(date, end)
     return age
 
 
@@ -207,13 +244,8 @@ cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
 ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
 moron = Place(name='Morón', type='Municipality', located_in=ciego)
 
+assert len(Place.this_instances) == 6
 
-# So that ages are stable in tests
-def get_birth_date(age):
-    from datetime import datetime, timedelta
-    today = datetime.today()
-    birth = today - timedelta(days=age*365.25)
-    return birth
 
 elsa = Person(name='Elsa Acosta Cabrera',
               birthdate=get_birth_date(65),
@@ -266,48 +298,57 @@ manolito = Person(name='Manuel Vázquez Piñero',
 #    Python 2.7.2 (1.9+dfsg-1, Jun 19 2012, 23:45:31)
 #    [PyPy 1.9.0 with GCC 4.7.0] on linux2)
 #
-# ... the skipped tests take a long long time to do.
+# For some reason (currenly unknown) under PyPy the following tests fail. The
+# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
+# considered True in places where no `with` is around. Maybe is a bug PyPy, I
+# can't be sure.
 #
 # You should notice that the translation.py module is NOT considered to be
 # a production module, but a proof of concept for translation from xotl.ql
 # as a language.
 #
-# The long time is due mostly to the fact even a simple script::
-#
-#   $ pypy -c "import gc; print len(gc.get_objects())"
-#   21434
-#
-# shows that there are LOTS of objects created in the first place, while in
-# Python 2.7 and 3.2 this figure is much smaller (although still high)::
-#
-#   $ python3 -c "import gc; print(len(gc.get_objects()))"
-#   5136
-#
-#   $ python -c "import gc; print len(gc.get_objects())"
-#   3564
-#
-#
-# For the sake of testability I skip those tests in PyPy. Still the core of
-# xotl.ql is almost working in PyPy.
 
-
-@pytest.mark.xfail()  # all_ not implemented ok.
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
-def test_all_pred():
-    from xotl.ql.expressions import all_
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_all_pred(**kwargs):
+    from xoutil.iterators import dict_update_new
+    from xotl.ql.expressions import all_, sum_
     from xotl.ql.translation.py import naive_translation
     query = these(parent
                   for parent in Person
                   if parent.children
-                  if all_((30 < child.age) & (child.age < 35) for child in parent.children))
-    plan = naive_translation(query)
+                  if all_((30 < child.age) & (child.age < 36) for child in parent.children))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
     result = list(plan())
     assert elsa in result
     assert papi in result
     assert len(result) == 2
 
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if all_(parent.name.startswith('Manu'), parent.age > 30))
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    with pytest.raises(SyntaxError):
+        result = list(plan())
+
+
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if sum_(child.age for child in parent.children) > 60)
+
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    result = list(plan())
+    assert denia in result
+    assert pedro in result
+    assert len(result) == 2
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -322,7 +363,7 @@ def test_naive_plan_no_join(**kwargs):
     assert yade not in result
 
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_ridiculous_join(**kwargs):
     from itertools import product
     from xoutil.iterators import dict_update_new
@@ -344,7 +385,7 @@ class X(object):
     def __init__(self):
         self.b = B()
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_traversing_by_nonexistent_attribute(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -389,16 +430,7 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
 
     # Now let's rerun the plan after we create some object that matches
     x = X()
-    # Currently this is failing cause each result yielded from a query is
-    # encoded in a tuple. Probably this is the expected behavior. Currently I
-    # just allow it to fail to remind me that I must address this question.
     assert list(plan()) == x.b.a
-
-
-# For some reason (currenly unknown) under PyPy the following tests fail. The
-# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
-# considered True in places where no with is around. Maybe is a bug PyPy, I
-# can't be sure.
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_token_before_filter():
@@ -439,8 +471,3 @@ def test_regression_test_token_before_filter_20130401():
     assert len(query.tokens) == 1
     assert token_before_filter(token, is_entity_filter, True)
     assert token_before_filter(token, name_filter, True)
-
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main(verbosity=2)
