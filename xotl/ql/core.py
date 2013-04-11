@@ -1094,5 +1094,6 @@ def thesefy(target, name=None):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
+    # FIXME: super() will not work on Py2.7
     new_class = new_meta(target.__name__, (target, ), {})
     return new_class
