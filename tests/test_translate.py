@@ -298,32 +298,17 @@ manolito = Person(name='Manuel Vázquez Piñero',
 #    Python 2.7.2 (1.9+dfsg-1, Jun 19 2012, 23:45:31)
 #    [PyPy 1.9.0 with GCC 4.7.0] on linux2)
 #
-# ... the skipped tests take a long long time to do.
+# For some reason (currenly unknown) under PyPy the following tests fail. The
+# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
+# considered True in places where no `with` is around. Maybe is a bug PyPy, I
+# can't be sure.
 #
 # You should notice that the translation.py module is NOT considered to be
 # a production module, but a proof of concept for translation from xotl.ql
 # as a language.
 #
-# The long time is due mostly to the fact even a simple script::
-#
-#   $ pypy -c "import gc; print len(gc.get_objects())"
-#   21434
-#
-# shows that there are LOTS of objects created in the first place, while in
-# Python 2.7 and 3.2 this figure is much smaller (although still high)::
-#
-#   $ python3 -c "import gc; print(len(gc.get_objects()))"
-#   5136
-#
-#   $ python -c "import gc; print len(gc.get_objects())"
-#   3564
-#
-#
-# For the sake of testability I skip those tests in PyPy. Still the core of
-# xotl.ql is almost working in PyPy.
 
-
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_all_pred(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.expressions import all_, sum_
@@ -363,7 +348,7 @@ def test_all_pred(**kwargs):
     assert len(result) == 2
 
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -378,7 +363,7 @@ def test_naive_plan_no_join(**kwargs):
     assert yade not in result
 
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_ridiculous_join(**kwargs):
     from itertools import product
     from xoutil.iterators import dict_update_new
@@ -400,7 +385,7 @@ class X(object):
     def __init__(self):
         self.b = B()
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_traversing_by_nonexistent_attribute(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -445,16 +430,7 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
 
     # Now let's rerun the plan after we create some object that matches
     x = X()
-    # Currently this is failing cause each result yielded from a query is
-    # encoded in a tuple. Probably this is the expected behavior. Currently I
-    # just allow it to fail to remind me that I must address this question.
     assert list(plan()) == x.b.a
-
-
-# For some reason (currenly unknown) under PyPy the following tests fail. The
-# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
-# considered True in places where no with is around. Maybe is a bug PyPy, I
-# can't be sure.
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_token_before_filter():
@@ -495,8 +471,3 @@ def test_regression_test_token_before_filter_20130401():
     assert len(query.tokens) == 1
     assert token_before_filter(token, is_entity_filter, True)
     assert token_before_filter(token, name_filter, True)
-
-
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main(verbosity=2)
