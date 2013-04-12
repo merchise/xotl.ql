@@ -321,11 +321,11 @@ There's was two related bugs there:
 '''
 
 def test_is_a_partnership_is_not_forgotten():
-    from xoutil.compat import izip
+    from xoutil.compat import zip
     with bubbling() as current:
         next((person, partner)
-             for person, partner in izip(this('person'),
-                                         this('partner'))
+             for person, partner in zip(this('person'),
+                                        this('partner'))
              for rel in this('relation')
              if rel.type == 'partnership'
              if (rel.subject == person) & (rel.object == partner))
@@ -349,11 +349,11 @@ def test_is_a_partnership_is_not_forgotten():
         ok(None)
 
 def test_worst_case_must_have_3_filters_and_3_tokens():
-    from xoutil.compat import izip
+    from xoutil.compat import zip
     with bubbling() as current:
         next(person
-             for person, partner in izip(this('person'),
-                                         this('partner'))
+             for person, partner in zip(this('person'),
+                                        this('partner'))
              for rel in this('relation')
              if rel.type == 'partnership'
              if rel.subject == person

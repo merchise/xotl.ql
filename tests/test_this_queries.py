@@ -108,7 +108,7 @@ class TestUtilities(unittest.TestCase):
             self.assertEqual(q.selection, q1.selection)
 
     def test_thesefy_doesnot_messup_identities(self):
-        from xoutil.iterators import izip
+        from xoutil.iterators import zip
         from xotl.ql.core import thesefy
         from xotl.ql.expressions import is_a
 
@@ -121,7 +121,7 @@ class TestUtilities(unittest.TestCase):
             pass
 
         query = these((person, partner)
-                      for person, partner in izip(Person, Person)
+                      for person, partner in zip(Person, Person)
                       for rel in Partnership
                       if (rel.subject == person) & (rel.obj == partner))
         filters = list(query.filters)
@@ -297,10 +297,10 @@ def test_for_generator_as_sole_argument():
 #    - There should be a filter `is_instance(rel, Partnetship)`
 
 def test_is_a_partnership_is_not_forgotten():
-    from xoutil.iterators import izip
+    from xoutil.iterators import zip
     query = these((person, partner)
-                  for person, partner in izip(this('person'),
-                                              this('partner'))
+                  for person, partner in zip(this('person'),
+                                             this('partner'))
                   for rel in this('relation')
                   if rel.type == 'partnership'
                   if (rel.subject == person) & (rel.object == partner))
@@ -311,10 +311,10 @@ def test_is_a_partnership_is_not_forgotten():
         assert len(filters) == 2
 
 def test_theres_a_token_for_partnership():
-    from xoutil.iterators import izip
+    from xoutil.iterators import zip
     query = these((person, partner)
-                  for person, partner in izip(this('person'),
-                                              this('partner'))
+                  for person, partner in zip(this('person'),
+                                             this('partner'))
                   for rel in this('relation')
                   if rel.type == 'partnership'
                   if (rel.subject == person) & (rel.object == partner))
@@ -327,10 +327,10 @@ def test_theres_a_token_for_partnership():
         assert partner in tokens
 
 def test_worst_case_must_have_3_filters_and_3_tokens():
-    from xoutil.iterators import izip
+    from xoutil.iterators import zip
     query = these(person
-                  for person, partner in izip(this('person'),
-                                              this('partner'))
+                  for person, partner in zip(this('person'),
+                                             this('partner'))
                   for rel in this('relation')
                   if rel.type == 'partnership'
                   if rel.subject == person
@@ -367,7 +367,7 @@ def test_named_terms_matches_a_token():
     Ensures that all terms are named, and they are bound to a token that is
     in the query.
     '''
-    from xoutil.iterators import izip
+    from xoutil.iterators import zip
     from xotl.ql.core import thesefy
     from xotl.ql.translation import cotraverse_expression
 
@@ -380,7 +380,7 @@ def test_named_terms_matches_a_token():
         pass
 
     query = these((person, partner)
-                  for person, partner in izip(Person, Person)
+                  for person, partner in zip(Person, Person)
                   for rel in Partnership
                   if (rel.subject == person) & (rel.obj == partner)
                   if person.age > 35)
