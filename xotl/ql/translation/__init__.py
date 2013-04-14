@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #----------------------------------------------------------------------
-# xotl.ql.translate
+# xotl.ql.translation
 #----------------------------------------------------------------------
 # Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
@@ -28,52 +28,13 @@ from __future__ import (division as _py3_division,
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
-from xoutil.modules import modulemethod
-from xoutil.types import Unset
-from xoutil.decorator import memoized_property
-from xoutil.compat import iteritems_
 
 from zope.interface import Interface
-
-from xotl.ql.core import Term, GeneratorToken
-from xotl.ql.expressions import _false, _true
-from xotl.ql.expressions import OperatorType
-from xotl.ql.expressions import ExpressionTree
-from xotl.ql.expressions import UNARY, BINARY
-
-from xotl.ql.expressions import EqualityOperator
-from xotl.ql.expressions import NotEqualOperator
-from xotl.ql.expressions import LogicalAndOperator
-from xotl.ql.expressions import LogicalOrOperator
-from xotl.ql.expressions import LogicalXorOperator
-from xotl.ql.expressions import LogicalNotOperator
-from xotl.ql.expressions import AdditionOperator
-from xotl.ql.expressions import SubstractionOperator
-from xotl.ql.expressions import DivisionOperator
-from xotl.ql.expressions import MultiplicationOperator
-from xotl.ql.expressions import FloorDivOperator
-from xotl.ql.expressions import ModOperator
-from xotl.ql.expressions import PowOperator
-from xotl.ql.expressions import LeftShiftOperator
-from xotl.ql.expressions import RightShiftOperator
-from xotl.ql.expressions import LesserThanOperator
-from xotl.ql.expressions import LesserOrEqualThanOperator
-from xotl.ql.expressions import GreaterThanOperator
-from xotl.ql.expressions import GreaterOrEqualThanOperator
-from xotl.ql.expressions import ContainsExpressionOperator
-from xotl.ql.expressions import IsInstanceOperator
-from xotl.ql.expressions import LengthFunction
-from xotl.ql.expressions import CountFunction
-from xotl.ql.expressions import PositiveUnaryOperator
-from xotl.ql.expressions import NegativeUnaryOperator
-from xotl.ql.expressions import AbsoluteValueUnaryFunction
-from xotl.ql.expressions import InvokeFunction
 
 from xotl.ql.interfaces import (ITerm,
                                 IGeneratorToken,
                                 IExpressionTree,
-                                IQueryObject,
-                                IQueryTranslator)
+                                IQueryObject)
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -190,8 +151,8 @@ def cotraverse_expression(*expressions, **kwargs):
 def cmp_terms(t1, t2, strict=False):
     '''Compares two terms in a partial order.
 
-    This is a *partial* compare operator. A term `t1 < t2` if and only if `t1` is
-    in the parent-chain of `t2`.
+    This is a *partial* compare operator. A term `t1 < t2` if and only if `t1`
+    is in the parent-chain of `t2`.
 
     If `strict` is False the comparison between expressions will be made with
     the `eq` operation; otherwise `is` will be used.
@@ -304,7 +265,7 @@ def token_before_filter(tk, expr, strict=False):
     expression.
 
     A token *is before* an expression if it is (or is before of) the binding of
-    the terms in the expression.
+    any of the terms in the expression.
 
     '''
     with context(UNPROXIFING_CONTEXT):
