@@ -174,13 +174,15 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
-        from xoutil.objects import nameof
+        from xoutil.names import nameof
+        from xoutil.functools import compose
         OperatorType.operators.append(self)
-        _PROVIDES = ('This {which} directly provides '
+        _PROVIDES = ('    This {which} directly provides '
                      ':class:`xotl.ql.interfaces.{interface}`.\n\n')
         doc = ''
-        for attr, trans in (('arity', nameof), ('_method_name', repr),
-                            ('_format', repr)):
+        for attr, trans in (('arity', lambda x: nameof(x, inner=True)),
+                            ('_method_name', repr),
+                            ('_format', compose(str, repr))):
             value = getattr(self, attr, None)
             if value:
                 v = trans(value).replace('_', r'\_')
