@@ -223,10 +223,17 @@ def cmp_terms(t1, t2, strict=False):
 def get_term_path(term):
     '''Returns a tuple of all the names in the path to a term.
 
-    For example: The path of ``this('p').a.b.c`` is ``('p', 'a', 'b', 'c')``
+    For example::
+
+       >>> from xotl.ql import this
+       >>> get_term_path(this('p').a.b.c)
+       ('p', 'a', 'b', 'c')
 
     The unnamed term ``this`` is treated specially by returning None. For
-    example: the path of ``this.a`` is ``(None, 'a')``.
+    example::
+
+        >>> get_term_path(this.a)
+        (None, 'a')
 
     '''
     with context(UNPROXIFING_CONTEXT):
@@ -245,8 +252,9 @@ def get_term_path(term):
 def get_term_signature(term):
     '''Returns the path "signature" of a term (or token).
 
-    For a bound term this a tuple `(path of binding, path of term)`; if the
-    terms is not bound this is a tuple `((), path of the term)`.
+    For a bound term the signature is the tuple ``(path of binding, path of
+    term)``; if the term is not bound this is the tuple ``((), path of the
+    term)``.
 
     '''
     if _is_instance_of(term, IGeneratorToken):
@@ -266,6 +274,8 @@ def token_before_filter(tk, expr, strict=False):
 
     A token *is before* an expression if it is (or is before of) the binding of
     any of the terms in the expression.
+
+    `strict` has the same meaning as in :func:`cmp_terms`.
 
     '''
     with context(UNPROXIFING_CONTEXT):
@@ -292,6 +302,8 @@ def cmp(a, b, strict=False):
       as equal.
 
     - Any two expressions are considered equal.
+
+    `strict` has the same meaning as in :func:`cmp_terms`.
 
     '''
     from ..interfaces import IExpressionCapable
