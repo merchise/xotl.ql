@@ -142,6 +142,12 @@ Compliant :term:`query translators` are required to:
 Expressing order instructions
 -----------------------------
 
+   *As with many of the API elements on xotl.ql, the API of the order is still
+   in flux and may change as we improve on our work. However, this part of the
+   API is probably the one that will change the most due that is the less
+   debated to the date.*
+
+
 To instruct a capable query translator to order the result you may pass the
 `ordering` keyword argument to :class:`~xotl.ql.core.these`.
 

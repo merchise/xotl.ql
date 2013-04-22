@@ -842,7 +842,6 @@ class _QueryObjectType(type):
         # expressions (otherwise things like term.attr would fail).
         orderby = kwargs.get('ordering', None)
         if orderby:
-            # from xoutil.proxy import unboxed
             ordering = orderby(*selection)
         else:
             ordering = None

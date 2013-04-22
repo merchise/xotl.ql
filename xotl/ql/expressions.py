@@ -186,6 +186,7 @@ class OperatorType(type):
             value = getattr(self, attr, None)
             if value:
                 v = trans(value).replace('_', r'\_')
+                v = v.replace("'", '"')
                 doc += ('\n\n    - **{attr}:** {v}'.format(attr=attr,
                                                            v=v))
         if doc:
