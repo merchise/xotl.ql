@@ -471,3 +471,44 @@ def test_regression_test_token_before_filter_20130401():
     assert len(query.tokens) == 1
     assert token_before_filter(token, is_entity_filter, True)
     assert token_before_filter(token, name_filter, True)
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_translation_with_partition():
+    from xoutil.iterators import zip
+    from xotl.ql.expressions import call
+    from xotl.ql.translation.py import naive_translation
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+
+    def gcd(a, b):
+        while a % b != 0:
+            a, b = b, a % b
+        return b
+
+    expected = set((a, b) for a in range(2, 10) for b in range(2, 10) if a > b and gcd(a, b) == 1)
+    assert expected == set([(3, 2),
+                            (4, 3),
+                            (5, 2), (5, 3), (5, 4),
+                            (6, 5),
+                            (7, 2), (7, 3), (7, 4), (7, 5), (7, 6),
+                            (8, 3), (8, 5), (8, 7),
+                            (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
+
+    query = these((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1))
+    plan = naive_translation(query)
+    assert set(plan()) == set([(3, 2),
+                               (4, 3),
+                               (5, 2), (5, 3), (5, 4),
+                               (6, 5),
+                               (7, 2), (7, 3), (7, 4), (7, 5), (7, 6),
+                               (8, 3), (8, 5), (8, 7),
+                               (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
+
+
+    query = these(((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1)), offset=100)
+    plan = naive_translation(query)
+    assert len(list(plan())) == 0
