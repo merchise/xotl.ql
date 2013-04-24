@@ -521,6 +521,8 @@ def test_translation_with_partition():
     plan = naive_translation(query)
     assert len(list(plan())) == 0
 
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_ordering():
     from xotl.ql.translation.py import naive_translation
 
@@ -562,6 +564,7 @@ def test_ordering():
     assert pedro == results[0]
 
 
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_short_circuit():
     from xotl.ql import thesefy
     from xotl.ql.expressions import call
@@ -587,3 +590,18 @@ def test_short_circuit():
     plan = naive_translation(query)
     list(plan())
     assert flag[0] == 1
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_no_custom():
+    from xotl.ql.translation.py import naive_translation
+    from xotl.ql.expressions import Operator, N_ARITY
+
+    class myoperator(Operator):
+        arity = N_ARITY
+        _format = 'myoperator({0}{1})'
+
+    query = these(person for person in Person if myoperator(person))
+    with pytest.raises(TypeError):
+        plan = naive_translation(query)
+        list(plan())
