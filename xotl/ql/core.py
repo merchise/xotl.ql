@@ -992,6 +992,7 @@ class QueryObject(object):
         else:
             self._query_state = None
             raise StopIteration
+    __next__ = next
 
     def __iter__(self):
         from zope.component import getSiteManager
