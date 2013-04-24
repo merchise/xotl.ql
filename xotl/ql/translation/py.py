@@ -24,7 +24,7 @@ from xoutil.decorator import memoized_property
 from xoutil.compat import iteritems_
 
 from xotl.ql.core import Term, GeneratorToken
-from xotl.ql.expressions import _false, _true
+from xotl.ql.expressions import _false
 from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY
@@ -58,15 +58,11 @@ from xotl.ql.expressions import AbsoluteValueUnaryFunction
 from xotl.ql.expressions import InvokeFunction
 from xotl.ql.expressions import NewObjectFunction
 from xotl.ql.expressions import AverageFunction
-from xotl.ql.expressions import EndsWithOperator
-from xotl.ql.expressions import StartsWithOperator
 from xotl.ql.expressions import MinFunction
 from xotl.ql.expressions import MaxFunction
 from xotl.ql.expressions import AllFunction
 from xotl.ql.expressions import AnyFunction
 from xotl.ql.expressions import SumFunction
-
-from xotl.ql.interfaces import IQueryTranslator
 
 __author__ = "Manuel Vázquez Acosta <mva.led@gmail.com>"
 __date__   = "Wed Apr  3 21:22:18 2013"
@@ -463,7 +459,8 @@ class vminstr(object):
             if isinstance(node, ExpressionTree):
                 _args = tuple(e(x) for x in node.children)
                 _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
-                assert node.operation in self.vmcodeset.table, 'I don\'t know how to translate %r' % node.operation
+                if node.operation not in self.vmcodeset.table:
+                    raise TypeError('I don\'t know how to translate %r' % node.operation)
                 def op():
                     a = tuple(x for x in _args)
                     kw = {k: x for k, x in iteritems_(_kwargs)}
@@ -685,29 +682,28 @@ def naive_translation(query, **kwargs):
 
 @modulemethod
 def init(self, settings=None):
-    '''Registers the implementation in this module as an
-    IQueryTranslator for an object model we call "Python Object
-    Model". Also we register this model as the default for the
-    current :term:`registry`.
+    '''Registers the implementation in this module as an IQueryTranslator for
+    an object model we call "Python Object Model".
 
     .. warning::
 
-       Don't call this method in your own code, since it will
-       override all of your query-related configuration.
+       Don't call this method in your own code, since it will override all of
+       your query-related configuration.
 
-       This is only intended to allow testing of the translation
-       common framework by configuring query translator that searches
-       over Python's VM memory.
+       This is only intended to allow testing of the translation common
+       framework by configuring query translator that searches over Python's VM
+       memory.
 
     '''
     from zope.component import getSiteManager
     from zope.interface import directlyProvides
-    from ..interfaces import IQueryConfiguration
-    directlyProvides(self, IQueryConfiguration, IQueryTranslator)
+    from ..interfaces import IQueryConfigurator, IQueryTranslator
+    directlyProvides(self, IQueryConfigurator)
+    directlyProvides(self.naive_translation, IQueryTranslator)
     manager = getSiteManager()
-    configurator = manager.queryUtility(IQueryConfiguration)
-    if configurator:
-        pass
-    else:
-        manager.registerUtility(self, IQueryConfiguration)
-    manager.registerUtility(self, IQueryTranslator)
+    manager.registerUtility(self, IQueryConfigurator)
+
+
+@modulemethod
+def get_translator(self):
+    return self.naive_translation
