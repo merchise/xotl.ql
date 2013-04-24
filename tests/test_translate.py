@@ -34,38 +34,8 @@ from xoutil.compat import iteritems_
 from xotl.ql.core import these, this, thesefy
 from xotl.ql.translation import token_before_filter
 
-from xotl.ql.translation.py import init
-
-
 __docstring_format__ = 'rst'
 __author__ = 'manu'
-
-
-__LOG = False
-
-
-if __LOG:
-    import sys
-    from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_around_method
-
-    from xotl.ql.tests import logging_aspect
-    from xotl.ql.core import QueryParticlesBubble, _part_operations, QueryPart
-
-    # Weave logging aspect into every relevant method during testing
-    aspect = logging_aspect(sys.stdout)
-    weave(aspect, QueryParticlesBubble)
-    for attr in iterkeys_(_part_operations):
-        _weave_around_method(QueryPart, aspect, attr, '_around_')
-    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
-
-
-
-# Initialize and configure the query translation components provided by the
-# translate module. DON'T REMOVE since, some tests actually test this kind of
-# facility. Also, DON'T put it the setUp of any test cases, cause it will
-# likely fail.
-init()
 
 
 # The following classes are just a simple Object Model
@@ -605,3 +575,30 @@ def test_no_custom():
     with pytest.raises(TypeError):
         plan = naive_translation(query)
         list(plan())
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_query_objects_iteration():
+    from xotl.ql.translation.py import init
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+
+    query = these(atom for atom in Universe)
+    with pytest.raises(Exception):
+        results = list(query)
+    init()
+    results = list(query)
+    # XXX: Only for our implementation of QueryObject
+    first_plan = getattr(query, '_query_execution_plan', None)
+    for atom in Universe.this_instances:
+        assert atom in results
+    assert len(results) == len(Universe.this_instances)
+
+    again = list(query)
+    second_plan  = getattr(query, '_query_execution_plan', None)
+    assert len(results) == len(again)
+
+    assert first_plan is second_plan
