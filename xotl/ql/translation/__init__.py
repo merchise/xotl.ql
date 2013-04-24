@@ -40,6 +40,16 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
+class TranslationError(TypeError):
+    '''A translation error.
+
+    Translators should issue this kind of exception if there is an error in the
+    query that impedes the translation. The query should not be retried if not
+    changed.
+
+    '''
+
+
 def _instance_of(which):
     '''Returns an `accept` filter for :func:`_iter_objects` or
     :func:`_iter_classes` that only accepts objects that are instances of
