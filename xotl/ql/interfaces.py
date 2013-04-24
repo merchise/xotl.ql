@@ -440,65 +440,64 @@ class IQueryObject(Interface):
                        'See :class:`~xotl.ql.core.these`.')
 
     def __iter__():
-        '''
-        Queries are iterable, but they **must** return ``self`` in this method.
-        See :meth:`IQueryObject.next`.
+        '''Queries are iterable, but they **must** return ``self`` in this
+        method.  See :meth:`IQueryObject.next`.
+
+        Calling __iter__ should reset the state used by next, so that a query
+        object could be fully iterated several times.
+
         '''
 
     def next():
-        '''
-        Returns the next object in the cursor.
+        '''Returns the next object in the cursor.
 
-        Internally this should get the configure :class:`IQueryTranslator` and
-        build the execution plan, then execute the plan to get the IDataCursor
-        from which it can drawn objects from.
+        Internally this should get :class:`IQueryTranslator` that is configured
+        for the current context (thread or process) and build the execution
+        plan, then execute the plan and yield one object at the time.
+
+        As required by Python, this method should raise a StopIteration when
+        all the objects were returned.
+
         '''
 
 
 class IQueryTranslator(Interface):
-    '''
-    A :term:`query translator`.
-    '''
+    '''A :term:`query translator`.'''
 
-    def build_plan(query, **kwargs):
-        '''Builds a query plan for a query. Returns an IQueryExecutionPlan.'''
+    def __call__(query, **kwargs):
+        '''Translate a `query object` and returns the query exection plan.
+
+        :param query: The :term:`query object` to be translated.
+
+        :param kwargs: Additional keyword arguments the translator might
+          take. Translators are required to document these.
+
+        :returns: A query execution plan.
+
+        '''
 
 
 class IQueryExecutionPlan(Interface):
-    '''Represents the execution plan for a query.'''
+    '''Represents the execution plan for a query.
 
-    query = Attribute('The query for which is the plan.')
+    Since the only actual requirement this interfaces poses is that the
+    execution plan be callable, this may be implemented with a closure. But
+    keep in mind that the closure should be reusable in several calls.
+
+    '''
 
     def __call__():
-        '''Executes the plan an retrieves a IDataCursor'''
-
-
-class IDataCursor(Interface):
-    def next():
-        '''Returns the object at the cursor position and moves the cursor
-        forward. If the cursor is out of objects raises `StopIteration`.
+        '''Executes the plan an retrieves an iterable with the seleted
+        objects.
 
         '''
 
 
-class IQueryConfiguration(Interface):
-    '''A configuration object.'''
+class IQueryConfigurator(Interface):
+    '''A mediator between IQueryObject and the system configuration of
+    translators.
 
-    default_translator_name = Attribute('The name to lookup in the components '
-                                        'registry for a IQueryTranslator')
+    '''
 
-    def get_translator_for(**predicates):
-        '''Get's the configured translator for a set of *predicates*.
-
-        :param app: A string that represents an application (or site)
-                    within your system. You may need to merge several
-                    applications within a system; each with it's own
-                    database and query translator. Use this argument
-                    to explicitly ask for the translator for a given
-                    application.
-
-        :param kind: A fully-qualified class name that uniquely
-                     identify some object kind in your system and for
-                     which you may need to specify a different translator.
-
-        '''
+    def get_translator():
+        '''Get's the current configured IQueryTranslator.'''
