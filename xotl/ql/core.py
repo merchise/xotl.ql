@@ -959,7 +959,7 @@ class QueryObject(object):
         from xotl.ql.expressions import pos, neg
         if value:
             ok = lambda v: (isinstance(v, ExpressionTree) and
-                            value.op in (pos, neg))
+                            v.op in (pos, neg))
             if ok(value):
                 self._ordering = (value,)
             elif isinstance(value, tuple) and all(ok(v) for v in value):
