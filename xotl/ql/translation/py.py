@@ -366,8 +366,7 @@ class var(_var):
 class _object(object):
     '''The type for objects build by ``new(object, ...)``.'''
     def __init__(self, **kwargs):
-        for k, v in iteritems_(kwargs):
-            setattr(self, k, v)
+        self.__dict__ = kwargs.copy()
 
 
 def new(t, **kwargs):
@@ -399,7 +398,7 @@ class vminstr(object):
         @codefor(NewObjectFunction)
         def new_object(self, t, **kwargs):
             if isinstance(t, type):
-                return new(**{arg: value() for arg, value in iteritems_(kwargs)})
+                return new(t, **{arg: value() for arg, value in iteritems_(kwargs)})
             else:
                 raise TypeError('The first argument to new should be a type. Not %s' % t)
 
