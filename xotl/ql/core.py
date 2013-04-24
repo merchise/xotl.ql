@@ -884,6 +884,9 @@ class QueryObject(object):
     '''
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
+    __slots__ = (str('_selection'), str('tokens'), str('_filters'),
+                 str('_ordering'), str('_partition'), str('params'))
+
     def __init__(self):
         self._selection = None
         self.tokens = None
