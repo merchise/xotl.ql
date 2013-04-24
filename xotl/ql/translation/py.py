@@ -293,74 +293,9 @@ class var(_var):
         else:
             return current
 
-    def __and__(self, other):
-        value = self._get_current_value(default=_false)
-        if value is _false:
-            return _false
-        if isinstance(other, var):
-            other = other._get_current_value(default=_false)
-        return bool(value) and bool(other)
-
-    def __or__(self, other):
-        value = self._get_current_value(default=_false)
-        if value is _true:
-            return _true
-        if isinstance(other, var):
-            other = other._get_current_value(default=_false)
-        return bool(value) or bool(other)
-
-    def _contains_(self, what):
-        value = self._get_current_value()
-        if isinstance(what, var):
-            what = what._get_current_value()
-        return what in value
-
-    def __len__(self):
-        value = self._get_current_value()
-        return len(value)
-
-    def _is_a(self, what):
-        value = self._get_current_value()
-        if isinstance(what, var):
-            what = what._get_current_value()
-        return isinstance(value, what)
-
-    def startswith(self, preffix):
-        value = self._get_current_value()
-        if isinstance(preffix, var):
-            preffix = preffix._get_current_value()
-        return value.startswith(preffix)
-
-    def endswith(self, suffix):
-        value = self._get_current_value()
-        if isinstance(suffix, var):
-            suffix = suffix._get_current_value()
-        return value.startswith(suffix)
-
-    def __call__(self, *args, **kwargs):
-        value = self._get_current_value()
-        extract = lambda x: x._get_current_value() if isinstance(x, var) else x
-        _args = (extract(a) for a in args)
-        _kwargs = {k: extract(v) for k, v in kwargs.items()}
-        return value(*_args, **_kwargs)
-
-    def __bool__(self):
-        value = self._get_current_value()
-        return bool(value)
-    __nonzero__ = __bool__
-
-
-    # TODO: all_, any_, min_, max_,
-    # @classmethod
-    # def possible_subquery(cls, func, self, *args):
-    #     first, rest = args[0], args[1:]
-    #     extract = lambda x: x._get_current_value() if isinstance(x, var) else x
-    #     _args = (extract(a) for a in args)
-    #     if rest:
-    #         return func(*_args)
-    #     else:
-    #         # TODO:
-    #         return func(iter(first))
+    def __repr__(self):
+        with context(UNPROXIFING_CONTEXT):
+            return "<var for '%s'>" % self.term
 
 
 class _object(object):
@@ -369,12 +304,13 @@ class _object(object):
         self.__dict__ = kwargs.copy()
 
 
-def new(t, **kwargs):
-    '''The implementation of the `new` function operation.'''
-    if t == object:
-        return _object(**kwargs)
+def var_extract(maybe, default=Unset):
+    if isinstance(maybe, var):
+        return maybe._get_current_value(default)
+    elif isinstance(maybe, vminstr.mylambda):
+        return maybe()
     else:
-        return t(**kwargs)
+        return maybe
 
 
 vminstr_table = {}
@@ -395,12 +331,25 @@ class vminstr(object):
                 return func
             return decorator
 
+        def extract_args(func):
+            from functools import wraps
+            @wraps(func)
+            def inner(*args, **kwargs):
+                args = tuple(var_extract(arg) for arg in args)
+                kwargs = {key: var_extract(value) for key, value in kwargs.items()}
+                return func(*args, **kwargs)
+            return inner
+
         @codefor(NewObjectFunction)
+        @extract_args
         def new_object(self, t, **kwargs):
-            if isinstance(t, type):
-                return new(t, **{arg: value() for arg, value in iteritems_(kwargs)})
+            '''The implementation of the `new` function operation.'''
+            if not isinstance(t, type):
+                raise TypeError('The first argument to new should be a type. Not %r' % t)
+            if t == object:
+                return _object(**kwargs)
             else:
-                raise TypeError('The first argument to new should be a type. Not %s' % t)
+                return t(**kwargs)
 
         def sub_query_method(func):
             def inner(self, *args):
@@ -418,11 +367,11 @@ class vminstr(object):
                 return func(result for result in plan())
             return inner
 
-        all_ = codefor(AllFunction)(sub_query_method(all))
-        any_ = codefor(AnyFunction)(sub_query_method(any))
-        min_ = codefor(MinFunction)(sub_query_method(min))
-        max_ = codefor(MaxFunction)(sub_query_method(max))
-        sum_ = codefor(SumFunction)(sub_query_method(sum))
+        all_ = codefor(AllFunction)(extract_args(sub_query_method(all)))
+        any_ = codefor(AnyFunction)(extract_args(sub_query_method(any)))
+        min_ = codefor(MinFunction)(extract_args(sub_query_method(min)))
+        max_ = codefor(MaxFunction)(extract_args(sub_query_method(max)))
+        sum_ = codefor(SumFunction)(extract_args(sub_query_method(sum)))
 
         def avg(vals):
             _sum, count = 0, 0
@@ -431,28 +380,25 @@ class vminstr(object):
                 count += 1
             return _sum/count
 
-        average = codefor(AverageFunction)(sub_query_method(avg))
+        average = codefor(AverageFunction)(extract_args(sub_query_method(avg)))
 
+        # XXX: `and` and `or` don't extract all arguments unless they need it.
         @codefor(LogicalAndOperator)
         def and_(self, x, y):
-            if isinstance(x, var):
-                x = x._get_current_value(default=False)
-            if not bool(x):
+            x = var_extract(x)
+            if not x:
                 return False
-            if isinstance(y, var):
-                y = y._get_current_value(default=False)
-            if bool(y):
+            y = var_extract(y)
+            if y:
                 return True
             return False
 
         @codefor(LogicalOrOperator)
         def or_(self, x, y):
-            if isinstance(x, var):
-                x = x._get_current_value(default=False)
+            x = var_extract(x)
             if bool(x):
                 return True
-            if isinstance(y, var):
-                y = y._get_current_value(default=False)
+            y = var_extract(y)
             if bool(y):
                 return True
             return False
@@ -469,30 +415,39 @@ class vminstr(object):
             return not bool(x)
 
         table.update({
-            EqualityOperator: lambda self, x, y: x == y,
-            NotEqualOperator: lambda self, x, y: x != y,
-            AdditionOperator: lambda self, x, y: x + y,
-            SubstractionOperator: lambda self, x, y: x - y,
-            DivisionOperator: lambda self, x, y: x/y,
-            MultiplicationOperator: lambda self, x, y: x*y,
-            FloorDivOperator: lambda self, x, y: x//y,
-            ModOperator: lambda self, x, y: x % y,
-            PowOperator: lambda self, x, y: x**y,
-            LeftShiftOperator: lambda self, x, y: x << y,
-            RightShiftOperator: lambda self, x, y: x >> y,
-            LesserThanOperator: lambda self, x, y: x < y,
-            LesserOrEqualThanOperator: lambda self, x, y: x <= y,
-            GreaterThanOperator: lambda self, x, y: x > y,
-            GreaterOrEqualThanOperator: lambda self, x, y: x >= y,
-            ContainsExpressionOperator: lambda self, x, y: y in x,
-            IsInstanceOperator: lambda self, x, y: x._is_a(y),
-            LengthFunction: lambda self, x: len(x),
-            CountFunction: lambda self, x: len(x),
-            PositiveUnaryOperator: lambda self, x: +x,
-            NegativeUnaryOperator: lambda self, x: -x,
-            AbsoluteValueUnaryFunction: lambda self, x: abs(x),
-            InvokeFunction: lambda self, m, *a, **kw: m(*a, **kw)
+            EqualityOperator: extract_args(lambda self, x, y: x == y),
+            NotEqualOperator: extract_args(lambda self, x, y: x != y),
+            AdditionOperator: extract_args(lambda self, x, y: x + y),
+            SubstractionOperator: extract_args(lambda self, x, y: x - y),
+            DivisionOperator: extract_args(lambda self, x, y: x/y),
+            MultiplicationOperator: extract_args(lambda self, x, y: x*y),
+            FloorDivOperator: extract_args(lambda self, x, y: x//y),
+            ModOperator: extract_args(lambda self, x, y: x % y),
+            PowOperator: extract_args(lambda self, x, y: x**y),
+            LeftShiftOperator: extract_args(lambda self, x, y: x << y),
+            RightShiftOperator: extract_args(lambda self, x, y: x >> y),
+            LesserThanOperator: extract_args(lambda self, x, y: x < y),
+            LesserOrEqualThanOperator: extract_args(lambda self, x, y: x <= y),
+            GreaterThanOperator: extract_args(lambda self, x, y: x > y),
+            GreaterOrEqualThanOperator: extract_args(lambda self, x, y: x >= y),
+            ContainsExpressionOperator: extract_args(lambda self, x, y: y in x),
+            IsInstanceOperator: extract_args(lambda self, x, y: isinstance(x, y)),
+            LengthFunction: extract_args(lambda self, x: len(x)),
+            CountFunction: extract_args(lambda self, x: len(x)),
+            PositiveUnaryOperator: extract_args(lambda self, x: +x),
+            NegativeUnaryOperator: extract_args(lambda self, x: -x),
+            AbsoluteValueUnaryFunction: extract_args(lambda self, x: abs(x)),
+            InvokeFunction: extract_args(lambda self, m, *a, **kw: m(*a, **kw))
         })
+
+    class mylambda(object):
+        def __init__(self, code, *args, **kwargs):
+            self.code = code
+            self.args = args
+            self.kwargs = kwargs
+
+        def __call__(self):
+            return self.code(*self.args, **self.kwargs)
 
 
     def __init__(self, filter, vm):
@@ -510,26 +465,17 @@ class vminstr(object):
                 _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
                 assert node.operation in self.vmcodeset.table, 'I don\'t know how to translate %r' % node.operation
                 def op():
-                    def extract(x):
-                        import types
-                        if isinstance(x, var):
-                            return x
-                        elif isinstance(x, types.FunctionType):  # TODO: Mark my lambdas
-                            return x()
-                        else:
-                            return x
-                    a = (extract(x) for x in _args)
-                    kw = {k: extract(x) for k, x in iteritems_(_kwargs)}
+                    a = tuple(x for x in _args)
+                    kw = {k: x for k, x in iteritems_(_kwargs)}
                     return self.vmcodeset.table[node.operation](self, *a, **kw)
-                return op
-                #return lambda: self.vmcodeset.table[node.operation](self, *a, **_kwargs)
-            return node # assumed to be as is
+                return vminstr.mylambda(op)
+            return node  # assumed to be as is
         return e(self.filter)
 
     def __call__(self, pre=None, post=None):
         tree = self.tree
         if isinstance(tree, var):
-            return tree
+            return tree._get_current_value(default=False)
         else:
             return tree()
 
@@ -631,7 +577,7 @@ class vmtoken(object):
         cls = self._token_class
         this_instances = getattr(cls, 'this_instances', None)
         if is_collection(this_instances):
-            if defined(cls, self.only):
+            if not self.only or defined(cls, self.only):
                 return iter(this_instances)
             else:
                 return []
@@ -694,9 +640,11 @@ def naive_translation(query, **kwargs):
         # The we just build several chained generators that either produce
         # (affect the vm) or filter.
         #
+        from xoutil.objects import get_first_of
         from xotl.ql.expressions import _false
         parts = list(sorted_parts[:])
-        vm = plan_kwargs.get('vm', None) or kwargs.get('vm', None) or {}
+        vm = get_first_of((plan_kwargs, kwargs), 'vm', default={})
+        # vm = plan_kwargs.get('vm', None) or kwargs.get('vm', None) or {}
         result = vmtoken(parts.pop(0), vm, query, only=only)
         while parts:
             part = parts.pop(0)
@@ -708,7 +656,31 @@ def naive_translation(query, **kwargs):
             selected = select(query.selection, vm)
             if selected is not _false:
                 yield selected
-    return plan
+
+    if query.ordering:
+        def plan_with_ordering(**plan_kwargs):
+            vm = plan_kwargs.setdefault('vm', {})
+            key = lambda: tuple(vminstr(order_expr, vm=vm)() for order_expr in query.ordering)
+            # XXX: Don't use sorted(plan(**plan_kwargs), key=key)
+            #
+            #      Since the vm is constantly being updated after each yield we
+            #      must make sure, key() is called exactly when the vm has the
+            #      desired state for each object; but sorted may retreive
+            #      several items in chunks and call key aftewards which will
+            #      not yield the right results.
+            return (sel for k, sel in sorted((key(), r) for r in plan(**plan_kwargs)))
+        res = plan_with_ordering
+    else:
+        res = plan
+    if query.partition:
+        from xoutil.objects import extract_attrs
+        start, stop, step = extract_attrs(query.partition, 'start', 'stop',
+                                          'step')
+        def plan_with_partition(**kwargs):
+            from itertools import islice
+            return islice(res(**kwargs), start, stop, step)
+        return plan_with_partition
+    return res
 
 
 @modulemethod

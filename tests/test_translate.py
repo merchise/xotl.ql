@@ -560,3 +560,30 @@ def test_ordering():
     plan = naive_translation(query)
     results = list(plan())
     assert pedro == results[0]
+
+
+def test_short_circuit():
+    from xotl.ql import thesefy
+    from xotl.ql.expressions import call
+    from xotl.ql.translation.py import naive_translation
+    from xoutil.compat import integer
+    flag = [0]   # A list to allow non-global non-local in Py2k
+    def inc_flag(by=1):
+        flag[0] += 1
+        return flag[0]
+
+    @thesefy
+    class Universe(integer):
+        pass
+    Universe.this_instances = [Universe(1780917517912941696167)]
+
+    query = these(atom for atom in Universe if (call(inc_flag) > 1) & call(inc_flag))
+    plan = naive_translation(query)
+    list(plan())
+    assert flag[0] == 1
+
+    flag[0] = 0
+    query = these(atom for atom in Universe if (call(inc_flag) > 0) | call(inc_flag))
+    plan = naive_translation(query)
+    list(plan())
+    assert flag[0] == 1
