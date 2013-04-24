@@ -1012,6 +1012,79 @@ class QueryObject(object):
         'Creates a subquery'
         raise NotImplementedError
 
+    def __getitem__(self, key):
+        '''Returns a paritioned QueryObject.
+
+        If `key` is an integer it will be treated as ``slice(key, key+1)``.
+
+        Otherwise it must be a slice. In this case if `self` has a partition
+        the returning query object will have a partition that's a mix between
+        self's partition and the `key`:
+
+        - If both current start and key's start are negative, the max it's
+          taken. Otherwise they are simply added.
+
+        - If both current stop and key's stop are non-negative, the min it's
+          taken. Otherwise they are simply added.
+
+        - If both steps are non-negative, the max it's taken. Otherwise the min
+          it's taken.
+
+        '''
+        from copy import copy
+        from xoutil.compat import integer
+        from xoutil.objects import extract_attrs
+        if isinstance(key, integer):
+            key = slice(key, key+1)
+        assert isinstance(key, slice)
+        result = copy(self)
+        partition = result.partition
+        if partition:
+            start, stop, step = extract_attrs(partition, 'start', 'stop', 'step')
+            if not start:
+                start = key.start
+            elif not key.start:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif start <= 0 and key.start <= 0:
+                start = max(start, key.start)
+            else:
+                start = start + key.start
+            if not stop:
+                stop = key.stop
+            elif not key.stop:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif stop >= 0 and key.stop >= 0:
+                stop = min(stop, key.stop)
+            else:
+                stop = stop + key.stop
+            if not step:
+                step = key.step
+            elif not key.step:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif step >= 0 and key.step >= 0:
+                step = max(step, key.step)
+            else:
+                step = min(step, key.step)
+            partition = slice(start, stop, step)
+        else:
+            partition = key
+        result.partition = partition
+        return result
+
+    def __copy__(self):
+        from copy import copy
+        result = type(self)()
+        with context(UNPROXIFING_CONTEXT):
+            # XXX: QueryObjects are deemed unmutable
+            result.filters = copy(self.filters)
+            result.selection = copy(self.selection)
+            result.ordering = copy(self.ordering)
+            result.partition = self.partition
+            result.params = self.params.copy()
+            result.tokens = copy(self.tokens)
+        return result
+
+
 these = QueryObject
 
 

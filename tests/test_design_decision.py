@@ -379,3 +379,22 @@ def test_worst_case_must_have_3_filters_and_3_tokens():
     ok(rel.type == 'partnership')
     with pytest.raises(IndexError):
         ok(None)
+
+
+def test_partition_vs_limit():
+    query = these((parent for parent in this), limit=100)
+    assert query.partition.stop == 100
+
+    query = these((parent for parent in this), offset=100, limit=100)
+    assert query.partition.stop == 200
+
+    query = these((parent for parent in this), offset=100, limit=100, step=2)
+    assert query.partition.stop == 400
+
+def test_query_object_getitem():
+    query = these((parent for parent in this), offset=100, limit=100, step=2)
+    query2 = query[:-50]
+    assert query.partition.stop == 400
+    assert query2.partition.start == 100
+    assert query2.partition.stop == 350
+    assert query2.partition.step == 2

@@ -17,7 +17,6 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 import unittest
-import sys
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
