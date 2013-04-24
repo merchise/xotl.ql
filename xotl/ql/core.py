@@ -31,29 +31,24 @@ from __future__ import (division as _py3_division,
 import re
 from itertools import count
 
-import threading
-
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorator.meta import decorator
 from xoutil.decorator.compat import metaclass
-from xoutil.aop.basic import complementor
 
-from zope.component import getUtility
 from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
-from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CAPTURING
+from xotl.ql.expressions import _true, _false, ExpressionTree
+from xotl.ql.expressions import EXPRESSION_CAPTURING
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
                                 IExpressionTree,
                                 IExpressionCapable,
-                                IQueryTranslator,
-                                IQueryConfiguration,
+                                IQueryConfigurator,
                                 IQueryObject,
                                 IQueryParticlesBubble)
 
@@ -915,7 +910,8 @@ class QueryObject(object):
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
     __slots__ = (str('_selection'), str('tokens'), str('_filters'),
-                 str('_ordering'), str('_partition'), str('params'))
+                 str('_ordering'), str('_partition'), str('params'),
+                 str('_query_state'), str('_query_execution_plan'))
 
     def __init__(self):
         self._selection = None
@@ -924,6 +920,8 @@ class QueryObject(object):
         self._ordering = None
         self.partition = None
         self.params = {}
+        self._query_execution_plan = None
+        self._query_state = None
 
     @property
     def selection(self):
@@ -985,32 +983,26 @@ class QueryObject(object):
         '''Support for retrieving objects directly from the query object. Of
         course this requires that an IQueryTranslator is configured.
         '''
-        state = getattr(self, '_query_state', Unset)
-        if state is Unset:
-            # TODO: This will change, configuration vs deployment.
-            #       How to inject translator into a global/local context?
-            conf = getUtility(IQueryConfiguration)
-            name = getattr(conf, 'default_translator_name', None)
-            translator = getUtility(IQueryTranslator,
-                                    name if name else str('default'))
-            query_plan = translator.build_plan(self)
-            state = self._query_state = query_plan()
-        result = next(state, (Unset, Unset))
-        if isinstance(result, tuple):
-            result, state = result
-        else:
-            state = Unset
+        state = self._query_state
+        if not state:
+            raise StopIteration()
+        result = next(state, Unset)
         if result is not Unset:
-            if state:
-                self._query_state = state
             return result
         else:
-            delattr(self, '_query_state')
+            self._query_state = None
             raise StopIteration
 
     def __iter__(self):
-        'Creates a subquery'
-        raise NotImplementedError
+        from zope.component import getSiteManager
+        plan = self._query_execution_plan
+        if not plan:
+            manager = getSiteManager()
+            configurator = manager.getUtility(IQueryConfigurator)
+            translator = configurator.get_translator()
+            plan = self._query_execution_plan = translator(self)
+        self._query_state = plan()
+        return self
 
     def __getitem__(self, key):
         '''Returns a paritioned QueryObject.
