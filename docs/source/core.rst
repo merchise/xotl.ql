@@ -129,7 +129,7 @@ To set limits and offsets you may pass the `partition` keyword argument a
 well.
 
 Alternatively, you may provide one (or several) of the keyword arguments:
-`limit`, `offset` and `step`. This arguments are used then to create the
+`limit`, `offset` and `step`. These arguments are used then to create the
 `slice` object. If you provide the `partition` argument, these ones will be
 ignored (and a warning will be logged).
 
@@ -143,17 +143,20 @@ Compliant :term:`query translators` are required to:
 - Document those expectations.
 
 The semantics associated with `partition` are the same as slices in
-Python. Though some translators may restrict the domain for `start`, `stop` and
-`step` , they **must not** change the meaning of any of it's
+Python. Translators may restrict the domain for `start`, `stop` and `step` ,
+however they **must not** change the meaning of any of it's
 components. Particularly, the `stop` value in slices has *not* the same meaning
-that the clause `LIMIT` in SQL (at least for PostgreSQL 9.1).
+that the clause `LIMIT` in SQL (at least for PostgreSQL 9.1). `LIMIT` refers to
+an *amount* of elements to be returned, while `stop` refers to an *index*.
 
-In SQL `LIMIT` represents an *amount* of elements to be returned, while `stop`
-refers to an *index*. For non-negative `start` and `stop` with a `step` of 1 we
-have :math:`LIMIT = stop - start`.
+Thus, the `limit` argument to :class:`~!xotl.ql.core.these` is not the same as
+the `stop` component of `partition`. The :meth:`API documentation
+<xotl.ql.core._QueryObjectType.build_from_generator>` that supports the
+:class:`!these` signature notes how `partition` is built from `offset`, `limit`
+and `step`.
 
-Translators may restrict the use of negative indexes in `partition` but **must
-not** regard `stop` as an amount instead of a index.
+Translators may, for instance, restrict the use of negative indexes in
+`partition` but **must not** regard `stop` as an amount instead of a index.
 
 
 .. _ordering-expressions:

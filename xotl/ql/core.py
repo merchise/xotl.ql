@@ -778,25 +778,35 @@ class _QueryObjectType(type):
              are selections in the query and returns a tuple of :ref:`ordering
              expressions <ordering-expressions>`.
 
-        :param partition: A slice `(offset, limit, step)` that represents the
+        :param partition: A slice `(start, stop, step)` that represents the
                           part of the result set to be retrieved.
 
                           You may express this by individually providing the
-                          arguments `offset`, `limit` and `step`.
+                          arguments `offset`, `limit` and `step`.If you provide
+                          the `partition` argument, those will be ignored (and
+                          a warning will be logged).
 
-                          If you provide the `partition` argument, those will
-                          be ignored (and a warning will be logged).
+                          If `partition` is not provided and any of the
+                          alternatives is, then if `limit` is not None the
+                          `stop` component of partition is calculated by
+                          ``step(limit + offset)``.
 
         :type partition: slice or None
 
-        :param offset: Individually express the offset of the `partition`
+        :param offset: Individually express the start of the `partition`
                        parameter.
 
-        :param limit: Individually express the limit of the `partition`
-                      parameter.
+        :type offset: Non-negative index.
+
+        :param limit: Combined with `offset` and `step` express the stop
+                      component of the `partition` parameter.
+
+        :type limit: Positive amount.
 
         :param step: Individually express the step of the `partition`
                      parameter.
+
+        :type step: Positive integer.
 
         :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
                   represents the QueryObject expressed by the `comprehension`
@@ -804,12 +814,19 @@ class _QueryObjectType(type):
 
         :rtype: :class:`QueryObject`
 
+        All others keyword arguments are copied to the
+        :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute, so that
+        :term:`query translators <query translator>` may use them.
 
         .. note::
 
-           All others keyword arguments are copied to the
-           :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute, so that
-           :term:`query translators <query translator>` may use them.
+           The `step` argument could change the actual amount of elements
+           specified by `limit` because it is regarded as a stepping *after* a
+           continous chunk of items is selected.
+
+           This argument is not always directly translatable to data stores. It
+           is provided in the believe that translators may complement the data
+           stores natural behavior and do the stepping by themselves.
 
         '''
         from types import GeneratorType
@@ -850,10 +867,23 @@ class _QueryObjectType(type):
             query.ordering = ordering
             partition = kwargs.get('partition', None)
             offset = kwargs.get('offset', None)
+            if offset and not offset >= 0:
+                raise TypeError('offset must be non-negative')
             limit = kwargs.get('limit', None)
+            if limit and not limit >= 0:
+                raise TypeError('limit must be non-negative')
             step = kwargs.get('step', None)
+            if step and not step > 0:
+                raise TypeError('step must be positive')
             if not partition and (offset or limit or step):
-                partition = slice(offset, limit, step)
+                if limit:
+                    start = offset or 0
+                    stop = limit + start
+                    if step:
+                        stop = step * stop
+                else:
+                    stop = None
+                partition = slice(offset, stop, step)
             elif partition and (offset or limit or step):
                 import warnings
                 warnings.warn('Ignoring offset, limit and/or step argument '
@@ -950,18 +980,6 @@ class QueryObject(object):
             self._partition = value
         else:
             raise TypeError('Expected a slice or None; got %r' % value)
-
-    @property
-    def offset(self):
-        return self._partition.start
-
-    @property
-    def limit(self):
-        return self._partition.stop
-
-    @property
-    def step(self):
-        return self._partition.step
 
     def next(self):
         '''Support for retrieving objects directly from the query object. Of
