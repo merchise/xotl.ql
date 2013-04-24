@@ -44,7 +44,6 @@ Core Contents:
    expressions
    core
    api/*
-   translation/*
    terms
    next-release-goals
    HISTORY
