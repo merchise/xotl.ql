@@ -826,18 +826,14 @@ class ResolveSubQueryMixin(object):
 
 
 class AllFunction(FunctorOperator, ResolveSubQueryMixin):
-    '''
-    The representation of the `all` function.
+    '''The representation of the `all` function.
 
     There are three possible interpretations/syntaxes for :func:`all_`:
 
     1. It takes an expression (probably a subquery) and returns true only if
        every object is true::
 
-            >>> ages = [1, 2, 3, 4, 5]
-            >>> expr = all_(age > 10 for age in ages)
-            >>> str(expr)        # doctest: +ELLIPSIS
-            'all(<generator object...>)'
+            all_(age > 10 for age in ages)
 
     2. takes several objects and evaluates them all (no subqueries)::
 
@@ -850,15 +846,14 @@ class AllFunction(FunctorOperator, ResolveSubQueryMixin):
        :mod:`xotl.ql.core` module) and the second a predicate::
 
             >>> from xotl.ql.core import this
-            >>> expr = all_(this.children, this.age > 10)
-            >>> str(expr)
-            'all(this.children, (this.age > 10))'
+            >>> expr = all_(this, this.age > 10)
 
     .. warning::
 
        There's no way to syntactically (at the level on which one could do
-       normally in Python) to distiguish the last two elements from each other;
-       so translators may further restrict these interpretations.
+       normally in Python) to distiguish the last two cases from each other; so
+       translators may further restrict these interpretations.
+
     '''
 
     _format = 'all({0})'
