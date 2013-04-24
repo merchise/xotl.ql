@@ -967,43 +967,6 @@ class InvokeFunction(FunctorOperator):
 invoke = call = InvokeFunction
 
 
-class StartsWithOperator(FunctorOperator):
-    '''
-    The `startswith(string, prefix)` operator::
-
-         >>> e = startswith(q('something'), 's')
-         >>> str(e)
-         "startswith('something', 's')"
-
-    .. note::
-
-       At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
-    '''
-    _format = 'startswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = str('startswith')
-startswith = StartsWithOperator
-
-
-class EndsWithOperator(FunctorOperator):
-    '''
-    The `endswith(string, suffix)` operator::
-
-        >>> e = endswith(q('something'), 's')
-        >>> str(e)
-        "endswith('something', 's')"
-
-
-    .. note::
-
-       At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
-    '''
-    _format = 'endswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = str('endswith')
-endswith = EndsWithOperator
-
-
 class AverageFunction(FunctorOperator, ResolveSubQueryMixin):
     '''
     The ``avg(*args)`` operation. There're two possible interpretations:

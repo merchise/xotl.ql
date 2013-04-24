@@ -93,14 +93,6 @@
 
 .. autoclass:: is_instance
 
-.. autoclass:: StartsWithOperator
-
-.. autoclass:: startswith
-
-.. autoclass:: EndsWithOperator
-
-.. autoclass:: endswith
-
 .. autoclass:: FloorDivOperator
 
 .. autoclass:: floordiv
