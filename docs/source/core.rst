@@ -7,24 +7,26 @@ The query language and the `this` object
 The basic query language uses generator expressions to express both the SELECT
 part and FILTER part of a query.
 
-In a :term:`query expression` (generator expression) the :data:`this` objects
+In a :term:`query expression` (generator expression) the :data:`xotl.ql.core.this` objects
 stand for the entire universe of objects *unless otherwise restricted by filter
 expressions*. For instance::
 
-    >>> from xotl.ql.expressions import count, is_a
+    >>> from xotl.ql import this, these, thesefy
+    >>> from xotl.ql.expressions import count, is_instance
 
     >>> class Person(object):
     ...     pass
 
-    >>> parents = (parent for parent in this
-    ...                   if is_a(parent, Person) & count(parent.children) > 0)
+    >>> parents = these(parent
+    ...                 for parent in this
+    ...                 if is_instance(parent, Person) & parent.children)
 
-may be used to select every object ``parent`` that has an attribute
+might be used to select every object ``parent`` that has an attribute
 ``children`` that is a non-empty sequence of objects.
 
 The :data:`this` object may also appear in expressions meaning "the *current*
-object"; when those expressions take a predicative form. For instance,
-following the third interpretation for :class:`~xotl.ql.expression.all_`::
+object" when those expressions take a predicative form. For instance, following
+the third interpretation for :class:`all_ <xotl.ql.expressions.AllFunction>`::
 
     >>> from xotl.ql.expressions import all_
     >>> parents = (parent for parent in this
@@ -32,8 +34,8 @@ following the third interpretation for :class:`~xotl.ql.expression.all_`::
 
 meaning to retrieve all `parents` whose children are all at least 10 years
 (supposedly). In this case, the second use of the `this` object would represent
-each child yielded by `parent.children`. But using the first interpretation for
-`all_` would be more readable::
+each child yielded by `parent.children`. Admittedly, in this particular example
+using the first interpretation for `all_` would be more readable::
 
     >>> parents = (parent for parent in this
     ...                if all_(child.age > 10 for child in parent.children))
@@ -49,18 +51,18 @@ each child yielded by `parent.children`. But using the first interpretation for
    For instance: if the target is a CouchDB_ database, the :class:`is_instance
    <xotl.ql.expressions.IsInstanceOperator>` operation might be rejected
    because CouchDB lacks types. Alternatively, a query translator for CouchDB
-   *may* be configurable to translate this operation to a ``document._type ==
-   type``; where `_type` is the name of the attribute that is by convention
-   used in CouchDB to store the objects' types.
+   *might* have a configuration option to allow translation of this operation
+   to a ``document._type == type``; where `_type` is the name of the attribute
+   that is by convention used in CouchDB to store the objects' types.
 
    So when writing queries you should check the translators available and their
    documentation.
 
 
 :class:`!Term` instances may be *named*, thus allowing to select different
-objects in a single query. When used in query expressions, `this` automatically
-yields a single uniquely named :class:`Term` instance. So, you don't need to
-specify a name by your self::
+objects in a single query. When used in query expressions,
+:data:`~xotl.ql.core.this` automatically yields a single uniquely named
+:class:`Term` instance. So, you don't need to specify a name by your self::
 
     >>> p, c = next((parent.name, child.name) for parent in this
     ...                        if count(parent.children) > 0
@@ -109,10 +111,14 @@ Order, limits and offsets
 =========================
 
 So far, the query language presented does not allow for expressing neither
-limits, offsets and order-by clauses. But rest sure those things are
-possible. When expressing a query :class:`~xotl.ql.core.these` allows to pass
-many keyword arguments, which are kept in the :class:`query object
+limits, offsets and order-by clauses. :class:`~xotl.ql.core.these` allows you
+to pass many keyword arguments, which are kept in the :class:`query object
 <xotl.ql.interfaces.IQueryObject>` returned.
+
+Some of these keyword arguments are considered "reserved" for the purposes of
+ordering and *partitioning* the result of a query. Any other keyword argument
+is left as-is in the :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute
+of :term:`query objects <query object>`.
 
 
 Limits and offsets
@@ -135,6 +141,19 @@ Compliant :term:`query translators` are required to:
   that is not None (e.g. a translator may not support a step bigger than 1)
 
 - Document those expectations.
+
+The semantics associated with `partition` are the same as slices in
+Python. Though some translators may restrict the domain for `start`, `stop` and
+`step` , they **must not** change the meaning of any of it's
+components. Particularly, the `stop` value in slices has *not* the same meaning
+that the clause `LIMIT` in SQL (at least for PostgreSQL 9.1).
+
+In SQL `LIMIT` represents an *amount* of elements to be returned, while `stop`
+refers to an *index*. For non-negative `start` and `stop` with a `step` of 1 we
+have :math:`LIMIT = stop - start`.
+
+Translators may restrict the use of negative indexes in `partition` but **must
+not** regard `stop` as an amount instead of a index.
 
 
 .. _ordering-expressions:
