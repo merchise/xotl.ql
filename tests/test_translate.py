@@ -136,6 +136,14 @@ class Entity(object):
         for k, v in iteritems_(attrs):
             setattr(self, k, v)
 
+    def __repr__(self):
+        from xoutil.names import nameof
+        name = getattr(self, 'name', None)
+        if name:
+            return str("<%s '%s'>" % (nameof(type(self), inner=True, full=True), name.encode('ascii', 'replace')))
+        else:
+            return super(Entity, self).__repr__()
+
 
 def date_property(internal_attr_name):
     '''Creates a property date property that accepts string repr of dates
@@ -512,3 +520,43 @@ def test_translation_with_partition():
     query = these(((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1)), offset=100)
     plan = naive_translation(query)
     assert len(list(plan())) == 0
+
+def test_ordering():
+    from xotl.ql.translation.py import naive_translation
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+
+    query = these((which for which in Universe),
+                   ordering=lambda which: -which)
+    plan = naive_translation(query)
+    assert list(plan()) == list(reversed(range(2, 10)))
+
+    query = these((which for which in Universe),
+                   ordering=lambda which: +which)
+    plan = naive_translation(query)
+    assert list(plan()) == range(2, 10)
+
+    query = these((person for person in Person),
+                  ordering=lambda person: -person.age)
+    plan = naive_translation(query)
+    results = list(plan())
+    assert manolito == results[-1]
+    assert elsa == results[0]
+
+    query = these((person for person in Person if person.children))
+    plan = naive_translation(query)
+    results = list(plan())
+    parents = (manu, yade, pedro, papi, elsa, ppp, denia)
+    for who in parents:
+        assert who in results
+    assert len(results) == len(parents)
+
+    from xotl.ql.expressions import sum_
+    query = these((person for person in Person if person.children),
+                  ordering=lambda person: (-sum_(child.age for child in person.children), -person.age))
+    plan = naive_translation(query)
+    results = list(plan())
+    assert pedro == results[0]
