@@ -537,7 +537,7 @@ def test_ordering():
     query = these((which for which in Universe),
                    ordering=lambda which: +which)
     plan = naive_translation(query)
-    assert list(plan()) == range(2, 10)
+    assert list(plan()) == list(range(2, 10))  #XXX: Py3k list()
 
     query = these((person for person in Person),
                   ordering=lambda person: -person.age)
