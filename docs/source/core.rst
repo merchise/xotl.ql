@@ -107,6 +107,8 @@ Providing a name may ease debugging tasks, and clarify log messages.
      False
 
 
+.. _order_limits_and_offsets:
+
 Order, limits and offsets
 =========================
 
@@ -132,6 +134,8 @@ Alternatively, you may provide one (or several) of the keyword arguments:
 `limit`, `offset` and `step`. These arguments are used then to create the
 `slice` object. If you provide the `partition` argument, these ones will be
 ignored (and a warning will be logged).
+
+.. _ref-translators-limit-expectations:
 
 Compliant :term:`query translators` are required to:
 
@@ -197,6 +201,8 @@ context of the interface :class:`xotl.ql.interface.IQueryObject`.
 
 Nothing more is enforced.
 
+.. _ref-translators-ordering-expectations:
+
 Compliant :term:`query translators <query translator>` are required to:
 
 - Treat *positive* unary expressions as an *ascending* ordering request.
@@ -222,6 +228,26 @@ attribute::
 But some translators might be unable to correctly translate this kind of
 ordering expression; maybe because the storage does not allow it or because the
 translation process itself is not designed for such use cases.
+
+
+.. _query-execution:
+
+Query execution
+===============
+
+.. note::
+
+   Before a query could be executed the way described in this section, a
+   :term:`query translator` must be configured for the current context (thread
+   or process; see :ref:`translator-conf`).
+
+Query objects are iterable, so fetching objects is a matter of iterating over
+the query::
+
+    query = these(...)
+    for selection in query:
+       do(something(withthe(selection)))
+
 
 
 .. _CouchDB: http://couchdb.apache.org/
