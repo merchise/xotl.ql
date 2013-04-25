@@ -43,6 +43,7 @@ Core Contents:
    overview
    expressions
    core
+   translation
    api/*
    terms
    next-release-goals

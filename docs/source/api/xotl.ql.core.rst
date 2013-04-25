@@ -51,3 +51,8 @@ type is a subclass of the class :class:`Term` explained below:
 
 .. autoclass:: _QueryObjectType
    :members: build_from_generator
+
+Utilities
+=========
+
+.. autofunction:: thesefy(cls)

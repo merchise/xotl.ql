@@ -18,6 +18,17 @@ This package comprises:
 Common routines for translation
 ===============================
 
+Exceptions
+----------
+
+.. autoclass:: TranslationError
+
+   This class inherits from TypeError. See the expectations regarding
+   :ref:`limit <ref-translators-limit-expectations>` and :ref:`ordering
+   <ref-translators-ordering-expectations>` translators must fulfill to be
+   compliant.
+
+
 Traversing expressions
 ----------------------
 

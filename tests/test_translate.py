@@ -452,7 +452,7 @@ def test_regression_test_token_before_filter_20130401():
 
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
-def test_translation_with_partition():
+def test_translation_with_call_of_a_function():
     from xoutil.iterators import zip
     from xotl.ql.expressions import call
     from xotl.ql.translation.py import naive_translation
@@ -460,7 +460,7 @@ def test_translation_with_partition():
     @thesefy
     class Universe(int):
         pass
-    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+    Universe.this_instances = [Universe(i) for i in range(2, 10)] + ['invalid']
 
     def gcd(a, b):
         while a % b != 0:

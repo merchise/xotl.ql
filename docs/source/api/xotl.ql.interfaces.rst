@@ -58,6 +58,11 @@ Translation API
 
 .. autointerface:: IQueryExecutionPlan
 
+Configuration API
+-----------------
+
+.. autointerface:: IQueryConfigurator
+
 
 Internal API
 ============
