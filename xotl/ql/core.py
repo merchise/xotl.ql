@@ -978,21 +978,6 @@ class QueryObject(object):
         else:
             raise TypeError('Expected a slice or None; got %r' % value)
 
-    def next(self):
-        '''Support for retrieving objects directly from the query object. Of
-        course this requires that an IQueryTranslator is configured.
-        '''
-        state = self._query_state
-        if not state:
-            raise StopIteration()
-        result = next(state, Unset)
-        if result is not Unset:
-            return result
-        else:
-            self._query_state = None
-            raise StopIteration
-    __next__ = next
-
     def __iter__(self):
         from xotl.ql.interfaces import IQueryTranslator
         from xotl.ql.interfaces import IQueryConfigurator
@@ -1009,8 +994,7 @@ class QueryObject(object):
             else:
                 translator = manager.getUtility(IQueryTranslator)
             plan = self._query_execution_plan = translator(self)
-        self._query_state = plan()
-        return self
+        return plan()
 
     def __getitem__(self, key):
         '''Returns a paritioned QueryObject.

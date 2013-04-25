@@ -440,23 +440,17 @@ class IQueryObject(Interface):
                        'See :class:`~xotl.ql.core.these`.')
 
     def __iter__():
-        '''Queries are iterable, but they **must** return ``self`` in this
-        method.  See :meth:`IQueryObject.next`.
+        '''Queries are iterable.
 
-        Calling __iter__ should reset the state used by next, so that a query
-        object could be fully iterated several times.
+        If a transtalor is :ref:`configured <translator-conf>` in the default
+        ZCA component registry, this method will return the result of invoking
+        a plan.
 
-        '''
+        .. note::
 
-    def next():
-        '''Returns the next object in the cursor.
-
-        Internally this should get :class:`IQueryTranslator` that is configured
-        for the current context (thread or process) and build the execution
-        plan, then execute the plan and yield one object at the time.
-
-        As required by Python, this method should raise a StopIteration when
-        all the objects were returned.
+           This method is allowed to cache the execution plan, so changing the
+           configured default translator might not take effect without
+           rebuilding the query object.
 
         '''
 

@@ -602,3 +602,6 @@ def test_query_objects_iteration():
     assert len(results) == len(again)
 
     assert first_plan is second_plan
+
+    from itertools import product
+    assert list(product(results, results)) == list(product(iter(query), iter(query)))
