@@ -73,8 +73,8 @@ Configuration of translator
 
    This section is still in a very unstable state.
 
-Currently `xotl.ql` makes use of Zope Component Architecture (ZCA)
-registration of components to register translators.
+Currently `xotl.ql` makes use of Zope Component Architecture (ZCA) registration
+of components to look for translators.
 
 There are two interfaces which relate to this:
 
@@ -83,18 +83,19 @@ There are two interfaces which relate to this:
 - :class:`xotl.ql.interfaces.IQueryTranslator`
 
 The interface IQueryTranslator is just the interface "true" translators should
-provide. If you implement a component that performs translation, this should
+provide. If you implement a component that performs translation, it should
 implement this interface.
 
-The interface IQueryConfigurator allows to get the "current" translator.
+The interface IQueryConfigurator allows to get the "current" translator. It is
+a kind of mediator between your application's framework and the translator
+code.
 
 
 Using the Pyramid's registry
 ----------------------------
 
-If you need (or want) to use the Pyramid's ZCA application registry, you should
-use the ``hook_zca()`` of the ``pyramid.config.Configurator`` class, like
-this::
+If you need to use the Pyramid's ZCA application registry, you should use the
+``hook_zca()`` of the ``pyramid.config.Configurator`` class, like this::
 
     config = Configurator(**settings)
     config.hook_zca()

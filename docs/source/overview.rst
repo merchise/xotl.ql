@@ -140,10 +140,12 @@ over the query itself to fetch objects::
   for parent in somequery:
       print(parent)
 
-If no translator is configured an exception is raised. This allows to keep
-things simple at the data-consuming level. However, this by no means the only
-way to retrieve data from a query. You could use a translator directly instead
-of using the "default" one. See more on :ref:`translation`.
+If no translator is configured an exception is raised.
+
+Configuring a default translator for the context allows to keep things simple
+at the data-consuming level. However, this by no means the only way to retrieve
+data from a query. You could use a translator directly instead of using the
+"default" one. See more on :ref:`translation`.
 
 
 Footnotes
