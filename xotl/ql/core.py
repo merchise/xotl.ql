@@ -48,7 +48,6 @@ from xotl.ql.interfaces import (ITerm,
                                 IGeneratorToken,
                                 IExpressionTree,
                                 IExpressionCapable,
-                                IQueryConfigurator,
                                 IQueryObject,
                                 IQueryParticlesBubble)
 
@@ -995,12 +994,20 @@ class QueryObject(object):
     __next__ = next
 
     def __iter__(self):
+        from xotl.ql.interfaces import IQueryTranslator
+        from xotl.ql.interfaces import IQueryConfigurator
         from zope.component import getSiteManager
         plan = self._query_execution_plan
         if not plan:
             manager = getSiteManager()
-            configurator = manager.getUtility(IQueryConfigurator)
-            translator = configurator.get_translator()
+            try:
+                configurator = manager.getUtility(IQueryConfigurator)
+            except:
+                configurator = None
+            if configurator:
+                translator = configurator.get_translator()
+            else:
+                translator = manager.getUtility(IQueryTranslator)
             plan = self._query_execution_plan = translator(self)
         self._query_state = plan()
         return self
