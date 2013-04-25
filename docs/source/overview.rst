@@ -14,8 +14,8 @@ or, at least, get a handle to those objects (like a proxy to an object in a
 distributed system [#querying]_.)
 
 The main goal for `xotl.ql` is to provide a *pythonic way to write* queries. In
-this regard, `xotl.ql` has a similar [#these]_ outlook that LINQ queries have
-in C#.
+this regard, `xotl.ql` has a similar outlook that LINQ queries have in C#
+[#these]_.
 
 The `xotl.ql` package comprises two main components: the :ref:`expression
 language <expression-lang>` and the :ref:`query language <query-lang>` itself.
@@ -31,13 +31,13 @@ operator>`.
 The query language relies heavily upon the expression language. The core of the
 query language itself is just a combination of:
 
-- Python's generator expressions that use the expression language ;
+- Python's generator expressions that use the expression language;
 
 - the object :data:`~xotl.ql.core.this`; and
 
 - the :class:`~xotl.ql.core.these` class.
 
-Let's see a query. First let's import what we need::
+Before showing our first query let's import the basics::
 
   >>> from xotl.ql import this, these
   >>> from xotl.ql.expressions import count
@@ -131,7 +131,7 @@ memory. And we also provide utilities for translation in
 
 
 Retrieving objects
-------------------
+==================
 
 If a query translator is :ref:`setup <translator-conf>`, then you may iterate
 over the query itself to fetch objects::
