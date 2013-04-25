@@ -61,14 +61,14 @@ the functions from :mod:`xotl.ql.expressions`. Any other custom function will
 not be translated and an error will be issued at translation.
 
 
-.. instances-class-protocol:
+.. _instances-class-protocol:
 
 Searching a custom object base
 ------------------------------
 
 When the execution plan returned by this translation needs to find an object,
 it normally iterates throughout the objects in the Python memory by using
-``gc.get_objects()``. This may be expensive [#pypy] cause Python might have
+``gc.get_objects()``. This might be expensive [#pypy]_ cause Python might have
 lots of objects in memory while only a few of them are of interest.
 
 To alleviate this situation, this translation offers the following protocol: If
@@ -89,8 +89,8 @@ For instance::
 
 The previous query have a single filter ``is_instance(atom, Universe)`` --
 which is automatically injected by :func:`~xotl.ql.core.thesefy`. And since
-Universe does a `this_instances` attribute that holds a list of objects, those
-will be the only ones inspected by this translator.
+Universe does have a `this_instances` attribute that holds a list of objects,
+those will be the only ones inspected by this translator.
 
 Notice that despite `this_instances` contains a string element, this element
 won't pass the `is_instance` check, so it won't be returned by the execution
