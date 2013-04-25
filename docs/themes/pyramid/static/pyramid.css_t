@@ -342,4 +342,5 @@ tt.xref {
 
 table.footnote {
    margin-bottom: 1em;
+   line-height: 1.25em;
 }
