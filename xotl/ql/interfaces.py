@@ -464,7 +464,8 @@ class IQueryTranslator(Interface):
         :param query: The :term:`query object` to be translated.
 
         :param kwargs: Additional keyword arguments the translator might
-          take. Translators are required to document these.
+          take. Translators are required to document these; but they can't
+          require them.
 
         :returns: A query execution plan.
 
@@ -493,5 +494,15 @@ class IQueryConfigurator(Interface):
 
     '''
 
-    def get_translator():
-        '''Get's the current configured IQueryTranslator.'''
+    def get_translator(query=None, **kwargs):
+        '''Get's the current configured IQueryTranslator.
+
+        If a `query` is given the configurator might inspect the its
+        :attr:`~IQueryObject.params` dictionary to get the best translator
+        available. Alternatively several keyword arguments might be passed to
+        the configurator for the same purpose.
+
+        Configurators should follow the motto "be liberal about what you may
+        get". See :ref:`configurators-best-practices`.
+
+        '''

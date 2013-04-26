@@ -990,7 +990,7 @@ class QueryObject(object):
             except:
                 configurator = None
             if configurator:
-                translator = configurator.get_translator()
+                translator = configurator.get_translator(self)
             else:
                 translator = manager.getUtility(IQueryTranslator)
             plan = self._query_execution_plan = translator(self)

@@ -705,5 +705,5 @@ def init(self, settings=None):
 
 
 @modulemethod
-def get_translator(self):
+def get_translator(self, query, **kwargs):
     return self.naive_translation
