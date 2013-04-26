@@ -36,7 +36,7 @@ from xoutil.proxy import UNPROXIFING_CONTEXT, unboxed
 
 from xotl.ql import this
 from xotl.ql.core import these, QueryParticlesBubble
-from xotl.ql.expressions import EXPRESSION_CONTEXT
+from xotl.ql.expressions import EXPRESSION_CAPTURING
 from xotl.ql.interfaces import ITerm, IBoundTerm
 
 __docstring_format__ = 'rst'
@@ -44,8 +44,8 @@ __author__ = 'manu'
 
 
 def bubbling():
-    res = context(EXPRESSION_CONTEXT)
-    res.data.bubble = QueryParticlesBubble()
+    res = context(EXPRESSION_CAPTURING)
+    res['bubble'] = QueryParticlesBubble()
     return res
 
 
@@ -91,7 +91,7 @@ def test_basic_queries_building():
         expr = next(parent.title + parent.name
                     for parent in this('parent')
                     if (parent.age > 32) & parent.married & parent.spouse.alive)
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
     assert len(parts) == 2  # filter + selection
 
     # The select part is at the top
@@ -111,7 +111,7 @@ def test_complex_query_building():
                              if (parent.age > 32) & parent.children
                              for child in parent.children
                              if child.age < 5)
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
 
     assert len(parts) == 4  # 2 filters + 2 selections
 
@@ -132,7 +132,7 @@ def test_free_terms_are_not_captured():
              for parent in this('parent')
              if parent.name
              if any_(this.children, this.age < 6))
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
 
     assert len(parts) == 2
 
@@ -149,7 +149,7 @@ def test_undetected_particles():
         next(parent
              for parent in this('parent')
              if any_(child for child in parent.children if child.age < 6))
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
 
     # `child.age < 6` should not be leaked
     assert 1 == len(parts)
@@ -175,8 +175,8 @@ def test_right_bindings():
         #
         # Now the token of the relevant query might help, but then the machine
         # should not strip those tokens from query-parts.
-        parts = current.data.bubble.parts
-        bubble_tokens = current.data.bubble.tokens
+        parts = current.bubble.parts
+        bubble_tokens = current.bubble.tokens
     assert len(parts) == 2
 
     with context(UNPROXIFING_CONTEXT):
@@ -211,7 +211,7 @@ def test_complex_query_building_with_dict():
              if (parent.age > 32) & parent.children
              for child in parent.children
              if child.age < 5}
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
     assert len(parts) == 5
 
     def ok(which):
@@ -293,7 +293,7 @@ def test_20121022_complex_intermingled_query():
             for toy in child.toys
             if (parent.age > 32) & (child.age < 5) | (toy.type == 'laptop'))
 
-        parts = current.data.bubble.parts
+        parts = current.bubble.parts
     assert len(parts) == 4  # ie. 3 selections and 1 filter
 
 
@@ -321,17 +321,17 @@ There's was two related bugs there:
 '''
 
 def test_is_a_partnership_is_not_forgotten():
-    from xoutil.compat import izip
+    from xoutil.compat import zip
     with bubbling() as current:
         next((person, partner)
-             for person, partner in izip(this('person'),
-                                         this('partner'))
+             for person, partner in zip(this('person'),
+                                        this('partner'))
              for rel in this('relation')
              if rel.type == 'partnership'
              if (rel.subject == person) & (rel.object == partner))
 
-        parts = current.data.bubble.parts
-        tokens = current.data.bubble.tokens
+        parts = current.bubble.parts
+        tokens = current.bubble.tokens
     assert len(parts) ==  2  # Only the 2 filters
 
     tokens = [tk.expression for tk in tokens]
@@ -349,19 +349,19 @@ def test_is_a_partnership_is_not_forgotten():
         ok(None)
 
 def test_worst_case_must_have_3_filters_and_3_tokens():
-    from xoutil.compat import izip
+    from xoutil.compat import zip
     with bubbling() as current:
         next(person
-             for person, partner in izip(this('person'),
-                                         this('partner'))
+             for person, partner in zip(this('person'),
+                                        this('partner'))
              for rel in this('relation')
              if rel.type == 'partnership'
              if rel.subject == person
              if rel.object == partner
              if partner.age > 32)
 
-        parts = current.data.bubble.parts
-        tokens = current.data.bubble.tokens
+        parts = current.bubble.parts
+        tokens = current.bubble.tokens
     assert len(parts) == 4
 
     tokens = [tk.expression for tk in tokens]
@@ -379,3 +379,22 @@ def test_worst_case_must_have_3_filters_and_3_tokens():
     ok(rel.type == 'partnership')
     with pytest.raises(IndexError):
         ok(None)
+
+
+def test_partition_vs_limit():
+    query = these((parent for parent in this), limit=100)
+    assert query.partition.stop == 100
+
+    query = these((parent for parent in this), offset=100, limit=100)
+    assert query.partition.stop == 200
+
+    query = these((parent for parent in this), offset=100, limit=100, step=2)
+    assert query.partition.stop == 400
+
+def test_query_object_getitem():
+    query = these((parent for parent in this), offset=100, limit=100, step=2)
+    query2 = query[:-50]
+    assert query.partition.stop == 400
+    assert query2.partition.start == 100
+    assert query2.partition.stop == 350
+    assert query2.partition.step == 2

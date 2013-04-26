@@ -13,7 +13,8 @@ language, please refer to :ref:`query-api`.
 
 As we've said, at the core of the Query Language is the `this` object, whose
 type is a subclass of the class :class:`Term` explained below:
-v.. autodata:: this(name, **kwargs)
+
+.. autodata:: this(name, **kwargs)
 
 .. autoclass:: Term
    :members: name, parent, root_parent,  __iter__, clone
@@ -50,3 +51,8 @@ v.. autodata:: this(name, **kwargs)
 
 .. autoclass:: _QueryObjectType
    :members: build_from_generator
+
+Utilities
+=========
+
+.. autofunction:: thesefy(cls)

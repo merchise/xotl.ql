@@ -1,10 +1,16 @@
 Changelog
 =========
 
-Release 0.1.9
+Release 0.2.1
 -------------
 
-.. include:: history/changes-0.1.9.rst
+.. include:: history/changes-0.2.1.rst
+
+
+Release 0.2.0
+-------------
+
+.. include:: history/changes-0.2.0.rst
 
 
 

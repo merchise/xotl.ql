@@ -25,6 +25,11 @@ above.
 What's new in this release?
 ---------------------------
 
+.. include:: history/changes-0.2.1.rst
+
+... and what's new since 0.2.0?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. include:: history/changes-0.2.0.rst
 
 
@@ -38,8 +43,8 @@ Core Contents:
    overview
    expressions
    core
+   translation
    api/*
-   translation/*
    terms
    next-release-goals
    HISTORY

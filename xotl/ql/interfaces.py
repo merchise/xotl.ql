@@ -440,65 +440,69 @@ class IQueryObject(Interface):
                        'See :class:`~xotl.ql.core.these`.')
 
     def __iter__():
-        '''
-        Queries are iterable, but they **must** return ``self`` in this method.
-        See :meth:`IQueryObject.next`.
-        '''
+        '''Queries are iterable.
 
-    def next():
-        '''
-        Returns the next object in the cursor.
+        If a transtalor is :ref:`configured <translator-conf>` in the default
+        ZCA component registry, this method will return the result of invoking
+        a plan.
 
-        Internally this should get the configure :class:`IQueryTranslator` and
-        build the execution plan, then execute the plan to get the IDataCursor
-        from which it can drawn objects from.
+        .. note::
+
+           This method is allowed to cache the execution plan, so changing the
+           configured default translator might not take effect without
+           rebuilding the query object.
+
         '''
 
 
 class IQueryTranslator(Interface):
-    '''
-    A :term:`query translator`.
-    '''
+    '''A :term:`query translator`.'''
 
-    def build_plan(query, **kwargs):
-        '''Builds a query plan for a query. Returns an IQueryExecutionPlan.'''
+    def __call__(query, **kwargs):
+        '''Translate a `query object` and returns the query exection plan.
 
+        :param query: The :term:`query object` to be translated.
 
-class IQueryExecutionPlan(Interface):
-    '''Represents the execution plan for a query.'''
+        :param kwargs: Additional keyword arguments the translator might
+          take. Translators are required to document these; but they can't
+          require them.
 
-    query = Attribute('The query for which is the plan.')
-
-    def __call__():
-        '''Executes the plan an retrieves a IDataCursor'''
-
-
-class IDataCursor(Interface):
-    def next():
-        '''Returns the object at the cursor position and moves the cursor
-        forward. If the cursor is out of objects raises `StopIteration`.
+        :returns: A query execution plan.
 
         '''
 
 
-class IQueryConfiguration(Interface):
-    '''A configuration object.'''
+class IQueryExecutionPlan(Interface):
+    '''Represents the execution plan for a query.
 
-    default_translator_name = Attribute('The name to lookup in the components '
-                                        'registry for a IQueryTranslator')
+    Since the only actual requirement this interfaces poses is that the
+    execution plan be callable, this may be implemented with a closure. But
+    keep in mind that the closure should be reusable in several calls.
 
-    def get_translator_for(**predicates):
-        '''Get's the configured translator for a set of *predicates*.
+    '''
 
-        :param app: A string that represents an application (or site)
-                    within your system. You may need to merge several
-                    applications within a system; each with it's own
-                    database and query translator. Use this argument
-                    to explicitly ask for the translator for a given
-                    application.
+    def __call__():
+        '''Executes the plan an retrieves an iterable with the seleted
+        objects.
 
-        :param kind: A fully-qualified class name that uniquely
-                     identify some object kind in your system and for
-                     which you may need to specify a different translator.
+        '''
+
+
+class IQueryConfigurator(Interface):
+    '''A mediator between IQueryObject and the system configuration of
+    translators.
+
+    '''
+
+    def get_translator(query=None, **kwargs):
+        '''Get's the current configured IQueryTranslator.
+
+        If a `query` is given the configurator might inspect the its
+        :attr:`~IQueryObject.params` dictionary to get the best translator
+        available. Alternatively several keyword arguments might be passed to
+        the configurator for the same purpose.
+
+        Configurators should follow the motto "be liberal about what you may
+        get". See :ref:`configurators-best-practices`.
 
         '''

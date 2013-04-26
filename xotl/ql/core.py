@@ -31,29 +31,23 @@ from __future__ import (division as _py3_division,
 import re
 from itertools import count
 
-import threading
-
 from xoutil.types import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorator.meta import decorator
 from xoutil.decorator.compat import metaclass
-from xoutil.aop.basic import complementor
 
-from zope.component import getUtility
 from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
 
-from xotl.ql.expressions import _true, _false, ExpressionTree, OperatorType
-from xotl.ql.expressions import UNARY, BINARY, N_ARITY, EXPRESSION_CONTEXT
+from xotl.ql.expressions import _true, _false, ExpressionTree
+from xotl.ql.expressions import EXPRESSION_CAPTURING
 from xotl.ql.interfaces import (ITerm,
                                 IBoundTerm,
                                 IGeneratorToken,
                                 IExpressionTree,
                                 IExpressionCapable,
-                                IQueryTranslator,
-                                IQueryConfiguration,
                                 IQueryObject,
                                 IQueryParticlesBubble)
 
@@ -65,44 +59,9 @@ __author__ = 'manu'
 __all__ = (str('this'), str('these'),)
 
 
-# A thread-local namespace to avoid using context. Just to test if this
-# avoid the context's bug.
-# _local = threading.local()
-
-
-# def _get_bubbles_stack():
-#     unset = object()
-#     stack = getattr(_local, 'bubbles', unset)
-#     if stack is unset:
-#         stack = _local.bubbles = []
-#     return stack
-
-
-# def _create_and_push_bubble():
-#     'Creates a bubble and pushes it to the local stack'
-#     bubbles = _get_bubbles_stack()
-#     bubble = QueryParticlesBubble()
-#     bubbles.append(bubble)
-#     return bubble
-
-
-# def _pop_bubble():
-#     'Removes the top-most bubble from the bubble stack'
-#     bubbles = _get_bubbles_stack()
-#     return bubbles.pop(-1)
-
-
-# def _get_current_bubble():
-#     'Returns the top-most bubble'
-#     bubbles = _get_bubbles_stack()
-#     return bubbles[-1]
-
-
 def _emit_part(part, quiet=False):
     'Emits a particle to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_part(part)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_part(part)
     elif not quiet:
@@ -111,14 +70,11 @@ def _emit_part(part, quiet=False):
 
 def _emit_token(token, quiet=False):
     'Emits a token to the current bubble'
-    # bubble = _get_current_bubble()
-    # bubble.capture_token(token)
-    bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+    bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
     if bubble:
         bubble.capture_token(token)
     elif not quiet:
         raise RuntimeError('There should be context')
-
 
 
 @implementer(ITerm)
@@ -275,7 +231,6 @@ class Term(object):
         with context(UNPROXIFING_CONTEXT):
             name = self.name
             parent = self.parent
-        with context(UNPROXIFING_CONTEXT):
             if not name:
                 # When iterating an instance without a name (i.e the `this`
                 # object), we should generate a new name (of those simple
@@ -294,25 +249,24 @@ class Term(object):
             #        for parent in this('parent')
             #        if any_(child for child in parent.children if child.age < 6))
             #
-            # In this case, the enclosed parent.children emits to top-most
+            # In this case, the enclosed parent.children emits to the top-most
             # bubble, but when the iter is invoked by `any_` to resolve its
-            # argument a second bubble is in place and the hack (XXX) below
+            # argument a second bubble is in place and the hack below (XXX)
             # won't work. Furthermore, the token's expression is the bound-term
             # while the emmited part was the original one. So we keep the
             # original_term so that operations that resolver their arguments as
             # subquery may remove the escaped part.
             bound_term.original_term = self
-        instance = bound_term
         # XXX: When emiting a token in the context of query, if this token's
         # expression is also a part, then it was emitted without binding, so we
         # need to manually check this case here
-        bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+        bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
         if bubble:
             parts = bubble._parts
             if parts and self is parts[-1]:
                 parts.pop(-1)
             _emit_token(token)
-        yield instance
+        yield bound_term
 
     def __str__(self):
         with context(UNPROXIFING_CONTEXT):
@@ -818,25 +772,35 @@ class _QueryObjectType(type):
              are selections in the query and returns a tuple of :ref:`ordering
              expressions <ordering-expressions>`.
 
-        :param partition: A slice `(offset, limit, step)` that represents the
+        :param partition: A slice `(start, stop, step)` that represents the
                           part of the result set to be retrieved.
 
                           You may express this by individually providing the
-                          arguments `offset`, `limit` and `step`.
+                          arguments `offset`, `limit` and `step`.If you provide
+                          the `partition` argument, those will be ignored (and
+                          a warning will be logged).
 
-                          If you provide the `partition` argument, those will
-                          be ignored (and a warning will be logged).
+                          If `partition` is not provided and any of the
+                          alternatives is, then if `limit` is not None the
+                          `stop` component of partition is calculated by
+                          ``step(limit + offset)``.
 
         :type partition: slice or None
 
-        :param offset: Individually express the offset of the `partition`
+        :param offset: Individually express the start of the `partition`
                        parameter.
 
-        :param limit: Individually express the limit of the `partition`
-                      parameter.
+        :type offset: Non-negative index.
+
+        :param limit: Combined with `offset` and `step` express the stop
+                      component of the `partition` parameter.
+
+        :type limit: Positive amount.
 
         :param step: Individually express the step of the `partition`
                      parameter.
+
+        :type step: Positive integer.
 
         :returns: An :class:`~xotl.ql.interfaces.IQueryObject` instance that
                   represents the QueryObject expressed by the `comprehension`
@@ -844,18 +808,25 @@ class _QueryObjectType(type):
 
         :rtype: :class:`QueryObject`
 
+        All others keyword arguments are copied to the
+        :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute, so that
+        :term:`query translators <query translator>` may use them.
 
         .. note::
 
-           All others keyword arguments are copied to the
-           :attr:`~xotl.ql.interfaces.IQueryObject.params` attribute, so that
-           :term:`query translators <query translator>` may use them.
+           The `step` argument could change the actual amount of elements
+           specified by `limit` because it is regarded as a stepping *after* a
+           continous chunk of items is selected.
+
+           This argument is not always directly translatable to data stores. It
+           is provided in the believe that translators may complement the data
+           stores natural behavior and do the stepping by themselves.
 
         '''
         from types import GeneratorType
         assert isinstance(comprehension, GeneratorType)
-        with context(EXPRESSION_CONTEXT) as _context:
-            bubble = _context.data.bubble = QueryParticlesBubble()
+        with context(EXPRESSION_CAPTURING) as _context:
+            bubble = _context['bubble'] = QueryParticlesBubble()
             selected_parts = next(comprehension)
         selected_parts_type = type(selected_parts)
         with context(UNPROXIFING_CONTEXT):
@@ -882,7 +853,6 @@ class _QueryObjectType(type):
         # expressions (otherwise things like term.attr would fail).
         orderby = kwargs.get('ordering', None)
         if orderby:
-            # from xoutil.proxy import unboxed
             ordering = orderby(*selection)
         else:
             ordering = None
@@ -891,10 +861,23 @@ class _QueryObjectType(type):
             query.ordering = ordering
             partition = kwargs.get('partition', None)
             offset = kwargs.get('offset', None)
+            if offset and not offset >= 0:
+                raise TypeError('offset must be non-negative')
             limit = kwargs.get('limit', None)
+            if limit and not limit >= 0:
+                raise TypeError('limit must be non-negative')
             step = kwargs.get('step', None)
+            if step and not step > 0:
+                raise TypeError('step must be positive')
             if not partition and (offset or limit or step):
-                partition = slice(offset, limit, step)
+                if limit:
+                    start = offset or 0
+                    stop = limit + start
+                    if step:
+                        stop = step * stop
+                else:
+                    stop = None
+                partition = slice(offset, stop, step)
             elif partition and (offset or limit or step):
                 import warnings
                 warnings.warn('Ignoring offset, limit and/or step argument '
@@ -925,6 +908,10 @@ class QueryObject(object):
     '''
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
+    __slots__ = (str('_selection'), str('tokens'), str('_filters'),
+                 str('_ordering'), str('_partition'), str('params'),
+                 str('_query_state'), str('_query_execution_plan'))
+
     def __init__(self):
         self._selection = None
         self.tokens = None
@@ -932,6 +919,8 @@ class QueryObject(object):
         self._ordering = None
         self.partition = None
         self.params = {}
+        self._query_execution_plan = None
+        self._query_state = None
 
     @property
     def selection(self):
@@ -967,7 +956,7 @@ class QueryObject(object):
         from xotl.ql.expressions import pos, neg
         if value:
             ok = lambda v: (isinstance(v, ExpressionTree) and
-                            value.op in (pos, neg))
+                            v.op in (pos, neg))
             if ok(value):
                 self._ordering = (value,)
             elif isinstance(value, tuple) and all(ok(v) for v in value):
@@ -989,48 +978,96 @@ class QueryObject(object):
         else:
             raise TypeError('Expected a slice or None; got %r' % value)
 
-    @property
-    def offset(self):
-        return self._partition.start
-
-    @property
-    def limit(self):
-        return self._partition.stop
-
-    @property
-    def step(self):
-        return self._partition.step
-
-    def next(self):
-        '''Support for retrieving objects directly from the query object. Of
-        course this requires that an IQueryTranslator is configured.
-        '''
-        state = getattr(self, '_query_state', Unset)
-        if state is Unset:
-            # TODO: This will change, configuration vs deployment.
-            #       How to inject translator into a global/local context?
-            conf = getUtility(IQueryConfiguration)
-            name = getattr(conf, 'default_translator_name', None)
-            translator = getUtility(IQueryTranslator,
-                                    name if name else str('default'))
-            query_plan = translator.build_plan(self)
-            state = self._query_state = query_plan()
-        result = next(state, (Unset, Unset))
-        if isinstance(result, tuple):
-            result, state = result
-        else:
-            state = Unset
-        if result is not Unset:
-            if state:
-                self._query_state = state
-            return result
-        else:
-            delattr(self, '_query_state')
-            raise StopIteration
-
     def __iter__(self):
-        'Creates a subquery'
-        raise NotImplementedError
+        from xotl.ql.interfaces import IQueryTranslator
+        from xotl.ql.interfaces import IQueryConfigurator
+        from zope.component import getSiteManager
+        plan = self._query_execution_plan
+        if not plan:
+            manager = getSiteManager()
+            try:
+                configurator = manager.getUtility(IQueryConfigurator)
+            except:
+                configurator = None
+            if configurator:
+                translator = configurator.get_translator(self)
+            else:
+                translator = manager.getUtility(IQueryTranslator)
+            plan = self._query_execution_plan = translator(self)
+        return plan()
+
+    def __getitem__(self, key):
+        '''Returns a paritioned QueryObject.
+
+        If `key` is an integer it will be treated as ``slice(key, key+1)``.
+
+        Otherwise it must be a slice. In this case if `self` has a partition
+        the returning query object will have a partition that's a mix between
+        self's partition and the `key`:
+
+        - If both current start and key's start are negative, the max it's
+          taken. Otherwise they are simply added.
+
+        - If both current stop and key's stop are non-negative, the min it's
+          taken. Otherwise they are simply added.
+
+        - If both steps are non-negative, the max it's taken. Otherwise the min
+          it's taken.
+
+        '''
+        from copy import copy
+        from xoutil.compat import integer
+        from xoutil.objects import extract_attrs
+        if isinstance(key, integer):
+            key = slice(key, key+1)
+        assert isinstance(key, slice)
+        result = copy(self)
+        partition = result.partition
+        if partition:
+            start, stop, step = extract_attrs(partition, 'start', 'stop', 'step')
+            if not start:
+                start = key.start
+            elif not key.start:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif start <= 0 and key.start <= 0:
+                start = max(start, key.start)
+            else:
+                start = start + key.start
+            if not stop:
+                stop = key.stop
+            elif not key.stop:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif stop >= 0 and key.stop >= 0:
+                stop = min(stop, key.stop)
+            else:
+                stop = stop + key.stop
+            if not step:
+                step = key.step
+            elif not key.step:
+                pass   # Safe-keeper: In Py3k None is not comparable
+            elif step >= 0 and key.step >= 0:
+                step = max(step, key.step)
+            else:
+                step = min(step, key.step)
+            partition = slice(start, stop, step)
+        else:
+            partition = key
+        result.partition = partition
+        return result
+
+    def __copy__(self):
+        from copy import copy
+        result = type(self)()
+        with context(UNPROXIFING_CONTEXT):
+            # XXX: QueryObjects are deemed unmutable
+            result.filters = copy(self.filters)
+            result.selection = copy(self.selection)
+            result.ordering = copy(self.ordering)
+            result.partition = self.partition
+            result.params = self.params.copy()
+            result.tokens = copy(self.tokens)
+        return result
+
 
 these = QueryObject
 
@@ -1134,5 +1171,6 @@ def thesefy(target, name=None):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
-    new_class = new_meta(target.__name__, (target, ), {})
+    from xoutil.decorator.compat import metaclass
+    new_class = metaclass(new_meta)(target)
     return new_class

@@ -338,3 +338,9 @@ tt.xref {
     font-weight: normal;
     font-style: normal;
 }
+
+
+table.footnote {
+   margin-bottom: 1em;
+   line-height: 1.25em;
+}

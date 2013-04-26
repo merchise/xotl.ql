@@ -93,14 +93,6 @@
 
 .. autoclass:: is_instance
 
-.. autoclass:: StartsWithOperator
-
-.. autoclass:: startswith
-
-.. autoclass:: EndsWithOperator
-
-.. autoclass:: endswith
-
 .. autoclass:: FloorDivOperator
 
 .. autoclass:: floordiv
@@ -148,6 +140,10 @@
 .. autoclass:: AnyFunction
 
 .. autoclass:: any_
+
+.. autoclass:: SumFunction
+
+.. autoclass:: sum_
 
 .. autoclass:: MinFunction
 

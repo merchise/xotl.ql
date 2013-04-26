@@ -34,38 +34,8 @@ from xoutil.compat import iteritems_
 from xotl.ql.core import these, this, thesefy
 from xotl.ql.translation import token_before_filter
 
-from xotl.ql.translation.py import init
-
-
 __docstring_format__ = 'rst'
 __author__ = 'manu'
-
-
-__LOG = False
-
-
-if __LOG:
-    import sys
-    from xoutil.compat import iterkeys_
-    from xoutil.aop.classical import weave, _weave_around_method
-
-    from xotl.ql.tests import logging_aspect
-    from xotl.ql.core import QueryParticlesBubble, _part_operations, QueryPart
-
-    # Weave logging aspect into every relevant method during testing
-    aspect = logging_aspect(sys.stdout)
-    weave(aspect, QueryParticlesBubble)
-    for attr in iterkeys_(_part_operations):
-        _weave_around_method(QueryPart, aspect, attr, '_around_')
-    _weave_around_method(QueryPart, aspect, '__getattribute__', '_around_')
-
-
-
-# Initialize and configure the query translation components provided by the
-# translate module. DON'T REMOVE since, some tests actually test this kind of
-# facility. Also, DON'T put it the setUp of any test cases, cause it will
-# likely fail.
-init()
 
 
 # The following classes are just a simple Object Model
@@ -121,13 +91,28 @@ class backref(object):
             backrefs.remove(self)
         setattr(inst, self._name, value)
         backrefs = setdefaultattr(value, self.ref, [])
-        backrefs.append(self)
+        backrefs.append(inst)
 
 @thesefy
 class Entity(object):
+    def __new__(cls, **attrs):
+        from xoutil.objects import setdefaultattr
+        this_instances = setdefaultattr(Entity, 'this_instances', [])
+        res = super(Entity, cls).__new__(cls, **attrs)
+        this_instances.append(res)
+        return res
+
     def __init__(self, **attrs):
         for k, v in iteritems_(attrs):
             setattr(self, k, v)
+
+    def __repr__(self):
+        from xoutil.names import nameof
+        name = getattr(self, 'name', None)
+        if name:
+            return str("<%s '%s'>" % (nameof(type(self), inner=True, full=True), name.encode('ascii', 'replace')))
+        else:
+            return super(Entity, self).__repr__()
 
 
 def date_property(internal_attr_name):
@@ -161,7 +146,38 @@ def date_property(internal_attr_name):
     return property(getter, setter, fdel)
 
 
-def age_property(start_attr_name, end_attr_name=None):
+# So that ages are stable in tests
+def get_birth_date(age, today=None):
+    from datetime import datetime, timedelta
+    if today is None:
+        today = datetime.today()
+    birth = today - timedelta(days=age*365)
+    # Brute force
+    if get_age(birth, today) == age:
+        return birth
+    while get_age(birth, today) < age:
+        birth += timedelta(days=1)
+    while get_age(birth, today) > age:
+        birth -= timedelta(days=1)
+    return birth
+
+
+def get_age(birthdate, today=None):
+    from datetime import datetime
+    if today is None:
+        today = datetime.today()
+    age = today - birthdate
+    return age.days / 365
+
+
+def test_ages():
+    import random
+    ages = range(4, 80)
+    ages_seq = (random.choice(ages) for _ in range(100))
+    assert all(get_age(get_birth_date(x)) == x for x in ages_seq)
+
+
+def age_property(start_attr_name, end_attr_name=None, age_attr_name=None):
     '''Creates a property for calculating the `age` given an
     attribute that holds the starting date of the event.
 
@@ -178,8 +194,7 @@ def age_property(start_attr_name, end_attr_name=None):
         end = datetime.today() if not end_attr_name else getattr(self,
                                                                  end_attr_name)
         date = getattr(self, start_attr_name)
-        age = end - date
-        return age.days // 365.25
+        return get_age(date, end)
     return age
 
 
@@ -207,13 +222,8 @@ cotorro = Place(name='Cotorro', type='Municipality', located_in=havana)
 ciego = Place(name='Ciego de Ávila', type='Province', located_in=cuba)
 moron = Place(name='Morón', type='Municipality', located_in=ciego)
 
+assert len(Place.this_instances) == 6
 
-# So that ages are stable in tests
-def get_birth_date(age):
-    from datetime import datetime, timedelta
-    today = datetime.today()
-    birth = today - timedelta(days=age*365.25)
-    return birth
 
 elsa = Person(name='Elsa Acosta Cabrera',
               birthdate=get_birth_date(65),
@@ -266,48 +276,57 @@ manolito = Person(name='Manuel Vázquez Piñero',
 #    Python 2.7.2 (1.9+dfsg-1, Jun 19 2012, 23:45:31)
 #    [PyPy 1.9.0 with GCC 4.7.0] on linux2)
 #
-# ... the skipped tests take a long long time to do.
+# For some reason (currenly unknown) under PyPy the following tests fail. The
+# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
+# considered True in places where no `with` is around. Maybe is a bug PyPy, I
+# can't be sure.
 #
 # You should notice that the translation.py module is NOT considered to be
 # a production module, but a proof of concept for translation from xotl.ql
 # as a language.
 #
-# The long time is due mostly to the fact even a simple script::
-#
-#   $ pypy -c "import gc; print len(gc.get_objects())"
-#   21434
-#
-# shows that there are LOTS of objects created in the first place, while in
-# Python 2.7 and 3.2 this figure is much smaller (although still high)::
-#
-#   $ python3 -c "import gc; print(len(gc.get_objects()))"
-#   5136
-#
-#   $ python -c "import gc; print len(gc.get_objects())"
-#   3564
-#
-#
-# For the sake of testability I skip those tests in PyPy. Still the core of
-# xotl.ql is almost working in PyPy.
 
-
-@pytest.mark.xfail()  # all_ not implemented ok.
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
-def test_all_pred():
-    from xotl.ql.expressions import all_
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_all_pred(**kwargs):
+    from xoutil.iterators import dict_update_new
+    from xotl.ql.expressions import all_, sum_
     from xotl.ql.translation.py import naive_translation
     query = these(parent
                   for parent in Person
                   if parent.children
-                  if all_((30 < child.age) & (child.age < 35) for child in parent.children))
-    plan = naive_translation(query)
+                  if all_((30 < child.age) & (child.age < 36) for child in parent.children))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
     result = list(plan())
     assert elsa in result
     assert papi in result
     assert len(result) == 2
 
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if all_(parent.name.startswith('Manu'), parent.age > 30))
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    with pytest.raises(SyntaxError):
+        result = list(plan())
+
+
+    query = these(parent
+                  for parent in Person
+                  if parent.children
+                  if sum_(child.age for child in parent.children) > 60)
+
+    dict_update_new(kwargs, dict(only='test_translate.*'))
+    plan = naive_translation(query, **kwargs)
+    result = list(plan())
+    assert denia in result
+    assert pedro in result
+    assert len(result) == 2
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -322,7 +341,7 @@ def test_naive_plan_no_join(**kwargs):
     assert yade not in result
 
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_ridiculous_join(**kwargs):
     from itertools import product
     from xoutil.iterators import dict_update_new
@@ -344,7 +363,7 @@ class X(object):
     def __init__(self):
         self.b = B()
 
-@pytest.mark.skipif(str("sys.version.find('PyPy') != -1"))
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_traversing_by_nonexistent_attribute(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
@@ -389,16 +408,7 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
 
     # Now let's rerun the plan after we create some object that matches
     x = X()
-    # Currently this is failing cause each result yielded from a query is
-    # encoded in a tuple. Probably this is the expected behavior. Currently I
-    # just allow it to fail to remind me that I must address this question.
     assert list(plan()) == x.b.a
-
-
-# For some reason (currenly unknown) under PyPy the following tests fail. The
-# core of the problem resides in that context[UNPROXIFING_CONTEXT] is
-# considered True in places where no with is around. Maybe is a bug PyPy, I
-# can't be sure.
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_token_before_filter():
@@ -441,6 +451,157 @@ def test_regression_test_token_before_filter_20130401():
     assert token_before_filter(token, name_filter, True)
 
 
-if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
-    unittest.main(verbosity=2)
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_translation_with_call_of_a_function():
+    from xoutil.iterators import zip
+    from xotl.ql.expressions import call
+    from xotl.ql.translation.py import naive_translation
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)] + ['invalid']
+
+    def gcd(a, b):
+        while a % b != 0:
+            a, b = b, a % b
+        return b
+
+    expected = set((a, b) for a in range(2, 10) for b in range(2, 10) if a > b and gcd(a, b) == 1)
+    assert expected == set([(3, 2),
+                            (4, 3),
+                            (5, 2), (5, 3), (5, 4),
+                            (6, 5),
+                            (7, 2), (7, 3), (7, 4), (7, 5), (7, 6),
+                            (8, 3), (8, 5), (8, 7),
+                            (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
+
+    query = these((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1))
+    plan = naive_translation(query)
+    assert set(plan()) == set([(3, 2),
+                               (4, 3),
+                               (5, 2), (5, 3), (5, 4),
+                               (6, 5),
+                               (7, 2), (7, 3), (7, 4), (7, 5), (7, 6),
+                               (8, 3), (8, 5), (8, 7),
+                               (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
+
+
+    query = these(((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1)), offset=100)
+    plan = naive_translation(query)
+    assert len(list(plan())) == 0
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_ordering():
+    from xotl.ql.translation.py import naive_translation
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+
+    query = these((which for which in Universe),
+                   ordering=lambda which: -which)
+    plan = naive_translation(query)
+    assert list(plan()) == list(reversed(range(2, 10)))
+
+    query = these((which for which in Universe),
+                   ordering=lambda which: +which)
+    plan = naive_translation(query)
+    assert list(plan()) == list(range(2, 10))  #XXX: Py3k list()
+
+    query = these((person for person in Person),
+                  ordering=lambda person: -person.age)
+    plan = naive_translation(query)
+    results = list(plan())
+    assert manolito == results[-1]
+    assert elsa == results[0]
+
+    query = these((person for person in Person if person.children))
+    plan = naive_translation(query)
+    results = list(plan())
+    parents = (manu, yade, pedro, papi, elsa, ppp, denia)
+    for who in parents:
+        assert who in results
+    assert len(results) == len(parents)
+
+    from xotl.ql.expressions import sum_
+    query = these((person for person in Person if person.children),
+                  ordering=lambda person: (-sum_(child.age for child in person.children), -person.age))
+    plan = naive_translation(query)
+    results = list(plan())
+    assert pedro == results[0]
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_short_circuit():
+    from xotl.ql import thesefy
+    from xotl.ql.expressions import call
+    from xotl.ql.translation.py import naive_translation
+    from xoutil.compat import integer
+    flag = [0]   # A list to allow non-global non-local in Py2k
+    def inc_flag(by=1):
+        flag[0] += 1
+        return flag[0]
+
+    @thesefy
+    class Universe(integer):
+        pass
+    Universe.this_instances = [Universe(1780917517912941696167)]
+
+    query = these(atom for atom in Universe if (call(inc_flag) > 1) & call(inc_flag))
+    plan = naive_translation(query)
+    list(plan())
+    assert flag[0] == 1
+
+    flag[0] = 0
+    query = these(atom for atom in Universe if (call(inc_flag) > 0) | call(inc_flag))
+    plan = naive_translation(query)
+    list(plan())
+    assert flag[0] == 1
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_no_custom():
+    from xotl.ql.translation.py import naive_translation
+    from xotl.ql.expressions import Operator, N_ARITY
+
+    class myoperator(Operator):
+        arity = N_ARITY
+        _format = 'myoperator({0}{1})'
+
+    query = these(person for person in Person if myoperator(person))
+    with pytest.raises(TypeError):
+        plan = naive_translation(query)
+        list(plan())
+
+
+@pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
+def test_query_objects_iteration():
+    from xotl.ql.translation.py import init
+
+    @thesefy
+    class Universe(int):
+        pass
+    Universe.this_instances = [Universe(i) for i in range(2, 10)]
+
+    query = these(atom for atom in Universe)
+    with pytest.raises(Exception):
+        results = list(query)
+    init()
+    results = list(query)
+    # XXX: Only for our implementation of QueryObject
+    first_plan = getattr(query, '_query_execution_plan', None)
+    for atom in Universe.this_instances:
+        assert atom in results
+    assert len(results) == len(Universe.this_instances)
+
+    again = list(query)
+    second_plan  = getattr(query, '_query_execution_plan', None)
+    assert len(results) == len(again)
+
+    assert first_plan is second_plan
+
+    from itertools import product
+    assert list(product(results, results)) == list(product(iter(query), iter(query)))

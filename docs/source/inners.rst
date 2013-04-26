@@ -1,3 +1,5 @@
+.. _inner-workings:
+
 =======================================================
 Internal details of the processing of query expressions
 =======================================================

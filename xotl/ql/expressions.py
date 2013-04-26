@@ -43,11 +43,11 @@ __docstring_format__ = 'rst'
 __author__ = 'manu'
 
 
-#: When expressions are created inside this context, they will look for a :
-#`bubble` key in the context, if found it will call the `capture_expression` of
-#: the bubble; if there's no bubble a warning will logged (cause there should
-#: be a bubble in this context.)
-EXPRESSION_CONTEXT = object()
+# When expressions are created inside this context, they will look for a
+# `bubble` key in the context, if found it will call the `capture_expression`
+# of the bubble; if there's no bubble a warning will logged (cause there should
+# be a bubble in this context.)
+EXPRESSION_CAPTURING = object()
 
 
 class UNARY(object):
@@ -147,6 +147,11 @@ class _boolean(type):
             return self
     __ror__ = __or__
 
+    if _py3k:
+        def __lt__(self, other):
+            return _false   # Don't compare me
+        __gt__ = __ge__ = __le__ = __lt__
+
 
     def __bool__(self):
         return True if self is _true else False
@@ -169,16 +174,19 @@ class OperatorType(type):
     operators = []
 
     def __init__(self, name, bases, attrs):
-        from xoutil.objects import nameof
+        from xoutil.names import nameof
+        from xoutil.functools import compose
         OperatorType.operators.append(self)
-        _PROVIDES = ('This {which} directly provides '
+        _PROVIDES = ('    This {which} directly provides '
                      ':class:`xotl.ql.interfaces.{interface}`.\n\n')
         doc = ''
-        for attr, trans in (('arity', nameof), ('_method_name', repr),
-                            ('_format', repr)):
+        for attr, trans in (('arity', lambda x: nameof(x, inner=True)),
+                            ('_method_name', repr),
+                            ('_format', compose(str, repr))):
             value = getattr(self, attr, None)
             if value:
                 v = trans(value).replace('_', r'\_')
+                v = v.replace("'", '"')
                 doc += ('\n\n    - **{attr}:** {v}'.format(attr=attr,
                                                            v=v))
         if doc:
@@ -803,11 +811,11 @@ class ResolveSubQueryMixin(object):
                 from xotl.ql.core import these
                 first = these(first)
                 # XXX: If this operation itself is enclosed in a
-                # EXPRESSION_CONTEXT it might have occurred that a part
+                # EXPRESSION_CAPTURING it might have occurred that a part
                 # (actually a token's term) was emitted but then used as the
                 # generator, so if the first token's binding original_term *is*
-                # the last emmitted this one should be removed.
-                bubble = context[EXPRESSION_CONTEXT].data.get('bubble', None)
+                # the last part emitted it should be removed from the bubble.
+                bubble = context[EXPRESSION_CAPTURING].get('bubble', None)
                 if bubble:
                     parts = bubble._parts
                     with context(UNPROXIFING_CONTEXT):
@@ -816,19 +824,16 @@ class ResolveSubQueryMixin(object):
                             parts.pop(-1)
             return (first, ), {}
 
+
 class AllFunction(FunctorOperator, ResolveSubQueryMixin):
-    '''
-    The representation of the `all` function.
+    '''The representation of the `all` function.
 
     There are three possible interpretations/syntaxes for :func:`all_`:
 
     1. It takes an expression (probably a subquery) and returns true only if
        every object is true::
 
-            >>> ages = [1, 2, 3, 4, 5]
-            >>> expr = all_(age > 10 for age in ages)
-            >>> str(expr)        # doctest: +ELLIPSIS
-            'all(<generator object...>)'
+            all_(age > 10 for age in ages)
 
     2. takes several objects and evaluates them all (no subqueries)::
 
@@ -841,15 +846,14 @@ class AllFunction(FunctorOperator, ResolveSubQueryMixin):
        :mod:`xotl.ql.core` module) and the second a predicate::
 
             >>> from xotl.ql.core import this
-            >>> expr = all_(this.children, this.age > 10)
-            >>> str(expr)
-            'all(this.children, (this.age > 10))'
+            >>> expr = all_(this, this.age > 10)
 
     .. warning::
 
        There's no way to syntactically (at the level on which one could do
-       normally in Python) to distiguish the last two elements from each other;
-       so translators may further restrict these interpretations.
+       normally in Python) to distiguish the last two cases from each other; so
+       translators may further restrict these interpretations.
+
     '''
 
     _format = 'all({0})'
@@ -873,6 +877,18 @@ class AnyFunction(FunctorOperator, ResolveSubQueryMixin):
     arity = N_ARITY
     _method_name = str('any_')
 any_ = AnyFunction
+
+
+class SumFunction(FunctorOperator, ResolveSubQueryMixin):
+    '''Represents the `sum()` function.
+
+    As with :class:`all_` it might have several syntaxes and
+    interpretations.
+
+    '''
+    _format = 'sum({0})'
+    arity = N_ARITY
+sum_ = SumFunction
 
 
 class MinFunction(FunctorOperator, ResolveSubQueryMixin):
@@ -949,43 +965,6 @@ class InvokeFunction(FunctorOperator):
     arity = N_ARITY
     _method_name = str('invoke')
 invoke = call = InvokeFunction
-
-
-class StartsWithOperator(FunctorOperator):
-    '''
-    The `startswith(string, prefix)` operator::
-
-         >>> e = startswith(q('something'), 's')
-         >>> str(e)
-         "startswith('something', 's')"
-
-    .. note::
-
-       At risk, use :class:`call` as ``call(string.startswith, 'prefix')``
-    '''
-    _format = 'startswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = str('startswith')
-startswith = StartsWithOperator
-
-
-class EndsWithOperator(FunctorOperator):
-    '''
-    The `endswith(string, suffix)` operator::
-
-        >>> e = endswith(q('something'), 's')
-        >>> str(e)
-        "endswith('something', 's')"
-
-
-    .. note::
-
-       At risk, use :class:`call` as ``call(string.startswith, 'suffix')``
-    '''
-    _format = 'endswith({0!r}, {1!r})'
-    arity = BINARY
-    _method_name = str('endswith')
-endswith = EndsWithOperator
 
 
 class AverageFunction(FunctorOperator, ResolveSubQueryMixin):
@@ -1167,13 +1146,17 @@ class ExpressionTree(object):
         self._children = tuple(_extract_target(child) for child in children)
         self._named_children = {name: _extract_target(value)
                                 for name, value in named_children.items()}
-        _context = context[EXPRESSION_CONTEXT]
+        _context = context[EXPRESSION_CAPTURING]
         if _context:
             try:
-                bubble = _context.data.bubble
+                bubble = _context['bubble']
                 bubble.capture_part(self)
             except (AttributeError, KeyError):
-                pass
+                import warnings
+                warnings.warn('Since the expression was created inside '
+                              'EXPRESSION_CONTEXT it is expected a bubble key '
+                              'in the context and it was not there! -- %r'
+                              % _context.data.keys())
 
     @property
     def op(self):

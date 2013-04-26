@@ -85,7 +85,7 @@ def test_sorting_with_cmp():
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_cotraverse_expression():
-    from xoutil.compat import izip
+    from xoutil.compat import zip
     from xotl.ql.expressions import is_a
     from xotl.ql.translation import cotraverse_expression
 
@@ -98,7 +98,7 @@ def test_cotraverse_expression():
         pass
 
     query = these((person, partner)
-                  for person, partner in izip(Person, Person)
+                  for person, partner in zip(Person, Person)
                   for rel in Partnership
                   if (rel.subject == person) & (rel.obj == partner))
     filters = list(query.filters)

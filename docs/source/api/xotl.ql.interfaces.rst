@@ -22,8 +22,7 @@ Query objects interfaces
 the :class:`IQueryObject` below.
 
 .. autointerface:: IQueryObject
-   :members: selection, tokens, filters, ordering, partition, params, __iter__,
-	     next
+   :members: selection, tokens, filters, ordering, partition, params, __iter__
 
 .. autointerface:: IGeneratorToken
    :members: expression
@@ -57,6 +56,11 @@ Translation API
 .. autointerface:: IQueryTranslator
 
 .. autointerface:: IQueryExecutionPlan
+
+Configuration API
+-----------------
+
+.. autointerface:: IQueryConfigurator
 
 
 Internal API
