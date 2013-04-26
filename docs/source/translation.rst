@@ -69,26 +69,77 @@ documentation be complete:
 Configuration of translator
 ===========================
 
-.. warning::
+Configuration of an application is *not* one of the goals `xotl.ql`
+pursues. That's the job of frameworks. So this section refers only to the small
+amount of assumptions `xotl.ql` has about *getting* a configured translator
+when it's needed.
 
-   This section is still in a very unstable state.
+Configuration of an entire system is a complex matter. Even deciding *what*
+configuration is and what is not is an issue that must be well thought.
 
-Currently `xotl.ql` makes use of Zope Component Architecture (ZCA) registration
-of components to look for translators.
+That been said, the only place where currently `xotl.ql` does make an
+assumption about the configuration is when trying to get an instance of a
+:term:`query translator`. This is done exactly only when you try to iterate
+over a query object::
 
-There are two interfaces which relate to this:
+  for atom in these(atom for atom in Universe):    # <--- here
+      classify(atom)
+
+`xotl.ql` makes use of Zope Component Architecture (ZCA) registration of
+components to look for translators.
+
+There are two interfaces which relate to this job:
 
 - :class:`xotl.ql.interfaces.IQueryConfigurator`
 
 - :class:`xotl.ql.interfaces.IQueryTranslator`
 
-The interface IQueryTranslator is just the interface "true" translators should
-provide. If you implement a component that performs translation, it should
-implement this interface.
+When trying to get a translator, `xotl.ql` does the following:
 
-The interface IQueryConfigurator allows to get the "current" translator. It is
-a kind of mediator between your application's framework and the translator
-code.
+1. First it looks if there is an instance of IQueryConfigurator in the ZCA
+   global registry.
+
+   If found, it will call its
+   :meth:`~xotl.ql.interfaces.IQueryConfigurator.get_translator` passing the
+   query.
+
+2. If there's no configurator then it will try to look for an instance of a
+   IQueryTranslator in the global registry.
+
+   If this step also fails a ComponentLookupError exception will be raised.
+
+3. If any of the previous steps does return a translator, then it will be
+   called with the current query as its sole positional argument.
+
+   The returned :term:`query execution plan` will be cached by the query object
+   to avoid having to look for translator and perform the translation
+   again. [#cache]_
+
+If you're not comfortable using ZCA, you avoid at all; just don't iterate
+directly over a query object. Translator will probably have APIs for direct
+use. For instance, our toy :mod:`~xotl.ql.translation.py` translator provides
+the function :func:`~xotl.ql.translation.py.naive_translation` that is the one
+that performs the translation. Many of our tests use this function instead of
+iterating over query objects.
+
+
+.. _configurators-best-practices:
+
+Best practices for configurators
+--------------------------------
+
+Configurators should follow the motto "be liberal about what you may get"
+[#conservative]_. This means that they should make the least amount of
+assumptions possible for any argument they might receive.
+
+Here are some ideas:
+
+- If you expect a keyword argument that should contain a class/function and you
+  receive a string, try to *load it* as dotted name.
+
+  This is to allow INI configuration files.
+
+- Whenever possible log a BIG warning instead of raising an exception.
 
 
 Using the Pyramid's registry
@@ -104,16 +155,17 @@ If you need to use the Pyramid's ZCA application registry, you should use the
 This is not needed, though. However, you must make sure to register your
 translator for each WSGI application instance you have.
 
-It is encouraged that translator authors write mediators that glue their
-translator with a given framework. It is also encourage that such mediators be
+It is encouraged that translator authors also write mediators that glue their
+translator with a given framework. It is also encouraged that such mediators be
 distributed separately from the translator itself. For instance, you might
 write a Pyramid Tween that glues your translator with Pyramid's registry.
 
-..
-   For demonstration purposes only, a Pyramid Tween is provided in
-   :mod:`xotl.ql.translation.tween` that glues our :mod:`xolt.ql.translation.py`
-   translator with Pyramid. To see it in action::
 
-      config.include('xotl.ql.translation.tween')
+.. [#cache] This cache is local to the query object, if the later is discarded
+	    the plan will also be discarded (unless there's a bug somewhere
+	    else, for instance the translator could keep its own cache that is
+	    getting too big.)
 
-   And then navigate to '/xotl-ql-demostration/'
+
+.. [#conservative] "... and be conservative about what you provide", but, hey!,
+		   they are required to return a translator.
