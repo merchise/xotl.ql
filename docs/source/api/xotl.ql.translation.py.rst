@@ -72,11 +72,11 @@ it normally iterates throughout the objects in the Python memory by using
 lots of objects in memory while only a few of them are of interest.
 
 To alleviate this situation, this translation offers the following protocol: If
-it can statically determine the class of a given top-level generator token and
-that class has an attribute `this_instances` that is a collection (i.e a list,
-tuple, generator object, but not a dict nor a string); then only the items in
-the `this_instances` collection are used to replace the token's apparitions in
-the query.
+it can statically determine [#dumbstatic]_ the class of a given top-level
+generator token and that class has an attribute `this_instances` that is a
+collection (i.e a list, tuple, generator object, but not a dict nor a string);
+then only the items in the `this_instances` collection are used to replace the
+token's apparitions in the query.
 
 For instance::
 
@@ -115,3 +115,11 @@ Footnotes
 
      $ pypy -c "import gc; print(len(gc.get_objects()))"
      21437
+
+
+.. [#dumbstatic]
+
+   The static analysis performed is quite dumb. It search for a *single*
+   ``is_instance(token, Object)`` expression (or sub-expression), if more than
+   one is found, then the analysis stops and therefor the protocol does not
+   continue.
