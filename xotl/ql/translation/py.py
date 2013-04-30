@@ -521,8 +521,9 @@ class vmtoken(object):
                             node.children[0] == term)
 
             from xotl.ql.translation import cotraverse_expression
-            found = next(cotraverse_expression(*query.filters, accept=matches), None)
-            if found:
+            matchers = cotraverse_expression(*query.filters, accept=matches)
+            found = next(matchers, None)
+            if found and next(matchers, None) is None:
                 self._token_class = found.children[-1]
             else:
                 self._token_class = None
