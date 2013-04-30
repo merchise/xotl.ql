@@ -76,7 +76,6 @@ class BasicTests(unittest.TestCase):
             from operator import truediv as div
         from xotl.ql.expressions import count, min_, max_, all_, any_, length
         from xotl.ql.expressions import contains, is_instance, invoke, new
-        from xotl.ql.expressions import startswith, endswith
         from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
@@ -97,10 +96,8 @@ class BasicTests(unittest.TestCase):
                         (pow, '{0}**{1}'),
                         (lshift, '{0} << {1}'),
                         (rshift, '{0} >> {1}'),
-                        (endswith, "endswith('{0}', '{1}')"),
                         (contains, 'contains({0}, {1})'),
-                        (is_instance, 'is_a({0}, {1})'),
-                        (startswith, "startswith('{0}', '{1}')")]
+                        (is_instance, 'is_a({0}, {1})')]
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
