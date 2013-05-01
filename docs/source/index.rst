@@ -57,6 +57,7 @@ Additional documents:
 .. toctree::
    :maxdepth: 1
 
+   ponyorm
    thoughts
    inners
    references
