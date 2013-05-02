@@ -142,4 +142,4 @@ Footnotes
 		  that is free for non-commercial purposes.
 
 .. _Pony: http://ponyorm.com/
-.. _ORM: http://en.wikipedia.org/index.php/ORM
+.. _ORM: http://en.wikipedia.org/wiki/Object-relational_mapping
