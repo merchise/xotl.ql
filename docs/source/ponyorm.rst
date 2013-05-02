@@ -15,8 +15,8 @@ the generator expressions of Python. Their queries look like::
 
    persons = select(p for p in Person if 'o' in p.name)
 
-Although the project seems to be started in 2006 we have just discovered. And
-we like some of the external features it exposes; like the use of the true
+The project seems to be started in 2006, but I have just discovered today. And
+I like some of the external features it exposes; like the use of the true
 logical ``and`` and ``or`` binary operators; and everything we have had to
 circumvent in `xotl.ql` so far.
 
