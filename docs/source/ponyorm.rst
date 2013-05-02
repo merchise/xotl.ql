@@ -3,9 +3,12 @@ Comparison with Pony_
 =====================
 
 :Date: Tue Apr 30, 2013 (2013-04-30.)
-:Author: Manuel Vázquez Acosta
-:Summary: Describes and compares PonyORM and xotl.ql. Proposes to explore the
+:Document status: Very early draft.
+:Author: Manuel Vázquez Acosta (`@mvaled`__)
+:Summary: Describes and compares PonyORM and xotl.ql. Proposes to explore
           bytecode disassembling as way to implement `xotl.ql`.
+
+__ http://twitter.com/mvaled/
 
 Pony_ is an ORM_ implementation that shares our vision of writing queries using
 the generator expressions of Python. Their queries look like::
