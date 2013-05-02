@@ -1,14 +1,14 @@
-========================
-Comparison with PonyORM_
-========================
+=====================
+Comparison with Pony_
+=====================
 
 :Date: Tue Apr 30, 2013 (2013-04-30.)
 :Author: Manuel Vázquez Acosta
 :Summary: Describes and compares PonyORM and xotl.ql. Proposes to explore the
           bytecode disassembling as way to implement `xotl.ql`.
 
-PonyORM_ is an ORM_ implementation that shares our vision of writing queries
-using the generator expressions of Python. Their queries look like::
+Pony_ is an ORM_ implementation that shares our vision of writing queries using
+the generator expressions of Python. Their queries look like::
 
    persons = select(p for p in Person if 'o' in p.name)
 
@@ -17,16 +17,16 @@ we like some of the external features it exposes; like the use of the true
 logical ``and`` and ``or`` binary operators; and everything we have had to
 circumvent in `xotl.ql` so far.
 
-In this document I would like to describe how PonyORM_ is different/similar to
+In this document I would like to describe how Pony_ is different/similar to
 `xotl.ql` and how they might influence our future work.
 
-What PonyORM is that `xotl.ql` is not
+What Pony is that `xotl.ql` is not
 =====================================
 
-PonyORM is an ORM
+Pony is an ORM
 -----------------
 
-PonyORM is an ORM_; meaning it concerns itself with interacting with a
+Pony is an ORM_; meaning it concerns itself with interacting with a
 *relational database* like SQLite, MySQL and PostgreSQL.
 
 `xotl.ql` does not aim to target any specific :term:`object model` not even the
@@ -37,12 +37,12 @@ perform.
 In this regard `xotl.ql` does what the :ref:`pony.decompiling <decompiling>` module does; only
 different.
 
-This is the only true difference in the broader aim that PonyORM and xotl.ql
+This is the only true difference in the broader aim that Pony and xotl.ql
 have. However, they differ a lot in design and implementation.
 
 .. _decompiling:
 
-PonyORM disassembles the Python bytecode
+Pony disassembles the Python bytecode
 ----------------------------------------
 
 Python does not make it easy to hook the logical operators ``and``, ``or`` and
@@ -51,7 +51,7 @@ working with the ``in`` containment test operator always change the result to a
 boolean.  These rules make it impossible to create a complete expression
 language using *normal* Python code.
 
-PonyORM overcomes this difficulty by inspecting the low-level bytecode the
+Pony overcomes this difficulty by inspecting the low-level bytecode the
 Python interpreter generates for the generator object. This is way they can
 reconstruct an :term:`AST` that is *semantically equivalent* [#syntactical-eq]_
 to the original expression.
@@ -69,7 +69,7 @@ bytecodes for our target Python implementations and have implementations for
 those. Which leads me to:
 
 
-How does PonyORM might influence our future work?
+How does Pony might influence our future work?
 =================================================
 
 Perhaps the most impacting feature we would love to have is to write our
@@ -94,16 +94,14 @@ would change and what wouldn't change if we pursue this avenue:
 
 - Whether or not the Python ``ast`` module is a fit for our query/expression
   language is still not clear. See :ref:`lit-review`, specially the
-  [coSQL2011]_ reference.
-
-  Depending on our findings our :class:`xotl.ql.interfaces.IExpressionTree`
-  would change or disappear (or stay as a formal counterpart for the Python's
-  ``ast`` module).
+  [coSQL2011]_ reference. Probably the Python's AST serves as an internal
+  intermediary language, but the AST exposed to translators would probably
+  resemble the monadic query language. At this moment I just don't know.
 
 Next steps
 ----------
 
-Since PonyORM licence statement is kind of ambiguous [#ponyorm-lic]_ we'll do
+Since Pony licence statement is kind of ambiguous [#ponyorm-lic]_ we'll do
 the following:
 
 #. Study the Python 2.7 bytecode as explained in :mod:`dis` standard module and
@@ -137,8 +135,8 @@ Footnotes
             if parent.age > 1 and parent.children)
 
 
-.. [#ponyorm-lic] They state they distribute PonyORM under GPL version 3, but
+.. [#ponyorm-lic] They state they distribute Pony under GPL version 3, but
 		  that is free for non-commercial purposes.
 
-.. _PonyORM: http://ponyorm.com/
+.. _Pony: http://ponyorm.com/
 .. _ORM: http://en.wikipedia.org/index.php/ORM
