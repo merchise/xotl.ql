@@ -140,8 +140,5 @@ Footnotes
             if parent.age > 1 and parent.children)
 
 
-.. [#ponyorm-lic] They state they distribute Pony under GPL version 3, but
-		  that is free for non-commercial purposes.
-
 .. _Pony: http://ponyorm.com/
 .. _ORM: http://en.wikipedia.org/wiki/Object-relational_mapping
