@@ -37,8 +37,8 @@ relational model, and thus it does not aim to target any specific database
 system. This job is left to :term:`query translators <query translator>` to
 perform.
 
-In this regard `xotl.ql` does what the :ref:`pony.decompiling <decompiling>` module does; only
-different.
+In this regard `xotl.ql` does what the :ref:`pony.decompiling <decompiling>`
+module does; only different.
 
 This is the only true difference in the broader aim that Pony and xotl.ql
 have. However, they differ a lot in design and implementation.
@@ -104,16 +104,18 @@ would change and what wouldn't change if we pursue this avenue:
 Next steps
 ----------
 
-Since Pony licence statement is kind of ambiguous [#ponyorm-lic]_ we'll do
-the following:
+In the next weeks I'll be doing the following:
 
 #. Study the Python 2.7 bytecode as explained in :mod:`dis` standard module and
    other Internet public sources.
+
+   I can use the ``pony.decompiling`` as a starting point. See `the tweets`__.
 
 #. Do the same for Python 3.2 and probably Python 3.3.
 
 #. Propose a new API in an experimental branch.
 
+__ https://twitter.com/mvaled/status/330045481671602176
 
 Footnotes
 =========
