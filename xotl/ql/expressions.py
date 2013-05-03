@@ -29,7 +29,7 @@ from functools import partial
 from xoutil.context import context
 from xoutil.aop import complementor
 from xoutil.proxy import proxify, UNPROXIFING_CONTEXT, unboxed
-from xoutil.decorator.compat import metaclass
+from xoutil.objects import metaclass
 from xoutil.compat import py3k as _py3k
 
 from zope.interface import implementer, directlyProvides
@@ -158,13 +158,11 @@ class _boolean(type):
     __nonzero__ = __bool__
 
 
-@metaclass(_boolean)
-class _true(object):
+class _true(object, metaclass(_boolean)):
     pass
 
 
-@metaclass(_boolean)
-class _false(object):
+class _false(object, metaclass(_boolean)):
     pass
 
 
@@ -240,8 +238,7 @@ class OperatorType(type):
         return self._method_name
 
 
-@metaclass(OperatorType)
-class Operator(object):
+class Operator(object, metaclass(OperatorType)):
     '''
     The base class of every operation that may involved in a expression.
 
@@ -297,8 +294,7 @@ class _FunctorOperatorType(OperatorType):
                                                               **named)
 
 
-@metaclass(_FunctorOperatorType)
-class FunctorOperator(Operator):
+class FunctorOperator(Operator, metaclass(_FunctorOperatorType)):
     '''
     The base class for operations that are invoked explicitly by the
     programmer.

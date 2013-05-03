@@ -36,7 +36,7 @@ from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.decorator.meta import decorator
-from xoutil.decorator.compat import metaclass
+from xoutil.objects import metaclass
 
 from zope.interface import implementer
 from zope.interface import alsoProvides, noLongerProvides
@@ -903,8 +903,7 @@ class _QueryObjectType(type):
 
 
 @implementer(IQueryObject)
-@metaclass(_QueryObjectType)
-class QueryObject(object):
+class QueryObject(object, metaclass(_QueryObjectType)):
     '''
     Represents a query. See :class:`xotl.ql.interfaces.IQueryObject`.
     '''
