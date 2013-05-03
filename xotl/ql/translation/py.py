@@ -19,7 +19,7 @@ from __future__ import (division as _py3_division,
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil.modules import modulemethod
-from xoutil.types import Unset
+from xoutil import Unset
 from xoutil.decorator import memoized_property
 from xoutil.compat import iteritems_
 

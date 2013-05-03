@@ -31,7 +31,7 @@ from __future__ import (division as _py3_division,
 import re
 from itertools import count
 
-from xoutil.types import Unset
+from xoutil import Unset
 from xoutil.objects import validate_attrs
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT

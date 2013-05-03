@@ -1095,7 +1095,7 @@ ExpressionTreeOperations = type(str('ExpressionTreeOperations'), (object,),
 
 # The _xotl_target_ (aka _target_) protocol for expressions.
 def _extract_target(which):
-    from xoutil.types import Unset
+    from xoutil import Unset
     func = getattr(type(which), '_xotl_target_', Unset)
     if func is Unset:
         func = getattr(type(which), '_target_', Unset)
