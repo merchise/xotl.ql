@@ -3,22 +3,11 @@
 #----------------------------------------------------------------------
 # xotl.ql.tests.test_expressions
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement
+# Copyright (c) 2012, 2013 Merchise Autrement
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License (GPL) as published by the Free
-# Software Foundation;  either version 2  of  the  License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# this program; if not, write to the Free Software Foundation, Inc., 51
-# Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# This is free software; you can redistribute it and/or modify it under
+# the terms of the LICENCE attached in the distribution package.
 #
 # Created on May 28, 2012
 
@@ -54,7 +43,7 @@ class BasicTests(unittest.TestCase):
     def test_target_procotol(self):
         class X(object):
             @staticmethod
-            def _target_(self):
+            def _xotl_target_(self):
                 return 1978
 
         x = X()
@@ -65,23 +54,28 @@ class BasicTests(unittest.TestCase):
     def test_q_should_keep_it_self_in_expressions(self):
         'When :class:`xotl.ql.expressions.q` is involved in an expression '
         'it should remove itself from it'
+        from xoutil.compat import _unicode
         expr = q(1) + "1"
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
         expr = 1 + q("1")
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
         expr = q(1) + q("1")
-        self.assertEqual([int, unicode], [type(c) for c in expr.children])
+        self.assertEqual([int, _unicode], [type(c) for c in expr.children])
 
     def test_all_ops(self):
         ok = self.assertEqual
         from operator import (eq, ne, lt, le, gt, ge, and_, or_, xor, add, sub,
-                              mul, div, floordiv, mod, truediv, pow, lshift,
+                              mul, floordiv, mod, truediv, pow, lshift,
                               rshift, neg, abs, pos, invert)
+        try:
+            from operator import div
+        except ImportError:
+            # Py3k
+            from operator import truediv as div
         from xotl.ql.expressions import count, min_, max_, all_, any_, length
         from xotl.ql.expressions import contains, is_instance, invoke, new
-        from xotl.ql.expressions import startswith, endswith
         from xotl.ql.expressions import not_
         binary_tests = [(eq, '{0} == {1}'),
                         (ne, '{0} != {1}'),
@@ -102,10 +96,8 @@ class BasicTests(unittest.TestCase):
                         (pow, '{0}**{1}'),
                         (lshift, '{0} << {1}'),
                         (rshift, '{0} >> {1}'),
-                        (endswith, "endswith('{0}', '{1}')"),
                         (contains, 'contains({0}, {1})'),
-                        (is_instance, 'is_a({0}, {1})'),
-                        (startswith, "startswith('{0}', '{1}')")]
+                        (is_instance, 'is_a({0}, {1})')]
         unary_tests = [(neg, '-{0}'),
                        (abs, 'abs({0})'),
                        (pos, '+{0}'),
@@ -162,7 +154,7 @@ class ExtensibilityTests(unittest.TestCase):
             '''
             _format = 'sin({0})'
             arity = UNARY
-            _method_name = b'_sin'
+            _method_name = str('_sin')
         sin = SinFunction
 
         class ZeroObject(object):

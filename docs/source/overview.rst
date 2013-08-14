@@ -6,12 +6,16 @@ Overview
 
 A running system often needs to retrieve objects from a single or several
 sources. Those sources are often databases, but that is by no means a universal
-truth; for instance, in a distributed environments objects may reside in other
-types of software components.
+truth; for instance, in a distributed environments objects might reside in
+other types of software components.
 
 A query language assists programmers in the task of retrieving those objects
 or, at least, get a handle to those objects (like a proxy to an object in a
 distributed system [#querying]_.)
+
+The main goal for `xotl.ql` is to provide a *pythonic way to write* queries. In
+this regard, `xotl.ql` has a similar outlook that LINQ queries have in C#
+[#these]_.
 
 The `xotl.ql` package comprises two main components: the :ref:`expression
 language <expression-lang>` and the :ref:`query language <query-lang>` itself.
@@ -27,48 +31,56 @@ operator>`.
 The query language relies heavily upon the expression language. The core of the
 query language itself is just a combination of:
 
-- the expression language used inside Python's generator expressions;
+- Python's generator expressions that use the expression language;
 
-- the :data:`~xotl.ql.core.this` object; and
+- the object :data:`~xotl.ql.core.this`; and
 
 - the :class:`~xotl.ql.core.these` class.
 
-Let's see a query::
+Before showing our first query let's import the basics::
 
   >>> from xotl.ql import this, these
   >>> from xotl.ql.expressions import count
+
+And now the query is just::
+
   >>> parents = these(parent for parent in this if count(parent.children) > 2)
 
 As you can see queries are just normal generator expressions (usually over the
 :data:`~xotl.ql.core.this` object) wrapped inside the
-:class:`~xotl.ql.core.these` function.
+:class:`~xotl.ql.core.these` function. The previous query is readable as it
+stands: get all the parents that have more than 2 children.
 
 More complex queries are allowed, for instance::
 
   >>> from xotl.ql.expressions import all_
-  >>> parents = these(parent for parent in this
-  ...                    if parent.children &
-  ...                       all_(child.age > 10 for child in parent.children))
+  >>> parents = these(parent
+  ...                 for parent in this
+  ...                 if parent.children & all_(child.age > 10
+  ...                                           for child in parent.children))
 
 This would retrieve every "parent" whose children are all more than 10 years
-(supposedly).
+old (assuming `age` is measured in years).
 
-.. warning::
+.. note::
 
-   Logical operations `and`, `or`, and `not` are encoded using the operators:
-   `&`, `|`, and `~` respectively; but since in Python those are bit-wise
-   operations they don't have the same priority as the keywords so you may have
-   to use parentheses: ``(count(this.children) > 0) & (count(this.children) <
-   4)``.
+   In the expression language, the logical operations `and`, `or`, and `not`
+   are encoded using the operators "``&``", "``|``", and "``~``" respectively;
+   but since in Python those are bit-wise operations they don't have the same
+   priority the keywords do, so you might have to use parentheses:
+   ``(count(this.children) > 0) & (count(this.children) < 4)``.
 
-   You may use the function-like operators :class:`xotl.ql.expressions.and_`,
-   :class:`xotl.ql.expressions.or_`, and :class:`xotl.ql.expressions.not_` if
-   you're not comfortable using `&`, `|`, and `~`.
+   You may use the function-like operators :class:`~xotl.ql.expressions.and_`,
+   :class:`~xotl.ql.expressions.or_`, and :class:`~xotl.ql.expressions.not_` if
+   you're not comfortable using the operators.
 
-   Moreover you can't use the idiom `a < b < c` in query expressions because
-   Python converts such a construction to `a < b and b < c` and there's no way
-   we can hook into `and`.
-
+   Moreover you can't use the idiom ``a < b < c`` in expressions because Python
+   converts such a construction to ``a < b and b < c`` and there's no way we
+   can hook into `and`.
+
+   For the same reason you can't use ``in``, and ``isinstance`` in
+   expressions. Python always convert those expressions to boolean and this is
+   not what we need in the context of the expression language.
 
 
 .. _role-of-query-translator:
@@ -83,68 +95,57 @@ meaning of queries depends on the semantics of the objects models in place.
 
 For instance, given a data model that honors transitive relations such as `is
 (physically) located in` between places; if you have that `B is located in A`
-and that `C is located in B`, then asking for every place that is located in
-`A`, both `B` and `C` should be found.
+and that `C is located in B`, then querying for every place that is located in
+`A`, should return both `B` and `C`.
 
-One may encode such a query in a program like the following::
+One might encode such a query in a program like the following::
 
-  >>> def is_located_in(place, container):
-  ...    'Creates the expression that asserts that `place` is inside a `container`'
-  ...    if isinstance(container, basestring):
-  ...        return place.located_in.name == container
-  ...    else:
-  ...        return place.located_in == container
-
-  >>> inside = lambda(who: these(place for place in this
-  ...                            if is_located_in(place, who))
-
-  >>> inside_a = inside('A')
+  locations = these(place for place in this if place.located_in(A))
 
 It's expected that such a query will look up in the all the containment tree
 derived form the `located-in` relation, to fetch all places which are inside
 `A` either directly or indirectly.
 
-In this model, just the use of `located_in.name == 'A'` would imply a recursive
+In this model, just the use of ``located_in(A)`` would imply a recursive
 computation; and such knowledge comes only from the object/store model and not
 the query language by itself. Other models (for instance the relational model)
 might not find more than directly related objects.
 
-That's why in order to execute queries one **must** provide a :term:`query
+That's why in order to execute queries one *must* use a :term:`query
 translator` with enough knowledge of the object model and of the system
 configuration (specially how to communicate with storage systems).
 
-As of the date of writing `xotl.ql` does not provides any (useful)
-translator. Such components will reside in other packages. It is foreseeable
-that `xotl` (the project that gives host to `xotl.ql`) may include a translator
-(or partial a implementation of it) for the :term:`OMCaF` object model.
+`xotl.ql` won't provide production quality translators. Instead other packages
+will be released that implement translators and assist their configuration into
+other frameworks. For instance, it's planned to write a package that contains a
+translator for SQLAlchemy_ models and another package with a Pyramid_ Tween
+that glues this translator with Pyramid.
 
-Nevertheless the module :mod:`xotl.ql.translate` does contains an
-implementation of a translator that fetches objects from the Python VM, and
-provides some functions to traverse the Query AST.
+.. _SQLAlchemy: http://pypi.python.org/pypi/sqlalchemy
+.. _Pyramid: http://pypi.python.org/pypi/pyramid
+
+Nevertheless the module :mod:`xotl.ql.translation.py` does contains an
+implementation of a translator that fetches objects from the Python's
+memory. And we also provide utilities for translation in
+:mod:`xotl.ql.translation`.
+
 
 Retrieving objects
-------------------
+==================
 
-If a query translator is setup and working, then you may use the built-in `next`
-function to retrieve the objects that matches your query::
+If a query translator is :ref:`setup <translator-conf>`, then you may iterate
+over the query itself to fetch objects::
 
-  >>> somequery = these(parent for parent in this)
-  >>> next(somequery)    # doctest: +SKIP
-  <SOME OBJECT>
+  somequery = these(parent for parent in this)
+  for parent in somequery:
+      print(parent)
 
-If no translator is configured an exception is raised upon calling `next`. This
-allows to keep things simple at the data-consuming level. However, this by no
-means the only way to retrieve data from a query. See
-:class:`xotl.ql.interfaces.IQueryObject` for more information.
+If no translator is configured an exception is raised.
 
-
-Open issues
-===========
-
-The AST itself is still in flux. There's a fundamental open question:
-
-  Does bound these instances are enough to represent queries -- at least
-  without limits and offset?
+Configuring a default translator for the context allows to keep things simple
+at the data-consuming level. However, this by no means the only way to retrieve
+data from a query. You could use a translator directly instead of using the
+"default" one. See more on :ref:`translation`.
 
 
 Footnotes
@@ -154,3 +155,12 @@ Footnotes
 	       performance issues. However the language by itself is
 	       possible. One may maintain indexes for distributed systems,
 	       though; and the queries are run against these indexes.
+
+.. [#these] When we started this project we thought we could have queries
+	    without having to call a function/class, just comprehensions and
+	    the :data:`~xotl.ql.core.this` symbol. Unfortunately, we have had
+	    to add :class:`~xotl.ql.core.these` callable so that all pieces of
+	    a query were properly captured.
+
+	    If you are interested in the inner workings of `xotl.ql`, see
+	    :ref:`inner-workings`.

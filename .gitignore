@@ -11,6 +11,8 @@
 build/
 dist/
 
+.tox/
+
 # Python Coverage files generate by nose
 .coverage
 

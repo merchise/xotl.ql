@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.interfaces
 #----------------------------------------------------------------------
-# Copyright (c) 2012 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -21,7 +21,7 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_imports)
 
-from zope.interface import Interface, Attribute, invariant
+from zope.interface import Interface, Attribute
 
 __docstring_format__ = 'rst'
 __author__ = 'manu'
@@ -30,7 +30,7 @@ __author__ = 'manu'
 __all__ = ('IOperator', 'IExpressionCapable',
            'ISyntacticallyReversibleOperation',
            'ISynctacticallyCommutativeOperation',
-           'IExpressionTree', 'IQueryPart', 'ITerm', 'IBoundThese',
+           'IExpressionTree', 'ITerm', 'IBoundThese',
            'ICallableThese', 'IQueryPartContainer', 'IGeneratorToken')
 
 
@@ -233,29 +233,6 @@ class IExpressionTree(IExpressionCapable):
 
                                ''')
 
-
-class IQueryPart(IExpressionCapable):
-    '''Represents a *possibly* partial (but sound) expression that is being
-    constructed inside a query expression.
-
-    Expression trees are powerful enough to capture the semantics of query
-    parts. But, since we don't have the control of how Python does is execution
-    of the comprehension, we employ query parts that behave just like
-    expressions, but inform a :class:`IQueryParticlesBubble` that a new query
-    part is being created.
-
-    See the documentation for :class:`xotl.ql.core.QueryPart` to see the
-    details of the procedure.
-
-    '''
-    expression = Attribute('The expression that this part stands for.'
-                           'This expression should not be a query part '
-                           'itself. The intention of this attribute '
-                           'is to allow clients extract cleaned-up '
-                           'versions of the expression without '
-                           'the query-building related stuff.')
-
-
 class ITerm(IExpressionCapable):
     '''ITerm instances are meant to represent the *whole* universe of objects.
 
@@ -270,10 +247,11 @@ class ITerm(IExpressionCapable):
 
     def __iter__():
         '''ITerm instances should be iterable. Also this should yield a single
-        instance of a :class:`IQueryPart` whose :attr:`~IQueryPart.expression`
-        should have a bound copy of `self`. The :attr:`~IBoundTerm.binding`
+        instance of a :class:`IBoundTerm`. The :attr:`~IBoundTerm.binding`
         should be made to an instance of a :class:`IGeneratorToken`, whose
-        :attr:`~IGeneratorToken.expression` attribute should be `self`.
+        :attr:`~IGeneratorToken.expression` attribute should be the bound term
+        itself.
+
         '''
 
     def __getattribute__(attr):
@@ -284,7 +262,6 @@ class ITerm(IExpressionCapable):
         instance, an execution context is needed.
 
         :param attr: The name of the object to access.
-        :type attr: unicode or str
         :returns: Another ITerm instance whose name is `attr` and whose parent
                   is `self`.
         '''
@@ -364,19 +341,13 @@ class IQueryParticlesBubble(Interface):
            lost.
 
         :param part: The emitted query part
-        :type part: :class:`IQueryPart`
+        :type part: :class:`IExpressionCapable`
         '''
 
-    parts = Attribute('Ordered collection of :class:`IQueryPart` instances '
-                      'that were captured. ')
+    parts = Attribute('Ordered collection of :class:`IExpressionCapable` '
+                      'instances that were captured. ')
     tokens = Attribute('Ordered collection of :class:`IGeneratorToken` '
                        'tokens that were captured.')
-    particles = Attribute('Ordered collection of either tokens or query parts '
-                          'that were captured.',
-                          'This property holds a list of all particles '
-                          'not matter their types in the order they were '
-                          'captured. This is intended to be used to '
-                          'perform optimizations for translators. ')
 
 
 class IGeneratorToken(Interface):
@@ -422,15 +393,22 @@ class IQueryObject(Interface):
     tokens, and also provides ordering and partitioning features.
 
     '''
-    selection = Attribute('Either a tuple/dict of :class:`ITerm` or '
-                          ':class:`IExpressionTree` instances.')
-    tokens = Attribute('Generator tokens that occur in the query',
-                       '''When the :term:`query` is processed to create a
-                       :term:`query object`, at least one :term:`generator
-                       token` is created to represent a single, named
-                       "location" from where objects are drawn. However a
-                       :term:`query` may refer to several such locations. For
-                       instance in the query::
+    selection = Attribute('Either a tuple/list of :class:`ITerm` or '
+                          ':class:`IExpressionTree` instances; or a '
+                          'single ITerm/IExpressionTree.')
+
+    tokens = Attribute('Generator tokens (:class:`IGeneratorToken`) that '
+                       'occur in the query',
+
+                       '''A (probably unordered) list of :class:`generator
+                       tokens <IGeneratorToken>` that occurs in the query.
+
+                       When a :term:`query expression` is processed to
+                       create a :term:`query object`, at least one
+                       :term:`generator token` is created to represent a
+                       single, named "location" from where objects are
+                       drawn. However a :term:`query expression` may have many
+                       such locations. For instance in the query::
 
                            these((book, author)
                                  for book in this
@@ -450,7 +428,7 @@ class IQueryObject(Interface):
                         'that represent the WHERE clauses. They are logically '
                         'and-ed.')
     ordering = Attribute('A tuple of :ref:`ordering expressions '
-                         '<ordering-expressions>`_.')
+                         '<ordering-expressions>`.')
     partition = Attribute('A slice object that indicates the slice of the '
                           'entire collection to be returned.')
     params = Attribute('A dict containing other arguments to the query. '
@@ -462,65 +440,69 @@ class IQueryObject(Interface):
                        'See :class:`~xotl.ql.core.these`.')
 
     def __iter__():
-        '''
-        Queries are iterable, but they **must** return ``self`` in this method.
-        See :meth:`IQueryObject.next`.
-        '''
+        '''Queries are iterable.
 
-    def next():
-        '''
-        Returns the next object in the cursor.
+        If a transtalor is :ref:`configured <translator-conf>` in the default
+        ZCA component registry, this method will return the result of invoking
+        a plan.
 
-        Internally this should get the configure :class:`IQueryTranslator` and
-        build the execution plan, then execute the plan to get the IDataCursor
-        from which it can drawn objects from.
+        .. note::
+
+           This method is allowed to cache the execution plan, so changing the
+           configured default translator might not take effect without
+           rebuilding the query object.
+
         '''
 
 
 class IQueryTranslator(Interface):
-    '''
-    A :term:`query translator`.
-    '''
+    '''A :term:`query translator`.'''
 
-    def build_plan(query, **kwargs):
-        '''Builds a query plan for a query. Returns an IQueryExecutionPlan.'''
+    def __call__(query, **kwargs):
+        '''Translate a `query object` and returns the query exection plan.
 
+        :param query: The :term:`query object` to be translated.
 
-class IQueryExecutionPlan(Interface):
-    '''Represents the execution plan for a query.'''
+        :param kwargs: Additional keyword arguments the translator might
+          take. Translators are required to document these; but they can't
+          require them.
 
-    query = Attribute('The query for which is the plan.')
-
-    def __call__():
-        '''Executes the plan an retrieves a IDataCursor'''
-
-
-class IDataCursor(Interface):
-    def next():
-        '''Returns the object at the cursor position and moves the cursor
-        forward. If the cursor is out of objects raises `StopIteration`.
+        :returns: A query execution plan.
 
         '''
 
 
-class IQueryConfiguration(Interface):
-    '''A configuration object.'''
+class IQueryExecutionPlan(Interface):
+    '''Represents the execution plan for a query.
 
-    default_translator_name = Attribute('The name to lookup in the components '
-                                        'registry for a IQueryTranslator')
+    Since the only actual requirement this interfaces poses is that the
+    execution plan be callable, this may be implemented with a closure. But
+    keep in mind that the closure should be reusable in several calls.
 
-    def get_translator_for(**predicates):
-        '''Get's the configured translator for a set of *predicates*.
+    '''
 
-        :param app: A string that represents an application (or site)
-                    within your system. You may need to merge several
-                    applications within a system; each with it's own
-                    database and query translator. Use this argument
-                    to explicitly ask for the translator for a given
-                    application.
+    def __call__():
+        '''Executes the plan an retrieves an iterable with the seleted
+        objects.
 
-        :param kind: A fully-qualified class name that uniquely
-                     identify some object kind in your system and for
-                     which you may need to specify a different translator.
+        '''
+
+
+class IQueryConfigurator(Interface):
+    '''A mediator between IQueryObject and the system configuration of
+    translators.
+
+    '''
+
+    def get_translator(query=None, **kwargs):
+        '''Get's the current configured IQueryTranslator.
+
+        If a `query` is given the configurator might inspect the its
+        :attr:`~IQueryObject.params` dictionary to get the best translator
+        available. Alternatively several keyword arguments might be passed to
+        the configurator for the same purpose.
+
+        Configurators should follow the motto "be liberal about what you may
+        get". See :ref:`configurators-best-practices`.
 
         '''
