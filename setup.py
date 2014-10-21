@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # setup
 #----------------------------------------------------------------------
-# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
+# Copyright (c) 2012, 2013, 2014 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -29,7 +29,7 @@ setup(name=project_name,
       version=version,
       description=("A pythonic query language, with similar goals as "
                    "LINQ had for C#"),
-      long_description=open(os.path.join("docs", "readme.txt")).read(),
+      long_description=open(os.path.join(_current_dir, "docs", "readme.txt")).read(),
       # Get more strings from
       # http://pypi.python.org/pypi?:action=list_classifiers
       classifiers=[
@@ -52,16 +52,12 @@ setup(name=project_name,
       zip_safe=False,
       setup_requires=['setuptools', ],
       install_requires=[
-          'xoutil>=1.4.1dev',
-          'zope.interface>=3.8.0',
-          'zope.component>=3.11.0',
-
-          # For documentation only. But it may be needed for ReadTheDocs
-          'repoze.sphinx.autointerface>=0.7.0',
+          'xoutil>=1.6.4',
+          'zope.interface',
       ],
-      extras_requires={
-        'doc': ['docutils>=0.7',
-                'Sphinx>=1.0.7',
-                'repoze.sphinx.autointerface>=0.7.0']
+      extras_require={
+          'doc': ['docutils>=0.7',
+                  'Sphinx>=1.0.7',
+                  'repoze.sphinx.autointerface>=0.7.0']
       }
     )
