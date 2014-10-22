@@ -52,6 +52,7 @@ setup(name=project_name,
       zip_safe=False,
       setup_requires=['setuptools', ],
       install_requires=[
+          'six',
           'xoutil>=1.6.4',
           'zope.interface',
       ],
