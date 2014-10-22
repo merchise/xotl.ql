@@ -3,18 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the documentation of xotl.ql: A *pythonic* query language!
-=====================================================================
+Welcome to the *pythonic* query language!
+=========================================
 
 This package provides an implementation of a query language for Python.
-The query language is based on Python's generator expression. A query
+The query language is based on Python's generator expression.  A query
 in this language looks like this::
 
     >>> from xotl.ql import these, this
 
     >>> query = these(child
     ...               for parent in this
-    ...               if parent.children & (parent.age > 32)
+    ...               if parent.children and parent.age > 32
     ...               for child in parent.children
     ...               if child.age < 6)
 
@@ -25,12 +25,8 @@ above.
 What's new in this release?
 ---------------------------
 
-.. include:: history/changes-0.2.1.rst
+.. include:: history/changes-0.3.0.rst
 
-... and what's new since 0.2.0?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. include:: history/changes-0.2.0.rst
 
 
 Core Contents:
@@ -41,12 +37,9 @@ Core Contents:
    :maxdepth: 1
 
    overview
-   expressions
-   core
    translation
    api/*
    terms
-   next-release-goals
    HISTORY
    credits
    license
@@ -66,9 +59,9 @@ Additional documents:
 What does xotl mean?
 --------------------
 
-The word "xotl" is a Nahuatl word that means foundation, base. The `xotl`
-package comprises the foundation for building reliable systems, frameworks, and
-libraries. It also provides an object model that allows to build complex
+The word "xotl" is a Nahuatl word that means foundation, base.  The `xotl`
+package comprises the foundation for building reliable systems, frameworks,
+and libraries.  It also provides an object model that allows to build complex
 systems.
 
 It is expected that `xotl` will use `xotl.ql` to:

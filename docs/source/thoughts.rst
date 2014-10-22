@@ -2,21 +2,29 @@
 Thoughts on Query Languages
 ===========================
 
-*This document is a draft. You may skip it entirely. It contains topics on
-UnQL, and coSQL that were taken as inspiration for this work; but the
-information in here does not have other practical effect in xotl.ql.*
+*This document is not part of the official documentation.  You may skip it
+entirely.  It contains topics on UnQL, and coSQL that were taken as
+inspiration for this work; but the information in here does not have other
+practical effect in xotl.ql.*
 
 *This document is rather a thinking pad I use when I need to think about query
 languages in general and how they apply to xotl.ql.*
 
 Expressions are the core for query languages and many of it's design decisions
-are strongly biased for query languages needs. But they purpose is more
-general. Notice that :class:`~xotl.ql.core.Term` instances are they way to
+are strongly biased for query languages needs.  But they purpose is more
+general.  Notice that :class:`~xotl.ql.core.Term` instances are they way to
 specify the selected data in queries.
+
+The general query language (as an AST) we are trying to apply is the monads
+comprehension as described in [MCQL]_.  There are several mismatches to be
+conciliated before actually having this kind of query language in Python.
+Specially those that deal with catamorphisms and the
+
+
 
 Before executing an expression, it has to be :term:`compiled <query execution
 plan>` into a form feasible to the current database (either relational or not)
-management systems. For instance, it would be desirable that on top of CouchDB_
+management systems.  For instance, it would be desirable that on top of CouchDB_
 (or Couchbase_) expressions would be *translated* to CouchDB's javascript views
 if possible.
 
@@ -110,19 +118,19 @@ UnQL, SQL, and NoSQL (coSQL)
 ============================
 
 There's a good article [UnQL]_ that describe several features of a UnQL
-(Unstructured Query Language), that are of interest to this module. Another
+(Unstructured Query Language), that are of interest to this module.  Another
 article exposes the relation between NoSQL and SQL, and renames the former as
 coSQL following the categorical tradition since NoSQL is *dual* to SQL
 [coSQL2011]_ [coSQL2012]_.
 
 In this section we shall explore those articles and will try to relate them
-with our work on `xotl.ql`. First, we'll give a brief review of the work of
-Buneman et al. on UnQL. And then, explore the ideas of Meijer and Bierman ideas
+with our work on `xotl.ql`.  First, we'll give a brief review of the work of
+Buneman et al.  on UnQL.  And then, explore the ideas of Meijer and Bierman ideas
 about NoSQL.
 
 The [UnQL]_ papers uses an edge-labeled rooted directed graph (although they
-called labeled tree) to represent the data. In this model all the "real values"
-[#edges]_ are encoded in the labels of the graph. The following figure is
+called labeled tree) to represent the data.  In this model all the "real values"
+[#edges]_ are encoded in the labels of the graph.  The following figure is
 extracted from the paper:
 
 .. image:: figs/unql-data.png
@@ -132,27 +140,27 @@ One may read this graph as:
 - It has many "Entries" which may be either "Movies" or "TV Shows".
 
 - Following the branch to the left of the tree, it has an Entry, which is a
-  Movie. Such a movie has:
+  Movie.  Such a movie has:
 
   - A Title, which is "Casablanca".
   - A Cast, which includes "Bogart", and "Bacall".
   - A Director, whose attributes are not shown in the image.
 
 How does one tell whether the label of the edge is an attribute name or value?
-There's no such thing as attribute name or attribute value in this setting. One
+There's no such thing as attribute name or attribute value in this setting.  One
 may tell a *terminal* label because the node it points to has no outgoing
 edges.
 
 In Python, the object model is more elaborate in this regard, but we can figure
 it as objects, which has attributes, and those attributes' values are other
-objects. This is very similar to the edge-labeled graph; but in Python there's
-not such thing as a single root. To overcome this, the method ``get_objects()``
+objects.  This is very similar to the edge-labeled graph; but in Python there's
+not such thing as a single root.  To overcome this, the method ``get_objects()``
 from the `gc` module may be used to get all the objects on the Python's VM; so
 it may take the place of the root, the objects returned may be the level one
 [#one-level-only]_.
 
 Although there's no fixed structured (for the graph), there may *types* that
-restrict links to/from objects. For instance, it's highly unlikely (or bizarre)
+restrict links to/from objects.  For instance, it's highly unlikely (or bizarre)
 that there will a third edge "down" the node to which an edge with label
 "Title" is pointing to; i.e. the following schema is not likely to happen::
 
@@ -160,7 +168,7 @@ that there will a third edge "down" the node to which an edge with label
       Title       "Casablanca"      what?
 
 This is unlikely since we don't expect strings to have attributes
-[#str-python]_. However, there's nothing in the UnQL paper that limits us to do
+[#str-python]_.  However, there's nothing in the UnQL paper that limits us to do
 so but our own common sense.
 
 The following figure shows with color-layers how the movie database may be
@@ -168,7 +176,7 @@ interpreted:
 
 .. image:: figs/unql-data-layers.png
 
-The language UnQL uses variable binding and pattern matching. The very first
+The language UnQL uses variable binding and pattern matching.  The very first
 query they offer is the following (I included the braces for better
 readability):
 
@@ -178,7 +186,7 @@ readability):
    where {R1 => \t} <- DB
 
 The query select all trees ``t`` which are below an edge with label ``R1`` from
-the root of the DB. If we fix that level 1 labels are actually types this query
+the root of the DB.  If we fix that level 1 labels are actually types this query
 may be written in `xotl.ql` like this:
 
 .. code-block:: python
@@ -240,18 +248,18 @@ Our query would be the union of two queries::
 
 
 In [coSQL2011]_ the authors only focused on key-value stores for noSQL
-databases. Although they claim that:
+databases.  Although they claim that:
 
     While we don't often think of it this way, the RAM for storing object
     graphs is actually a key-value store where keys are addresses (l-values)
     and values are the data stored at some address in memory
-    (r-values). Languages such as C# and Java make no distinction between
+    (r-values).  Languages such as C# and Java make no distinction between
     r-values and l-values, unlike C or C++, where the distinction is
-    explicit. In C, the pointer dereference operator ``*p`` retrieves the value
+    explicit.  In C, the pointer dereference operator ``*p`` retrieves the value
     stored at address ``p`` in the implicit global store.
 
 In fact, this model is quite suitable to represent the labeled tree model of
-[UnQL]_. Notice that the type of the labeled trees is informally described as:
+[UnQL]_.  Notice that the type of the labeled trees is informally described as:
 
     a set of pairs of labels and trees.
 
@@ -262,8 +270,8 @@ Generator Token
 ===============
 
 A generator token is related to the ``<- DB`` in the UnQL syntax, it's related
-to the FROM clause in SQL and LinQ. It represents from where the objects are
-drawn. `SQLAlchemy's <SQLAlchemy>`_ expression language has a similarity with
+to the FROM clause in SQL and LinQ.  It represents from where the objects are
+drawn.  `SQLAlchemy's <SQLAlchemy>`_ expression language has a similarity with
 xotl.ql's Query API, it's ``select()`` function, does not requires an explicit
 declaration of FROM, because it gathers the table from the SELECT-ed columns.
 
@@ -277,17 +285,17 @@ Footnotes
 
 .. [#edges] Of course, the edges (not its labels) carry very important
 	    information: from which object such a label is drawn and to what
-	    object it points. In this sense the labeled-edge carries all the
+	    object it points.  In this sense the labeled-edge carries all the
 	    information, and if the nodes are somehow identified, it carries
 	    the same information as the single Triplet in a RDF_ store.
 
 
 .. [#one-level-only] Since they are all the objects in the VM, we actually get
-		     a one-level only tree with edges between the siblings. But
+		     a one-level only tree with edges between the siblings.  But
 		     we can search for objects of specific types to be the
 		     level one objects.
 
-.. [#str-python] I know, I know... Python's string do have attribute; but
+.. [#str-python] I know, I know...  Python's string do have attribute; but
 		 what's the point in bringing them to this debate?
 
 

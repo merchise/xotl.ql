@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.translation
 #----------------------------------------------------------------------
-# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
+# Copyright (c) 2012-2014 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -23,8 +23,7 @@
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
-                        unicode_literals as _py3_unicode,
-                        absolute_import as _py3_abs_imports)
+                        absolute_import as _py3_abs_import)
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
@@ -35,9 +34,6 @@ from xotl.ql.interfaces import (ITerm,
                                 IGeneratorToken,
                                 IExpressionTree,
                                 IQueryObject)
-
-__docstring_format__ = 'rst'
-__author__ = 'manu'
 
 
 class TranslationError(TypeError):

@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.tests.test_translate
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Merchise Autrement and Contributors
+# Copyright (c) 2013, 2014 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -26,9 +26,9 @@ except:
                 return lambda *a, **kw: (lambda f: f)
         mark = _mark()
 
+from xoutil import Unset
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
-from xoutil.types import Unset
 from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy

@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------
 # xotl.ql.translation.py
 #----------------------------------------------------------------------
-# Copyright (c) 2013 Merchise Autrement and Contributors
+# Copyright (c) 2013-2014 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -13,12 +13,10 @@
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
-                        unicode_literals as _py3_unicode,
-                        absolute_import as _py3_abs_imports)
+                        absolute_import as _py3_abs_import)
 
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
-from xoutil.modules import modulemethod
 from xoutil import Unset
 from xoutil.decorator import memoized_property
 from xoutil.compat import iteritems_
@@ -678,33 +676,9 @@ def naive_translation(query, **kwargs):
             from itertools import islice
             return islice(res(**kwargs), start, stop, step)
         return plan_with_partition
-    return res
 
+    class reusable_plan(object):
+        def __iter__(self):
+            return res()
 
-@modulemethod
-def init(self, settings=None):
-    '''Registers the implementation in this module as an IQueryTranslator for
-    an object model we call "Python Object Model".
-
-    .. warning::
-
-       Don't call this method in your own code, since it will override all of
-       your query-related configuration.
-
-       This is only intended to allow testing of the translation common
-       framework by configuring query translator that searches over Python's VM
-       memory.
-
-    '''
-    from zope.component import getSiteManager
-    from zope.interface import directlyProvides
-    from ..interfaces import IQueryConfigurator, IQueryTranslator
-    directlyProvides(self, IQueryConfigurator)
-    directlyProvides(self.naive_translation, IQueryTranslator)
-    manager = getSiteManager()
-    manager.registerUtility(self, IQueryConfigurator)
-
-
-@modulemethod
-def get_translator(self, query, **kwargs):
-    return self.naive_translation
+    return reusable_plan()

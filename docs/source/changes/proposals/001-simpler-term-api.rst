@@ -8,10 +8,10 @@ the :term:`query object` closer to the syntactical structure of the
 :term:`expression <query expression>`.
 
 :XEP: 1 -- Simpler :class:`xotl.ql.interfaces.ITerm` interface
-:Status: Draft, Incomplete!
+:Status: Obsolete, Removed
 :Author: Manuel Vázquez Acosta
-:Branch: translation
-:Affects: API (and implementation)
+:Branch: none
+
 
 Rationale
 =========
