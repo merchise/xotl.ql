@@ -49,5 +49,35 @@ def these(generator):
     pass
 
 
-def thesefy(cls):
-    return cls
+def thesefy(target):
+    from xoutil import Unset
+
+    class new_meta(type(target)):
+        def __new__(cls, name, bases, attrs):
+            from xoutil.iterators import dict_update_new
+            baseattrs = {'__doc__': getattr(bases[0], '__doc__', ''),
+                         '__module__': getattr(bases[0], '__module__', '')}
+            dict_update_new(attrs, baseattrs)
+            return super(new_meta, cls).__new__(cls, name, bases, attrs)
+
+        def __iter__(self):
+            from types import GeneratorType
+            try:
+                result = super(new_meta, self).__iter__()
+            except AttributeError:
+                result = Unset
+            if isinstance(result, GeneratorType):
+                return result
+            elif result is Unset:
+                return (obj for obj in this if isinstance(obj, target))
+            else:
+                raise TypeError('Class {target} has a metaclass with an '
+                                '__iter__ that does not support thesefy'
+                                .format(target=target))
+
+    from xoutil.objects import metaclass
+
+    class new_class(metaclass(new_meta), target):
+        pass
+
+    return new_class
