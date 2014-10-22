@@ -8,3 +8,4 @@ develop-eggs
 build/
 *.egg-info/
 .*.cfg
+.tox/
