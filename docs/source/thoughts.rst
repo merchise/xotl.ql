@@ -10,23 +10,18 @@ practical effect in xotl.ql.*
 *This document is rather a thinking pad I use when I need to think about query
 languages in general and how they apply to xotl.ql.*
 
-Expressions are the core for query languages and many of it's design decisions
-are strongly biased for query languages needs.  But they purpose is more
-general.  Notice that :class:`~xotl.ql.core.Term` instances are they way to
-specify the selected data in queries.
-
 The general query language (as an AST) we are trying to apply is the monads
 comprehension as described in [MCQL]_.  There are several mismatches to be
 conciliated before actually having this kind of query language in Python.
-Specially those that deal with catamorphisms and the
-
+Specially those that deal with catamorphisms, since it is not easy to prove an
+arbitrary function to be one.
 
 
 Before executing an expression, it has to be :term:`compiled <query execution
 plan>` into a form feasible to the current database (either relational or not)
-management systems.  For instance, it would be desirable that on top of CouchDB_
-(or Couchbase_) expressions would be *translated* to CouchDB's javascript views
-if possible.
+management systems.  For instance, it would be desirable that on top of
+CouchDB_ expressions would be *translated* to CouchDB's javascript views if
+possible.
 
 For instance a query like:
 
@@ -48,9 +43,9 @@ A query with a subquery like:
 
 .. code-block:: python
 
-   these(parent for parent in this
-                if parent.children &
-                   all_(child.age > 5 for child in parent.children))
+   (parent
+    for parent in this
+    if parent.children and all(child.age > 5 for child in parent.children))
 
 may be translated cleverly straightforwardly if `children` is (as CouchDB
 encourages for documents) is contained inside `parent`:

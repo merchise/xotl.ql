@@ -27,45 +27,9 @@ from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY
 
-from xotl.ql.expressions import EqualityOperator
-from xotl.ql.expressions import NotEqualOperator
-from xotl.ql.expressions import LogicalAndOperator
-from xotl.ql.expressions import LogicalOrOperator
-from xotl.ql.expressions import LogicalXorOperator
-from xotl.ql.expressions import LogicalNotOperator
-from xotl.ql.expressions import AdditionOperator
-from xotl.ql.expressions import SubstractionOperator
-from xotl.ql.expressions import DivisionOperator
-from xotl.ql.expressions import MultiplicationOperator
-from xotl.ql.expressions import FloorDivOperator
-from xotl.ql.expressions import ModOperator
-from xotl.ql.expressions import PowOperator
-from xotl.ql.expressions import LeftShiftOperator
-from xotl.ql.expressions import RightShiftOperator
-from xotl.ql.expressions import LesserThanOperator
-from xotl.ql.expressions import LesserOrEqualThanOperator
-from xotl.ql.expressions import GreaterThanOperator
-from xotl.ql.expressions import GreaterOrEqualThanOperator
-from xotl.ql.expressions import ContainsExpressionOperator
-from xotl.ql.expressions import IsInstanceOperator
-from xotl.ql.expressions import LengthFunction
-from xotl.ql.expressions import CountFunction
-from xotl.ql.expressions import PositiveUnaryOperator
-from xotl.ql.expressions import NegativeUnaryOperator
-from xotl.ql.expressions import AbsoluteValueUnaryFunction
-from xotl.ql.expressions import InvokeFunction
-from xotl.ql.expressions import NewObjectFunction
-from xotl.ql.expressions import AverageFunction
-from xotl.ql.expressions import MinFunction
-from xotl.ql.expressions import MaxFunction
-from xotl.ql.expressions import AllFunction
-from xotl.ql.expressions import AnyFunction
-from xotl.ql.expressions import SumFunction
 
-__author__ = "Manuel Vázquez Acosta <mva.led@gmail.com>"
-__date__   = "Wed Apr  3 21:22:18 2013"
-
-
+# Modules whose objects are always "outside" this translator's view of the
+# universe.
 _avoid_modules = ('xotl.ql.*',
                   'xoutil.*',
                   'py.*',
@@ -110,7 +74,7 @@ def _iter_classes(accept=None, use_ignores=False):
     else:
         filterby = accept
     return (ob for ob in gc.get_objects()
-                if isinstance(ob, type) and (not filterby or filterby(ob)))
+            if isinstance(ob, type) and (not filterby or filterby(ob)))
 
 
 # Real signature is _filter_by_pkg(*pkg_names, negate=False)
@@ -137,7 +101,7 @@ def _iter_objects(accept=None, use_ignores=False):
     else:
         filterby = accept
     return (ob for ob in gc.get_objects()
-                if not isinstance(ob, type) and (not filterby or filterby(ob)))
+            if not isinstance(ob, type) and (not filterby or filterby(ob)))
 
 
 def get_term_vm_path(term):
@@ -672,10 +636,11 @@ def naive_translation(query, **kwargs):
         from xoutil.objects import extract_attrs
         start, stop, step = extract_attrs(query.partition, 'start', 'stop',
                                           'step')
+        previous_res = res
         def plan_with_partition(**kwargs):
             from itertools import islice
-            return islice(res(**kwargs), start, stop, step)
-        return plan_with_partition
+            return islice(previous_res(**kwargs), start, stop, step)
+        res = plan_with_partition
 
     class reusable_plan(object):
         def __iter__(self):

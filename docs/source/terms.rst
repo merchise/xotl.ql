@@ -5,49 +5,60 @@ Terms and glossary
 ==================
 
 .. glossary::
-
+   :sorted:
 
    AST
    Abstract Syntax Tree
 
      A tree structure that represents a *program* in source form as a tree of
      syntactical elements; but removes several too concrete elements of the
-     syntaxis; for instance in AST sentences separator are often removed and a
+     syntax; for instance in AST sentences separator are often removed and a
      subtree for each individual sentence appears.
-
-     :term:`Query objects <query object>` and :term:`expression trees
-     <expression tree>` resamble an AST.
 
      See more on http://en.wikipedia.org/Abstract_Syntax_Tree
 
-   bound term
+   byte-code
 
-      A :term:`term` that is bound to a :term:`generator token`. Inside a query
-      all terms are bound, unless they are :ref:`free terms <free-terms>` drawn
-      directly from the :obj:`xotl.ql.core.this` object.
+      Refers to the low-level code into which the Python interpreter compiles
+      the source code.
 
-      The `this` object is never bound to any token.
+      Example: Given the query expression (generator object)::
 
-   CST
-   Concrete Syntax Tree
+        >>> from xotl.ql.core import this
+        >>> query = (parent for parent in this)
 
-     A tree structure that represents a *program* in source form as a tree of
-     all its syntactical elements.
+      The byte code of the generator object is (in Python 2.7)::
 
-     See more on http://en.wikipedia.org/Concrete_Syntax_Tree
+	|\x00\x00]\x0b\x00}\x01\x00|\x01\x00V\x01q\x03\x00d\x00\x00S
+
+      Often the byte-code is shown in an expanded form that eases the task of
+      reading it.  The module `dis`:mod: prints this expanded form::
+
+	>>> import dis
+	>>> dis.dis(query.gi_code)
+	2           0 LOAD_FAST                0 (.0)
+	      >>    3 FOR_ITER                11 (to 17)
+		    6 STORE_FAST               1 (parent)
+		    9 LOAD_FAST                1 (parent)
+		   12 YIELD_VALUE
+		   13 POP_TOP
+		   14 JUMP_ABSOLUTE            3
+	      >>   17 LOAD_CONST               0 (None)
+		   20 RETURN_VALUE
 
    data set
 
      An object that represents the result of executing a :term:`query` against
-     a define :term:`storage`. It should implement the interface
+     a defined :term:`storage`.  It should implement the interface
      :class:`xotl.ql.interfaces.IDataSet`, which is quite flexible since it
      only requires the data set to be iterable using the `next` protocol.
 
    execution context
 
       An object that represents the context in which a given piece of code is
-      being executed. Contexts may influence how objects behaves. Every process
-      and thread entail an execution context, and they may form a tree.
+      being executed.  Contexts may influence how objects behaves.  Every
+      process and thread entail an execution context, and they may form a
+      tree.
 
       Currently a very simple implementation of execution contexts is in the
       module :ref:`xoutil.context`.
@@ -56,86 +67,13 @@ Terms and glossary
       :ref:`xotl.context`; where contexts are though to be queriable using
       `xotl.ql` query language.
 
-   expression tree
-
-       The tree that represents an expression as it was syntactically
-       constructed.  Usually the inner nodes of the tree represents the
-       operations and the leaves the "atomic" operands.
-
-       For instance, the expression tree for the expression ``3 + 4**2 <
-       18983`` would have as its root node the `<` symbol, the children of
-       which would be:
-
-         a) the expression tree for ``3 + 4**2``, that would have `+` as its root
-            node, and the literal `3` and the expression tree for ``4**2`` as
-	    its children.
-
-         b) The literal `18983`.
-
-       This tree is depicted in the following image:
-
-       .. image:: figs/expr-tree.png
-
-       In the expression language as implemented in :mod:`xotl.ql.expressions`,
-       operations are always classes derived from
-       :class:`~xotl.ql.expressions.Operator`, and the operands are any python
-       object. The class :class:`~xotl.ql.expressions.ExpressionTree`
-       represents such a tree.
-
-
-   function object operator
-   functor operation
-   functor operator
-
-       Represents the kind of :term:`operations <operation>` that are
-       normally expressed by the invocation of a function, i.e: the
-       `abs`, `max` and `min` functions. This kind of operation is in
-       contrast with those that are syntactically expressed with
-       symbols like the addition operation usually encoded with the
-       `+` symbol.
-
-       This is just a syntactical distinction, and not a fundamental
-       one. It's perfectly possible to build the expression that
-       express the addition of `1` and `2` like this:
-
-       .. doctest::
-
-	  >>> from xotl.ql.expressions import add
-	  >>> add(1, 2)                 # doctest: +ELLIPSIS
-	  <expression '1 + 2' ...>
-
-       However it's more natural to encode such expressions with the
-       usual plus sign, like this:
-
-       .. doctest::
-
-          >>> from xotl.ql.expressions import q
-          >>> q(1) + 2              # doctest: +ELLIPSIS
-          <expression '1 + 2' ...>
-
-   generator token
-
-       A generator token is an expression that is used inside a :term:`query`
-       as a named location from which to draw objects. It relates to the FROM
-       clause in SQL, and to the ``<-`` operation in UnQL [UnQL]_.
-
-       In the query::
-
-	 these((parent, child) for parent in this if parent.age > 34
-	                       for child in parent.children if child.age < 2)
-
-       There are two such tokens: the first captures the iteration over
-       ``this`` and the second, the iteration over ``parent.children``.
-
-       See :class:`xotl.ql.interfaces.IGeneratorToken` for details.
-
    object model
 
        An object model is an object-oriented model which describes how objects
-       may exist and how they may relate to each other.
+       may be and how they may relate to each other.
 
        This include relational model; in such a model an object is a single
-       collection of named scalars that belongs to a single entity. Relations
+       collection of named scalars that belongs to a single entity.  Relations
        are just foreign-keys, and the semantics associated with relations is
        that of referential integrity.
 
@@ -143,23 +81,17 @@ Terms and glossary
        relational model as is object model (usually with some variations).
 
        `xotl.ql` does not provides an API for expressing object models, but it
-       assumes that a :term:`translator <query translator>` exists which has
-       enough knowledge to deal which such an object model.
+       assumes that a :term:`translator` exists which has enough knowledge to
+       deal which such an object model.
 
        .. todo::
 
-	  Wouldn't the semantics of a object model be capture by category
-	  theory?
+          Wouldn't the semantics of an object model be captured by category
+          theory?
 
-	  The authors of [coSQL2011]_ point that this is possible; but I've not
-	  study that much yet ;)
+          The authors of [coSQL2011]_ point that this is possible; but I've
+          not study that much yet ;)
 
-
-   OMCaF
-   Objects Model Canonical Form
-
-       An ongoing effort to build a model for object-oriented systems with
-       semantics included. Part of the (yet unreleased) `xotl.model` package.
 
    query
 
@@ -167,19 +99,19 @@ Terms and glossary
        depend on the context:
 
        a) The generator expression as seen in the code that express what is
-	  intended to fetch from the storage(s).
+          intended to fetch from the storage(s).
 
-	  In the most part of this documentation the term `query` will refer to
-	  this sense of the word. However, to disambiguate we'll use the term
-	  :term:`query expression` to refer to this sense of the word if
-	  needed.
+          In the most part of this documentation the term `query` will refer
+          to this sense of the word.  However, to disambiguate we'll use the
+          term :term:`query expression` to refer to this sense of the word if
+          needed.
 
 
-       b) The (internal) data structure that represents the query (as
-          in item a) to the program.
+       b) The (internal) data structure that represents the query (as in
+          item a) to the program.
 
-	  We prefer the term :term:`query object` for this sense of the word,
-	  but sometimes it just does not matter.
+          We prefer the term :term:`query object` for this sense of the word,
+          but sometimes it just does not matter.
 
    query expression
 
@@ -197,53 +129,79 @@ Terms and glossary
    translator
 
        In the general design a query translator is a component that receives a
-       :term:`query object` and produces a :term:`query execution plan`. The
+       :term:`query object` and produces a :term:`query execution plan`.  The
        query execution plan depends on the translator for it encompasses the
        knowledge about both the :term:`object model` and the :term:`object
-       storage <storage>`. A CouchDB translator, for instance may simply
+       storage <storage>`.  A CouchDB translator, for instance may simply
        translate the whole query to a CouchDB view and return a plan that just
        involves quering that view.
+
+   transformation
+
+       Is the process of of modifying a `query object` into another one.
 
    query execution plan
 
        When a :term:`query object` is processed by a :term:`query translator`
-       it produces an execution plan. Such a plan is a sort of a *compiled
+       it produces an execution plan.  Such a plan is a sort of a *compiled
        form* of the query.
 
        The execution plan should include instructions to retrieve the objects
-       expected. An execution plan may be as simple as:
+       expected.  An execution plan may be as simple as:
 
            just execute the SQL query ``SELECT * FROM sometable [WHERE ... ]
-	   [ORDER BY ...] [OFFSET ...]`` against the default relational
-	   database;
+           [ORDER BY ...] [OFFSET ...]`` against the default relational
+           database;
 
-	   then, return an iterator for instances of those objects created by
-	   the factory class ``ISomeModel``.
+           then, return an iterator for instances of those objects created by
+           the factory class ``SomeModel``.
 
-       to another plan that checks an index stored in a SQL database, but
+       Or it can be one that checks an index stored in a SQL database, but
        fetches objects from a remote system through REST interface.
 
-       The :class:`interface for a query execution plan
-       <xotl.ql.interfaces.IQueryExecutionPlan>` in this package places almost
-       no restrictions, it just requires that the execution is a callable that
-       returns an iterable :term:`data set` using the `next` protocol.
+
+   reverse engineering
+       Refers to either the (intellectual) activities, processes, and
+       techniques to obtain the original Python source code given a
+       `byte-code`:term: string.
+
+       Depending on the compiler this is not always possible or it may result
+       in a code that is not 100% identical to the original but that would
+       produce the same byte-code as the original.  For instance the following
+       two query expressions produce the same byte-code::
+
+         >>> g1 = (parent
+         ...      for parent in this
+         ...      if parent.age > 1
+         ...      if parent.children)
+
+         >>> g2 = (parent
+         ...      for parent in this
+         ...      if parent.age > 1 and parent.children)
+
+	 >>> g1.gi_code.co_code  == g2.gi_code.co_code
+	 True
+
 
    storage
    object storage
-
-       A software component that allows to "persists" objects. Most of the time
-       the storage relates to a single :term:`object model`. For instance
-       relational databases use the relational model.
+       A software component that allows to "persists" objects.  Most of the
+       time the storage relates to a single :term:`object model`.  For
+       instance relational databases use the relational model.
 
        In general, a storage is a place from which one could draw objects
-       from. We may then, relax the "persistence" requirement from a component
-       to be considered a storage. For instance, a `memcached` server could be
-       considered a key-value storage, that a query translator might target.
+       from.  We may then, relax the "persistence" requirement from a
+       component to be considered a storage.  For instance, a `memcached`
+       server could be considered a key-value storage, that a query translator
+       might target.
 
    thread-local object
+       A thread-local object is an instance of the ``threading.local`` class.
+       An instance of this class acts like a global variable, but it holds
+       values local to a given thread; so, each thread has its own "global"
+       variable.  Please refer to Python's documentation for more information.
 
-       A thread-local object is an instance of the ``threading.local``
-       class. An instance of this class acts like a global variable, but it
-       holds values local to a given thread; so, each thread has its own
-       "global" variable. Please refer to Python's documentation for more
-       information.
+..
+   Local Variables:
+   indent-tabs-mode: nil
+   End:

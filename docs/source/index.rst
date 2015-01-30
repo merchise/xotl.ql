@@ -52,7 +52,9 @@ Additional documents:
 
    ponyorm
    thoughts
-   inners
+   revenge
+   monads
+   scratch
    references
    changes/index
 

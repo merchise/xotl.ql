@@ -910,11 +910,11 @@ class Walker(GenericASTTraversal, object):
         else:
             self.write('\n\n\n')
         self.indentLess()
-        self.prune() # stop recursing
+        self.prune()  # stop recursing
 
     def n_mklambda(self, node):
         self.make_function(node, isLambda=1)
-        self.prune() # stop recursing
+        self.prune()  # stop recursing
 
     def n_list_compr(self, node):
         p = self.prec
@@ -923,17 +923,20 @@ class Walker(GenericASTTraversal, object):
         assert n == 'list_iter'
         # find innerst node
         while n == 'list_iter':
-            n = n[0] # recurse one step
-            if   n == 'list_for':       n = n[3]
-            elif n == 'list_if':        n = n[2]
-            elif n == 'list_if_not': n= n[2]
+            n = n[0]  # recurse one step
+            if n == 'list_for':
+                n = n[3]
+            elif n == 'list_if':
+                n = n[2]
+            elif n == 'list_if_not':
+                n = n[2]
         assert n == 'lc_body'
-        self.write('[ ');
-        self.preorder(n[0]) # lc_body
-        self.preorder(node[-1]) # for/if parts
+        self.write('[ ')
+        self.preorder(n[0])  # lc_body
+        self.preorder(node[-1])  # for/if parts
         self.write(' ]')
         self.prec = p
-        self.prune() # stop recursing
+        self.prune()  # stop recursing
 
     def comprehension_walk(self, node, iter_index):
         p = self.prec
@@ -952,10 +955,13 @@ class Walker(GenericASTTraversal, object):
         assert n == 'comp_iter'
         # find innerst node
         while n == 'comp_iter':
-            n = n[0] # recurse one step
-            if   n == 'comp_for':       n = n[3]
-            elif n == 'comp_if':        n = n[2]
-            elif n == 'comp_ifnot': n = n[2]
+            n = n[0]  # recurse one step
+            if n == 'comp_for':
+                n = n[3]
+            elif n == 'comp_if':
+                n = n[2]
+            elif n == 'comp_ifnot':
+                n = n[2]
         assert n == 'comp_body', ast
 
         self.preorder(n[0])
@@ -972,7 +978,6 @@ class Walker(GenericASTTraversal, object):
         self.write(')')
         self.prune()
 
-
     def n_setcomp(self, node):
         self.write('{')
         self.comprehension_walk(node, 4)
@@ -980,7 +985,6 @@ class Walker(GenericASTTraversal, object):
         self.prune()
 
     n_dictcomp = n_setcomp
-
 
     def n_classdef(self, node):
         # class definition ('class X(A,B,C):')
@@ -1004,7 +1008,6 @@ class Walker(GenericASTTraversal, object):
             self.write('\n\n\n')
 
         self.prune()
-
 
     n_classdefdeco2 = n_classdef
 
@@ -1031,7 +1034,7 @@ class Walker(GenericASTTraversal, object):
         p = self.prec
         self.prec = 100
         assert node[-1] == 'kvlist'
-        node = node[-1] # goto kvlist
+        node = node[-1]  # goto kvlist
 
         self.indentMore(INDENT_PER_LEVEL)
         line_seperator = ',\n' + self.indent
@@ -1043,21 +1046,29 @@ class Walker(GenericASTTraversal, object):
             # kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
             # kv3 ::= expr expr STORE_MAP
             if kv == 'kv':
-                name = self.traverse(kv[-2], indent='');
-                value = self.traverse(kv[1], indent=self.indent+(len(name)+2)*' ')
+                name = self.traverse(kv[-2], indent='')
+                value = self.traverse(
+                    kv[1],
+                    indent=self.indent+(len(name)+2)*' '
+                )
             elif kv == 'kv2':
-                name = self.traverse(kv[1], indent='');
-                value = self.traverse(kv[-3], indent=self.indent+(len(name)+2)*' ')
+                name = self.traverse(kv[1], indent='')
+                value = self.traverse(
+                    kv[-3],
+                    indent=self.indent+(len(name)+2)*' '
+                )
             elif kv == 'kv3':
-                name = self.traverse(kv[-2], indent='');
-                value = self.traverse(kv[0], indent=self.indent+(len(name)+2)*' ')
+                name = self.traverse(kv[-2], indent='')
+                value = self.traverse(
+                    kv[0],
+                    indent=self.indent+(len(name)+2)*' '
+                )
             self.write(sep, name, ': ', value)
             sep = line_seperator
         self.write('}')
         self.indentLess(INDENT_PER_LEVEL)
         self.prec = p
         self.prune()
-
 
     def n_build_list(self, node):
         """
@@ -1067,13 +1078,17 @@ class Walker(GenericASTTraversal, object):
         self.prec = 100
         lastnode = node.pop().type
         if lastnode.startswith('BUILD_LIST'):
-            self.write('['); endchar = ']'
+            self.write('[')
+            endchar = ']'
         elif lastnode.startswith('BUILD_TUPLE'):
-            self.write('('); endchar = ')'
+            self.write('(')
+            endchar = ')'
         elif lastnode.startswith('BUILD_SET'):
-            self.write('{'); endchar = '}'
+            self.write('{')
+            endchar = '}'
         elif lastnode.startswith('ROT_TWO'):
-            self.write('('); endchar = ')'
+            self.write('(')
+            endchar = ')'
         else:
             raise 'Internal Error: n_build_list expects list or tuple'
 
@@ -1314,13 +1329,14 @@ class Walker(GenericASTTraversal, object):
         paramnames = list(code.co_varnames[:argc])
 
         # defaults are for last n parameters, thus reverse
-        paramnames.reverse(); defparams.reverse()
+        paramnames.reverse()
+        defparams.reverse()
 
         try:
             ast = self.build_ast(code._tokens,
                                  code._customize,
-                                 isLambda = isLambda,
-                                 noneInNames = ('None' in code.co_names))
+                                 isLambda=isLambda,
+                                 noneInNames=('None' in code.co_names))
         except ParserError as p:
             self.write(str(p))
             self.ERROR = p
@@ -1448,7 +1464,7 @@ class Walker(GenericASTTraversal, object):
                 self.print_(repr(ast))
             return ast
 
-        if len(tokens) > 2 or len(tokens) == 2 and not noneInNames:
+        if len(tokens) > 2 or (len(tokens) == 2 and not noneInNames):
             if tokens[-1] == Token('RETURN_VALUE'):
                 if tokens[-2] == Token('LOAD_CONST'):
                     del tokens[-2:]

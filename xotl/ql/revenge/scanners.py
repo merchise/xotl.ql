@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.revenge.scanners
-#----------------------------------------------------------------------
-# Copyright (c) 2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2014, 2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 
@@ -31,12 +31,14 @@ except ImportError:
 
 HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
-globals().update({k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())})
+globals().update(
+    {k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())}
+)
 
-PJIF = POP_JUMP_IF_FALSE
-PJIT = POP_JUMP_IF_TRUE
-JA = JUMP_ABSOLUTE
-JF = JUMP_FORWARD
+PJIF = POP_JUMP_IF_FALSE  # noqa
+PJIT = POP_JUMP_IF_TRUE   # noqa
+JA = JUMP_ABSOLUTE  # noqa
+JF = JUMP_FORWARD  # noqa
 
 
 from six import PY3, PY2
@@ -128,12 +130,17 @@ class Scanner(object):
         self.setTokenClass(Token)
 
     def deobfuscate(self, co, linestarts, varnames):
+        # Find the opcode that will stop it all, that'll be n - 1.
         n = 0
         code = self.code
         for i in self.op_range(0, len(code)):
             if code[i] in (RETURN_VALUE, END_FINALLY):
                 n = i + 1
 
+        # In the range before the last opcode (n), find the opcodes that are
+        # not NOP and put them in fixed_code; m will reach the last opcode
+        # that is not NOP, old_to_new will match code index againt fixed_code,
+        # new_to_old is the reverse.
         fixed_code = array(str('B'))
         linestartoffsets = {a: b for (a, b) in linestarts[1:]}
         newlinestarts = linestarts[0:1]
@@ -153,10 +160,12 @@ class Scanner(object):
                     fixed_code.append(code[i+2])
                     m += 2
 
+        # Forget about the old code and work only with the fixed_code.  In the
+        # entire range [0, m), rewrite the jumps' targets to match new
+        # indexes.
         self.code = code = fixed_code
         for i in self.op_range(0, m):
             if code[i] in dis.hasjrel:
-                #import pdb; pdb.set_trace()
                 old_jump = code[i+1] + code[i+2]*256
                 old_target = new_to_old[i] + 3 + old_jump
                 new_target = old_to_new[old_target]
@@ -169,9 +178,17 @@ class Scanner(object):
                 code[i+1] = new_target % 256
                 code[i+2] = new_target // 256
 
+        # Find the pair of opcodes for "import something":
+        #
+        #  IMPORT_NAME(namei) Imports the module co_names[namei]. TOS and TOS1
+        #    are popped and provide the fromlist and level arguments of
+        #    __import__(). The module object is pushed onto the stack. The
+        #    current namespace is not affected: for a proper import statement,
+        #    a subsequent STORE_FAST instruction modifies the namespace.
+        #
+        # Changes `varnames`.
         for i in range(len(varnames)):
             varnames[i] = 'varnames_%s' % i
-
         for i in self.op_range(0, m):
             if code[i] == IMPORT_NAME and code[i+3] == STORE_FAST:
                 varname_index = code[i+4] + code[i+5]*256
@@ -186,7 +203,6 @@ class Scanner(object):
         dis.disassemble().
 
         """
-        #import pdb; pdb.set_trace()
         rv = []
         customize = {}
         Token = self.Token  # shortcut
@@ -197,6 +213,7 @@ class Scanner(object):
         if deob:
             linestarts = self.deobfuscate(co, linestarts, varnames)
 
+        # code after deobfuscation
         code = self.code
         n = len(code)
 
@@ -270,7 +287,6 @@ class Scanner(object):
 
         extended_arg = 0
         for offset in self.op_range(0, n):
-
             if offset in cf:
                 k = 0
                 for j in cf[offset]:

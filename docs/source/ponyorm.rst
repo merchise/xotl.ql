@@ -128,7 +128,6 @@ Footnotes
    For example the following generators, which are *semantically equivalent*
    (but not syntactically) generate the same bytecode::
 
-
       this = iter([])
       g1 = (parent
             for parent in this

@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.revenge
-#----------------------------------------------------------------------
-# Copyright (c) 2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2014, 2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 
@@ -52,27 +52,22 @@ import types
 from . import scanners, walkers
 
 
-def uncompyle(version, co, out=None, showasm=0, showast=0, deob=0):
-    """
-    diassembles a given code block 'co'
+def uncompyle(co, version=None, out=None, showasm=0, showast=0, deob=0):
+    """Disassemble a given code block `co`.
+
     """
     assert isinstance(co, types.CodeType)
-
     # store final output stream for case of error
     __real_out = out or sys.stdout
-    if co.co_filename:
-        print('#Embedded file name: %s' % co.co_filename, file=__real_out)
+    if not version:
+        version = sys.version.split(' ')[0]
     scanner = scanners.getscanner(version)
     scanner.setShowAsm(showasm, out)
     tokens, customize = scanner.disassemble(co, deob=deob)
 
     #  Build AST from disassembly.
     walker = walkers.Walker(out, scanner, showast=showast)
-    try:
-        ast = walker.build_ast(tokens, customize)
-    except walkers.ParserError as e:  # parser failed, dump disassembly
-        print(e, file=__real_out)
-        raise
+    ast = walker.build_ast(tokens, customize)
 
     del tokens  # save memory
 
@@ -80,13 +75,15 @@ def uncompyle(version, co, out=None, showasm=0, showast=0, deob=0):
     assert ast == 'stmts'
     try:
         if ast[0][0] == walkers.ASSIGN_DOC_STRING(co.co_consts[0]):
-            walker.print_docstring('', co.co_consts[0])
             del ast[0]
         if ast[-1] == walkers.RETURN_NONE:
             ast.pop()  # remove last node
             #todo: if empty, add 'pass'
     except:
         pass
+
+    return (ast, customize)
+
     walker.mod_globs = walkers.find_globals(ast, set())
     walker.gen_source(ast, customize)
     for g in walker.mod_globs:

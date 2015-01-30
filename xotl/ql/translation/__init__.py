@@ -30,18 +30,14 @@ from xoutil.proxy import UNPROXIFING_CONTEXT
 
 from zope.interface import Interface
 
-from xotl.ql.interfaces import (ITerm,
-                                IGeneratorToken,
-                                IExpressionTree,
-                                IQueryObject)
-
 
 class TranslationError(TypeError):
     '''A translation error.
 
-    Translators should issue this kind of exception if there is an error in the
-    query that impedes the translation. The query should not be retried if not
-    changed.
+    Translators should issue this kind of exception if there is an error in
+    the query that impedes the translation.
+
+    The query should not be retried if not changed.
 
     '''
 
@@ -54,9 +50,8 @@ def _instance_of(which):
 
     '''
     def accept(ob):
-        with context(UNPROXIFING_CONTEXT):
-            return isinstance(ob, which) or (issubclass(which, Interface) and
-                                             which.providedBy(ob))
+        return (isinstance(ob, which) or
+                (issubclass(which, Interface) and which.providedBy(ob)))
     return accept
 
 
@@ -120,9 +115,8 @@ def cotraverse_expression(*expressions, **kwargs):
             elif is_queryobject(item):
                 queues.extend([f] for f in item.filters)
 
-    from xoutil.objects import get_and_del_key
-    accept = get_and_del_key(kwargs, 'accept',
-                             default=lambda x: _instance_of(ITerm)(x) and x.name)
+    accept = kwargs.pop('accept',
+                        lambda x: _instance_of(ITerm)(x) and x.name)
     if kwargs != {}:
         raise TypeError('Invalid signature for cotraverse_expression')
     queues = []

@@ -1,21 +1,19 @@
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.revenge.parsers
-#----------------------------------------------------------------------
-# Copyright (c) 2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2014, 2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
-
-#  Copyright (c) 1999 John Aycock
 #  Copyright (c) 2000-2002 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #  Copyright (c) 2005 by Dan Pascu <dan@windowmaker.org>
+#  Copyright (c) 1999 John Aycock
 #
 #  See main module for license.
 #
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
-                        unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_import)
 
 __all__ = ['parse', 'AST', 'ParserError', 'Parser']
@@ -90,48 +88,59 @@ class Parser(GenericASTBuilder):
         return token.type
 
     def p_funcdef(self, args):
-        '''
+        '''Function definitions.
+
+        .. _rules:
+
         stmt ::= funcdef
         funcdef ::= mkfunc designator
+
         stmt ::= funcdefdeco
         funcdefdeco ::= mkfuncdeco designator
+
         mkfuncdeco ::= expr mkfuncdeco CALL_FUNCTION_1
         mkfuncdeco ::= expr mkfuncdeco0 CALL_FUNCTION_1
         mkfuncdeco0 ::= mkfunc
+
         load_closure ::= load_closure LOAD_CLOSURE
         load_closure ::= LOAD_CLOSURE
+
         '''
 
     def p_list_comprehension(self, args):
-        '''
+        '''List comprehensions.
+
+        .. _rules:
+
         expr ::= list_compr
         list_compr ::= BUILD_LIST_0 list_iter
-
 
         list_iter ::= list_for
         list_iter ::= list_if
         list_iter ::= list_if_not
         list_iter ::= lc_body
 
+        .. COME_FROM is custom token introduced by the scanner so that we can
+        .. know the point a jump was made.
+
         _come_from ::= COME_FROM
         _come_from ::=
-
 
         list_for ::= expr _for designator list_iter JUMP_BACK
         list_if ::= expr jmp_false list_iter
         list_if_not ::= expr jmp_true list_iter
 
         lc_body ::= expr LIST_APPEND
+
         '''
 
-    @override(py27)
-    def p_setcomp(self, args):
-        '''
+    def p_setcomp_common(self, args):
+        '''Set comprehensions.
+
+        Common productions in all target Python versions.
+
         expr ::= setcomp
-        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
-
         stmt ::= setcomp_func
-
         setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
                 JUMP_BACK RETURN_VALUE RETURN_LAST
 
@@ -149,83 +158,102 @@ class Parser(GenericASTBuilder):
         comp_if ::= expr jmp_false comp_iter
         comp_ifnot ::= expr jmp_true comp_iter
         comp_for ::= expr _for designator comp_iter JUMP_BACK
+
+        '''
+
+    @override(py27)
+    def p_setcomp(self, args):
+        '''Set comprehensions in Python 2.7.
+
+        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+
         '''
 
     @p_setcomp.override(py3k)
     def p_setcomp(self, args):
-        '''
-        expr ::= setcomp
+        '''Set comprehensions in Py3k.
+
+        Since MAKE_FUNCTION is preceded by two LOAD_CONST in Python 3.  This
+        customization is needed.
+
         setcomp ::= LOAD_SETCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
                     CALL_FUNCTION_1
 
-        stmt ::= setcomp_func
-
-        setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
-                         JUMP_BACK RETURN_VALUE RETURN_LAST
-
-        comp_iter ::= comp_if
-        comp_iter ::= comp_ifnot
-        comp_iter ::= comp_for
-        comp_iter ::= comp_body
-        comp_body ::= set_comp_body
-        comp_body ::= gen_comp_body
-        comp_body ::= dict_comp_body
-        set_comp_body ::= expr SET_ADD
-        gen_comp_body ::= expr YIELD_VALUE POP_TOP
-        dict_comp_body ::= expr expr MAP_ADD
-
-        comp_if ::= expr jmp_false comp_iter
-        comp_ifnot ::= expr jmp_true comp_iter
-        comp_for ::= expr _for designator comp_iter JUMP_BACK
         '''
 
-    @override(py27)
-    def p_genexpr(self, args):
-        '''
+    def p_genexpr_common(self, args):
+        '''Generator expressions.
+
+        Common parts to all python versions.
+
         expr ::= genexpr
-        genexpr ::= LOAD_GENEXPR MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
         stmt ::= genexpr_func
         genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
+
+        '''
+    @override(py27)
+    def p_genexpr(self, args):
+        '''Generator expressions in Python 2.7.
+
+        genexpr ::= LOAD_GENEXPR MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+
         '''
 
     @p_genexpr.override(py3k)
     def p_genexpr(self, args):
-        '''
-        expr ::= genexpr
+        '''Generator expression for Python 3.
+
+        In Python 3k, MAKE_FUNCTION is always preceded by two LOAD_CONST, the
+        first LOAD_GENEXPR is actually a custom LOAD_CONST, the second sets
+        the name of the function.  Nevertheless for generator expressions the
+        is always "<genexpr>", thus the LOAD_GENEXPR.
+
+        .. _rules:
+
         genexpr ::= LOAD_GENEXPR LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
                     CALL_FUNCTION_1
-        stmt ::= genexpr_func
-        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
+
         '''
 
-    @override(py27)
-    def p_dictcomp(self, args):
-        '''
+    def p_dictcomp_common(self, args):
+        '''Dict comprehensions.
+
+        Common rules for all target Python versions.
+
+        .. _rules:
+
         expr ::= dictcomp
-        dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER
-                     CALL_FUNCTION_1
         stmt ::= dictcomp_func
 
         dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
                 comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
+
+        '''
+    @override(py27)
+    def p_dictcomp(self, args):
+        '''Dict comprehensions for Python 2.7.
+
+        dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER
+                     CALL_FUNCTION_1
 
         '''
 
     @p_dictcomp.override(py3k)
     def p_dictcomp(self, args):
-        '''
-        expr ::= dictcomp
+        '''Dict comprehensions for Python 3.
+
         dictcomp ::= LOAD_DICTCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
                      CALL_FUNCTION_1
-        stmt ::= dictcomp_func
-
-        dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
         '''
 
     def p_augmented_assign(self, args):
-        '''
+        '''Augmented assign.
+
+        These are the operators ``+=``, ``-=``, etc.
+
+        .. _rules:
+
         stmt ::= augassign1
         stmt ::= augassign2
         augassign1 ::= expr expr inplace_op designator

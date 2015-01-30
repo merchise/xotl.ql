@@ -1,4 +1,4 @@
-#  Copyright (c) 1998-2002 John Aycock
+#  Copyright (c) 1998-2002, 2015 John Aycock
 #
 #  Permission is hereby granted, free of charge, to any person obtaining
 #  a copy of this software and associated documentation files (the
@@ -131,7 +131,17 @@ class GenericParser(object):
     def preprocess(self, rule, func):
         return rule, func
 
+    @staticmethod
+    def strip_comments(doc):
+        result = []
+        for line in doc.split(str('\n')):
+            line = line.strip()
+            if not (line.startswith(str('#')) or line.startswith(str('.. '))):
+                result.append(line)
+        return str('\n').join(result)
+
     def addRule(self, doc, func, _preprocess=1):
+        doc = self.strip_comments(doc)
         fn = func
         rules = doc.split()
 
@@ -157,12 +167,52 @@ class GenericParser(object):
             self.rule2name[rule] = func.__name__[2:]
         self.ruleschanged = 1
 
+    @classmethod
+    def find_rules(cls, docstring):
+        '''Find the rules in the docstring.
+
+        Allows the docstring to be more verbose without the need of comments
+        by searching for a marker::
+
+          .. _rules:
+
+        Everything before the marker is considered documentation.  After the
+        marker go the rules.  The marker is excluded from both.
+
+        If the marker is not present.  The entire docstring is considered the
+        rules part except for the first lines that does not contain ``::=`` a
+        production.
+
+        If you need documentation inside the rules, use comments.
+
+        '''
+        import re
+        marker = re.compile(r'^\s*\.\.\s+_rules:\s*$', re.M)
+        found = marker.search(docstring)
+        if found:
+            start, end = found.span()
+            doc, rules = docstring[:start], docstring[end:]
+        else:
+            doclines, rulelines = [], []
+            accumulating_rules = False
+            for line in docstring.splitlines():
+                if not accumulating_rules:
+                    accumulating_rules = '::=' in line
+                if accumulating_rules:
+                    rulelines.append(line)
+                else:
+                    doclines.append(line)
+            doc = '\n'.join(doclines)
+            rules = '\n'.join(rulelines)
+        return doc, rules
+
     def collectRules(self):
         for name in _namelist(self):
             if name[:2] == 'p_':
                 func = getattr(self, name)
                 doc = func.__doc__
-                self.addRule(doc, func)
+                _intro, rules = self.find_rules(doc)
+                self.addRule(rules, func)
 
     def augment(self, start):
         rule = '%s ::= %s %s' % (self._START, self._BOF, start)
@@ -665,12 +715,12 @@ class GenericASTBuilder(GenericParser):
 
 #
 #  GenericASTTraversal is a Visitor pattern according to Design Patterns.  For
-#  each node it attempts to invoke the method n_<node type>, falling
-#  back onto the default() method if the n_* can't be found.  The preorder
-#  traversal also looks for an exit hook named n_<node type>_exit (no default
-#  routine is called if it's not found).  To prematurely halt traversal
-#  of a subtree, call the prune() method -- this only makes sense for a
-#  preorder traversal.  Node type is determined via the typestring() method.
+#  each node it attempts to invoke the method n_<node type>, falling back onto
+#  the default() method if the n_* can't be found.  The preorder traversal
+#  also looks for an exit hook named n_<node type>_exit (no default routine is
+#  called if it's not found).  To prematurely halt traversal of a subtree,
+#  call the prune() method -- this only makes sense for a preorder traversal.
+#  Node type is determined via the typestring() method.
 #
 class GenericASTTraversalPruningException(Exception):
     pass

@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.revenge.eight
-#----------------------------------------------------------------------
-# Copyright (c) 2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2014, 2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -44,7 +44,7 @@ py3k = (3, 0) <= sys.version_info < (4, 0)
 
 
 class unimplemented(object):
-    '''Not implememented stub for `override`:func:.'''
+    '''Not implemented stub for `override`:func:.'''
     @staticmethod
     def override(pred):
         return override(pred=pred)

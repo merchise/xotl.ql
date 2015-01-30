@@ -1,21 +1,20 @@
-#!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.expressions
+# scratch
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2015 Merchise Autrement and Contributors
+# Copyright (c) 2014, 2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can redistribute it and/or modify it under the
+# terms of the LICENCE attached (see LICENCE file) in the distribution
+# package.
 #
-# Created on May 24, 2012
+# Created on 2014-11-06
 
-'''This module provides the AST building blocks for query expressions.
-
-
-'''
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
+
+
+# Just a notepad

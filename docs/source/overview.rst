@@ -17,7 +17,7 @@ The main goal for `xotl.ql` is to provide a *pythonic way to write* queries.
 In this regard, `xotl.ql` has a similar outlook that LINQ queries have in C#
 [#these]_.
 
-And now the query is just::
+The query is just::
 
   >>> from xotl.ql import this
   >>> parents = (parent for parent in this if len(parent.children) > 2)
@@ -74,19 +74,13 @@ That's why in order to execute queries one *must* use a :term:`query
 translator` with enough knowledge of the object model and of the system
 configuration (specially how to communicate with the storage system).
 
-`xotl.ql` won't provide production quality translators.  Instead other
+`xotl.ql` won't provide production quality translators.  Instead, other
 packages will be released that implement translators and assist their
-configuration into other frameworks.  For instance, it's planned to write a
-package that contains a translator for SQLAlchemy_ models and another package
-with a Pyramid_ Tween that glues this translator with Pyramid.
-
-.. _SQLAlchemy: http://pypi.python.org/pypi/sqlalchemy
-.. _Pyramid: http://pypi.python.org/pypi/pyramid
+configuration into other frameworks.
 
 Nevertheless the module :mod:`xotl.ql.translation.py` does contains an
-implementation of a translator that fetches objects from the Python's
-memory.  And we also provide utilities for translation in
-:mod:`xotl.ql.translation`.
+implementation of a translator that fetches objects from the Python's memory.
+And we also provide utilities for translation in :mod:`xotl.ql.translation`.
 
 
 Retrieving objects
@@ -97,7 +91,6 @@ Assuming you have a translator, like the function
 to it to obtain a `query execution plan`:term:::
 
   >>> from xotl.ql.translation.py import naive_translation
-
   >>> query = naive_translation(parent for parent in this)
 
 
@@ -112,8 +105,27 @@ one time avoiding the translation phase.  This does not means that you will
 always get the same results from the reused execution plan, since the
 underlying data source might have changed.
 
-
 See the document about `translators <translation>`:ref: for more information.
+
+
+Query expressions v. query objects
+==================================
+
+So far we have seen how queries are expressed in our code.  A query as the
+python expression we see in our code (or as the generator object it implies)
+is more precisely referred as a `query expression`:term:.
+
+On the other hand, translators need a data structure that describes the query.
+Since we can't actually provide translators with the query expression (what we
+see is a Python `generator`:ref: object), we need another object that
+precisely capture the query.  This is the `query object`:term:.  In many
+cases, the distinction between those terms is not important but for internal
+documents is very important.  Translators will mostly deal with query objects.
+Getting a query object from a query expression is what `xotl.ql` is supposed
+to do well.
+
+The function `xotl.ql.get_query_object`:func: takes a query expression (i.e a
+generator object) and return a query object.
 
 
 Footnotes

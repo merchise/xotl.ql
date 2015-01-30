@@ -3,7 +3,7 @@
 # --------------------------------------------------
 # xotl.ql
 # --------------------------------------------------
-# Copyright (c) 2012-2014 Merchise Autrement and Contributors
+# Copyright (c) 2012-2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -32,8 +32,4 @@ stores.
 '''
 
 from __future__ import absolute_import
-
-__all__ = ('this', 'these', 'thesefy', )
-
-
-from .core import this, these, thesefy
+from .core import this, get_query_object, thesefy, normalize_query  # noqa
