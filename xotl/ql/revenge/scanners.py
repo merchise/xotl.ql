@@ -129,74 +129,7 @@ class Scanner(object):
     def resetTokenClass(self):
         self.setTokenClass(Token)
 
-    def deobfuscate(self, co, linestarts, varnames):
-        # Find the opcode that will stop it all, that'll be n - 1.
-        n = 0
-        code = self.code
-        for i in self.op_range(0, len(code)):
-            if code[i] in (RETURN_VALUE, END_FINALLY):
-                n = i + 1
-
-        # In the range before the last opcode (n), find the opcodes that are
-        # not NOP and put them in fixed_code; m will reach the last opcode
-        # that is not NOP, old_to_new will match code index againt fixed_code,
-        # new_to_old is the reverse.
-        fixed_code = array(str('B'))
-        linestartoffsets = {a: b for (a, b) in linestarts[1:]}
-        newlinestarts = linestarts[0:1]
-        old_to_new = {}
-        new_to_old = {}
-        m = 0
-        for i in self.op_range(0, n):
-            old_to_new[i] = m
-            new_to_old[m] = i
-            if i in linestartoffsets:
-                newlinestarts.append((m, linestartoffsets[i]))
-            if code[i] != NOP:
-                fixed_code.append(code[i])
-                m += 1
-                if code[i] >= HAVE_ARGUMENT:
-                    fixed_code.append(code[i+1])
-                    fixed_code.append(code[i+2])
-                    m += 2
-
-        # Forget about the old code and work only with the fixed_code.  In the
-        # entire range [0, m), rewrite the jumps' targets to match new
-        # indexes.
-        self.code = code = fixed_code
-        for i in self.op_range(0, m):
-            if code[i] in dis.hasjrel:
-                old_jump = code[i+1] + code[i+2]*256
-                old_target = new_to_old[i] + 3 + old_jump
-                new_target = old_to_new[old_target]
-                new_jump = new_target - i - 3
-                code[i+1] = new_jump % 256
-                code[i+2] = new_jump // 256
-            if code[i] in dis.hasjabs:
-                old_target = code[i+1] + code[i+2]*256
-                new_target = old_to_new[old_target]
-                code[i+1] = new_target % 256
-                code[i+2] = new_target // 256
-
-        # Find the pair of opcodes for "import something":
-        #
-        #  IMPORT_NAME(namei) Imports the module co_names[namei]. TOS and TOS1
-        #    are popped and provide the fromlist and level arguments of
-        #    __import__(). The module object is pushed onto the stack. The
-        #    current namespace is not affected: for a proper import statement,
-        #    a subsequent STORE_FAST instruction modifies the namespace.
-        #
-        # Changes `varnames`.
-        for i in range(len(varnames)):
-            varnames[i] = 'varnames_%s' % i
-        for i in self.op_range(0, m):
-            if code[i] == IMPORT_NAME and code[i+3] == STORE_FAST:
-                varname_index = code[i+4] + code[i+5]*256
-                name_index = code[i+1] + code[i+2]*256
-                varnames[varname_index] = co.co_names[name_index]
-        return newlinestarts
-
-    def disassemble(self, co, classname=None, deob=0):
+    def disassemble(self, co, classname=None):
         """Disassemble a code object, returning a list of 'Token'.
 
         The main part of this procedure is modelled after
@@ -206,15 +139,9 @@ class Scanner(object):
         rv = []
         customize = {}
         Token = self.Token  # shortcut
-        self.code = array(str('B'), co.co_code)
-
+        code = self.code = array(str('B'), co.co_code)
         linestarts = list(dis.findlinestarts(co))
         varnames = list(co.co_varnames)
-        if deob:
-            linestarts = self.deobfuscate(co, linestarts, varnames)
-
-        # code after deobfuscation
-        code = self.code
         n = len(code)
 
         self.prev = [0]

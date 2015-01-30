@@ -52,7 +52,7 @@ import types
 from . import scanners, walkers
 
 
-def uncompyle(co, version=None, out=None, showasm=0, showast=0, deob=0):
+def uncompyle(co, version=None, out=None, showasm=0, showast=0):
     """Disassemble a given code block `co`.
 
     """
@@ -63,7 +63,7 @@ def uncompyle(co, version=None, out=None, showasm=0, showast=0, deob=0):
         version = sys.version.split(' ')[0]
     scanner = scanners.getscanner(version)
     scanner.setShowAsm(showasm, out)
-    tokens, customize = scanner.disassemble(co, deob=deob)
+    tokens, customize = scanner.disassemble(co)
 
     #  Build AST from disassembly.
     walker = walkers.Walker(out, scanner, showast=showast)
