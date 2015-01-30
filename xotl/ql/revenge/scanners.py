@@ -144,13 +144,14 @@ class Scanner(object):
         varnames = list(co.co_varnames)
         n = len(code)
 
-        self.prev = [0]
+        # An index from byte-code index to the index containing the opcode
+        self.prev = prev = [0]
         for i in self.op_range(0, n):
             op = code[i]
-            self.prev.append(i)
+            prev.append(i)
             if op >= HAVE_ARGUMENT:
-                self.prev.append(i)
-                self.prev.append(i)
+                prev.append(i)
+                prev.append(i)
 
         self.lines = []
         linetuple = namedtuple('linetuple', ['l_no', 'next'])
