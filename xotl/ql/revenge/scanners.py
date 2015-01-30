@@ -167,20 +167,8 @@ class Scanner(object):
         while j < n:
             self.lines.append(linetuple(prev_line_no, n))
             j += 1
-        if classname:
-            classname = '_' + classname.lstrip('_') + '__'
-            def unmangle(name):
-                if name.startswith(classname) and name[-2:] != '__':
-                    return name[len(classname) - 2:]
-                return name
-
-            free = [unmangle(name)
-                    for name in (co.co_cellvars + co.co_freevars)]
-            names = [unmangle(name) for name in co.co_names]
-            varnames = [unmangle(name) for name in varnames]
-        else:
-            free = co.co_cellvars + co.co_freevars
-            names = co.co_names
+        free = co.co_cellvars + co.co_freevars
+        names = co.co_names
 
         self.load_asserts = set()
         for i in self.op_range(0, n):
