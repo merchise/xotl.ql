@@ -171,9 +171,10 @@ class Scanner(object):
         free = co.co_cellvars + co.co_freevars
         names = co.co_names
 
+        # Detect assertions
         self.load_asserts = set()
         for i in self.op_range(0, n):
-            if code[i] == PJIT and code[i+3] == LOAD_GLOBAL:
+            if code[i] == POP_JUMP_IF_TRUE and code[i+3] == LOAD_GLOBAL:
                 if names[code[i+4] + 256*code[i+5]] == 'AssertionError':
                     self.load_asserts.add(i+3)
 
@@ -589,9 +590,7 @@ class Scanner(object):
         python2.3+
 
         """
-
         # TODO: check the struct boundaries more precisely -Dan
-
         code = self.code
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
