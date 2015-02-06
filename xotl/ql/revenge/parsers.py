@@ -823,11 +823,9 @@ class Parser(GenericASTBuilder):
             return 'funcdef'
         if 'grammar' in list and 'expr' in list:
             return 'expr'
-        #print >> sys.stderr, 'resolve', str(list)
         return GenericASTBuilder.resolve(self, list)
 
 nop = lambda self, args: None
-
 p = Parser()
 
 
@@ -854,8 +852,6 @@ def parse(tokens, customize):
         if k in p.customized:
             continue
         p.customized[k] = None
-
-        #nop = lambda self, args: None
         op = k[:k.rfind('_')]
         if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
             rule = 'build_list ::= ' + 'expr '*v + k
@@ -866,7 +862,6 @@ def parse(tokens, customize):
         elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
             # no need to add a rule
             continue
-            #rule = 'dup_topx ::= ' + 'expr '*v + k
         elif op == 'MAKE_FUNCTION':
             p.addRule('mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k), nop)
             rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
@@ -892,5 +887,4 @@ def parse(tokens, customize):
             raise Exception('unknown customize token %s' % k)
         p.addRule(rule, nop)
     ast = p.parse(tokens)
-#    p.cleanup()
     return ast
