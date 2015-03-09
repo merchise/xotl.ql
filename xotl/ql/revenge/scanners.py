@@ -158,13 +158,12 @@ class Scanner(object):
         j = 0
 
         linestartoffsets = {a for (a, _) in linestarts}
-        (prev_start_byte, prev_line_no) = linestarts[0]
+        _, prev_line_no = linestarts[0]
         for (start_byte, line_no) in linestarts[1:]:
             while j < start_byte:
                 self.lines.append(linetuple(prev_line_no, start_byte))
                 j += 1
-            last_op = code[self.prev[start_byte]]
-            (prev_start_byte, prev_line_no) = (start_byte, line_no)
+            prev_line_no = line_no
         while j < n:
             self.lines.append(linetuple(prev_line_no, n))
             j += 1
@@ -236,8 +235,6 @@ class Scanner(object):
                         # verify uses 'pattr' for comparism, since 'attr'
                         # now holds Code(const) and thus can not be used
                         # for comparism (todo: think about changing this)
-                        #pattr = 'code_object @ 0x%x %s->%s' %\
-                        #	(id(const), const.co_filename, const.co_name)
                         pattr = '<code_object ' + const.co_name + '>'
                     else:
                         pattr = const
@@ -391,8 +388,10 @@ class Scanner(object):
         code = self.code
         assert(start >= 0 and end <= len(code))
 
-        try:    None in instr
-        except: instr = [instr]
+        try:
+            None in instr
+        except:
+            instr = [instr]
 
         result = []
         for i in self.op_range(start, end):
@@ -525,8 +524,10 @@ class Scanner(object):
         code = self.code
         assert(start >= 0 and end <= len(code))
 
-        try:    None in instr
-        except: instr = [instr]
+        try:
+            None in instr
+        except:
+            instr = [instr]
 
         result = []
         for i in self.op_range(start, end):
@@ -595,8 +596,7 @@ class Scanner(object):
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
             op = code[pos]
-
-        ## Detect parent structure
+        # Detect parent structure
         parent = self.structs[0]
         start = parent['start']
         end = parent['end']
@@ -607,9 +607,7 @@ class Scanner(object):
                 start = _start
                 end = _end
                 parent = s
-
-        ## We need to know how many new structures were added in this run
-        origStructCount = len(self.structs)
+        # We need to know how many new structures were added in this run
         if op == SETUP_LOOP:
             start = pos+3
             target = self.get_target(pos, op)
@@ -682,15 +680,14 @@ class Scanner(object):
             end = self.restrict_to_parent(target, parent)
             if target != end:
                 self.fixed_jumps[pos] = end
-                #print target, end, parent
-            ## Add the try block
+            # Add the try block
             self.structs.append({'type':  'try',
                                  'start': start,
                                  'end':   end-4})
-            ## Now isolate the except and else blocks
+            # Now isolate the except and else blocks
             end_else = start_else = self.get_target(self.prev[end])
 
-            ## Add the except blocks
+            # Add the except blocks
             i = end
             while self.code[i] != END_FINALLY:
                 jmp = self.next_except_jump(i)
@@ -709,7 +706,7 @@ class Scanner(object):
                                          'end':   jmp})
                     i = jmp + 3
 
-            ## Add the try-else block
+            # Add the try-else block
             if end_else != start_else:
                 r_end_else = self.restrict_to_parent(end_else, parent)
                 self.structs.append({'type':  'try-else',
@@ -727,7 +724,7 @@ class Scanner(object):
             if target != rtarget and parent['type'] == 'and/or':
                 self.fixed_jumps[pos] = rtarget
                 return
-            #does this jump to right after another cond jump?
+            # does this jump to right after another cond jump?
             # if so, it's part of a larger conditional
             if (code[pre[target]] in (JUMP_IF_FALSE_OR_POP,
                                       JUMP_IF_TRUE_OR_POP,
@@ -817,7 +814,7 @@ class Scanner(object):
             if code[pre[rtarget]] in (JA, JF):
                 if_end = self.get_target(pre[rtarget])
 
-                #is this a loop not an if?
+                # is this a loop not an if?
                 if if_end < pre[rtarget] and code[pre[if_end]] == SETUP_LOOP:
                     if if_end > start:
                         return
@@ -856,10 +853,8 @@ class Scanner(object):
         target the number of jumps are counted.
 
         """
-
         hasjrel = dis.hasjrel
         hasjabs = dis.hasjabs
-
         n = len(code)
         self.structs = [{'type':  'root',
                          'start': 0,
@@ -870,14 +865,11 @@ class Scanner(object):
         self.build_stmt_indices()
         self.not_continue = set()
         self.return_end_ifs = set()
-
         targets = {}
         for i in self.op_range(0, n):
             op = code[i]
-
-            ## Determine structures and fix jumps for 2.3+
+            # Determine structures and fix jumps for 2.3+
             self.detect_structure(i, op)
-
             if op >= HAVE_ARGUMENT:
                 label = self.fixed_jumps.get(i)
                 oparg = code[i+1] + code[i+2] * 256
@@ -888,7 +880,6 @@ class Scanner(object):
                         if op in (JUMP_IF_FALSE_OR_POP, JUMP_IF_TRUE_OR_POP):
                             if (oparg > i):
                                 label = oparg
-
                 if label is not None and label != -1:
                     targets[label] = targets.get(label, []) + [i]
             elif op == END_FINALLY and i in self.fixed_jumps:
