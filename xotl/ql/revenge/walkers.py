@@ -1520,18 +1520,9 @@ class Walker(GenericASTTraversal, object):
         self.return_none = rn
 
     def build_ast(self, tokens, customize, isLambda=0, noneInNames=False):
-        assert isinstance(tokens, list)
-        assert isinstance(tokens[0], Token)
         if isLambda:
             tokens.append(Token('LAMBDA_MARKER'))
-            try:
-                ast = parsers.parse(tokens, customize)
-            except parsers.ParserError as e:
-                raise ParserError(e, tokens)
-            if self.showast:
-                self.print_(repr(ast))
-            return ast
-        if len(tokens) > 2 or (len(tokens) == 2 and not noneInNames):
+        elif len(tokens) > 2 or (len(tokens) == 2 and not noneInNames):
             if tokens[-1] == Token('RETURN_VALUE'):
                 if tokens[-2] == Token('LOAD_CONST'):
                     del tokens[-2:]
