@@ -1539,11 +1539,8 @@ class Walker(GenericASTTraversal, object):
                     tokens.append(Token('RETURN_LAST'))
         if len(tokens) == 0:
             return PASS
-        # Build AST from disassembly.
         try:
             ast = parsers.parse(tokens, customize)
         except parsers.ParserError as e:
             raise ParserError(e, tokens)
-        if self.showast:
-            self.print_(repr(ast))
         return ast

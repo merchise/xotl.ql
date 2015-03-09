@@ -45,50 +45,37 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-import sys
 import types
-
-
 from . import scanners, walkers
 
 
-def uncompyle(co, version=None, out=None, showasm=0, showast=0):
+def uncompyle(co, version=None):
     """Disassemble a given code block `co`.
 
+    Return the `AST <xotl.ql.revenge.parsers.AST>`:class: (this is actually a
+    low-level AST that will call Concrete Syntax Tree, though that's not
+    actually True).
+
     """
+    import sys
     assert isinstance(co, types.CodeType)
-    # store final output stream for case of error
-    __real_out = out or sys.stdout
     if not version:
         version = sys.version.split(' ')[0]
     scanner = scanners.getscanner(version)
-    scanner.setShowAsm(showasm, out)
-    tokens, customize = scanner.disassemble(co)
-
+    tokens, customizations = scanner.disassemble(co)
     #  Build AST from disassembly.
-    walker = walkers.Walker(out, scanner, showast=showast)
-    ast = walker.build_ast(tokens, customize)
-
+    walker = walkers.Walker(None, scanner)
+    ast = walker.build_ast(tokens, customizations)
     del tokens  # save memory
-
     # convert leading '__doc__ = "..." into doc string
-    assert ast == 'stmts'
+    assert ast.type == 'stmts'
     try:
         if ast[0][0] == walkers.ASSIGN_DOC_STRING(co.co_consts[0]):
             del ast[0]
         if ast[-1] == walkers.RETURN_NONE:
-            ast.pop()  # remove last node
-            #todo: if empty, add 'pass'
-    except:
+            ast.pop()
+            # todo: if empty, add 'pass'
+    except (IndexError, TypeError):
         pass
 
-    return (ast, customize)
-
-    walker.mod_globs = walkers.find_globals(ast, set())
-    walker.gen_source(ast, customize)
-    for g in walker.mod_globs:
-        walker.write('global %s ## Warning: Unused global\n' % g)
-    if walker.pending_newlines:
-        print(file=__real_out)
-    if walker.ERROR:
-        raise walker.ERROR
+    return ast
