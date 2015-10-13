@@ -76,7 +76,6 @@ If `children` is not fully contained in `parent` such kind of translation is
 not possible, so the :term:`query translator` might use several views and
 integrate it's results with Python code.
 
-
 The algorithm for translation may be decomposed like the following:
 
 - Create a mapping from simple expressions (not queries) tree to javascript
