@@ -3,8 +3,6 @@
  Reverse Engineering using an Earley parser
 ============================================
 
-.. default-role:: term
-
 Starting with version 0.3.0 we are exploring how to get the `query
 expression`:term: from the compiled `byte-code`:term: by doing `reverse
 engineering`:term:.
