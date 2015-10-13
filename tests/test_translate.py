@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.tests.test_translate
-#----------------------------------------------------------------------
-# Copyright (c) 2013, 2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2013-2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -33,9 +33,6 @@ from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
 from xotl.ql.translation import token_before_filter
-
-__docstring_format__ = 'rst'
-__author__ = 'manu'
 
 
 # The following classes are just a simple Object Model
@@ -92,6 +89,7 @@ class backref(object):
         setattr(inst, self._name, value)
         backrefs = setdefaultattr(value, self.ref, [])
         backrefs.append(inst)
+
 
 @thesefy
 class Entity(object):
@@ -289,12 +287,14 @@ manolito = Person(name='Manuel Vázquez Piñero',
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_all_pred(**kwargs):
     from xoutil.iterators import dict_update_new
-    from xotl.ql.expressions import all_, sum_
     from xotl.ql.translation.py import naive_translation
-    query = these(parent
-                  for parent in Person
-                  if parent.children
-                  if all_((30 < child.age) & (child.age < 36) for child in parent.children))
+    query = these(
+        parent
+        for parent in Person
+        if parent.children
+        if all(30 < child.age and child.age < 36
+               for child in parent.children)
+    )
     dict_update_new(kwargs, dict(only='test_translate.*'))
     plan = naive_translation(query, **kwargs)
     result = list(plan())
@@ -302,21 +302,22 @@ def test_all_pred(**kwargs):
     assert papi in result
     assert len(result) == 2
 
-    query = these(parent
-                  for parent in Person
-                  if parent.children
-                  if all_(parent.name.startswith('Manu'), parent.age > 30))
+    # query = these(
+    #     parent
+    #     for parent in Person
+    #     if parent.children
+    #     if all(parent.name.startswith('Manu'), parent.age > 30))
 
-    dict_update_new(kwargs, dict(only='test_translate.*'))
-    plan = naive_translation(query, **kwargs)
-    with pytest.raises(SyntaxError):
-        result = list(plan())
+    # dict_update_new(kwargs, dict(only='test_translate.*'))
+    # plan = naive_translation(query, **kwargs)
+    # with pytest.raises(SyntaxError):
+    #     result = list(plan())
 
-
-    query = these(parent
-                  for parent in Person
-                  if parent.children
-                  if sum_(child.age for child in parent.children) > 60)
+    query = these(
+        parent
+        for parent in Person
+        if parent.children
+        if sum(child.age for child in parent.children) > 60)
 
     dict_update_new(kwargs, dict(only='test_translate.*'))
     plan = naive_translation(query, **kwargs)
@@ -330,9 +331,11 @@ def test_all_pred(**kwargs):
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
-    select_old_entities = these(who
-                                for who in Entity
-                                if who.name.startswith('Manuel'))
+    select_old_entities = these(
+        who
+        for who in Entity
+        if who.name.startswith('Manuel')
+    )
     dict_update_new(kwargs, dict(only='test_translate.*'))
     plan = naive_translation(select_old_entities, **kwargs)
     result = list(plan())
@@ -346,9 +349,11 @@ def test_ridiculous_join(**kwargs):
     from itertools import product
     from xoutil.iterators import dict_update_new
     from xotl.ql.translation.py import naive_translation
-    select_old_entities = these((who, who2)
-                                for who in Person
-                                for who2 in Person)
+    select_old_entities = these(
+        (who, who2)
+        for who in Person
+        for who2 in Person
+    )
     dict_update_new(kwargs, dict(only='test_translate.*'))
     plan = naive_translation(select_old_entities, **kwargs)
     result = list(plan())
@@ -356,12 +361,15 @@ def test_ridiculous_join(**kwargs):
     for pair in product(source, source):
         assert pair in result
 
+
 class B(object):
     a = [1, 2]
+
 
 class X(object):
     def __init__(self):
         self.b = B()
+
 
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_traversing_by_nonexistent_attribute(**kwargs):
@@ -370,10 +378,13 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
     dict_update_new(kwargs, dict(only='test_translate.*'))
 
     # There's no `childs` attribute in Persons
-    query = these(child for parent in Person
-                        if parent.childs & (parent.age > 30)
-                        for child in parent.childs
-                        if child.age < 10)
+    query = these(
+        child
+        for parent in Person
+        if parent.childs and parent.age > 30
+        for child in parent.childs
+        if child.age < 10
+    )
     plan = naive_translation(query, **kwargs)
     assert list(plan()) == []
 
@@ -384,9 +395,11 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
 
     # And traversing through a non-existing stuff doesn't make
     # any sense either, but should not fail
-    query = these(foos.name
-                  for person in Person
-                  for foos in person.foobars)
+    query = these(
+        foos.name
+        for person in Person
+        for foos in person.foobars
+    )
     plan = naive_translation(query, **kwargs)
     assert list(plan()) == []
 
@@ -400,25 +413,26 @@ def test_traversing_by_nonexistent_attribute(**kwargs):
     # The same query in a safe fashion
     query = these(a
                   for p in this
-                  if p.b & p.b.a
+                  if p.b and p.b.a
                   for a in p.b.a)
     plan = naive_translation(query, **kwargs)
     assert list(plan()) == []
-
 
     # Now let's rerun the plan after we create some object that matches
     x = X()
     assert list(plan()) == x.b.a
 
+
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_token_before_filter():
-    query = these((parent, child)
-                  for parent in this
-                  if parent.children
-                  for child in parent.children
-                  if child.age < 5
-                  for dummy in parent.children)
-
+    query = these(
+        (parent, child)
+        for parent in this
+        if parent.children
+        for child in parent.children
+        if child.age < 5
+        for dummy in parent.children
+    )
 
     parent, child = query.selection
     parent_token, children_token, dummy_token = query.tokens
@@ -454,7 +468,6 @@ def test_regression_test_token_before_filter_20130401():
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_translation_with_call_of_a_function():
     from xoutil.iterators import zip
-    from xotl.ql.expressions import call
     from xotl.ql.translation.py import naive_translation
 
     @thesefy
@@ -476,7 +489,11 @@ def test_translation_with_call_of_a_function():
                             (8, 3), (8, 5), (8, 7),
                             (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
 
-    query = these((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1))
+    query = these(
+        (a, b)
+        for a, b in zip(Universe, Universe)
+        if a > b and gcd(a, b) == 1
+    )
     plan = naive_translation(query)
     assert set(plan()) == set([(3, 2),
                                (4, 3),
@@ -486,8 +503,12 @@ def test_translation_with_call_of_a_function():
                                (8, 3), (8, 5), (8, 7),
                                (9, 2), (9, 4), (9, 5), (9, 7), (9, 8)])
 
-
-    query = these(((a, b) for a, b in zip(Universe, Universe) if (a > b) & (call(gcd, a, b) == 1)), offset=100)
+    query = these(
+        ((a, b)
+         for a, b in zip(Universe, Universe)
+         if a > b and gcd(a, b) == 1),
+        offset=100
+    )
     plan = naive_translation(query)
     assert len(list(plan())) == 0
 
@@ -502,12 +523,12 @@ def test_ordering():
     Universe.this_instances = [Universe(i) for i in range(2, 10)]
 
     query = these((which for which in Universe),
-                   ordering=lambda which: -which)
+                  ordering=lambda which: -which)
     plan = naive_translation(query)
     assert list(plan()) == list(reversed(range(2, 10)))
 
     query = these((which for which in Universe),
-                   ordering=lambda which: +which)
+                  ordering=lambda which: +which)
     plan = naive_translation(query)
     assert list(plan()) == list(range(2, 10))  #XXX: Py3k list()
 
@@ -526,9 +547,12 @@ def test_ordering():
         assert who in results
     assert len(results) == len(parents)
 
-    from xotl.ql.expressions import sum_
-    query = these((person for person in Person if person.children),
-                  ordering=lambda person: (-sum_(child.age for child in person.children), -person.age))
+    query = these(
+        (person for person in Person if person.children),
+        ordering=lambda person: (
+            -sum(child.age for child in person.children),
+            -person.age)
+    )
     plan = naive_translation(query)
     results = list(plan())
     assert pedro == results[0]
@@ -540,6 +564,7 @@ def test_short_circuit():
     from xotl.ql.expressions import call
     from xotl.ql.translation.py import naive_translation
     from xoutil.compat import integer
+
     flag = [0]   # A list to allow non-global non-local in Py2k
     def inc_flag(by=1):
         flag[0] += 1
@@ -550,13 +575,21 @@ def test_short_circuit():
         pass
     Universe.this_instances = [Universe(1780917517912941696167)]
 
-    query = these(atom for atom in Universe if (call(inc_flag) > 1) & call(inc_flag))
+    query = these(
+        atom
+        for atom in Universe
+        if inc_flag() > 1 and inc_flag()
+    )
     plan = naive_translation(query)
     list(plan())
     assert flag[0] == 1
 
     flag[0] = 0
-    query = these(atom for atom in Universe if (call(inc_flag) > 0) | call(inc_flag))
+    query = these(
+        atom
+        for atom in Universe
+        if inc_flag() > 0 or inc_flag()
+    )
     plan = naive_translation(query)
     list(plan())
     assert flag[0] == 1
