@@ -127,9 +127,6 @@ def thesefy(target):
                                 '__iter__ that does not support thesefy'
                                 .format(target=target))
 
-    from xoutil.objects import metaclass
-
-    class new_class(metaclass(new_meta), target):
-        pass
-
+    from xoutil.objects import copy_class
+    new_class = copy_class(target, meta=new_meta)
     return new_class
