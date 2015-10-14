@@ -16,20 +16,11 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_imports)
 
-import unittest
-try:
-    import pytest
-except:
-    class pytest(object):
-        class _mark(object):
-            def __getattr__(self, attr):
-                return lambda *a, **kw: (lambda f: f)
-        mark = _mark()
+import pytest
 
 from xoutil import Unset
 from xoutil.context import context
 from xoutil.proxy import UNPROXIFING_CONTEXT
-from xoutil.compat import iteritems_
 
 from xotl.ql.core import these, this, thesefy
 from xotl.ql.translation import token_before_filter
@@ -96,13 +87,12 @@ class Entity(object):
     def __new__(cls, **attrs):
         from xoutil.objects import setdefaultattr
         this_instances = setdefaultattr(Entity, 'this_instances', [])
-        res = super(Entity, cls).__new__(cls, **attrs)
+        res = super(Entity, cls).__new__(cls)
         this_instances.append(res)
         return res
 
     def __init__(self, **attrs):
-        for k, v in iteritems_(attrs):
-            setattr(self, k, v)
+        self.__dict__.update(attrs)
 
     def __repr__(self):
         from xoutil.names import nameof
@@ -561,11 +551,13 @@ def test_ordering():
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_short_circuit():
     from xotl.ql import thesefy
-    from xotl.ql.expressions import call
     from xotl.ql.translation.py import naive_translation
-    from xoutil.compat import integer
+    from xoutil.eight import integer_types
+
+    integer = integer_types[-1]  # long or int
 
     flag = [0]   # A list to allow non-global non-local in Py2k
+
     def inc_flag(by=1):
         flag[0] += 1
         return flag[0]
