@@ -17,6 +17,8 @@ from __future__ import (division as _py3_division,
 
 import os
 import sys
+from setuptools import Command
+from setuptools.command.test import test as TestCommand
 from setuptools import setup, find_packages
 
 # Import the version from the release module
@@ -24,6 +26,33 @@ project_name = str('xotl.ql')
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(_current_dir, 'xotl', 'ql'))
 from release import VERSION as version
+
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
+
+class PyShell(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def ensure_finalized(self):
+        pass
+
+    def run(self):
+        from IPython import start_ipython
+        start_ipython(argv=[''])
 
 setup(
     name=project_name,
@@ -41,11 +70,14 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Database",
     ],
-      keywords=['query language', 'python', 'xotl'],
+    keywords=['query language', 'python', 'xotl'],
     author='Merchise Autrement',
     author_email='info@merchise.org',
     url='http://github.com/merchise-autrement/',
     license='GNU General Public License version 3 or later (GPLv3+)',
+    tests_require=['pytest'],
+    cmdclass={'test': PyTest,
+              'shell': PyShell},
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
     namespace_packages=['xotl', ],
     include_package_data=True,
