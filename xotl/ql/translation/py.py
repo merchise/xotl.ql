@@ -15,17 +15,8 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
 from xoutil import Unset
 from xoutil.decorator import memoized_property
-from xoutil.compat import iteritems_
-
-from xotl.ql.core import Term, GeneratorToken
-from xotl.ql.expressions import _false
-from xotl.ql.expressions import OperatorType
-from xotl.ql.expressions import ExpressionTree
-from xotl.ql.expressions import UNARY, BINARY
 from xoutil.eight import iteritems
 
 
@@ -44,15 +35,15 @@ def defined(who, modules):
     '''Checks if `who` (or its class) is defined in any of the given
     `modules`.
 
-    The `modules` sequence may contains elements *ending* in ".*" to signify a
+    The `modules` sequence may contains elements ending in ".*" to signify a
     package.
 
     '''
-    with context(UNPROXIFING_CONTEXT):
-        try:
-            mod = who.__module__
-        except AttributeError:
-            mod = type(who).__module__
+    try:
+        mod = who.__module__
+    except AttributeError:
+        mod = type(who).__module__
+
     def check(target):
         if target.endswith('.*'):
             return mod.startswith(target[:-2])
@@ -85,6 +76,7 @@ def _filter_by_pkg(*pkg_names, **kwargs):
 
     '''
     negate = kwargs.get('negate', False)
+
     def accept(cls):
         result = defined(cls, pkg_names)
         return result if not negate else not result
@@ -114,24 +106,16 @@ def get_term_vm_path(term):
     root. For instance::
 
           these(child for parent in this
-                      if parent.children & (parent.age > 33)
-                      for child in parent.children
-                      if child.age < 5)
+                if parent.children and parent.age > 33
+                for child in parent.children
+                if child.age < 5)
 
     The term `child.age` in the last filter is actually encoded by the names:
     parent, children, age; but since this term is bound to `parent.children`,
     only `age` is part of the path.
 
     '''
-    with context(UNPROXIFING_CONTEXT):
-        token = term.binding
-        root = token.expression
-        res = []
-        current = term
-        while current and current is not root:
-            res.insert(0, current.name)
-            current = current.parent
-        return (token, res)
+    pass
 
 
 def _build_unary_operator(operation):
@@ -149,6 +133,7 @@ def _build_unary_operator(operation):
     else:
         import warnings
         warnings.warn('Skipping %s' % method_name)
+
 
 def _build_binary_operator(operation):
     import operator
@@ -184,6 +169,7 @@ def _build_rbinary_operator(operation):
             real_operation = getattr(operator, key)
         else:
             real_operation = getattr(operator, method_name)
+
         def method(self, other):
             value = self._get_current_value()
             if isinstance(other, var):
@@ -201,17 +187,22 @@ def _build_rbinary_operator(operation):
 _expr_operations = {operation._method_name: _build_unary_operator(operation)
                     for operation in OperatorType.operators
                     if getattr(operation, 'arity', None) == UNARY}
-_expr_operations.update({operation._method_name:
-                        _build_binary_operator(operation)
-                      for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) is BINARY})
-_expr_operations.update({operation._rmethod_name:
-                        _build_rbinary_operator(operation)
-                      for operation in OperatorType.operators
-                        if getattr(operation, 'arity', None) is BINARY and
-                           getattr(operation, '_rmethod_name', None)})
+_expr_operations.update({
+    operation._method_name: _build_binary_operator(operation)
+    for operation in OperatorType.operators
+    if getattr(operation, 'arity', None) is BINARY
+})
+_expr_operations.update({
+    operation._rmethod_name: _build_rbinary_operator(operation)
+    for operation in OperatorType.operators
+    if getattr(operation, 'arity', None) is BINARY and
+    getattr(operation, '_rmethod_name', None)
+})
+
 
 _var = type(str('_var'), (object,), _expr_operations)
+
+
 class var(_var):
     '''Represents a variable in the VM's memory.
 
@@ -273,6 +264,8 @@ def var_extract(maybe, default=Unset):
 
 
 vminstr_table = {}
+
+
 class vminstr(object):
     '''Represents an instruction tree ready to be executed in the VM current
     state.
@@ -292,12 +285,15 @@ class vminstr(object):
 
         def extract_args(func):
             from functools import wraps
+
             @wraps(func)
             def inner(*args, **kwargs):
                 args = tuple(var_extract(arg) for arg in args)
-                kwargs = {key: var_extract(value) for key, value in kwargs.items()}
+                kwargs = {key: var_extract(value)
+                          for key, value in kwargs.items()}
                 return func(*args, **kwargs)
             return inner
+
 
         @codefor(NewObjectFunction)
         @extract_args
@@ -408,7 +404,6 @@ class vminstr(object):
         def __call__(self):
             return self.code(*self.args, **self.kwargs)
 
-
     def __init__(self, filter, vm):
         self.filter = filter
         self.vm = vm
@@ -423,7 +418,9 @@ class vminstr(object):
                 _args = tuple(e(x) for x in node.children)
                 _kwargs = {k: e(v) for k, v in iteritems(node.named_children)}
                 if node.operation not in self.vmcodeset.table:
-                    raise TypeError('I don\'t know how to translate %r' % node.operation)
+                    msg = "I don't know how to translate {!r}"
+                    raise TypeError(msg.format(node.operation))
+
                 def op():
                     a = tuple(x for x in _args)
                     kw = {k: x for k, x in iteritems(_kwargs)}
@@ -477,6 +474,7 @@ class vmtoken(object):
             parent = term.parent
         if not parent:
             from xotl.ql.expressions import is_instance, IExpressionTree
+
             def matches(node):
                 with context(UNPROXIFING_CONTEXT):
                     return (IExpressionTree.providedBy(node) and
@@ -505,7 +503,7 @@ class vmtoken(object):
         else:
             accept = None
         if not parent:
-            source =_iter_objects(accept=accept, use_ignores=use_ignores)
+            source = _iter_objects(accept=accept, use_ignores=use_ignores)
         else:
             # The term here probably a.b.c is bound to itself, so we must
             # create a var with the binding changed to the parent binding.
