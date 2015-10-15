@@ -99,7 +99,7 @@ def thesefy(target):
 
         query = (who for who in People)
 
-    If your classes already support the iterable protocol (i.e implement
+    If your classes already support the operable protocol (i.e implement
     ``__iter__``) this does nothing.
 
     '''
@@ -112,6 +112,7 @@ def thesefy(target):
 
         def next(self):
             raise StopIteration
+        __next__ = next
 
     from xoutil.objects import copy_class
     new_class = copy_class(target, meta=new_meta)
