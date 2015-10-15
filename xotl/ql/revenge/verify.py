@@ -34,10 +34,10 @@ BIN_OP_FUNCS = {
 
 JUMP_OPs = None
 
-#--- exceptions ---
 
 class VerifyCmpError(Exception):
     pass
+
 
 class CmpErrorConsts(VerifyCmpError):
     """Exception to be raised when consts differ."""
@@ -49,6 +49,7 @@ class CmpErrorConsts(VerifyCmpError):
         return 'Compare Error within Consts of %s at index %i' % \
                (repr(self.name), self.index)
 
+
 class CmpErrorConstsType(VerifyCmpError):
     """Exception to be raised when consts differ."""
     def __init__(self, name, index):
@@ -58,6 +59,7 @@ class CmpErrorConstsType(VerifyCmpError):
     def __str__(self):
         return 'Consts type differ in %s at index %i' % \
                (repr(self.name), self.index)
+
 
 class CmpErrorConstsLen(VerifyCmpError):
     """Exception to be raised when length of co_consts differs."""
@@ -70,6 +72,7 @@ class CmpErrorConstsLen(VerifyCmpError):
                (repr(self.name),
                 len(self.consts[0]), repr(self.consts[0]),
                 len(self.consts[1]), repr(self.consts[1]))
+
 
 class CmpErrorCode(VerifyCmpError):
     """Exception to be raised when code differs."""
@@ -118,7 +121,6 @@ class CmpErrorMember(VerifyCmpError):
              repr(self.data[0]), repr(self.data[1]))
 
 
-#--- compare ---
 # these members are ignored
 __IGNORE_CODE_MEMBERS__ = ['co_filename', 'co_firstlineno', 'co_lnotab',
                            'co_stacksize', 'co_names']
@@ -130,10 +132,8 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
 
     This is the main part of this module.
     """
-    #print code_obj1, type(code_obj2)
     assert isinstance(code_obj1, types.CodeType)
     assert isinstance(code_obj2, types.CodeType)
-    #print dir(code_obj1)
     if isinstance(code_obj1, object):
         # new style classes (Python 2.2)
         # assume _both_ code objects to be new stle classes
@@ -143,29 +143,25 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
         assert dir(code_obj1) == code_obj1.__members__
         assert dir(code_obj2) == code_obj2.__members__
         assert code_obj1.__members__ == code_obj2.__members__
-
     if name == '__main__':
         name = code_obj1.co_name
     else:
         name = '%s.%s' % (name, code_obj1.co_name)
         if name == '.?':
             name = '__main__'
-
     if isinstance(code_obj1, object) and cmp(code_obj1, code_obj2):
         # use the new style code-classes' __cmp__ method, which
         # should be faster and more sophisticated
         # if this compare fails, we use the old routine to
         # find out, what exactly is nor equal
         # if this compare succeds, simply return
-        #return
+        # return
         pass
-
     if isinstance(code_obj1, object):
         members = [x for x in dir(code_obj1) if x.startswith('co_')]
     else:
         members = dir(code_obj1)
     members.sort()
-
     tokens1 = None
     for member in members:
         if member in __IGNORE_CODE_MEMBERS__:
@@ -175,7 +171,6 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
             scanner.setShowAsm(showasm=0)
             global JUMP_OPs
             JUMP_OPs = scanner.JUMP_OPs + ['JUMP_BACK']
-
             # use changed Token class
             #   we (re)set this here to save exception handling,
             #   which would get 'unubersichtlich'
@@ -205,7 +200,6 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
                     else:
                         raise CmpErrorCodeLen(name, tokens1, tokens2)
                 offset_map[tokens1[i1].offset] = tokens2[i2].offset
-
                 for idx1, idx2, offset2 in check_jumps.get(tokens1[i1].offset, []):
                     if offset2 != tokens2[i2].offset:
                         raise CmpErrorCode(name, tokens1[idx1].offset,
@@ -266,7 +260,6 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
                             i1 += 2
                             i2 += 2
                             continue
-
                     raise CmpErrorCode(name, tokens1[i1].offset, tokens1[i1],
                                tokens2[i2], tokens1, tokens2)
                 elif tokens1[i1].type in JUMP_OPs and tokens1[i1].pattr != tokens2[i2].pattr:
@@ -289,9 +282,8 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
         elif member == 'co_consts':
             # partial optimization can make the co_consts look different,
             #   so we'll just compare the code consts
-            codes1 = ( c for c in code_obj1.co_consts if type(c) == types.CodeType )
-            codes2 = ( c for c in code_obj2.co_consts if type(c) == types.CodeType )
-
+            codes1 = (c for c in code_obj1.co_consts if type(c) == types.CodeType)
+            codes2 = (c for c in code_obj2.co_consts if type(c) == types.CodeType)
             for c1, c2 in zip(codes1, codes2):
                 cmp_code_objects(version, c1, c2, name=name)
         else:
@@ -301,11 +293,12 @@ def cmp_code_objects(version, code_obj1, code_obj2, name=''):
                              getattr(code_obj1,member),
                              getattr(code_obj2,member))
 
+
 class Token(scanners.Token):
     """Token class with changed semantics for 'cmp()'."""
 
     def __cmp__(self, o):
-        t = self.type # shortcut
+        t = self.type  # shortcut
         loads = ('LOAD_NAME', 'LOAD_GLOBAL', 'LOAD_CONST')
         if t in loads and o.type in loads:
             if self.pattr == 'None' and o.pattr == None:
