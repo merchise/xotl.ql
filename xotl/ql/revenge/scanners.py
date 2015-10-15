@@ -41,18 +41,18 @@ JA = JUMP_ABSOLUTE  # noqa
 JF = JUMP_FORWARD  # noqa
 
 
-from six import PY3, PY2
-if PY3:
+from xoutil.eight import _py3, _py2
+if _py3:
     PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
     STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
     DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
     EXEC_STMT = None
     DUP_TOPX = None
 
-if PY2:
+if _py2:
     DUP_TOP_TWO = None
 
-del PY3, PY2
+del _py3, _py2
 
 
 class Token(object):

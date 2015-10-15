@@ -38,7 +38,7 @@ class AST(UserList):
         return self.data[item]
 
     def __eq__(self, o):
-        from six import string_types
+        from xoutil.eight import string_types
         if isinstance(o, AST):
             return self.type == o.type and UserList.__eq__(self, o)
         elif isinstance(o, string_types):

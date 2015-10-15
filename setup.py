@@ -84,13 +84,12 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools', ],
     install_requires=[
-        'six',
         'xoutil>=1.7.0.dev',
-        'zope.interface',
     ],
     extras_require={
-        'doc': ['docutils>=0.7',
-                'Sphinx>=1.0.7',
-                'repoze.sphinx.autointerface>=0.7.0']
+        'doc': [
+            'docutils>=0.7',
+            'Sphinx>=1.0.7',
+        ]
     }
 )

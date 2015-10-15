@@ -26,6 +26,7 @@ from xotl.ql.expressions import _false
 from xotl.ql.expressions import OperatorType
 from xotl.ql.expressions import ExpressionTree
 from xotl.ql.expressions import UNARY, BINARY
+from xoutil.eight import iteritems
 
 
 # Modules whose objects are always "outside" this translator's view of the
@@ -420,12 +421,12 @@ class vminstr(object):
                 return var(node, self.vm)
             if isinstance(node, ExpressionTree):
                 _args = tuple(e(x) for x in node.children)
-                _kwargs = {k: e(v) for k, v in iteritems_(node.named_children)}
+                _kwargs = {k: e(v) for k, v in iteritems(node.named_children)}
                 if node.operation not in self.vmcodeset.table:
                     raise TypeError('I don\'t know how to translate %r' % node.operation)
                 def op():
                     a = tuple(x for x in _args)
-                    kw = {k: x for k, x in iteritems_(_kwargs)}
+                    kw = {k: x for k, x in iteritems(_kwargs)}
                     return self.vmcodeset.table[node.operation](self, *a, **kw)
                 return vminstr.mylambda(op)
             return node  # assumed to be as is
@@ -453,10 +454,10 @@ class vmtoken(object):
 
     '''
     def __init__(self, token, vm, query, only=None):
-        from xoutil.compat import str_base
+        from xoutil.either import base_string
         self.token = token
         self.vm = vm
-        if isinstance(only, str_base):
+        if isinstance(only, base_string):
             only = (only, )
         self.only = only
         self._detect_class(query)

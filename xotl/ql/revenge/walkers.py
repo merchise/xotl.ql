@@ -681,7 +681,7 @@ class Walker(GenericASTTraversal, object):
         self.pending_newlines = max(self.pending_newlines, 1)
 
     def print_docstring(self, indent, docstring):
-        from six import text_type
+        from xoutil.eight import text_type
         quote = '"""'
         self.write(indent)
         # TODO: Verify
@@ -1447,7 +1447,7 @@ class Walker(GenericASTTraversal, object):
             self.ERROR = p
             return
         # build parameters
-        from six.moves import zip
+        from xoutil.eight import zip
         params = [
             build_param(ast, name, default)
             for name, default in zip(paramnames, defparams)

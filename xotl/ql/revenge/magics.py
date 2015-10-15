@@ -11,8 +11,8 @@ __all__ = ['magics', 'versions']
 
 
 def __build_magic(magic):
-    from six import PY3
-    if PY3:
+    from xoutil.eight import _py3
+    if _py3:
         return struct.pack(str('Hcc'), magic, '\r'.encode(), '\n'.encode())
     else:
         return struct.pack(str('Hcc'), magic, str('\r'), str('\n'))

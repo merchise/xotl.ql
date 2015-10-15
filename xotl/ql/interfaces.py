@@ -22,7 +22,14 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
-from zope.interface import Interface, Attribute
+class Interface(object):
+    pass
+
+
+class Attribute(object):
+    def __init__(self, name, doc):
+        self.name = name
+        self.doc = doc
 
 
 class IQueryObject(Interface):
@@ -69,7 +76,7 @@ class IQueryExecutionPlan(Interface):
                >>> query = naive_translation(which for which in this)
 
                >>> from itertools import tee
-               >>> from six.moves import zip
+               >>> from xoutil.eight import zip
                >>> product = zip(tee(query()))
 
            Doing a simple ``zip(query(), query())`` would work without error

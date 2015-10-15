@@ -26,7 +26,7 @@ from __future__ import (division as _py3_division,
 __version__ = 'SPARK-0.7 (pre-alpha-7) xotl.ql.revenge - 0.3.0'
 
 
-from six.moves import range
+from xoutil.eight import range
 
 
 def _namelist(instance):
