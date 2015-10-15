@@ -1519,7 +1519,8 @@ class Walker(GenericASTTraversal, object):
                 self.print_(self.traverse(ast, isLambda=isLambda))
         self.return_none = rn
 
-    def build_ast(self, tokens, customize, isLambda=0, noneInNames=False):
+    @staticmethod
+    def build_ast(tokens, customize, isLambda=0, noneInNames=False):
         if isLambda:
             tokens.append(Token('LAMBDA_MARKER'))
         elif len(tokens) > 2 or (len(tokens) == 2 and not noneInNames):

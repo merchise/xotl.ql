@@ -66,7 +66,7 @@ class ParserError(Exception):
             (self.token, self.offset)
 
 
-class Parser(GenericASTBuilder):
+class _InternalParser(GenericASTBuilder):
     def __init__(self):
         GenericASTBuilder.__init__(self, AST, 'stmts')
         self.customized = {}
@@ -122,8 +122,8 @@ class Parser(GenericASTBuilder):
         list_iter ::= list_if_not
         list_iter ::= lc_body
 
-        .. COME_FROM is custom token introduced by the scanner so that we can
-        .. know the point a jump was made.
+        .. COME_FROM is a custom token introduced by the scanner so that
+        .. we can know the point a jump was made.
 
         _come_from ::= COME_FROM
         _come_from ::=
@@ -827,66 +827,95 @@ class Parser(GenericASTBuilder):
             return 'expr'
         return GenericASTBuilder.resolve(self, list)
 
+
 nop = lambda self, args: None
-p = Parser()
 
 
-def parse(tokens, customize):
-    #
-    #  Special handling for opcodes that take a variable number
-    #  of arguments -- we add a new rule for each:
-    #
-    #    expr ::= {expr}^n BUILD_LIST_n
-    #    expr ::= {expr}^n BUILD_TUPLE_n
-    #    unpack_list ::= UNPACK_LIST {expr}^n
-    #    unpack ::= UNPACK_TUPLE {expr}^n
-    #    unpack ::= UNPACK_SEQEUENE {expr}^n
-    #    mkfunc ::= {expr}^n LOAD_CONST MAKE_FUNCTION_n
-    #    mkfunc ::= {expr}^n load_closure LOAD_CONST MAKE_FUNCTION_n
-    #    expr ::= expr {expr}^n CALL_FUNCTION_n
-    #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
-    #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
-    #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
-    #
-    global p
-    for k, v in list(customize.items()):
-        # avoid adding the same rule twice to this parser
-        if k in p.customized:
-            continue
-        p.customized[k] = None
-        op = k[:k.rfind('_')]
-        if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
-            rule = 'build_list ::= ' + 'expr '*v + k
-        elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
-            rule = 'unpack ::= ' + k + ' designator'*v
-        elif op == 'UNPACK_LIST':
-            rule = 'unpack_list ::= ' + k + ' designator'*v
-        elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
-            # no need to add a rule
-            continue
-        elif op == 'MAKE_FUNCTION':
-            p.addRule('mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k), nop)
-            rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
-        elif op == 'MAKE_CLOSURE':
-            p.addRule('mklambda ::= %s load_closure LOAD_LAMBDA %s' %
-                      ('expr '*v, k), nop)
-            p.addRule('genexpr ::= %s load_closure LOAD_GENEXPR %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            p.addRule('setcomp ::= %s load_closure LOAD_SETCOMP %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            p.addRule('dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
-        elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
-                    'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
-            na = (v & 0xff)           # positional parameters
-            nk = (v >> 8) & 0xff      # keyword parameters
-            # number of apply equiv arguments:
-            nak = (len(op) - len('CALL_FUNCTION')) // 3
-            rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
-                   + 'expr ' * nak + k
-        else:
-            raise Exception('unknown customize token %s' % k)
-        p.addRule(rule, nop)
-    ast = p.parse(tokens)
-    return ast
+class Parser(object):
+    def __init__(self):
+        self.parser = _InternalParser()
+
+    @property
+    def customized(self):
+        return self.parser.customized
+
+    def add_rule(self, rule, operation):
+        self.parser.addRule(rule, operation)
+
+    def parse(self, tokens, customize):
+        #
+        #  Special handling for opcodes that take a variable number
+        #  of arguments -- we add a new rule for each:
+        #
+        #    expr ::= {expr}^n BUILD_LIST_n
+        #    expr ::= {expr}^n BUILD_TUPLE_n
+        #    unpack_list ::= UNPACK_LIST {expr}^n
+        #    unpack ::= UNPACK_TUPLE {expr}^n
+        #    unpack ::= UNPACK_SEQEUENE {expr}^n
+        #    mkfunc ::= {expr}^n LOAD_CONST MAKE_FUNCTION_n
+        #    mkfunc ::= {expr}^n load_closure LOAD_CONST MAKE_FUNCTION_n
+        #    expr ::= expr {expr}^n CALL_FUNCTION_n
+        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
+        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
+        #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
+        #
+        for k, v in list(customize.items()):
+            # avoid adding the same rule twice to this parser
+            if k in self.customized:
+                continue
+            self.customized[k] = None
+            op = k[:k.rfind('_')]
+            if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
+                rule = 'build_list ::= ' + 'expr '*v + k
+            elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
+                rule = 'unpack ::= ' + k + ' designator'*v
+            elif op == 'UNPACK_LIST':
+                rule = 'unpack_list ::= ' + k + ' designator'*v
+            elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
+                # no need to add a rule
+                continue
+            elif op == 'MAKE_FUNCTION':
+                self.add_rule(
+                    'mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k),
+                    nop
+                )
+                rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
+            elif op == 'MAKE_CLOSURE':
+                self.add_rule(
+                    'mklambda ::= %s load_closure LOAD_LAMBDA %s' % ('expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'genexpr ::= %s load_closure LOAD_GENEXPR %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'setcomp ::= %s load_closure LOAD_SETCOMP %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
+            elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
+                        'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
+                na = (v & 0xff)           # positional parameters
+                nk = (v >> 8) & 0xff      # keyword parameters
+                # number of apply equiv arguments:
+                nak = (len(op) - len('CALL_FUNCTION')) // 3
+                rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
+                       + 'expr ' * nak + k
+            else:
+                raise Exception('unknown customize token %s' % k)
+            self.add_rule(rule, nop)
+        ast = self.parser.parse(tokens)
+        return ast
+
+
+def parse(tokens, customized):
+    p = Parser()
+    return p.parse(tokens, customized)
