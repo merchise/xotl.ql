@@ -44,7 +44,8 @@ class AST(UserList):
         elif isinstance(o, string_types):
             return self.type == o
         else:
-            raise TypeError('Cannot compare AST to %s' % type(o).__name__)
+            from xoutil.eight import typeof
+            raise TypeError('Cannot compare AST to %s' % typeof(o).__name__)
 
     def __hash__(self):
         return hash(self.type)
