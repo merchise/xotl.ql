@@ -21,6 +21,11 @@ from xoutil import Undefined
 from xoutil.eight.meta import metaclass
 
 
+class Type(object):
+    'An algebra as a type.'
+    pass
+
+
 class EmptyClass(type):
     def __instancecheck__(cls, instance):
         if instance is Undefined:
@@ -30,7 +35,7 @@ class EmptyClass(type):
             return is_collection(instance) and not bool(instance)
 
 
-class Empty(metaclass(EmptyClass)):
+class Empty(metaclass(EmptyClass), Type):
     '''Any empty collection.
 
     As a special case Undefined is considered an empty collection.
@@ -47,9 +52,8 @@ class Empty(metaclass(EmptyClass)):
     __nonzero__ = __bool__
 
 
-class Cons(object):
+class Cons(Type):
     r'''The collection constructor "x : xs".
-
 
     '''
     @staticmethod
@@ -128,20 +132,11 @@ class Cons(object):
 #
 #   -- [QLFunc]_
 
-class Foldr(object):
-    '''The structural recursion operator.
-
-    `foldr` is defined by::
-
-       foldr                ::  (a -> B -> B) -> B -> T a -> B
-       foldr + z []         =   z
-       foldr + z (x : xs)   =   x + (foldr + z xs)
-
-    Where `[]` is the empty collection that makes sense for the type `T`, and
-    the `+` is any operator that make sense for the items in the collections
-    (type `a` in the formulae.)  The `x : xs` is the `Cons`:class:.
-
-    '''
+class Foldr(Type):
+    '''The structural recursion operator.'''
+    # foldr                ::  (a -> B -> B) -> B -> T a -> B
+    # foldr + z []         =   z
+    # foldr + z (x : xs)   =   x + (foldr + z xs)
 
     def __init__(self, *args):
         operator, arg, collection, args = self._parse_args(args)
@@ -204,7 +199,7 @@ class Foldr(object):
         return (operator, z, l, args)
 
 
-class Union(object):
+class Union(Type):
     # Unions are resolved as soon possible by Cons.
     def __new__(cls, xs=Undefined, ys=Undefined):
         res = super(Union, cls).__new__(cls)
