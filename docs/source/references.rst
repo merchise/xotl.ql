@@ -1,6 +1,6 @@
-==========
-References
-==========
+============
+ References
+============
 
 .. [UnQL] Peter Buneman, Susan Davidson, Gerd Hillebrand, and Dan Suciu.  "A
    Query Language and Optimization Techniques for Unstructured Data".
@@ -29,3 +29,7 @@ References
    for Developing Recursive Programs".  Journal of the Assooat~on for
    Computing Machinery, Vol 24, No 1, January 1977, pp. 44-67.  Available at:
    http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.19.4684
+
+.. [QLFunc] Torsten Grust and Marc H. Scholl.  "How to comprehend queries
+   functionally". University of Konstanz, Department of Computer and
+   Information Science, 78457 Konstanz, Germany.
