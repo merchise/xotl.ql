@@ -4,18 +4,6 @@
  Monads Comprehension
 ======================
 
-.. math::
-   :nowrap:
-
-   \begin{eqnarray}
-      {\bf foldr}^\tau & :: & (\alpha \rightarrow \beta \rightarrow \beta)
-          \rightarrow \beta \rightarrow \tau \alpha \rightarrow \beta \\
-      {\bf foldr}^\tau (\oplus) z []^\tau & = & z \\
-      {\bf foldr}^\tau (\oplus)\ z\ (x :^\tau xs) & = & x \oplus
-         ({\bf foldr}^\tau (\oplus)\ z\ xs)
-   \end{eqnarray}
-
-
 
 Internal representation
 =======================
