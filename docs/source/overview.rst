@@ -7,7 +7,7 @@ Overview
 A running system often needs to retrieve objects from a single or several
 sources.  Those sources are often databases, but that is by no means a
 universal truth; for instance, in a distributed environments objects might
-reside in other types of software components.
+reside in other software components.
 
 A query language assists programmers in the task of retrieving those objects
 or, at least, get a handle to those objects (like a proxy to an object in a
@@ -17,28 +17,27 @@ The main goal for `xotl.ql` is to provide a *pythonic way to write* queries.
 In this regard, `xotl.ql` has a similar outlook that LINQ queries have in C#
 [#these]_.
 
-The query is just::
+A `query expression`:term: takes the form of a Python generator expression::
 
   >>> from xotl.ql import this
   >>> parents = (parent for parent in this if len(parent.children) > 2)
 
-As you can see queries are just normal generator expressions (usually over the
-:data:`~xotl.ql.core.this` object).  The previous query is readable as it
-stands: get all the parents that have more than 2 children.
+The previous query is readable as it stands: get all the parents that have
+more than 2 children.
 
 More complex queries are allowed, for instance::
 
   >>> parents = (parent
   ...            for parent in this
-  ...            if parent.children and all(child.age > 10
-  ...                                       for child in parent.children))
+  ...            if parent.children and all(child.age > 10 for child in parent.children))
 
 This would retrieve every "parent" whose children are all more than 10 years
 old (assuming `age` is measured in years).
 
-Up to this point, the only thing you have accomplish is to *write* a query.
-We haven't told how to actually run the query.  The next section deals with
-this matter.
+Notice, however, that those interpretations of the queries match only our
+intuitions about them, and `xotl.ql` does not enforce any particular meaning
+to the query.  `xotl.ql` is all about *writing* queries having this particular
+syntactical look.
 
 
 .. _role-of-query-translator:
@@ -59,16 +58,24 @@ located in `A`, should return both `B` and `C`.
 
 One might encode such a query in a program like the following::
 
-  >>> locations = (place for place in this if place.located_in(A))
+  >>> locations = (place for place in this if place in A)
 
 It's expected that such a query will look up in the all the containment tree
 derived form the `located-in` relation, to fetch all places which are inside
 `A` either directly or indirectly.
 
-In this model, just the use of ``located_in(A)`` would imply a recursive
-computation; and such knowledge comes only from the object/store model and not
-the query language by itself.  Other models (for instance the relational model)
-might not find more than directly related objects.
+In this model, just the use of ``in A`` would imply a recursive computation;
+and such knowledge comes only from the object/store model and not the query
+language by itself.  Other models (for instance the relational model) might
+not find more than directly related objects.
+
+..
+   A different approach would be to write the query as::
+
+     >>> locations = (found for place in this if place is A and found in place)
+
+   Though this construction would make no-sense in a Python only view of the
+   world, it could make sense for a query language (and it may actually work!)
 
 That's why in order to execute queries one *must* use a :term:`query
 translator` with enough knowledge of the object model and of the system
