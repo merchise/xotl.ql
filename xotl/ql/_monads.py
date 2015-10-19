@@ -31,8 +31,15 @@ class EmptyClass(type):
         if instance is Undefined:
             return True
         else:
-            from xoutil.types import is_collection
-            return is_collection(instance) and not bool(instance)
+            res = super(EmptyClass, cls).__instancecheck__(instance)
+            if not res:
+                from xoutil.types import is_iterable
+                return is_iterable(instance) and not bool(instance)
+            else:
+                return res
+
+    def __iter__(cls):
+        return []
 
 
 class Empty(metaclass(EmptyClass), Type):
@@ -46,6 +53,9 @@ class Empty(metaclass(EmptyClass), Type):
 
     def __unicode__(self):
         return '∅'.decode('utf-8')
+
+    def __iter__(self):
+        return iter([])
 
     def __bool__(self):
         return False
@@ -74,6 +84,7 @@ class Cons(Type):
             raise ValueError('Cannot extract the head of an empty collection.')
 
     def __init__(self, *args):
+        from xoutil.types import is_iterable
         Cons = type(self)
         x, xs = Undefined, Undefined
         if args:
@@ -82,9 +93,11 @@ class Cons(Type):
             xs, args = args[0], args[1:]
         assert not args
         self.x = x
-        if xs and not isinstance(xs, Cons):
+        if isinstance(xs, Cons):
+            self.xs = xs
+        elif is_iterable(xs) and xs:
             self.xs = Cons(*tuple(Cons._head(xs)))
-        elif xs is not Undefined and not xs:
+        elif is_iterable(xs) and not xs:
             self.xs = Empty()
         else:
             self.xs = xs
