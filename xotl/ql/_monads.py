@@ -31,12 +31,7 @@ class EmptyClass(type):
         if instance is Undefined:
             return True
         else:
-            res = super(EmptyClass, cls).__instancecheck__(instance)
-            if not res:
-                from xoutil.types import is_iterable
-                return is_iterable(instance) and not bool(instance)
-            else:
-                return res
+            return super(EmptyClass, cls).__instancecheck__(instance)
 
     def __iter__(cls):
         return []
@@ -95,9 +90,13 @@ class Cons(Type):
         self.x = x
         if isinstance(xs, Cons):
             self.xs = xs
-        elif is_iterable(xs) and xs:
-            self.xs = Cons(*tuple(Cons._head(xs)))
-        elif is_iterable(xs) and not xs:
+        elif is_iterable(xs) and not isinstance(xs, Empty):
+            xxs = tuple(Cons._head(xs))
+            if xxs:
+                self.xs = Cons(*xxs)
+            else:
+                self.xs = Empty()
+        elif is_iterable(xs) and isinstance(xs, Empty):
             self.xs = Empty()
         else:
             self.xs = xs
