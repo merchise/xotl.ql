@@ -18,7 +18,6 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 from xoutil import Undefined
-from xoutil.eight.meta import metaclass
 
 
 class Type(object):
@@ -26,23 +25,33 @@ class Type(object):
     pass
 
 
-class EmptyClass(type):
-    def __instancecheck__(cls, instance):
-        if instance is Undefined:
-            return True
-        else:
-            return super(EmptyClass, cls).__instancecheck__(instance)
-
-    def __iter__(cls):
-        return []
-
-
-class Empty(metaclass(EmptyClass), Type):
+class Empty(Type):
     '''Any empty collection.
 
     As a special case Undefined is considered an empty collection.
 
     '''
+    def __new__(cls):
+        '''Create the singleton instance of Empty.
+
+        The following are always True::
+
+          >>> Empty() is Empty()
+          True
+
+          >>> isinstance(Empty(), Empty)
+          True
+
+        '''
+        instance = getattr(cls, 'instance', None)
+        if instance is None:
+            res = super(Empty, cls).__new__(cls)
+            res.__init__()
+            cls.instance = res
+            return res
+        else:
+            return instance
+
     def __repr__(self):
         return 'Empty()'
 
@@ -79,7 +88,7 @@ class Cons(Type):
             raise ValueError('Cannot extract the head of an empty collection.')
 
     def __init__(self, *args):
-        from xoutil.types import is_iterable
+        from collections import Iterable
         Cons = type(self)
         x, xs = Undefined, Undefined
         if args:
@@ -90,13 +99,13 @@ class Cons(Type):
         self.x = x
         if isinstance(xs, Cons):
             self.xs = xs
-        elif is_iterable(xs) and not isinstance(xs, Empty):
+        elif isinstance(xs, Iterable) and not isinstance(xs, Empty):
             xxs = tuple(Cons._head(xs))
             if xxs:
                 self.xs = Cons(*xxs)
             else:
                 self.xs = Empty()
-        elif is_iterable(xs) and isinstance(xs, Empty):
+        elif isinstance(xs, Iterable) and isinstance(xs, Empty):
             self.xs = Empty()
         else:
             self.xs = xs
