@@ -12,6 +12,25 @@
 #
 # Created on 2015-10-15
 
+'''Monads comprehensions as a intermediate query language representation.
+
+As noted in [QLFunc]_ algebra operators are an "abstraction of the algorithms
+implemented by target query engines."  Therefore, the following implementation
+of such operators are not designed to provide an efficient representation of
+those algorithms and data structures.
+
+The purpose of this is module is two-fold:
+
+a) Provide an intermediate language for queries.
+
+b) Provide a basic (testable) implementation of the intermediate language.
+
+In this algebra the query ``(x for x in this if predicate(x))`` would be
+represented as::
+
+   Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
+
+'''
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -68,6 +87,36 @@ class Empty(Type):
 
 class Cons(Type):
     r'''The collection constructor "x : xs".
+
+    The basic usage is::
+
+       >>> Cons(1, [])
+       Cons(1, Empty())
+
+    That builds the collection with a single element, the `Empty()` being the
+    empty collection.
+
+    You may also let any its arguments Undefined and that will create a
+    partial::
+
+        >>> from xoutil import Undefined
+        >>> A1 = Cons(1, Undefined)
+
+        >>> A1
+        Cons(1)
+
+        >>> A1(Cons(2, []))
+        Cons(1, Cons(2, Empty()))
+
+    You may extract the head and tail for non-partials Cons::
+
+        >>> head, tail = A1([])
+
+        >>> head, tail
+        (1, Empty())
+
+        >>> head, tail = A1
+        Traceback
 
     '''
     @staticmethod

@@ -4,10 +4,11 @@
  Monads Comprehension
 ======================
 
+.. automodule:: xotl.ql._monads
+
+
 Internal representation
 =======================
-
-.. module:: xotl.ql._monads
 
 .. autoclass:: Empty()
 
@@ -15,11 +16,7 @@ Internal representation
 
    This is an *abstract* representation of the "|x:xs|" operation as referred
    in [QLFunc]_.  It's not meant to be efficient or to be used as true
-   collection for Python programs.  Furthermore, though it may seem like a
-   list implementations of bags and sets should also be possible.
-
-   It serves the purpose of expressing queries and it will form the basic
-   building block for the `query object`:term:.
+   collection for Python programs.
 
    The `xs` must be a *collection* or another `Cons` object.  If a collection
    is passed it will be converted to a `Cons` object.
@@ -31,7 +28,7 @@ Internal representation
 
    would be True for sets and bags but not for lists.
 
-   Instances support the extraction of head and tail we see in functional
+   Cons support the extraction of head and tail we see in functional
    languages::
 
      >>> head, tail = Cons(1, [2, 3])
@@ -119,6 +116,9 @@ Internal representation
 
    For the purposes of `xotl.ql` this class is only meant for description and
    not functionality.  So these questions are not directly addressed.
+
+
+.. autoclass:: Union(xs, ys)
 
 
 .. |+| replace:: `+`:math:
