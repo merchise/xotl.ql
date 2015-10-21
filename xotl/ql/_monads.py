@@ -188,6 +188,20 @@ class Cons(Type):
         else:
             raise TypeError('Cons as a partial function cannot be iterated')
 
+    def asiter(self):
+        assert self.xs is not Undefined and self.x is not Undefined
+        head, tail = self
+        yield head
+        while not isinstance(tail, Empty):
+            head, tail = tail
+            yield head
+
+    def aslist(self):
+        return list(self.asiter())
+
+    def asset(self):
+        return set(self.asiter())
+
     def __repr__(self):
         if self.xs is not Undefined:
             return 'Cons(%r, %r)' % (self.x, self.xs)
