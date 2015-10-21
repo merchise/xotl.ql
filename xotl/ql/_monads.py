@@ -164,6 +164,8 @@ class Cons(Type):
     __nonzero__ = __bool__
 
     def __call__(self, *args):
+        if not args:
+            return self
         Cons = type(self)
         x, xs = self.x, self.xs
         if x is not Undefined and xs is not Undefined:
@@ -226,19 +228,6 @@ class Foldr(Type):
             x, xs = collection
             return operator(x, Foldr(operator, arg, xs)())
 
-    def __iter__(self):
-        # This makes `Join(Cons(Cons(1, []), Undefined))` to fail.  But since
-        # Join requires a single argument we will have to make a Undefined a
-        # `state` and not a value.  So `instance(Cons(1, Undefined),
-        # Undefined)` be True and all checks about definiteness would have to
-        # change.
-        #
-        # Let's see if we need that.
-        #
-        # yield self
-        # yield Empty()
-        pass
-
     def _get_args(self, args):
         operator = self.operator
         arg = self.arg
@@ -269,16 +258,57 @@ class Foldr(Type):
         return (operator, z, l, args)
 
 
-class Union(Type):
-    # Unions are resolved as soon possible by Cons.
-    def __new__(cls, xs=Undefined, ys=Undefined):
-        res = super(Union, cls).__new__(cls)
-        res.__init__(xs, ys)
-        return res()
+class Operation(Type):
+    def __init__(self, operator, *partials):
+        self.operator = operator
+        self.partials = partials
 
+    def __call__(self, *args):
+        # if args:
+        #     last = args[-1]
+        args = self.partials + args
+        print('%r%r' % (self.operator, args))
+        return self.operator(*args)
+
+
+class Union(Type):
+    '''The Union operation.
+
+    Unions are defined over `Cons`:class: instances.  Unions instances are
+    callables that perform the union when called.
+
+    Creating a Union::
+
+      >>> whole = Union(Cons(1, []), Cons(2, []))
+      >>> whole
+      Union(Cons(1, Empty()), Cons(2, Empty()))
+
+    Calling the union instance performs the union::
+
+      >>> whole()
+      Cons(1, Cons(2, Empty()))
+
+    A Union may be also be a partial by leaving one of its arguments
+    Undefined::
+
+      >>> partial = Union(Undefined, Cons(1, []))
+
+    Calling partial unions will return the same object is no arguments are
+    passed, or a performed union.
+
+      >>> partial() is partial
+      True
+
+      >>> partial(Cons(2, []))
+      Cons(2, Cons(1, Empty()))
+
+    '''
     def __init__(self, xs=Undefined, ys=Undefined):
         self.xs = xs
         self.ys = ys
+
+    def __repr__(self):
+        return 'Union(%r, %r)' % (self.xs, self.ys)
 
     def __call__(self, *args):
         if self.xs is Undefined and args:
@@ -289,21 +319,20 @@ class Union(Type):
             ys, args = args[0], args[1:]
         else:
             ys = self.ys
-        assert not args
+        assert not args, 'Too many arguments'
         if xs is Undefined or ys is Undefined:
             if xs is self.xs and ys is self.ys:
                 return self  # stop recursion in __new__
             else:
                 return Union(xs, ys)
         elif isinstance(xs, Empty):
-            return ys
+            return ys() if isinstance(ys, Union) else ys
         else:
             x, xs = xs
-            return Cons(x, Union(xs, ys))
+            return Cons(x, Union(xs, ys)())
 
     def __iter__(self):
         raise TypeError('Partial union is not iterable')
-
 
 
 # Monadic contructors
@@ -323,6 +352,7 @@ class _Mapper(object):
 
 Map = lambda f: Foldr(_Mapper(f), Empty())
 Join = Foldr(Union, Empty())
+
 
 # Translation from comprehension syntax to monadic constructors
 #
