@@ -138,7 +138,6 @@ class Cons(Type):
 
     def __init__(self, *args):
         from collections import Iterable
-        Cons = type(self)
         x, xs = Undefined, Undefined
         if args:
             x, args = args[0], args[1:]
@@ -166,7 +165,6 @@ class Cons(Type):
     def __call__(self, *args):
         if not args:
             return self
-        Cons = type(self)
         x, xs = self.x, self.xs
         if x is not Undefined and xs is not Undefined:
             raise TypeError('Fully qualified Cons')
@@ -232,7 +230,6 @@ class Foldr(Type):
         self.collection = collection
 
     def __call__(self, *args):
-        Foldr = type(self)
         operator, arg, collection = self._get_args(args)
         if Undefined in (operator, arg, collection):
             return Foldr(operator, arg, collection)
