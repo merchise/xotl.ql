@@ -231,7 +231,7 @@ class Foldr(Type):
 
     def __call__(self, *args):
         operator, arg, collection = self._get_args(args)
-        if Undefined in (operator, arg, collection):
+        if any(a is Undefined for a in (operator, arg, collection)):
             return Foldr(operator, arg, collection)
         if isinstance(collection, Empty):
             return arg
