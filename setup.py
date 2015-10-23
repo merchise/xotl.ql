@@ -21,11 +21,28 @@ from setuptools import Command
 from setuptools.command.test import test as TestCommand
 from setuptools import setup, find_packages
 
+try:
+    execfile = execfile
+except NameError:
+    def execfile(filename):
+        'To run in Python 3'
+        import builtins
+        exec_ = getattr(builtins, 'exec')
+        with open(filename, "r") as f:
+            code = compile(f.read(), filename, 'exec')
+            return exec_(code, globals())
+
 # Import the version from the release module
 project_name = str('xotl.ql')
 _current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(_current_dir, 'xotl', 'ql'))
-from release import VERSION as version
+execfile(os.path.join(_current_dir, 'xotl', 'ql', 'release.py'))
+
+version = VERSION  # noqa
+
+if RELEASE_TAG != '':   # noqa
+    dev_classifier = 'Development Status :: 4 - Beta'
+else:
+    dev_classifier = 'Development Status :: 5 - Production/Stable'
 
 
 class PyTest(TestCommand):
@@ -64,8 +81,8 @@ setup(
     # Get more strings from
     # http://pypi.python.org/pypi?:action=list_classifiers
     classifiers=[
+        dev_classifier,
         "Programming Language :: Python",
-        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Topic :: Database",

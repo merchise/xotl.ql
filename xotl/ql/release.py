@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.release
-#----------------------------------------------------------------------
-# Copyright (c) 2012-2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2012-2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -19,23 +19,19 @@ from __future__ import (division as _py3_division,
 VERSION = '0.3.0'
 
 
-def dev_tag():
-    result = ''
-    import os
-    fn = os.path.abspath(os.path.join(__file__, '..', '..', '..', 'setup.cfg'))
-    if os.path.exists(fn):
-        try:
-            import configparser
-        except:
-            import ConfigParser as configparser
-        parser = configparser.SafeConfigParser()
-        parser.read([fn])
-        try:
-            res = parser.get(str('egg_info'), str('tag_build'))
-        except:
-            res = None
-        if res:
-            result = res
-    return result
+def dev_tag_installed():
+    import pkg_resources
+    try:
+        dist = pkg_resources.get_distribution('xotl')
+        full_version = dist.version
+        # FIX: Below line is not working anymore
+        base = dist.parsed_version.base_version
+        return full_version[len(base):]
+    except:
+        return None
 
-RELEASE_TAG = dev_tag()
+RELEASE_TAG = dev_tag_installed() or ''
+
+# I won't put the release tag in the version_info tuple.  Since PEP440 is on
+# the way.
+VERSION_INFO = tuple(int(x) for x in VERSION.split('.'))
