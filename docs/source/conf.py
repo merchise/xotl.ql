@@ -22,6 +22,14 @@ sys.path.insert(0, os.path.abspath('../../'))
 
 # -- General configuration -----------------------------------------------------
 
+rst_prolog = '''
+.. role:: query(samp)
+
+.. role:: mathvar(math)
+
+'''
+
+
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 
