@@ -237,6 +237,9 @@ class Foldr(Type):
             return arg
         else:
             x, xs = collection
+            # If `operator` actually "tracks" the application of a function on
+            # the too arguments we get the spine instead of the value.  See
+            # Operation.
             return operator(x, Foldr(operator, arg, xs)())
 
     def _get_args(self, args):
@@ -269,17 +272,33 @@ class Foldr(Type):
         return (operator, z, l, args)
 
 
-class Operation(Type):
+class Operator(Type):
+    '''Any operator.
+
+    Allows to represent the application of an operator deferring the
+    application of it.
+
+    Useful to represent applications of an operator over a spine::
+
+       >>> Mapper = Map(Operator(lambda x: x + 1))
+
+    '''
     def __init__(self, operator, *partials):
         self.operator = operator
         self.partials = partials
 
+    def __repr__(self):
+        return '<Operator(...)>'
+
     def __call__(self, *args):
-        # if args:
-        #     last = args[-1]
         args = self.partials + args
-        print('%r%r' % (self.operator, args))
-        return self.operator(*args)
+        return Operator(self.operator, *args)
+
+    def getvalue(self):
+        return self.operator(*tuple(
+            arg.getvalue() if isinstance(arg, Operator) else arg
+            for arg in self.partials
+        ))
 
 
 class Union(Type):
@@ -346,6 +365,43 @@ class Union(Type):
         raise TypeError('Partial union is not iterable')
 
 
+class Intersection(Type):
+    # Does not need to be a Type since we can cast Intersection as the monad
+    # comprehension::
+    #
+    #    [x for x in a for y in b if x == y]
+    #
+    # However we may find a use for this when translating.
+    #
+    def __init__(self, a=Undefined, b=Undefined):
+        self.a = a
+        self.b = b
+
+    def __call__(self, *args):
+        # ∩ :: S -> S -> S
+        # [] ∩ b = []
+        # a ∩ [] = []
+        # (x: xs) ∩ (x: ys) = (x : xs ∩ ys)
+        # (x: xs) ∩ (y: ys) = xs ∩ (y: ys)
+        a, b = self.a, self.b
+        if a is Undefined and args:
+            a, args = args[0], args[1:]
+        if b is Undefined and args:
+            b, args = args[0], args[1:]
+        assert not args, 'Too many arguments'
+        if a is Undefined or b in Undefined:
+            return self
+        elif isinstance(a, Empty) or isinstance(b, Empty):
+            return Empty()
+        else:
+            x, xs = a
+            y, ys = b
+            if x == y:
+                return Cons(x, Intersection(xs, ys)())
+            else:
+                return Intersection(xs, b)()
+
+
 # Monadic contructors
 Zero = Empty
 Unit = Cons(Undefined, Empty())
@@ -372,3 +428,11 @@ Join = Foldr(Union, Empty())
 # MC [e | p ]     ≝ if MC p then MC e else Zero()
 # MC [e | q, p]   ≝ join(MC [MC [e | p] | q])
 # MC e            ≝ e   # other cases
+
+class ConsType(object):
+    def __init__(self, x, xs):
+        self.x = x
+        self.xs = xs
+
+    def __call__(self, *args):
+        return Cons(self.x, self.xs)(*args)
