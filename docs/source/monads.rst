@@ -121,6 +121,6 @@ Internal representation
 .. autoclass:: Union(xs, ys)
 
 
-.. |+| replace:: `+`:math:
+.. |+| replace:: `\oplus`:math:
 .. |:| replace:: `:^\tau`:math:
 .. |x:xs| replace:: `x :^\tau xs`:math:
