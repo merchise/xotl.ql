@@ -37,11 +37,15 @@ rst_prolog = '''
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest',
-              'sphinx.ext.mathjax',
               'sphinx.ext.todo',
-              'sphinx.ext.intersphinx']
+              'sphinx.ext.mathjax',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.ifconfig',]
 
-mathjax_path = 'mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
+
+if '/home/manu' in __file__:
+    mathjax_path = 'mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -285,8 +289,11 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'py': ('http://docs.python.org/', None),
-                       'python': ('http://docs.python.org/', None)}
+intersphinx_mapping = {
+    'py': ('http://docs.python.org/', None),
+    # 'xoutil': ('http://xoutil.rtfd.org/en/latest/', None),
+    'python': ('http://docs.python.org/', None)
+}
 intersphinx_cache_limit = 60
 
 
