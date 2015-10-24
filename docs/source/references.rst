@@ -33,3 +33,27 @@
 .. [QLFunc] Torsten Grust and Marc H. Scholl.  "How to comprehend queries
    functionally". University of Konstanz, Department of Computer and
    Information Science, 78457 Konstanz, Germany.
+
+
+Notes
+=====
+
+.. _foldr-notation:
+
+foldr notation
+--------------
+
+.. [#foldr_notation] Notational differences for the same concept: whereas in
+   [QLFunc]_ we see `{\bf foldr}^\tau (\oplus)\, z\, []^\tau`:math: in [MCQL]_
+   we see `(|\, z; \oplus\, |)`:math:
+
+   We choose a notation that's easy to read in python code comments and
+   inlined documentation and not in the.  In this documents (specially the
+   parts extracted from source code) you'll see ``foldr z +`` and ``(z; +)``
+   instead.
+
+.. [#monoids]
+
+   Why does [MCQL]_ says `{\small ([], \uparrow)}`:math: is a `monoid`:term:
+   if `{\small \uparrow :: a \times [a] \rightarrow [a]}`:math: and `{\small x
+   \uparrow [] = [x] \neq x}`:math:?

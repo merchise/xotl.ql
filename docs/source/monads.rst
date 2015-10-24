@@ -7,6 +7,36 @@
 .. automodule:: xotl.ql._monads
 
 
+Algebra operator as abstractions
+================================
+
+To stress the idea of abstraction of algorithms notice that engines may
+proceed differently to obtain the result of |map f l|.
+
+If we can sensibly split `l`:math: into `l_1, l_2, ..., l_n`:math: then:
+
+  .. math::
+
+     {\bf map}_f l = {\bf map}_f (l_1 \oplus l_2 \oplus{} ... \oplus l_n) = \
+     {\bf map}_f {\bf join}([l_1, l_2, ..., l_n]) = \
+     {\bf join}([{\bf map}_f l_1, {\bf map}_f l_2, ..., {\bf map}_f l_n])
+
+
+In fact, many times `l`:mathvar: is actually stored in chunks; it may be
+stored distributed across several nodes or in a single node but split in
+several size-bounded buckets.
+
+Therefore, instead of getting all the pieces of `l`:mathvar: and then
+performing the map over the entire collection, we can perform the map over the
+pieces and then join them to get the result.  The engine can make any choice
+it thinks it's the best.
+
+.. |map f l| replace:: `{\bf map}_f l`:math:
+
+Refer to [MCQL]_ for more about catamorphisms and `catamorphism fusion`.  See
+note on `foldr-notation`:ref:.
+
+
 Internal representation
 =======================
 
