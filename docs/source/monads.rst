@@ -157,6 +157,97 @@ Internal representation
 .. autoclass:: Union(xs, ys)
 
 
+Sorting
+-------
+
+Sorting is only sensibly defined over lists.  Our `Cons`:class: constructor
+can be regarded as a list constructor.  The problem of sorting a list can be
+defined with `Foldr`:class: as well.
+
+We simply need to define the |x:<xs| operator that inserts `x` into `xs` in
+the "right" position.
+
+|x:<xs| is easily defined as:
+
+.. math::
+   :nowrap:
+
+   \begin{eqnarray}
+      :^\tau_< \quad & :: & \alpha \rightarrow \tau\alpha \rightarrow \tau\alpha \\
+      \\
+      x :^\tau_< [] & = & x :^\tau [] \\
+      x :^\tau_< (y :^\tau_< ys)  & = & {\bf if}\, x < y\,\,
+                                        {\bf then}\, x :^\tau (y :^\tau_< ys)\,\,
+                                        {\bf else}\, y :^\tau (x :^\tau_< ys)
+   \end{eqnarray}
+
+Now sorting can be achieved by:
+
+.. math::
+
+   {\bf sort}^\tau_< = {\bf foldr} :^\tau_< []
+
+
+Defining |:>| is just as easy, and then `{\bf sort}^\tau_>`:math: can be
+defined as well.
+
+Sorting is only well defined if `<`:math: (or `>`:math:) are also properly
+defined.
+
+Yet, sorting can be expensive and engines are allowed to take shortcuts.  For
+instance, Google's MapReduce [MAPRED]_ always sort the result of a map by
+`keys` (all values in Google's MapReduce are a pair of ``key, value``.)
+
+Nevertheless, it can be useful to include sorting in our algebraic definition
+so that ordering instruction can be explicitly represented.
+
+Notice, however, Python generator expressions don't directly support
+expressing ordering.  Other query languages like SQL do support them.
+
+
+.. autoclass:: SortedCons(order)
+
+   `SortedCons`:class: won't sort a list.  It will simply "push" its first
+   argument until it matches the `order` function::
+
+      >>> SortedCons('<')(49, Cons(30, Cons(50, Cons(10, [-1]))))
+      Cons(30, Cons(49, Cons(50, Cons(10, Cons(-1, Empty())))))
+
+   Using `Foldr` we obtain a sort function::
+
+     >>> Foldr(SortedCons('<'), Empty())(Cons(30, Cons(49, Cons(50, Cons(-1, Empty())))))
+     Cons(-1, Cons(30, Cons(49, Cons(50, Empty()))))
+
+     >>> Foldr(SortedCons('>'), Empty())(Cons(30, Cons(49, Cons(50, Cons(-1, Empty())))))
+     Cons(50, Cons(49, Cons(30, Cons(-1, Empty()))))
+
+
+
+
 .. |+| replace:: `\oplus`:math:
 .. |:| replace:: `:^\tau`:math:
 .. |x:xs| replace:: `x :^\tau xs`:math:
+
+.. |x:<xs| replace:: `x :^{\tau}_{\small <} xs`:math:
+.. |:<| replace:: `:^{\tau}_{\small <}`:math:
+.. |:>| replace:: `:^\tau_>`:math:
+
+
+
+Memento for mathematical terms
+==============================
+
+.. glossary::
+
+   monoid
+
+      An algebraic structure with an *associative* operator `++` having a
+      distinguished element *zero* (`0`) as left and right identity::
+
+        0 ++ x = x
+        x ++ 0 = x
+
+      https://en.wikipedia.org/wiki/Monoid
+
+      I don't know why in [MCQL]_ they claim `([], :)` is a monoid.
+      Presentation of a monoid.

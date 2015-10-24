@@ -34,6 +34,10 @@
    functionally". University of Konstanz, Department of Computer and
    Information Science, 78457 Konstanz, Germany.
 
+.. [MAPRED] Dean, Jeffrey and Ghemawat, Sanjay.  "MapReduce: Simplified Data
+            Processing on Large Clusters".  Google Inc.  Available at ...
+
+
 
 Notes
 =====

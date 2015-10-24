@@ -420,6 +420,64 @@ class _Mapper(object):
 Map = lambda f: Foldr(_Mapper(f), Empty())
 Join = Foldr(Union, Empty())
 
+from operator import le, lt, gt, ge
+
+_orders = {
+    '<': lt,
+    '<=': le,
+    '>': gt,
+    '>=': ge,
+}
+del le, lt, gt, ge
+
+
+class SortedCons(Type):
+    '''The sorted insertion operation.
+
+    :param order: The ordering function.  It may be one of the strings '<',
+           '<=', '>', '>=' or any callable that accepts two arguments `x`, `y`
+           and returns True if `x` is in the right order with regards to `y`.
+
+           For instance, `operator.lt`:func: is a valid argument -- in fact,
+           '<' is just an alias for it.
+
+    '''
+    def __init__(self, order, x=Undefined, xs=Undefined):
+        if not callable(order):
+            self.order = _orders[order]
+        else:
+            self.order = order
+        self.x = x
+        self.xs = xs
+
+    def __iter__(self):
+        def _iter():
+            yield self.x
+            yield self.xs
+        if self.x is not Undefined:
+            return _iter()
+        else:
+            raise TypeError('SortedCons as a partial function cannot be iterated')
+
+    def __call__(self, *args):
+        x, xs = self.x, self.xs
+        if x is Undefined and args:
+            x, args = args[0], args[1:]
+        if xs is Undefined and args:
+            xs, args = args[0], args[1:]
+        assert not args
+        if x is Undefined or xs is Undefined:
+            return SortedCons(self.order, x, xs)
+        elif isinstance(xs, Empty):
+            return Cons(x, [])
+        else:
+            y, ys = xs
+            if self.order(x, y):
+                return Cons(x, Cons(y, ys)())
+            else:
+                return Cons(y, SortedCons(self.order, x, ys)())
+
+
 
 # Translation from comprehension syntax to monadic constructors
 #
