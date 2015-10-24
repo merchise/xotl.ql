@@ -130,14 +130,20 @@ Internal representation
       \end{eqnarray}
 
 
-   The `foldr` operation is a generalization of the `reduce` function.  It
-   operates as illustrated below::
+   The `foldr` operation is also known as the `reduce` function.  In fact
+   ``Foldr(func, initial, coll)()`` returns the same result as
+   ``reduce(func, coll.asiter(), initial)``::
 
-                       +
-                      / \
-                     x1  +
-                        / \
-                      x2   z
+       >>> import operator
+       >>> Foldr(operator.add, 0, Cons(1, [2]))()
+       3
+
+       >>> reduce(operator.add, Cons(1, [2]).asiter(), 0)
+       3
+
+       # Want to pass a `Cons` to `reduce`? Use `Foldr`:
+       >>> reduce(Foldr(operator.add, 10), Cons(1, [2]))
+       3
 
    As noted in [QLFunc]_ the `Cons`:class: operator (|:|) needs to be further
    specified for *set* and *bags*.  Also the "|+|" infix operator needs to be
