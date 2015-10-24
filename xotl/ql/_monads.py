@@ -483,8 +483,8 @@ class SortedCons(Type):
 #
 # MC [e | ]       ≝ Unit(MC e)
 # MC [e | x <- q] ≝ map (λx. MC e) (MC q)
-# MC [e | p ]     ≝ if MC p then MC e else Zero()
-# MC [e | q, p]   ≝ join(MC [MC [e | p] | q])
+# MC [e | p ]     ≝ if MC p then (MC [e| ]) else Zero()
+# MC [e | q, p]   ≝ join(MC [MC [e| p]| q])
 # MC e            ≝ e   # other cases
 
 class ConsType(object):
