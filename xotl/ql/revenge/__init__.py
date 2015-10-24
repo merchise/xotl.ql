@@ -6,8 +6,9 @@
 # All rights reserved.
 #
 
-# This is fork of the uncompyle2 package.  It's being modified to better suite
-# our coding standards and aim.  The original copyright notice is kept below.
+# This is a fork of the uncompyle2 package.  It's being modified to better
+# suite our coding standards and aim.  The original copyright notice is kept
+# below.
 #
 # The name 'revenge' stands for "REVerse ENGineering using an Earley parser"
 # ;)
@@ -53,8 +54,8 @@ def uncompyle(co, version=None):
     """Disassemble a given code block `co`.
 
     Return the `AST <xotl.ql.revenge.parsers.AST>`:class: (this is actually a
-    low-level AST that will call Concrete Syntax Tree, though that's not
-    actually True).
+    low-level AST that we will call Concrete Syntax Tree, though that's not
+    actually true).
 
     """
     import sys
@@ -77,5 +78,4 @@ def uncompyle(co, version=None):
             # todo: if empty, add 'pass'
     except (IndexError, TypeError):
         pass
-
     return ast

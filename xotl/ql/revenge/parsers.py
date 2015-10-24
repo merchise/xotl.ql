@@ -167,7 +167,8 @@ class _InternalParser(GenericASTBuilder):
     def p_setcomp(self, args):
         '''Set comprehensions in Python 2.7.
 
-        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER
+                    CALL_FUNCTION_1
 
         '''
 
