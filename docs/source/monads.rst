@@ -165,7 +165,7 @@ can be regarded as a list constructor.  The problem of sorting a list can be
 defined with `Foldr`:class: as well.
 
 We simply need to define the |x:<xs| operator that inserts `x` into `xs` in
-the "right" position.
+the "right" position assuming `xs` is already sorted.
 
 |x:<xs| is easily defined as:
 
@@ -177,15 +177,25 @@ the "right" position.
       \\
       x :^\tau_< [] & = & x :^\tau [] \\
       x :^\tau_< (y :^\tau_< ys)  & = & {\bf if}\, x < y\,\,
-                                        {\bf then}\, x :^\tau (y :^\tau_< ys)\,\,
+                                        {\bf then}\, x :^\tau (y :^\tau ys)\,\,
                                         {\bf else}\, y :^\tau (x :^\tau_< ys)
    \end{eqnarray}
+
+.. equations above are like:
+
+   `:<`                  :: a -> [a] -> [a]
+
+   x `:<` []             =  x : []
+   x `:<` (y `:<` ys)    =  if x < y then x : (y : ys) else y : (x `:<` ys)
+
 
 Now sorting can be achieved by:
 
 .. math::
 
    {\bf sort}^\tau_< = {\bf foldr} :^\tau_< []
+
+.. sort = foldr `:<` []
 
 
 Defining |:>| is just as easy, and then `{\bf sort}^\tau_>`:math: can be
@@ -220,8 +230,6 @@ expressing ordering.  Other query languages like SQL do support them.
 
      >>> Foldr(SortedCons('>'), Empty())(Cons(30, Cons(49, Cons(50, Cons(-1, Empty())))))
      Cons(50, Cons(49, Cons(30, Cons(-1, Empty()))))
-
-
 
 
 .. |+| replace:: `\oplus`:math:
