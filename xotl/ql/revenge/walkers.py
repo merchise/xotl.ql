@@ -73,7 +73,10 @@ minint = -sys.maxsize-1
 #
 #   isinstance(node, ifsentence)
 
-from xoutil.objects import metaclass
+try:
+    from xoutil.eight.meta import metaclass
+except ImportError:
+    from xoutil.objects import metaclass
 
 
 class SentenceSyntaxType(type):
