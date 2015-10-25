@@ -7,26 +7,29 @@ decompyle is a Python byte-code decompiler
 See http://www.crazy-compilers.com/decompyle/ for
 for further information
 """
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        absolute_import as _py3_abs_import)
 
-raise "This program can't be run"
+assert False, "This program can't be run"
 
 a = 1
 b = 2
-a += b; print a  # a = a+b = 3
-a -= b; print a  # a = a-b = 1
-a *= b; print a  # a = a*b = 2
-a -= a; print a  # a = a-a = 0
-a += 7*3; print a  # == 21
+a += b; print(a)  # a = a+b = 3
+a -= b; print(a)  # a = a-b = 1
+a *= b; print(a)  # a = a*b = 2
+a -= a; print(a)  # a = a-a = 0
+a += 7*3; print(a)  # == 21
 
 l= [1,2,3]
-l[1] *= 3;    print l[1]; # 6
+l[1] *= 3;    print((l[1])); # 6
 l[1][2][3] = 7
 l[1][2][3] *= 3;
-l[:] += [9];  print l
-l[:2] += [9];  print l
-l[1:] += [9];  print l
-l[1:4] += [9];  print l
-l += [42,43]; print l
+l[:] += [9];  print(l)
+l[:2] += [9];  print(l)
+l[1:] += [9];  print(l)
+l[1:4] += [9];  print(l)
+l += [42,43]; print(l)
 
 a.value = 1
 a.value += 1;
@@ -52,4 +55,4 @@ def f():
 l[i][j][k] = 1
 i = 1
 l[f()][j][k] += 1
-print i, l
+print((i, l))

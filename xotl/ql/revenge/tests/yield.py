@@ -1,4 +1,7 @@
-from __future__ import generators
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        absolute_import as _py3_abs_import)
+
 
 def inorder(t):
     if t:
@@ -13,10 +16,10 @@ def generate_ints(n):
         yield i*2
 
 for i in generate_ints(5):
-    print i,
-print
+    print(i, end=' ')
+print()
 gen = generate_ints(3)
-print gen.next(),
-print gen.next(),
-print gen.next(),
-print gen.next()
+print(next(gen), end=' ')
+print(next(gen), end=' ')
+print(next(gen), end=' ')
+print(next(gen))

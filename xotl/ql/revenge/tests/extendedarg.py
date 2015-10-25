@@ -5,10 +5,13 @@
 # decompyle is a Python byte-code decompiler
 # See http://www.crazy-compilers.com/decompyle/ for
 # for further information
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        absolute_import as _py3_abs_import)
 
 for i in range(1<<15+1):
-    print 'a%d = %d' % (i,i)
-    
+    print('a%d = %d' % (i,i))
+
 a0 = 0
 a1 = 1
 a2 = 2

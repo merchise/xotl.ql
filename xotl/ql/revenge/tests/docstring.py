@@ -6,6 +6,10 @@
 # See http://www.crazy-compilers.com/decompyle/ for
 # for further information
 
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        absolute_import as _py3_abs_import)
+
 '''
 This is a doc string
 '''
@@ -38,4 +42,4 @@ def Y11():
 		def Y33():
 			pass
 
-print __doc__
+print(__doc__)

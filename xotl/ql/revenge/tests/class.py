@@ -7,34 +7,37 @@ decompyle is a Python byte-code decompiler
 See http://www.crazy-compilers.com/decompyle/ for
 for further information
 """
+from __future__ import (division as _py3_division,
+                        print_function as _py3_print,
+                        absolute_import as _py3_abs_import)
 
 class A:
 
     class A1:
         def __init__(self):
-            print 'A1.__init__'
+            print('A1.__init__')
 
         def foo(self):
-            print 'A1.foo'
+            print('A1.foo')
 
     def __init__(self):
-        print 'A.__init__'
-        
+        print('A.__init__')
+
     def foo(self):
-        print 'A.foo'
+        print('A.foo')
 
 
 class B:
     def __init__(self):
-        print 'B.__init__'
+        print('B.__init__')
 
     def bar(self):
-        print 'B.bar'
+        print('B.bar')
 
 
 class C(A,B):
     def foobar(self):
-        print 'C.foobar'
+        print('C.foobar')
 
 
 c = C()

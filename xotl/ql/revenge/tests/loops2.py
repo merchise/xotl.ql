@@ -13,8 +13,8 @@ for further information
 
 for term in args:
     try:
-        print
+        print()
         continue
-        print
+        print()
     except:
         pass
