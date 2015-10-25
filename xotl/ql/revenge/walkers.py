@@ -584,9 +584,11 @@ def find_none(node):
 class Walker(GenericASTTraversal, object):
     stacked_params = ('f', 'indent', 'isLambda', '_globals')
 
-    def __init__(self, out, scanner, showast=0):
+    def __init__(self, scanner, showast=0):
+        import io
         GenericASTTraversal.__init__(self, ast=None)
         self.scanner = scanner
+        out = io.BytesIO()
         params = {
             'f': out,
             'indent': '',

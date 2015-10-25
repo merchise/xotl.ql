@@ -65,7 +65,7 @@ def uncompyle(co, version=None):
     scanner = scanners.getscanner(version)
     tokens, customizations = scanner.disassemble(co)
     #  Build AST from disassembly.
-    walker = walkers.Walker(None, scanner)
+    walker = walkers.Walker(scanner)
     ast = walker.build_ast(tokens, customizations)
     del tokens  # save memory
     # convert leading '__doc__ = "..." into doc string
@@ -78,4 +78,4 @@ def uncompyle(co, version=None):
             # todo: if empty, add 'pass'
     except (IndexError, TypeError):
         pass
-    return ast
+    return ast, customizations, walker
