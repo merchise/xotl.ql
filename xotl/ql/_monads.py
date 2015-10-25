@@ -478,19 +478,19 @@ class SortedCons(Type):
                 return Cons(y, SortedCons(self.order, x, ys)())
 
 
+
 # Translation from comprehension syntax to monadic constructors
 #
-# MC [e | ]         =   Unit(MC e)
-# MC [e | x <- q]   =   map (λx. MC e) (MC q)                    [*]
-# MC [e | p ]       =   if MC p then (MC [e| ]) else Zero()
-# MC [e | q, p]     =   join(MC [MC [e| p]| q])
-# MC e              =   e   # other cases
+# MC [e | ]       ≝ Unit(MC e)
+# MC [e | x <- q] ≝ map (λx. MC e) (MC q)
+# MC [e | p ]     ≝ if MC p then (MC [e| ]) else Zero()
+# MC [e | q, p]   ≝ join(MC [MC [e| p]| q])
+# MC e            ≝ e   # other cases
 
-# * Since in Python you may assign several targets at once we extend this rule
-#   to match the following pattern::
-#
-#   MC [e | x1, x2, ..., xn <- q]     = map (λx1, x2, ..., xn. MC e)(MC q)
-#
+class ConsType(object):
+    def __init__(self, x, xs):
+        self.x = x
+        self.xs = xs
 
-# MC is a denotational semantics of the comprehension syntax in the sense it
-# assigns a meaning to every comprehension expression.
+    def __call__(self, *args):
+        return Cons(self.x, self.xs)(*args)
