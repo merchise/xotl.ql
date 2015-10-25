@@ -592,8 +592,8 @@ class Walker(GenericASTTraversal, object):
             'indent': '',
             }
         self.showast = showast
-        self.__params = params
-        self.__param_stack = []
+        self._params = params
+        self._param_stack = []
         self.ERROR = None
         self.prec = 100
         self.return_none = False
@@ -601,24 +601,24 @@ class Walker(GenericASTTraversal, object):
         self.currentclass = None
         self.pending_newlines = 0
 
-    f = property(lambda s: s.__params['f'],
-                 lambda s, x: s.__params.__setitem__('f', x),
-                 lambda s: s.__params.__delitem__('f'),
+    f = property(lambda s: s._params['f'],
+                 lambda s, x: s._params.__setitem__('f', x),
+                 lambda s: s._params.__delitem__('f'),
                  None)
 
-    indent = property(lambda s: s.__params['indent'],
-                      lambda s, x: s.__params.__setitem__('indent', x),
-                      lambda s: s.__params.__delitem__('indent'),
+    indent = property(lambda s: s._params['indent'],
+                      lambda s, x: s._params.__setitem__('indent', x),
+                      lambda s: s._params.__delitem__('indent'),
                       None)
 
-    isLambda = property(lambda s: s.__params['isLambda'],
-                        lambda s, x: s.__params.__setitem__('isLambda', x),
-                        lambda s: s.__params.__delitem__('isLambda'),
+    isLambda = property(lambda s: s._params['isLambda'],
+                        lambda s, x: s._params.__setitem__('isLambda', x),
+                        lambda s: s._params.__delitem__('isLambda'),
                         None)
 
-    _globals = property(lambda s: s.__params['_globals'],
-                        lambda s, x: s.__params.__setitem__('_globals', x),
-                        lambda s: s.__params.__delitem__('_globals'),
+    _globals = property(lambda s: s._params['_globals'],
+                        lambda s, x: s._params.__setitem__('_globals', x),
+                        lambda s: s._params.__delitem__('_globals'),
                         None)
 
     def indentMore(self, indent=TAB):
@@ -628,21 +628,21 @@ class Walker(GenericASTTraversal, object):
         self.indent = self.indent[:-len(indent)]
 
     def traverse(self, node, indent=None, isLambda=0):
-        self.__param_stack.append(self.__params)
+        self._param_stack.append(self._params)
         if indent is None:
             indent = self.indent
         p = self.pending_newlines
         self.pending_newlines = 0
-        self.__params = {
+        self._params = {
             '_globals': {},
-            'f': io.StringIO(),
+            'f': io.BytesIO(),
             'indent': indent,
             'isLambda': isLambda,
             }
         self.preorder(node)
         self.f.write('\n'*self.pending_newlines)
         result = self.f.getvalue()
-        self.__params = self.__param_stack.pop()
+        self._params = self._param_stack.pop()
         self.pending_newlines = p
         return result
 
@@ -752,7 +752,7 @@ class Walker(GenericASTTraversal, object):
             self.print_(indent, trimmed[-1], quote)
 
     def n_return_stmt(self, node):
-        if self.__params['isLambda']:
+        if self._params['isLambda']:
             self.preorder(node[0])
             self.prune()
         else:
@@ -771,7 +771,7 @@ class Walker(GenericASTTraversal, object):
             self.prune()  # stop recursing
 
     def n_return_if_stmt(self, node):
-        if self.__params['isLambda']:
+        if self._params['isLambda']:
             self.preorder(node[0])
             self.prune()
         else:
@@ -1035,7 +1035,7 @@ class Walker(GenericASTTraversal, object):
         self.write(node[-2].attr.co_name)  # = code.co_name
         self.indentMore()
         self.make_function(node, isLambda=0)
-        if len(self.__param_stack) > 1:
+        if len(self._param_stack) > 1:
             self.write('\n\n')
         else:
             self.write('\n\n\n')
@@ -1130,7 +1130,7 @@ class Walker(GenericASTTraversal, object):
         self.indentLess()
 
         self.currentclass = cclass
-        if len(self.__param_stack) > 1:
+        if len(self._param_stack) > 1:
             self.write('\n\n')
         else:
             self.write('\n\n\n')
