@@ -50,6 +50,44 @@ import types
 from . import scanners, walkers
 
 
+class Uncompyled(object):   # TODO:  Find better name
+    def __init__(self, obj, version=None):
+        import io
+        if not version:
+            import sys
+            version = sys.version.split(' ')[0]
+        code = self._extract_code(obj)
+        scanner = scanners.getscanner(version)
+        self.walker = walker = walkers.Walker(scanner)
+        tokens, customizations = scanner.disassemble(code)
+        self.customizations = customizations
+        ast = walker.build_ast(tokens, customizations)
+        # Go down in the AST until the root has more than one children.
+        while ast and len(ast) == 1:
+            ast = ast[0]
+        self.ast = ast
+
+    @property
+    def expression(self):
+        import ipdb; ipdb.set_trace()
+
+        self.walker.traverse(self.ast)
+        pass
+
+    @staticmethod
+    def _extract_code(obj):
+        import types
+        if isinstance(obj, types.CodeType):
+            return obj
+        elif isinstance(obj, types.GeneratorType):
+            return obj.gi_code
+        elif isinstance(obj, types.FunctionType):
+            from xoutil.objects import get_first_of
+            return get_first_of(obj, 'func_code', '__code__')
+        else:
+            raise TypeError('Invalid code object')
+
+
 def uncompyle(co, version=None):
     """Disassemble a given code block `co`.
 
