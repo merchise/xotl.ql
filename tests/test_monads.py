@@ -19,7 +19,7 @@ from __future__ import (division as _py3_division,
 
 
 from xoutil import Undefined
-from xotl.ql._monads import Empty, Join, Map, Unit, Cons
+from xotl.ql.translation._monads import Empty, Join, Map, Unit, Cons
 
 
 def test_empty():
