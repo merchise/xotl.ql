@@ -18,7 +18,7 @@
 #  All table-driven.  Step 1 determines a table (T) and a path to a
 #  table key (K) from the node type (N) (other nodes are shown as O):
 #
-#         N                  N               N&K
+#         N                  N               N=K
 #     / | ... \          / | ... \        / | ... \
 #    O  O      O        O  O      K      O  O      O
 #              |
@@ -252,11 +252,13 @@ TABLE_R = {
     'DELETE_SLICE+3':   ('%|del %c[%c:%c]\n', 0, 1, 2),
     'DELETE_ATTR':      ('%|del %c.%[-1]{pattr}\n', 0),
 }
+
 TABLE_R0 = {
     #    'BUILD_LIST':      ('[%C]',      (0,-1,', ') ),
     #    'BUILD_TUPLE':     ('(%C)',      (0,-1,', ') ),
     #    'CALL_FUNCTION':   ('%c(%C)', 0, (1,-1,', ') ),
 }
+
 TABLE_DIRECT = {
     'BINARY_ADD': ('+',),
     'BINARY_SUBTRACT': ('-',),
@@ -458,7 +460,7 @@ MAP_R = (TABLE_R, -1)
 
 MAP = {
     'stmt':             MAP_R,
-    'call_function':            MAP_R,
+    'call_function':    MAP_R,
     'del_stmt':         MAP_R,
     'designator':       MAP_R,
     'exprlist':         MAP_R0,
@@ -1341,7 +1343,7 @@ class Walker(GenericASTTraversal, object):
         table = mapping[0]
         key = node
         for i in mapping[1:]:
-            key = key[i]
+            key = key[i]   # key = node[x1][x2]...[xN]
         if key in table:
             self.engine(table[key], node)
             self.prune()
