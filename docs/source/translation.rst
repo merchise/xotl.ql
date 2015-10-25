@@ -4,7 +4,7 @@
 Translating query objects
 =========================
 
-Translation is the process that transforms a :term:`query` into a form
+Translation is the process that transforms a :term:`query object` into a form
 feasible for execution in a :term:`data store <storage>` and/or :term:`object
 model`.  The result of translating a query is a :term:`query execution plan`.
 
@@ -15,7 +15,7 @@ Nevertheless, the module :mod:`xotl.ql.translation.py` provides an
 implementation of *naive* translator that matches the Python object model and
 fetches objects from the current process memory.
 
-.. note:: This section is only mostly relevant for translation authors only.
+.. note:: This section is mostly relevant for translation authors only.
 
    It contains details that are not important for application writers.
    However, application writers might profit from these notes in order to
@@ -66,7 +66,8 @@ We feel the following information is *required* in order for a translator
 documentation be complete:
 
 - A list of the supported expression operations.  For instance, a translator
-  might reject operations involving `max`:func: or `min`:func:.
+  might reject operations involving `max`:func: or `min`:func: or allow them
+  only in some cases.
 
 - A list of additionally supported operations, and their related
   documentation.  Package that implements translators may provide
@@ -75,6 +76,3 @@ documentation be complete:
 
 - Documentation of functions, classes applications writers may use to access
   the translator functionality directly if they have to.
-
-- Additional keyword arguments you may pass to their implementation of
-  :meth:`~xotl.ql.interfaces.QueryExecutionPlan.__call__`.

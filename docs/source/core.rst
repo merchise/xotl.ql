@@ -4,9 +4,6 @@
 The query language and the `this`:obj: object
 =============================================
 
-The basic query language uses generator expressions to express both the SELECT
-part and FILTER part of a query.
-
 In a :term:`query expression` (generator expression) the
 :data:`xotl.ql.core.this` objects stand for the entire universe of objects
 *unless otherwise restricted by filter expressions*.  For instance::
@@ -42,14 +39,14 @@ non-null ``children`` children.
    their documentation.
 
 
-Queries are allowed to use `~xotl.ql.corethis`:obj: as much as they need to.
+Queries are allowed to use `~xotl.ql.core.this`:obj: as much as they need to.
 Nevertheless each apparition of ``this`` in a query is considered totally
 independent of the others::
 
    pairs = ((boy, toy)
             for boy in this
 	    for toy in this
-	    if isinstance(husband, Person)
+	    if isinstance(boy, Person)
 	    if boy.likes(toy))
 
 In the previous query neither `boy` nor `toy` are automatically related by
@@ -77,15 +74,15 @@ To set limits and offsets you may pass the `partition` keyword argument a
 `slice` object.  Every possible combination in python itself is possible here
 as well.
 
-
 .. _ref-translators-limit-expectations:
 
 Compliant :term:`query translators` are required to:
 
 - Raise a `TypeError` if they don't support `partition` and one is provided.
 
-- Raise a `TypeError` if they don't support any of the `partition's` components
-  that is not None (e.g. a translator may not support a step bigger than 1)
+- Raise a `TypeError` if they don't support any of the `partition's`
+  components that is not None (e.g. a translator may not support a step bigger
+  than 1)
 
 - Document those expectations.
 
@@ -105,11 +102,12 @@ Translators may, for instance, restrict the use of negative indexes in
 Expressing order instructions
 -----------------------------
 
-   *As with many of the API elements on xotl.ql, the API of the order is still
+.. warning:: API in flux
+
+   As with many of the API elements on xotl.ql, the API of the order is still
    in flux and may change as we improve on our work.  However, this part of
    the API is probably the one that will change the most due that is the less
-   debated to the date.*
-
+   debated to the date.
 
 To instruct a capable query translator to order the result you may pass the
 `ordering` keyword argument.
@@ -155,8 +153,11 @@ For instance a query may ask for ordering based on the result of the ratio
 between the maximum value of an attribute in a sub-collection and other
 attribute::
 
-     query = these((parent for parent in this),
-        ordering=lambda parent: +(max(child.age for child in parent.children)/parent.age))
+     query = these(
+         (parent for parent in this),
+         ordering=lambda parent: \
+             +(max(child.age for child in parent.children)/parent.age)
+     )
 
 But some translators might be unable to correctly translate this kind of
 ordering expression; maybe because the storage does not allow it or because
