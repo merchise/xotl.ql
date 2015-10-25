@@ -740,19 +740,26 @@ class GenericASTTraversal(object):
         if node is None:
             node = self.ast
         try:
-            name = 'n_' + self.typestring(node)
-            func = getattr(self, name, self.default)
-            func(node)
+            result = self.dispatch(node)
         except GenericASTTraversalPruningException:
             return
-
         for kid in node:
             self.preorder(kid)
+        self.dispatch_exit(node)
+        return result
 
-        name = name + '_exit'
-        if hasattr(self, name):
-            func = getattr(self, name)
-            func(node)
+    def dispatch(self, node, default=None):
+        if default is None:
+            default = self.default
+        name = 'n_' + self.typestring(node)
+        func = getattr(self, name, default)
+        return func(node)
+
+    def dispatch_exit(self, node, default=None):
+        name = 'n_' + self.typestring(node) + '_exit'
+        func = getattr(self, name, default)
+        if func:
+            return func(node)
 
     def default(self, node):
         pass
