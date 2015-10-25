@@ -27,7 +27,7 @@ from __future__ import (division as _py3_division,
 import sys
 
 from xoutil import types
-from xoutil.decorator.meta import decorator
+
 
 # Python predicates
 prepy27 = sys.version_info < (2, 7)
@@ -53,8 +53,7 @@ class unimplemented(object):
         raise TypeError
 
 
-@decorator
-def override(target, pred=True, default=None):
+def override(pred=True, default=None):
     '''Allow overriding of `target`.
 
     If the predicated given by `pred` is True, the `target` is returned, but
@@ -86,15 +85,17 @@ def override(target, pred=True, default=None):
        that matched its predicate or the `unimplemented`:class: stub.
 
     '''
-    def passed(p):
-        if isinstance(p, types.FunctionType):
-            result = p()
-        else:
-            result = p
-        return result
+    def deco(target):
+        def passed(p):
+            if isinstance(p, types.FunctionType):
+                result = p()
+            else:
+                result = p
+            return result
 
-    if passed(pred):
-        target.override = lambda *a, **kw: override(default=target, *a, **kw)
-        return target
-    else:
-        return default or unimplemented
+        if passed(pred):
+            target.override = lambda *a, **kw: override(default=target, *a, **kw)
+            return target
+        else:
+            return default or unimplemented
+    return deco
