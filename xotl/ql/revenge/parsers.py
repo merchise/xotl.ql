@@ -38,13 +38,12 @@ class AST(UserList):
         return self.data[item]
 
     def __eq__(self, o):
-        from xoutil.eight import string_types
         if isinstance(o, AST):
             return self.type == o.type and UserList.__eq__(self, o)
-        elif isinstance(o, string_types):
-            return self.type == o
         else:
-            raise TypeError('Cannot compare AST to %s' % type(o).__name__)
+            # Don't forbid other types since we may try to compare AST with
+            # Tokens.
+            return self.type == o
 
     def __hash__(self):
         return hash(self.type)

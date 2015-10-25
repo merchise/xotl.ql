@@ -26,6 +26,12 @@ def test_basic_uncompyler():
             yield a
             a, b = b, a + b
 
+    def fibl(n):
+        return list(a for a in fib(n))
+
     u = Uncompyled(fib)
     assert u.source == ('a = b = 1\nwhile a < n:\n    '
                         'yield a\n    a, b = b, a + b')
+
+    u = Uncompyled(fibl)
+    assert u.source == 'return list((a for a in fib(n)))'

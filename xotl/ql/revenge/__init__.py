@@ -47,6 +47,8 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 import types
+from xoutil.decorator import memoized_property
+
 from . import scanners, walkers
 
 
@@ -67,7 +69,7 @@ class Uncompyled(object):   # TODO:  Find better name
             ast = ast[0]
         self.ast = ast
 
-    @property
+    @memoized_property
     def source(self):
         self.walker.gen_source(self.ast, self.customizations)
         return self.walker.f.getvalue()
