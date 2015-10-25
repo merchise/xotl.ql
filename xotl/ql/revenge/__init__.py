@@ -68,11 +68,9 @@ class Uncompyled(object):   # TODO:  Find better name
         self.ast = ast
 
     @property
-    def expression(self):
-        import ipdb; ipdb.set_trace()
-
-        self.walker.traverse(self.ast)
-        pass
+    def source(self):
+        self.walker.gen_source(self.ast, self.customizations)
+        return self.walker.f.getvalue()
 
     @staticmethod
     def _extract_code(obj):
