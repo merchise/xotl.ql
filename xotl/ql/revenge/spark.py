@@ -739,14 +739,10 @@ class GenericASTTraversal(object):
     def preorder(self, node=None):
         if node is None:
             node = self.ast
-
         try:
             name = 'n_' + self.typestring(node)
-            if hasattr(self, name):
-                func = getattr(self, name)
-                func(node)
-            else:
-                self.default(node)
+            func = getattr(self, name, self.default)
+            func(node)
         except GenericASTTraversalPruningException:
             return
 
