@@ -785,12 +785,16 @@ def get_grammar_arrows(p, start):
                 rules.extend(p.rules.get(which, []))
 
 
-def get_closure(p, start):
+def get_closure(p, *starts):
     '''Get all the nodes reachable from start.'''
-    return {head for head, _ in get_grammar_arrows(p, start)}
+    return {
+        head
+        for start in starts
+        for head, _ in get_grammar_arrows(p, start)
+    }
 
 
-def get_graphivz_script(p, start):
+def get_graphivz_script(p, *starts):
     lines = ['digraph G {']
     for head, tail in get_grammar_arrows(p, start):
         lines.append('{head} -> {tail};'.format(head=head, tail=tail))
