@@ -78,7 +78,7 @@ class Token(object):
             return cmp(self.type, o)
 
     def __repr__(self):
-        return str(self.type)
+        return '<%s: %d>' % (str(self.type), self.offset)
 
     def __str__(self):
         pattr = self.pattr
@@ -269,7 +269,7 @@ class Scanner(object):
                 target = self.get_target(offset)
                 if target < offset:
                     if offset in self.stmts and code[offset+3] not in (END_FINALLY, POP_BLOCK) \
-                     and offset not in self.not_continue:
+                       and offset not in self.not_continue:
                         opname = 'CONTINUE'
                     else:
                         opname = 'JUMP_BACK'
