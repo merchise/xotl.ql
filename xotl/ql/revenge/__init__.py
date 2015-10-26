@@ -60,7 +60,6 @@ from . import scanners, walkers
 
 class Uncompyled(object):   # TODO:  Find better name
     def __init__(self, obj, version=None):
-        import io
         if not version:
             import sys
             version = sys.version.split(' ')[0]
@@ -82,7 +81,6 @@ class Uncompyled(object):   # TODO:  Find better name
 
     @staticmethod
     def _extract_code(obj):
-        import types
         if isinstance(obj, types.CodeType):
             return obj
         elif isinstance(obj, types.GeneratorType):
