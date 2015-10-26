@@ -336,11 +336,8 @@ class GenericParser(object):
                               tokens, len(sets)-2)
 
     def isnullable(self, sym):
-        #
-        #  For symbols in G_e only.  If we weren't supporting 1.5,
-        #  could just use sym.startswith().
-        #
-        return self._NULLABLE == sym[0:len(self._NULLABLE)]
+        #  For symbols in G_e only.
+        return sym.startswith(self._NULLABLE)
 
     def skip(self, lhs_rhs, pos=0):
         (lhs, rhs) = lhs_rhs
