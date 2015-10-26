@@ -242,51 +242,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    def p_augmented_assign(self, args):
-        '''Augmented assign.
-
-        These are the operators ``+=``, ``-=``, etc.
-
-        .. _rules:
-
-        stmt ::= augassign1
-        stmt ::= augassign2
-        augassign1 ::= expr expr inplace_op designator
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SUBSCR
-        augassign1 ::= expr expr inplace_op ROT_TWO   STORE_SLICE+0
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SLICE+1
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SLICE+2
-        augassign1 ::= expr expr inplace_op ROT_FOUR  STORE_SLICE+3
-        augassign2 ::= expr DUP_TOP LOAD_ATTR expr
-                inplace_op ROT_TWO   STORE_ATTR
-
-        inplace_op ::= INPLACE_ADD
-        inplace_op ::= INPLACE_SUBTRACT
-        inplace_op ::= INPLACE_MULTIPLY
-        inplace_op ::= INPLACE_DIVIDE
-        inplace_op ::= INPLACE_TRUE_DIVIDE
-        inplace_op ::= INPLACE_FLOOR_DIVIDE
-        inplace_op ::= INPLACE_MODULO
-        inplace_op ::= INPLACE_POWER
-        inplace_op ::= INPLACE_LSHIFT
-        inplace_op ::= INPLACE_RSHIFT
-        inplace_op ::= INPLACE_AND
-        inplace_op ::= INPLACE_XOR
-        inplace_op ::= INPLACE_OR
-        '''
-
-    def p_assign(self, args):
-        '''
-        stmt ::= assign
-        assign ::= expr DUP_TOP designList
-        assign ::= expr designator
-
-        stmt ::= assign2
-        stmt ::= assign3
-        assign2 ::= expr expr ROT_TWO designator designator
-        assign3 ::= expr expr expr ROT_THREE ROT_TWO designator designator
-                    designator
-        '''
 
     def p_print(self, args):
         '''
