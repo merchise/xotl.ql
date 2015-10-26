@@ -763,3 +763,50 @@ class GenericASTTraversal(object):
 
     def default(self, node):
         pass
+
+
+def get_grammar_arrows(p, start):
+    '''Get the links between grammar nodes.
+
+    Yield pairs (2-tuples).  Each tuple ``(head, tail)`` means that tail is in
+    the right side of some production ``head ::= ... tail ...``.
+
+    '''
+    rules = list(p.rules[start])
+    seen = set()
+    while rules:
+        head, prod = rules.pop(0)
+        seen.add(head)
+        new = set()
+        for which in prod:
+            if which not in new and which not in seen:
+                new.add(which)
+                yield head, which
+                rules.extend(p.rules.get(which, []))
+
+
+def get_closure(p, start):
+    '''Get all the nodes reachable from start.'''
+    return {head for head, _ in get_grammar_arrows(p, start)}
+
+
+def get_graphivz_script(p, start):
+    lines = ['digraph G {']
+    for head, tail in get_grammar_arrows(p, start):
+        lines.append('{head} -> {tail};'.format(head=head, tail=tail))
+    lines.append('}')
+    return '\n'.join(lines)
+
+
+def call_graphivz_script(script):
+    '''Shows a graph using dot and eog.'''
+    from tempfile import NamedTemporaryFile
+    from subprocess import Popen, PIPE
+    dotcmd = ['dot', '-Tpng']
+    dotproc = Popen(dotcmd, stdin=PIPE, stdout=PIPE)
+    out, err = dotproc.communicate(script)
+    if out:
+        with NamedTemporaryFile(suffix='.png') as tmpf:
+            tmpf.write(out)
+            tmpf.flush()
+            Popen(['eog', tmpf.name]).wait()
