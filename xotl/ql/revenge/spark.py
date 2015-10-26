@@ -90,7 +90,7 @@ class GenericParser(object):
             self.makeNewRules()
             self.ruleschanged = 0
             self.edges, self.cores = {}, {}
-            self.states = { 0: self.makeState0() }
+            self.states = {0: self.makeState0()}
             self.makeState(0, self._BOF)
         #
         #  XXX - should find a better way to do this..
@@ -743,9 +743,12 @@ class GenericASTTraversal(object):
             result = self.dispatch(node)
         except GenericASTTraversalPruningException:
             return
+        children = []
         for kid in node:
-            self.preorder(kid)
-        self.dispatch_exit(node)
+            children.append(self.preorder(kid))
+        r = self.dispatch_exit(node, children=children)
+        if r:
+            result = r
         return result
 
     def dispatch(self, node, default=None):
@@ -755,11 +758,11 @@ class GenericASTTraversal(object):
         func = getattr(self, name, default)
         return func(node)
 
-    def dispatch_exit(self, node, default=None):
+    def dispatch_exit(self, node, children=None):
         name = 'n_' + self.typestring(node) + '_exit'
-        func = getattr(self, name, default)
+        func = getattr(self, name, None)
         if func:
-            return func(node)
+            return func(node, children=children)
 
     def default(self, node):
         pass
