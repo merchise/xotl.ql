@@ -68,7 +68,8 @@ class AST(UserList):
 
 
 class ParserError(Exception):
-    def __init__(self, token, offset):
+    def __init__(self, token, offset, *args):
+        super(ParserError, self).__init__(token, offset, *args)
         self.token = token
         self.offset = offset
 
@@ -95,7 +96,7 @@ class _InternalParser(GenericASTBuilder):
             setattr(self, i, None)
 
     def error(self, token):
-            raise ParserError(token, token.offset)
+        raise ParserError(token, token.offset)
 
     def typestring(self, token):
         return token.type
