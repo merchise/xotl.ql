@@ -16,44 +16,39 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-import pytest
 import sys
 _py3 = sys.version_info >= (3, 0)
 del sys
 
 
-@pytest.mark.xfail(_py3, reason='Still not running on Py3k')
-def test_ifexpression():
-    from xotl.ql.revenge import Uncompyled
-    l = lambda x, y: x if x else y
-    u = Uncompyled(l)
-    assert u.source == 'if x:\n    return x\nreturn y'
-
-
-def test_lambda():
-    from xotl.ql.revenge import Uncompyled
-    l = lambda: lambda x, y, a=1, *args, **kwargs: x + y + a
-    u = Uncompyled(l)
-    assert u.source == 'return lambda x, y, a=1, *args, **kwargs: x + y + a'
-
-    u = Uncompyled(l())
-    assert u.source == 'return x + y + a'
+# We're only testing we can build an AST from the byte-code.  This AST
+# extracted from the byte-code directly and not the one we'll provide to
+# translators.  The idea is to stabilize the parser from byte-code to this IST
+# (Intermediate Syntax Tree).
+#
+# We'll extend the tests to actually match our target AST.
 
 
 def test_expressions():
     from xotl.ql.revenge import Uncompyled
 
     expressions = [
-        'a + b',
-        '[a for a in x if a < y]',
         '(a for a in this if a < y)',
+        'a + b',
+        'x if x else y',
+        'lambda x, y=1, *args, **kw: x + y',
+        '[a for a in x if a < y]',
         '{k: v for k, v in this}',
-        '{s for s in this if s < y}'
+        '{s for s in this if s < y}',
+        'c(a)',
+        'a.attr.b[2:3]',
+        'a[1] + list(b)',
     ]
     codes = [(compile(expr, '<test>', 'eval'), expr) for expr in expressions]
     failures = []
     for code, expr in codes:
-        u = Uncompyled(code)
-        if u.source != 'return ' + expr:
-            failures.append((expr, u.source))
+        try:
+            Uncompyled(code)
+        except Exception as error:
+            failures.append((expr, error))
     assert not failures
