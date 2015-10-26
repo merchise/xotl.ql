@@ -78,9 +78,16 @@ class ParserError(Exception):
             (self.token, self.offset)
 
 
-class _InternalParser(GenericASTBuilder):
-    def __init__(self):
-        GenericASTBuilder.__init__(self, AST, 'stmts')
+class _InternalExpressionParser(GenericASTBuilder):
+    # The rules draw concepts presented in the 'Expressions' document in the
+    # Python documentation.  However, the rules there are presented not for
+    # lexical analysis, and sometimes are cumbersome to follow.
+    #
+    # The `yield_atom` is not supported by this grammar since it must occur
+    # within a generator definition.
+    #
+    def __init__(self, start='expr'):
+        GenericASTBuilder.__init__(self, AST, start)
         self.customized = {}
 
     def cleanup(self):
@@ -90,10 +97,38 @@ class _InternalParser(GenericASTBuilder):
 
         """
         for dict in (self.rule2func, self.rules, self.rule2name):
-            for i in list(dict.keys()):
+            for i in dict:
                 dict[i] = None
         for i in dir(self):
             setattr(self, i, None)
+
+    def p_atoms(self):
+        '''The atoms are the most basic element of an expression.
+
+        According to the Python documentation those include: literals,
+        identifiers and 'enclosures'.  Since enclosure, however, are actually
+        more structured we'll include them later.
+
+        .. _rules:
+
+        expr ::= atom
+
+        atom ::= identifier
+        atom ::= literal
+
+        identifier  ::=  LOAD_FAST
+        identifier  ::= LOAD_NAME
+        identifier ::= LOAD_GLOBAL
+        identifier ::= LOAD_DEREF
+
+        literal ::= LOAD_CONST
+
+        '''
+
+
+class _InternalParser(_InternalExpressionParser):
+    def __init__(self):
+        super(_InternalParser, self).__init__('stmts')
 
     def error(self, token):
         raise ParserError(token, token.offset)
@@ -368,13 +403,6 @@ class _InternalParser(GenericASTBuilder):
     def p_expr(self, args):
         '''
         expr ::= _mklambda
-        expr ::= SET_LINENO
-        expr ::= LOAD_FAST
-        expr ::= LOAD_NAME
-        expr ::= LOAD_CONST
-        expr ::= LOAD_GLOBAL
-        expr ::= LOAD_DEREF
-        expr ::= LOAD_LOCALS
         expr ::= load_attr
         expr ::= binary_expr
         expr ::= binary_expr_na
@@ -399,7 +427,6 @@ class _InternalParser(GenericASTBuilder):
         expr ::= buildslice2
         expr ::= buildslice3
         expr ::= yield
-
 
 
         binary_expr ::= expr expr binary_op
