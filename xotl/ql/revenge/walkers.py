@@ -33,6 +33,9 @@
 #
 #       %c      evaluate N[A] recursively*
 #       %C      evaluate N[A[0]]..N[A[1]-1] recursively, separate by A[2]*
+#
+#       %p and %P  are the same as %c and %C but preserving the precedence value.
+#
 #       %,      print ',' if last %C only printed one item (for tuples--unused)
 #       %|      tab to current indentation level
 #       %+      increase current indentation level
