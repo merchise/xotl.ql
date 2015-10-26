@@ -61,3 +61,36 @@ def test_expressions():
         except Exception as error:
             failures.append((expr, error))
     assert not failures
+
+
+def test_comprehensions():
+    from xotl.ql.revenge import Uncompyled
+    wrapper = compile('(a for b in this if a < b)', '', 'eval')
+
+    # >>> dis.dis(compile('(a for b in this if a < b)', '', 'eval'))
+    #   1           0 LOAD_CONST               0 (<code object <genexpr>...>)
+    #               3 MAKE_FUNCTION            0
+    #               6 LOAD_NAME                0 (this)
+    #               9 GET_ITER
+    #              10 CALL_FUNCTION            1
+    #              13 RETURN_VALUE
+    Uncompyled(wrapper)
+
+    compr = wrapper.co_consts[0]
+    # >>> dis.dis(compr)
+    #   1           0 LOAD_FAST                0 (.0)
+    #         >>    3 FOR_ITER                23 (to 29)
+    #               6 STORE_FAST               1 (b)
+    #               9 LOAD_GLOBAL              0 (a)
+    #              12 LOAD_FAST                1 (b)
+    #              15 COMPARE_OP               0 (<)
+    #              18 POP_JUMP_IF_FALSE        3
+    #              21 LOAD_GLOBAL              0 (a)
+    #              24 YIELD_VALUE
+    #              25 POP_TOP
+    #              26 JUMP_ABSOLUTE            3
+    #         >>   29 LOAD_CONST               0 (None)
+    #              32 RETURN_VALUE
+
+    # This means we can build the AST for "bare" comprehensions.
+    Uncompyled(compr)
