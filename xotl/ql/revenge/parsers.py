@@ -326,43 +326,7 @@ class _InternalParser(GenericASTBuilder):
         return_if_stmts ::= _stmts return_if_stmt
         return_if_stmt ::= ret_expr RETURN_END_IF
 
-
-        stmt ::= break_stmt
-        break_stmt ::= BREAK_LOOP
-
-        stmt ::= continue_stmt
-        continue_stmt ::= CONTINUE
-        continue_stmt ::= CONTINUE_LOOP
-        continue_stmts ::= _stmts lastl_stmt continue_stmt
-        continue_stmts ::= lastl_stmt continue_stmt
-        continue_stmts ::= continue_stmt
-
-
-        stmt ::= exec_stmt
-        exec_stmt ::= expr exprlist DUP_TOP EXEC_STMT
-        exec_stmt ::= expr exprlist EXEC_STMT
-
         stmt ::= ifstmt
-        stmt ::= ifelsestmt
-
-        stmt ::= whilestmt
-        stmt ::= whilenotstmt
-        stmt ::= while1stmt
-        stmt ::= whileelsestmt
-        stmt ::= while1elsestmt
-        stmt ::= forstmt
-        stmt ::= forelsestmt
-        stmt ::= trystmt
-        stmt ::= tryelsestmt
-        stmt ::= tryfinallystmt
-        stmt ::= withstmt
-        stmt ::= withasstmt
-
-
-        kwarg   ::= LOAD_CONST expr
-
-
-
         _jump ::= JUMP_ABSOLUTE
         _jump ::= JUMP_FORWARD
         _jump ::= JUMP_BACK
@@ -371,7 +335,6 @@ class _InternalParser(GenericASTBuilder):
         jmp_true    ::= POP_JUMP_IF_TRUE
 
         ifstmt ::= testexpr _ifstmts_jump
-
 
         testexpr ::= testfalse
         testexpr ::= testtrue
@@ -393,103 +356,11 @@ class _InternalParser(GenericASTBuilder):
 
         ifelsestmtl ::= testexpr c_stmts_opt JUMP_BACK else_suitel
 
-
-        trystmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle COME_FROM
-
-        tryelsestmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suite COME_FROM
-
-        tryelsestmtc ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suitec COME_FROM
-
-        tryelsestmtl ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suitel COME_FROM
-
-        try_middle ::= jmp_abs COME_FROM except_stmts
-                END_FINALLY
-        try_middle ::= JUMP_FORWARD COME_FROM except_stmts
-                END_FINALLY COME_FROM
-
-        except_stmts ::= except_stmts except_stmt
-        except_stmts ::= except_stmt
-
-        except_stmt ::= except_cond1 except_suite
-        except_stmt ::= except_cond2 except_suite
-        except_stmt ::= except
-
-        except_suite ::= c_stmts_opt JUMP_FORWARD
-        except_suite ::= c_stmts_opt jmp_abs
-        except_suite ::= return_stmts
-
-        except_cond1 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP
-
-        except_cond2 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP designator POP_TOP
-
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt JUMP_FORWARD
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt jmp_abs
-        except  ::=  POP_TOP POP_TOP POP_TOP return_stmts
-
         jmp_abs ::= JUMP_ABSOLUTE
         jmp_abs ::= JUMP_BACK
 
-
-
-        tryfinallystmt ::= SETUP_FINALLY suite_stmts
-                POP_BLOCK LOAD_CONST
-                COME_FROM suite_stmts_opt END_FINALLY
-
-        withstmt ::= expr SETUP_WITH POP_TOP suite_stmts_opt
-                POP_BLOCK LOAD_CONST COME_FROM
-                WITH_CLEANUP END_FINALLY
-
-        withasstmt ::= expr SETUP_WITH designator suite_stmts_opt
-                POP_BLOCK LOAD_CONST COME_FROM
-                WITH_CLEANUP END_FINALLY
-
-        whilestmt ::= SETUP_LOOP
-                testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK COME_FROM
-
-        whilestmt ::= SETUP_LOOP
-                testexpr
-                return_stmts
-                POP_BLOCK COME_FROM
-
-        while1stmt ::= SETUP_LOOP l_stmts JUMP_BACK COME_FROM
-        while1stmt ::= SETUP_LOOP return_stmts COME_FROM
-        while1elsestmt ::= SETUP_LOOP l_stmts JUMP_BACK else_suite COME_FROM
-
-        whileelsestmt ::= SETUP_LOOP testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK
-                else_suite COME_FROM
-
-        whileelselaststmt ::= SETUP_LOOP testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK
-                else_suitec COME_FROM
-
         _for ::= GET_ITER FOR_ITER
         _for ::= LOAD_CONST FOR_LOOP
-
-        for_block ::= l_stmts_opt JUMP_BACK
-        for_block ::= return_stmts _come_from
-
-        forstmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK COME_FROM
-
-        forelsestmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suite COME_FROM
-
-        forelselaststmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suitec COME_FROM
-
-        forelselaststmtl ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suitel COME_FROM
 
         '''
 
