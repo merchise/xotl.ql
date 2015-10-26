@@ -49,10 +49,22 @@ class AST(UserList):
         return hash(self.type)
 
     def __repr__(self, indent=''):
-        rv = str(self.type)
-        for k in self:
-            rv = rv + '\n' + str(k).replace(str('\n'), str('\n   '))
-        return rv
+        result = ['']
+
+        def pre(who, indent=0):
+            result[0] += ' ' * indent
+            result[0] += who.type if isinstance(who, AST) else repr(who)
+            result[0] += '\n'
+            try:
+                children = iter(who)
+            except TypeError:
+                pass
+            else:
+                for child in children:
+                    pre(child, indent=indent+4)
+
+        pre(self)
+        return result[0]
 
 
 class ParserError(Exception):
