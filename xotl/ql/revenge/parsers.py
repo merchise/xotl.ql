@@ -242,39 +242,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-
-    def p_import20(self, args):
-        '''
-        stmt ::= importstmt
-        stmt ::= importfrom
-        stmt ::= importstar
-        stmt ::= importmultiple
-
-        importlist2 ::= importlist2 import_as
-        importlist2 ::= import_as
-        import_as ::= IMPORT_NAME designator
-        import_as ::= IMPORT_NAME load_attrs designator
-        import_as ::= IMPORT_FROM designator
-
-        importstmt ::= LOAD_CONST LOAD_CONST import_as
-        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR
-        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
-        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT IMPORT_STAR
-        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT importlist2
-                       POP_TOP
-        importmultiple ::= LOAD_CONST LOAD_CONST import_as imports_cont
-
-        imports_cont ::= imports_cont import_cont
-        imports_cont ::= import_cont
-        import_cont ::= LOAD_CONST LOAD_CONST import_as_cont
-        import_as_cont ::= IMPORT_NAME_CONT designator
-        import_as_cont ::= IMPORT_NAME_CONT load_attrs designator
-        import_as_cont ::= IMPORT_FROM designator
-
-        load_attrs ::= LOAD_ATTR
-        load_attrs ::= load_attrs LOAD_ATTR
-        '''
-
     def p_grammar(self, args):
         '''
         stmts ::= stmts sstmt
