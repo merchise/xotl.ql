@@ -339,7 +339,7 @@ TABLE_DIRECT = {
     'comp_body': ('',),        # ignore when recusing
     'set_comp_body': ('%c', 0),
     'gen_comp_body': ('%c', 0),
-    'dict_comp_body': ('%c:%c', 1, 0),
+    'dict_comp_body': ('%c: %c', 1, 0),
 
     'assign': ('%|%c = %p\n', -1, (0, 200)),
     'augassign1': ('%|%c %c %c\n', 0, 2, 1),
@@ -1065,10 +1065,10 @@ class Walker(GenericASTTraversal, object):
             elif n == 'list_if_not':
                 n = n[2]
         assert n == 'lc_body'
-        self.write('[ ')
+        self.write('[')
         self.preorder(n[0])  # lc_body
         self.preorder(node[-1])  # for/if parts
-        self.write(' ]')
+        self.write(']')
         self.prec = p
         self.prune()
 
