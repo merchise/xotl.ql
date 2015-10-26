@@ -1542,8 +1542,5 @@ class Walker(GenericASTTraversal, object):
                     tokens.append(Token('RETURN_LAST'))
         if len(tokens) == 0:
             return PASS
-        try:
-            ast = parsers.parse(tokens, customize)
-        except parsers.ParserError as e:
-            raise ParserError(e, tokens)
+        ast = parsers.parse(tokens, customize)
         return ast
