@@ -418,7 +418,6 @@ class _InternalParser(_InternalExpressionParser):
         expr ::= unary_convert
         expr ::= binary_subscr
         expr ::= binary_subscr2
-        expr ::= load_attr
         expr ::= get_iter
         expr ::= slice0
         expr ::= slice1
