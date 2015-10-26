@@ -339,22 +339,11 @@ class _InternalParser(GenericASTBuilder):
         continue_stmts ::= lastl_stmt continue_stmt
         continue_stmts ::= continue_stmt
 
-        stmt ::= raise_stmt0
-        stmt ::= raise_stmt1
-        stmt ::= raise_stmt2
-        stmt ::= raise_stmt3
-
-        raise_stmt0 ::= RAISE_VARARGS_0
-        raise_stmt1 ::= expr RAISE_VARARGS_1
-        raise_stmt2 ::= expr expr RAISE_VARARGS_2
-        raise_stmt3 ::= expr expr expr RAISE_VARARGS_3
 
         stmt ::= exec_stmt
         exec_stmt ::= expr exprlist DUP_TOP EXEC_STMT
         exec_stmt ::= expr exprlist EXEC_STMT
 
-        stmt ::= assert
-        stmt ::= assert2
         stmt ::= ifstmt
         stmt ::= ifelsestmt
 
@@ -382,22 +371,6 @@ class _InternalParser(GenericASTBuilder):
         classdefdeco1 ::= expr classdefdeco1 CALL_FUNCTION_1
         classdefdeco1 ::= expr classdefdeco2 CALL_FUNCTION_1
         classdefdeco2 ::= LOAD_CONST expr mkfunc CALL_FUNCTION_0 BUILD_CLASS
-
-        assert ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT RAISE_VARARGS_1
-
-        assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS_1
-
-        assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr RAISE_VARARGS_2
-
-        assert_expr ::= expr
-        assert_expr ::= assert_expr_or
-        assert_expr ::= assert_expr_and
-        assert_expr_or ::= assert_expr POP_JUMP_IF_TRUE expr
-        assert_expr_and ::= assert_expr POP_JUMP_IF_FALSE expr
-
 
         _jump ::= JUMP_ABSOLUTE
         _jump ::= JUMP_FORWARD
