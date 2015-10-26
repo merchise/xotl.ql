@@ -281,11 +281,10 @@ class GenericParser(object):
             while i < n:
                 sym = rhs[i]
                 if sym not in self.rules or \
-                    not self.nullable[sym]:
-                        candidate = 0
-                        i = i + 1
-                        continue
-
+                   not self.nullable[sym]:
+                    candidate = 0
+                    i = i + 1
+                    continue
                 newrhs = list(rhs)
                 newrhs[i] = self._NULLABLE+sym
                 newrule = (lhs, tuple(newrhs))
@@ -307,13 +306,12 @@ class GenericParser(object):
         return None
 
     def error(self, token):
-        print("Syntax error at or near `%s' token" % token)
-        raise SystemExit
+        # XXX: Should we make this a SyntaxError?
+        raise RuntimeError("Syntax error at or near `%s' token" % token)
 
     def parse(self, tokens):
         sets = [[(1, 0), (2, 0)]]
         self.links = {}
-
         if self.ruleschanged:
             self.computeNull()
             self.newrules = {}
@@ -323,24 +321,20 @@ class GenericParser(object):
             self.edges, self.cores = {}, {}
             self.states = {0: self.makeState0()}
             self.makeState(0, self._BOF)
-
         for i in range(len(tokens)):
             sets.append([])
-
             if sets[i] == []:
                 break
             self.makeSet(tokens[i], sets, i)
         else:
             sets.append([])
             self.makeSet(None, sets, len(tokens))
-
         finalitem = (self.finalState(tokens), 0)
         if finalitem not in sets[-2]:
             if len(tokens) > 0:
                 self.error(tokens[i-1])
             else:
                 self.error(None)
-
         return self.buildTree(self._START, finalitem,
                               tokens, len(sets)-2)
 
