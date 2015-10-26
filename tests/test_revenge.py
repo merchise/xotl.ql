@@ -42,6 +42,10 @@ def test_expressions():
         ('{k: v for k, v in this}', None),
         ('{s for s in this if s < y}', None),
         ('c(a)', None),
+        ('a and b or c', None),
+        ('a & b | c ^ d', None),
+        ('a << b >> c', None),
+        ('a + b * (d + c)', None),
         ('a.attr.b[2:3]', None),
         ('a[1] + list(b)', None)
     ]
