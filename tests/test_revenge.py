@@ -33,22 +33,27 @@ def test_expressions():
     from xotl.ql.revenge import Uncompyled
 
     expressions = [
-        '(a for a in this if a < y)',
-        'a + b',
-        'x if x else y',
-        'lambda x, y=1, *args, **kw: x + y',
-        '[a for a in x if a < y]',
-        '{k: v for k, v in this}',
-        '{s for s in this if s < y}',
-        'c(a)',
-        'a.attr.b[2:3]',
-        'a[1] + list(b)',
+        # expr, expected source if different
+        ('(a for a in this if a < y)', None),
+        ('a + b', None),
+        ('x if x else y', 'if x:\n    return x\nreturn y'),
+        ('lambda x, y=1, *args, **kw: x + y', None),
+        ('[a for a in x if a < y]', None),
+        ('{k: v for k, v in this}', None),
+        ('{s for s in this if s < y}', None),
+        ('c(a)', None),
+        ('a.attr.b[2:3]', None),
+        ('a[1] + list(b)', None)
     ]
-    codes = [(compile(expr, '<test>', 'eval'), expr) for expr in expressions]
+    codes = [(compile(expr, '<test>', 'eval'), expr, expected if expected else 'return ' + expr)
+             for expr, expected in expressions]
     failures = []
-    for code, expr in codes:
+    for code, expr, expected in codes:
         try:
-            Uncompyled(code)
+            u = Uncompyled(code)
+            assert u.source == expected
+        except AssertionError:
+            raise
         except Exception as error:
             failures.append((expr, error))
     assert not failures
