@@ -100,7 +100,6 @@ class _InternalParser(GenericASTBuilder):
     def typestring(self, token):
         return token.type
 
-
     def p_list_comprehension(self, args):
         '''List comprehensions.
 
@@ -315,7 +314,6 @@ class _InternalParser(GenericASTBuilder):
         designator ::= unpack
         designator ::= unpack_list
 
-        stmt ::= classdef
         stmt ::= call_stmt
         call_stmt ::= expr POP_TOP
 
@@ -363,14 +361,7 @@ class _InternalParser(GenericASTBuilder):
 
         kwarg   ::= LOAD_CONST expr
 
-        classdef ::= LOAD_CONST expr mkfunc
-                    CALL_FUNCTION_0 BUILD_CLASS designator
 
-        stmt ::= classdefdeco
-        classdefdeco ::= classdefdeco1 designator
-        classdefdeco1 ::= expr classdefdeco1 CALL_FUNCTION_1
-        classdefdeco1 ::= expr classdefdeco2 CALL_FUNCTION_1
-        classdefdeco2 ::= LOAD_CONST expr mkfunc CALL_FUNCTION_0 BUILD_CLASS
 
         _jump ::= JUMP_ABSOLUTE
         _jump ::= JUMP_FORWARD
