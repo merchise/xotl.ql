@@ -536,6 +536,7 @@ class _InternalParser(_InternalExpressionParser):
         stmt ::= return_lambda
         stmt ::= conditional_lambda
 
+        # The LAMBDA_MARKER is actually injected by the parser
         return_lambda ::= ret_expr RETURN_VALUE LAMBDA_MARKER
         conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt
                                return_stmt LAMBDA_MARKER
@@ -562,7 +563,6 @@ class _InternalParser(_InternalExpressionParser):
 
     def nonterminal(self, nt, args):
         collect = ('stmts', 'exprlist', 'kvlist', '_stmts', 'print_items')
-
         if nt in collect and len(args) > 1:
             #
             #  Collect iterated thingies together.
@@ -572,11 +572,6 @@ class _InternalParser(_InternalExpressionParser):
         else:
             rv = GenericASTBuilder.nonterminal(self, nt, args)
         return rv
-
-    def __ambiguity(self, children):
-        # only for debugging! to be removed hG/2000-10-15
-        print(children)
-        return GenericASTBuilder.ambiguity(self, children)
 
     def resolve(self, list):
         if len(list) == 2 and 'funcdef' in list and 'assign' in list:
