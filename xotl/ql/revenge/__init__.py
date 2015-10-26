@@ -56,6 +56,7 @@ import types
 from xoutil.decorator import memoized_property
 
 from . import scanners, walkers
+from .parsers import ParserError
 
 
 class Uncompyled(object):   # TODO:  Find better name
@@ -68,7 +69,11 @@ class Uncompyled(object):   # TODO:  Find better name
         self.walker = walker = walkers.Walker(scanner)
         tokens, customizations = scanner.disassemble(code)
         self.customizations = customizations
-        ast = walker.build_ast(tokens, customizations)
+        try:
+            ast = walker.build_ast(tokens, customizations)
+        except ParserError as error:
+            raise error  # make the debugger print the locals
+
         # Go down in the AST until the root has more than one children.
         while ast and len(ast) == 1:
             ast = ast[0]
