@@ -592,7 +592,7 @@ def find_none(node):
 class Walker(GenericASTTraversal, object):
     stacked_params = ('f', 'indent', 'isLambda', '_globals')
 
-    def __init__(self, scanner, showast=0):
+    def __init__(self, scanner):
         import io
         GenericASTTraversal.__init__(self, ast=None)
         self.scanner = scanner
@@ -601,7 +601,6 @@ class Walker(GenericASTTraversal, object):
             'f': out,
             'indent': '',
             }
-        self.showast = showast
         self._params = params
         self._param_stack = []
         self.ERROR = None
@@ -1430,10 +1429,6 @@ class Walker(GenericASTTraversal, object):
                 # replace the name with the tuple-string
                 name = self.get_tuple_parameter(ast, name)
             if default:
-                if self.showast:
-                    print('--', name)
-                    print(default)
-                    print('--')
                 result = '%s=%s' % (name, self.traverse(default, indent=''))
                 if result[-2:] == '=':  # default was 'LOAD_CONST None'
                     result += 'None'
