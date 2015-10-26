@@ -1428,8 +1428,8 @@ class Walker(GenericASTTraversal, object):
                     print('--', name)
                     print(default)
                     print('--')
-                result = '%s = %s' % (name, self.traverse(default, indent=''))
-                if result[-2:] == '= ':  # default was 'LOAD_CONST None'
+                result = '%s=%s' % (name, self.traverse(default, indent=''))
+                if result[-2:] == '=':  # default was 'LOAD_CONST None'
                     result += 'None'
                 return result
             else:
@@ -1454,10 +1454,10 @@ class Walker(GenericASTTraversal, object):
             self.ERROR = p
             return
         # build parameters
-        from xoutil.eight import zip
+        from itertools import izip_longest
         params = [
             build_param(ast, name, default)
-            for name, default in zip(paramnames, defparams)
+            for name, default in izip_longest(paramnames, defparams)
         ]
         params.reverse()  # back to correct order
         if 4 & code.co_flags:   # flag 2 -> variable number of args
