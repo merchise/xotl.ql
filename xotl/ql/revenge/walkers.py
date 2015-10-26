@@ -273,6 +273,11 @@ TABLE_DIRECT = {
     'BINARY_AND': ('&',),
     'BINARY_OR': ('|',),
     'BINARY_XOR': ('^',),
+
+    # binary_expr ::= expr expr binary_op
+    'binary_expr': ('%c %c %c', 0, -1, 1),
+
+
     'INPLACE_ADD': ('+=',),
     'INPLACE_SUBTRACT': ('-=',),
     'INPLACE_MULTIPLY': ('*=',),
@@ -286,7 +291,6 @@ TABLE_DIRECT = {
     'INPLACE_AND': ('&=',),
     'INPLACE_OR': ('|=',),
     'INPLACE_XOR': ('^=',),
-    'binary_expr': ('%c %c %c', 0, -1, 1),
 
     'UNARY_POSITIVE': ('+',),
     'UNARY_NEGATIVE': ('-',),
@@ -302,7 +306,9 @@ TABLE_DIRECT = {
     'slice3': ('%c[%p:%p]', 0, (1, 100), (2, 100)),
 
     'IMPORT_FROM': ('%{pattr}', ),
+
     'load_attr': ('%c.%[1]{pattr}', 0),
+
     'LOAD_FAST': ('%{pattr}', ),
     'LOAD_NAME': ('%{pattr}', ),
     'LOAD_GLOBAL': ('%{pattr}', ),
@@ -531,12 +537,12 @@ ASSIGN_TUPLE_PARAM = lambda param_name: AST('expr',
                                             [Token('LOAD_FAST',
                                                    pattr=param_name)])
 
-escape = re.compile(r'''
-            (?P<prefix> [^%]* )
-            % (\[ (?P<child> -? \d+ ) \] )?
-                ((?P<type> [^{] ) |
-                 ([{] (?P<expr> [^}]* ) [}] ))
-        ''', re.VERBOSE)
+#
+escape = re.compile(
+    r'''
+    (?P<prefix>[^%]*)%(\[ (?P<child> -? \d+ ) \])?
+    ((?P<type>[^{]) | ([{] (?P<expr> [^}]*)[}]))
+''', re.VERBOSE)
 
 
 class ParserError(parsers.ParserError):
@@ -1411,7 +1417,7 @@ class Walker(GenericASTTraversal, object):
         raise "Can't find tuple parameter" % name
 
     def make_function(self, node, isLambda, nested=1):
-        """Dump function defintion, doc string, and function body."""
+        """Dump function definition, doc string, and function body."""
 
         def build_param(ast, name, default):
             """build parameters:
