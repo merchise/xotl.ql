@@ -6,12 +6,18 @@
 # All rights reserved.
 #
 
-# This is a fork of the uncompyle2 package.  It's being modified to better
-# suite our coding standards and aim.  The original copyright notice is kept
-# below.
+# This is a fork of the uncompyle2 package.  It's been modified to better
+# suite our coding standards and aim.
+#
+# The original copyright notice is kept below.
 #
 # The name 'revenge' stands for "REVerse ENGineering using an Earley parser"
 # ;)
+#
+# The goal of the uncompyle2 package was to produce source code from byte-code
+# of full Python programs.  Our goal is much, much smaller: we need to obtain
+# an (pythonic) AST for *expressions* from the byte-code.  This means we don't
+# have to keep the entire parser for full-blown programs.
 #
 
 #  Copyright (c) 1999 John Aycock
