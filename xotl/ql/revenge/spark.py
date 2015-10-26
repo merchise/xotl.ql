@@ -52,14 +52,13 @@ class _State(object):
 
 class GenericParser(object):
     #
-    #  An Earley parser, as per J. Earley, "An Efficient Context-Free
-    #  Parsing Algorithm", CACM 13(2), pp. 94-102.  Also J. C. Earley,
-    #  "An Efficient Context-Free Parsing Algorithm", Ph.D. thesis,
-    #  Carnegie-Mellon University, August 1968.  New formulation of
-    #  the parser according to J. Aycock, "Practical Earley Parsing
-    #  and the SPARK Toolkit", Ph.D. thesis, University of Victoria,
-    #  2001, and J. Aycock and R. N. Horspool, "Practical Earley
-    #  Parsing", unpublished paper, 2001.
+    #  An Earley parser, as per J. Earley, "An Efficient Context-Free Parsing
+    #  Algorithm", CACM 13(2), pp. 94-102.  Also J. C. Earley, "An Efficient
+    #  Context-Free Parsing Algorithm", Ph.D. thesis, Carnegie-Mellon
+    #  University, August 1968.  New formulation of the parser according to
+    #  J. Aycock, "Practical Earley Parsing and the SPARK Toolkit",
+    #  Ph.D. thesis, University of Victoria, 2001, and J. Aycock and
+    #  R. N. Horspool, "Practical Earley Parsing", unpublished paper, 2001.
     #
 
     def __init__(self, start):
@@ -75,9 +74,9 @@ class GenericParser(object):
     _BOF = '|-'
 
     #
-    #  When pickling, take the time to generate the full state machine;
-    #  some information is then extraneous, too.  Unfortunately we
-    #  can't save the rule2func map.
+    #  When pickling, take the time to generate the full state machine; some
+    #  information is then extraneous, too.  Unfortunately we can't save the
+    #  rule2func map.
     #
     def __getstate__(self):
         if self.ruleschanged:
@@ -124,9 +123,8 @@ class GenericParser(object):
         self.__dict__ = D
 
     #
-    #  A hook for GenericASTBuilder and GenericASTMatcher.  Mess
-    #  thee not with this; nor shall thee toucheth the _preprocess
-    #  argument to addRule.
+    #  A hook for GenericASTBuilder and GenericASTMatcher.  Mess thee not with
+    #  this; nor shall thee toucheth the _preprocess argument to addRule.
     #
     def preprocess(self, rule, func):
         return rule, func
@@ -231,9 +229,8 @@ class GenericParser(object):
                     self.nullable[lhs] = 1
                     continue
                 #
-                #  We only need to consider rules which
-                #  consist entirely of nonterminal symbols.
-                #  This should be a savings on typical
+                #  We only need to consider rules which consist entirely of
+                #  nonterminal symbols.  This should be a savings on typical
                 #  grammars.
                 #
                 for sym in rhs:
@@ -404,11 +401,10 @@ class GenericParser(object):
                             new = (prule, ppos)
                             NK.items.append(new)
             #
-            #  Problem: we know K needs generating, but we
-            #  don't yet know about NK.  Can't commit anything
-            #  regarding NK to self.edges until we're sure.  Should
-            #  we delay committing on both K and NK to avoid this
-            #  hacky code?  This creates other problems..
+            #  Problem: we know K needs generating, but we don't yet know
+            #  about NK.  Can't commit anything regarding NK to self.edges
+            #  until we're sure.  Should we delay committing on both K and NK
+            #  to avoid this hacky code?  This creates other problems..
             #
             if X is K:
                 edges = {}
@@ -417,9 +413,9 @@ class GenericParser(object):
             return k
 
         #
-        #  Check for \epsilon-nonkernel's core.  Unfortunately we
-        #  need to know the entire set of predicted nonterminals
-        #  to do this without accidentally duplicating states.
+        #  Check for \epsilon-nonkernel's core.  Unfortunately we need to know
+        #  the entire set of predicted nonterminals to do this without
+        #  accidentally duplicating states.
         #
         tcore = tuple(sorted(predicted.keys()))
         if tcore in self.cores:
