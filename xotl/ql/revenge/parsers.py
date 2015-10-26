@@ -125,6 +125,37 @@ class _InternalExpressionParser(GenericASTBuilder):
 
         '''
 
+    def p_mapexpression():
+        '''A map expression.
+
+        Include the
+
+        Dictionary literals are built by creating a fixed sized dictionary and
+        filling it with they values.
+
+        It starts with a BUILD_MAP followed by the list of (key, value).
+
+        .. _rules:
+
+        expr ::= mapexpr
+        mapexpr ::= BUILD_MAP kvlist
+
+        kvlist ::= kvlist kv
+        kvlist ::=
+
+        # This is the only one I've witnessed.
+        kv3 ::= expr expr STORE_MAP
+
+
+        # Don't know yet when these are produced for kvlist.
+        kvlist ::= kvlist kv2
+        kvlist ::= kvlist kv3
+
+        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
+        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
+
+        '''
+
 
 class _InternalParser(_InternalExpressionParser):
     def __init__(self):
@@ -332,7 +363,6 @@ class _InternalParser(_InternalExpressionParser):
         else_suitel ::= l_stmts
         else_suitec ::= c_stmts
         else_suitec ::= return_stmts
-
         designList ::= designator designator
         designList ::= designator DUP_TOP designList
 
@@ -408,7 +438,6 @@ class _InternalParser(_InternalExpressionParser):
         expr ::= binary_expr_na
         expr ::= build_list
         expr ::= cmp
-        expr ::= mapexpr
         expr ::= and
         expr ::= and2
         expr ::= or
@@ -524,16 +553,6 @@ class _InternalParser(_InternalExpressionParser):
                 cmp_list2 COME_FROM
         cmp_list2 ::= expr COMPARE_OP JUMP_FORWARD
         cmp_list2 ::= expr COMPARE_OP RETURN_VALUE
-        mapexpr ::= BUILD_MAP kvlist
-
-        kvlist ::= kvlist kv
-        kvlist ::= kvlist kv2
-        kvlist ::= kvlist kv3
-        kvlist ::=
-
-        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
-        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
-        kv3 ::= expr expr STORE_MAP
 
         exprlist ::= exprlist expr
         exprlist ::= expr
