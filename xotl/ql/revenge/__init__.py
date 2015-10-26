@@ -90,34 +90,3 @@ class Uncompyled(object):   # TODO:  Find better name
             return get_first_of(obj, 'func_code', '__code__')
         else:
             raise TypeError('Invalid code object')
-
-
-def uncompyle(co, version=None):
-    """Disassemble a given code block `co`.
-
-    Return the `AST <xotl.ql.revenge.parsers.AST>`:class: (this is actually a
-    low-level AST that we will call Concrete Syntax Tree, though that's not
-    actually true).
-
-    """
-    import sys
-    assert isinstance(co, types.CodeType)
-    if not version:
-        version = sys.version.split(' ')[0]
-    scanner = scanners.getscanner(version)
-    tokens, customizations = scanner.disassemble(co)
-    #  Build AST from disassembly.
-    walker = walkers.Walker(scanner)
-    ast = walker.build_ast(tokens, customizations)
-    del tokens  # save memory
-    # convert leading '__doc__ = "..." into doc string
-    assert ast.type == 'stmts'
-    try:
-        if ast[0][0] == walkers.ASSIGN_DOC_STRING(co.co_consts[0]):
-            del ast[0]
-        if ast[-1] == walkers.RETURN_NONE:
-            ast.pop()
-            # todo: if empty, add 'pass'
-    except (IndexError, TypeError):
-        pass
-    return ast, customizations, walker
