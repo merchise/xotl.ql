@@ -100,25 +100,6 @@ class _InternalParser(GenericASTBuilder):
     def typestring(self, token):
         return token.type
 
-    def p_funcdef(self, args):
-        '''Function definitions.
-
-        .. _rules:
-
-        stmt ::= funcdef
-        funcdef ::= mkfunc designator
-
-        stmt ::= funcdefdeco
-        funcdefdeco ::= mkfuncdeco designator
-
-        mkfuncdeco ::= expr mkfuncdeco CALL_FUNCTION_1
-        mkfuncdeco ::= expr mkfuncdeco0 CALL_FUNCTION_1
-        mkfuncdeco0 ::= mkfunc
-
-        load_closure ::= load_closure LOAD_CLOSURE
-        load_closure ::= LOAD_CLOSURE
-
-        '''
 
     def p_list_comprehension(self, args):
         '''List comprehensions.
@@ -747,6 +728,9 @@ class _InternalParser(GenericASTBuilder):
 
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
+
+        load_closure ::= load_closure LOAD_CLOSURE
+        load_closure ::= LOAD_CLOSURE
 
         or   ::= expr POP_JUMP_IF_TRUE expr COME_FROM
         or   ::= expr JUMP_IF_TRUE_OR_POP expr COME_FROM
