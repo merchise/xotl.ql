@@ -78,17 +78,16 @@ class ParserError(Exception):
             (self.token, self.offset)
 
 
-class _InternalExpressionParser(GenericASTBuilder):
-    # The rules draw concepts presented in the 'Expressions' document in the
-    # Python documentation.  However, the rules there are presented not for
-    # lexical analysis, and sometimes are cumbersome to follow.
-    #
-    # The `yield_atom` is not supported by this grammar since it must occur
-    # within a generator definition.
-    #
-    def __init__(self, start='expr'):
-        GenericASTBuilder.__init__(self, AST, start)
+class _InternalParser(GenericASTBuilder):
+    def __init__(self):
+        GenericASTBuilder.__init__(self, AST, 'stmts')
         self.customized = {}
+
+    def error(self, token):
+        raise ParserError(token, token.offset)
+
+    def typestring(self, token):
+        return token.type
 
     def cleanup(self):
         """Remove recursive references.
@@ -101,6 +100,14 @@ class _InternalExpressionParser(GenericASTBuilder):
                 dict[i] = None
         for i in dir(self):
             setattr(self, i, None)
+
+    # The rules draw concepts presented in the 'Expressions' document in the
+    # Python documentation.  However, the rules there are presented not for
+    # lexical analysis, and sometimes are cumbersome to follow.
+    #
+    # The `yield_atom` is not supported by this grammar since it must occur
+    # within a generator definition.
+    #
 
     def p_atoms(self):
         '''The atoms are the most basic element of an expression.
@@ -236,8 +243,10 @@ class _InternalExpressionParser(GenericASTBuilder):
         and2 ::= _jump POP_JUMP_IF_FALSE COME_FROM expr COME_FROM
 
         expr ::= conditional
+
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
+
         expr ::= conditionalnot
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr
                            COME_FROM
@@ -283,17 +292,6 @@ class _InternalExpressionParser(GenericASTBuilder):
         nullexprlist ::=
 
         '''
-
-
-class _InternalParser(_InternalExpressionParser):
-    def __init__(self):
-        super(_InternalParser, self).__init__('stmts')
-
-    def error(self, token):
-        raise ParserError(token, token.offset)
-
-    def typestring(self, token):
-        return token.type
 
     def p_list_comprehension(self, args):
         '''List comprehensions.
@@ -491,6 +489,7 @@ class _InternalParser(_InternalExpressionParser):
         else_suitel ::= l_stmts
         else_suitec ::= c_stmts
         else_suitec ::= return_stmts
+
         designList ::= designator designator
         designList ::= designator DUP_TOP designList
 
@@ -504,9 +503,10 @@ class _InternalParser(_InternalExpressionParser):
         designator ::= expr expr STORE_SLICE+2
         designator ::= expr expr expr STORE_SLICE+3
         designator ::= store_subscr
-        store_subscr ::= expr expr STORE_SUBSCR
         designator ::= unpack
         designator ::= unpack_list
+
+        store_subscr ::= expr expr STORE_SUBSCR
 
         stmt ::= return_lambda
         stmt ::= conditional_lambda
