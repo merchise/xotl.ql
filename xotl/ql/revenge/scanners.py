@@ -170,13 +170,6 @@ class Scanner(object):
         free = co.co_cellvars + co.co_freevars
         names = co.co_names
 
-        # Detect assertions
-        self.load_asserts = set()
-        for i in self.op_range(0, n):
-            if code[i] == POP_JUMP_IF_TRUE and code[i+3] == LOAD_GLOBAL:
-                if names[code[i+4] + 256*code[i+5]] == 'AssertionError':
-                    self.load_asserts.add(i+3)
-
         cf = self.find_jump_targets(code)
 
         last_stmt = self.next_stmt[0]
@@ -191,15 +184,6 @@ class Scanner(object):
                         replace[i] = 'PRINT_NEWLINE_CONT'
             last_stmt = i
             i = self.next_stmt[i]
-
-        imports = self.all_instr(0, n, (IMPORT_NAME, IMPORT_FROM, IMPORT_STAR))
-        if len(imports) > 1:
-            last_import = imports[0]
-            for i in imports[1:]:
-                if self.lines[last_import].next > i:
-                    if code[last_import] == IMPORT_NAME == code[i]:
-                        replace[i] = 'IMPORT_NAME_CONT'
-                last_import = i
 
         extended_arg = 0
         for offset in self.op_range(0, n):
@@ -273,9 +257,6 @@ class Scanner(object):
                         opname = 'CONTINUE'
                     else:
                         opname = 'JUMP_BACK'
-            elif op == LOAD_GLOBAL:
-                if offset in self.load_asserts:
-                    opname = 'LOAD_ASSERT'
             elif op == RETURN_VALUE:
                 if offset in self.return_end_ifs:
                     opname = 'RETURN_END_IF'
@@ -286,13 +267,6 @@ class Scanner(object):
             else:
                 rv.append(Token(replace[offset], oparg, pattr, offset,
                                 linestart=offset in linestartoffsets))
-
-        if self.showasm:
-            out = self.out  # shortcut
-            for t in rv:
-                print(t, file=out)
-            print(file=out)
-
         return rv, customize
 
     def get_target(self, pos, op=None):
@@ -840,11 +814,6 @@ class Scanner(object):
                 self.return_end_ifs.add(pre[rtarget])
         elif op in JUMP_IF_OR_POPs:
             target = self.get_target(pos, op)
-#            if target > pos:
-#                unop_target = self.last_instr(pos, target, JUMP_FORWARD, target)
-#                if unop_target and code[unop_target+3] != ROT_TWO:
-#                    self.fixed_jumps[pos] = unop_target
-#                else:
             self.fixed_jumps[pos] = self.restrict_to_parent(target, parent)
 
     def find_jump_targets(self, code):
