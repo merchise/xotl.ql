@@ -172,19 +172,6 @@ class Scanner(object):
 
         cf = self.find_jump_targets(code)
 
-        last_stmt = self.next_stmt[0]
-        i = self.next_stmt[last_stmt]
-        replace = {}
-        while i < n-1:
-            if self.lines[last_stmt].next > i:
-                if code[last_stmt] == PRINT_ITEM:
-                    if code[i] == PRINT_ITEM:
-                        replace[i] = 'PRINT_ITEM_CONT'
-                    elif code[i] == PRINT_NEWLINE:
-                        replace[i] = 'PRINT_NEWLINE_CONT'
-            last_stmt = i
-            i = self.next_stmt[i]
-
         extended_arg = 0
         for offset in self.op_range(0, n):
             if offset in cf:
@@ -243,7 +230,8 @@ class Scanner(object):
                 # CE - Hack for >= 2.5
                 #      Now all values loaded via LOAD_CLOSURE are packed into
                 #      a tuple before calling MAKE_CLOSURE.
-                if op == BUILD_TUPLE and code[self.prev[offset]] == LOAD_CLOSURE:
+                if op == BUILD_TUPLE \
+                   and code[self.prev[offset]] == LOAD_CLOSURE:
                     continue
                 else:
                     opname = '%s_%d' % (opname, oparg)
@@ -260,13 +248,8 @@ class Scanner(object):
             elif op == RETURN_VALUE:
                 if offset in self.return_end_ifs:
                     opname = 'RETURN_END_IF'
-
-            if offset not in replace:
-                rv.append(Token(opname, oparg, pattr, offset,
-                                linestart=offset in linestartoffsets))
-            else:
-                rv.append(Token(replace[offset], oparg, pattr, offset,
-                                linestart=offset in linestartoffsets))
+            rv.append(Token(opname, oparg, pattr, offset,
+                            linestart=offset in linestartoffsets))
         return rv, customize
 
     def get_target(self, pos, op=None):
