@@ -78,7 +78,7 @@ class Token(object):
             return cmp(self.type, o)
 
     def __repr__(self):
-        return '<%s: %d>' % (str(self.type), self.offset)
+        return '<%s: %s>' % (str(self.type), self.offset)
 
     def __str__(self):
         pattr = self.pattr
