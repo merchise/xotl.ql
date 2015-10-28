@@ -24,6 +24,11 @@ import dis
 from collections import namedtuple
 from array import array
 
+#  We'll only support 2.7 and 3.2+
+from sys import version_info as _vinfo
+assert _vinfo >= (2, 7, 0) and (not _vinfo >= (3, 0) or _vinfo >= (3, 2))
+del _vinfo
+
 try:
     from sys import intern  # Py3k
 except ImportError:
