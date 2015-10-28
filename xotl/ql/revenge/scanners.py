@@ -41,11 +41,11 @@ if _py3:
     STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
     DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
     EXEC_STMT = None
+    DUP_TOPX = None
 
 if _py2:
     DUP_TOP_TWO = None
     LOAD_BUILD_CLASS = None
-    DUP_TOPX = None
 
 del _py3, _py2
 
