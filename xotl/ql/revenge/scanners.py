@@ -115,25 +115,25 @@ class Code(object):
 
 
 class Scanner(object):
-    def __init__(self, version):
+    def __init__(self, version, Token=Token):
         self.version = version
         from sys import version_info
         self.pyversion = float('%d.%d' % version_info[0:2])
         self.showasm = False
         self.out = None
-        self.resetTokenClass()
+        self.setTokenClass(Token)
         self.JUMP_OPs = [dis.opname[op] for op in dis.hasjrel + dis.hasjabs]
 
     def setShowAsm(self, showasm, out=None):
         self.showasm = showasm
         self.out = out
 
-    def setTokenClass(self, tokenClass):
+    def setTokenClass(self, tokenClass=Token):
         assert type(tokenClass) == type
         self.Token = tokenClass
 
     def resetTokenClass(self):
-        self.setTokenClass(Token)
+        self.setTokenClass()
 
     def disassemble(self, co, classname=None):
         """Disassemble a code object, returning a list of 'Token'.
