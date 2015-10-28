@@ -34,9 +34,11 @@ def test_expressions():
 
     expressions = [
         # expr, expected source if different
+        ('c(a if x else y)', None),
+        ('lambda : (a if x else y)', None),
+        ('a if x else y', 'if x:\n    return a\nreturn y'),
         ('(a for a in this if a < y)', None),
         ('a + b', None),
-        ('x if x else y', 'if x:\n    return x\nreturn y'),
         ('lambda x, y=1, *args, **kw: x + y', None),
         ('[a for a in x if a < y]', None),
         ('{k: v for k, v in this}', None),
@@ -49,8 +51,14 @@ def test_expressions():
         ('a.attr.b[2:3]', None),
         ('a[1] + list(b)', None)
     ]
-    codes = [(compile(expr, '<test>', 'eval'), expr, expected if expected else 'return ' + expr)
-             for expr, expected in expressions]
+    codes = [
+        (
+            compile(expr, '<test>', 'eval'),
+            expr,
+            expected if expected else 'return ' + expr
+        )
+        for expr, expected in expressions
+    ]
     failures = []
     for code, expr, expected in codes:
         try:
@@ -59,7 +67,7 @@ def test_expressions():
         except AssertionError:
             raise
         except Exception as error:
-            failures.append((expr, error))
+            failures.append((expr, error, u.tokens))
     assert not failures
 
 
