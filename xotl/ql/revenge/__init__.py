@@ -68,6 +68,7 @@ class Uncompyled(object):   # TODO:  Find better name
         scanner = scanners.getscanner(version)
         self.walker = walker = walkers.Walker(scanner)
         tokens, customizations = scanner.disassemble(code)
+        self.tokens = tokens
         self.customizations = customizations
         try:
             ast = walker.build_ast(tokens, customizations)
