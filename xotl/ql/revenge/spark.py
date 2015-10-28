@@ -34,7 +34,7 @@ def _namelist(instance):
     for c in classlist:
         for b in c.__bases__:
             classlist.append(b)
-        for name in list(c.__dict__.keys()):
+        for name in c.__dict__.keys():
             if name not in namedict:
                 namelist.append(name)
                 namedict[name] = 1
@@ -97,14 +97,14 @@ class GenericParser(object):
         changes = 1
         while changes:
             changes = 0
-            for k, v in list(self.edges.items()):
+            for k, v in self.edges.items():
                 if v is None:
                     state, sym = k
                     if state in self.states:
                         self.goto(state, sym)
                         changes = 1
         rv = self.__dict__.copy()
-        for s in list(self.states.values()):
+        for s in self.states.values():
             del s.items
         del rv['rule2func']
         del rv['nullable']
@@ -219,8 +219,7 @@ class GenericParser(object):
     def computeNull(self):
         self.nullable = {}
         tbd = []
-
-        for rulelist in list(self.rules.values()):
+        for rulelist in self.rules.values():
             lhs = rulelist[0][0]
             self.nullable[lhs] = 0
             for rule in rulelist:
@@ -268,7 +267,7 @@ class GenericParser(object):
 
     def makeNewRules(self):
         worklist = []
-        for rulelist in list(self.rules.values()):
+        for rulelist in self.rules.values():
             for rule in rulelist:
                 worklist.append((rule, 0, 1, rule))
 
