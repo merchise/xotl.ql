@@ -105,6 +105,11 @@ def override(pred=True, default=None):
 if py3k:
     from dis import Bytecode, Instruction, _Instruction
 else:
+    try:
+        from xoutil.params import keywordonly   # migrate
+    except ImportError:
+        keywordonly = lambda *names: lambda f: f
+
     class Bytecode(object):
         """The bytecode operations of a piece of code
 
@@ -115,6 +120,7 @@ else:
         instances.
 
         """
+        @keywordonly('first_line', 'current_offset')
         def __init__(self, x, first_line=None, current_offset=None):
             self.codeobj = co = _get_code_object(x)
             if first_line is None:
