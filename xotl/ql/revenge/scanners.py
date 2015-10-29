@@ -61,6 +61,30 @@ POP_JUMPs = JUMP_IF_OR_POPs + POP_JUMP_IFs
 JUMPs = (JUMP_ABSOLUTE, JUMP_FORWARD)
 
 
+from .eight import Instruction as BaseInstruction
+
+
+class _Instruction(BaseInstruction):
+    @property
+    def size(self):
+        import dis
+        return 1 if self.opcode < dis.HAVE_ARGUMENT else 3
+
+
+class Instruction(object):
+    def __init__(self, *args, **kwargs):
+        self.instruction = _Instruction(*args, **kwargs)
+
+    def __repr__(self):
+        return repr(self.instruction)
+
+    def __getattr__(self, attrname):
+        return getattr(self.instruction, attrname)
+
+    def __dir__(self):
+        return dir(self.instruction)
+
+
 class Token(object):
     """Class representing a byte-code token.
 

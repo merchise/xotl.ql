@@ -103,7 +103,7 @@ def override(pred=True, default=None):
 
 # Python 2 port for dis.Bytecode and Instruction...
 if py3k:
-    from dis import Bytecode, Instruction, _Instruction
+    from dis import Bytecode, Instruction
 else:
     try:
         from xoutil.params import keywordonly   # migrate
@@ -229,7 +229,6 @@ else:
         labels = findlabels(code)
         extended_arg = 0
         starts_line = None
-        free = None
         # enumerate() is not an option, since we sometimes process
         # multiple elements on a single pass through the loop
         n = len(code)
