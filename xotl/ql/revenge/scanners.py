@@ -40,7 +40,7 @@ globals().update(
     {k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())}
 )
 
-from xoutil.eight import _py3, _py2
+from xoutil.eight import _py3, _py2, _pypy
 if _py3:
     PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
     STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
@@ -61,7 +61,7 @@ POP_JUMPs = JUMP_IF_OR_POPs + POP_JUMP_IFs
 JUMPs = (JUMP_ABSOLUTE, JUMP_FORWARD)
 
 
-from .eight import Instruction as BaseInstruction
+from .eight import Bytecode, Instruction as BaseInstruction
 
 
 class _Instruction(BaseInstruction):
@@ -73,7 +73,19 @@ class _Instruction(BaseInstruction):
 
 class Instruction(object):
     def __init__(self, *args, **kwargs):
-        self.instruction = _Instruction(*args, **kwargs)
+        if args and len(args) > 1 or kwargs:
+            self.__dict__['instruction'] = _Instruction(*args, **kwargs)
+        elif args and len(args) == 1:
+            which = args[0]
+            if isinstance(which, Instruction):
+                which = which.instruction
+            if isinstance(which, BaseInstruction):
+                self.__dict__['instruction'] = _Instruction(
+                    **dict(which._asdict()))
+            else:
+                raise TypeError('Invalid arguments for Instruction')
+        else:
+            raise TypeError('Instruction requires arguments')
 
     def __repr__(self):
         return repr(self.instruction)
@@ -81,8 +93,18 @@ class Instruction(object):
     def __getattr__(self, attrname):
         return getattr(self.instruction, attrname)
 
+    def __setattr__(self, attrname, value):
+        intr = self.instruction
+        if intr and attrname in intr._fields:
+            self.__dict__['instruction'] = intr._replace(**{attrname: value})
+        else:
+            self.__dict__[attrname] = value
+
     def __dir__(self):
         return dir(self.instruction)
+
+    def __eq__(self, other):
+        return self.instruction == getattr(other, 'instruction', other)
 
 
 class Token(object):
@@ -199,7 +221,8 @@ class Scanner(object):
             j += 1
         free = co.co_cellvars + co.co_freevars
         names = co.co_names
-        # cf:  A cross-reference index:  keys are offsets that are targets of jumps located in the values.
+        # cf: A cross-reference index: keys are offsets that are targets of
+        # jumps located in the values.
         cf = self.find_jump_targets(code)
         extended_arg = 0
         for offset in self.op_range(0, n):
@@ -912,6 +935,82 @@ def getscanner(version, get_current_thread=get_ident):
     if result is Unset:
         __scanners[key] = result = Scanner(version)
     return result
+
+
+def without_nops(instructions):
+    '''Return the same instruction set with NOPs removed.
+
+    The jump targets are properly updated.
+
+    Loosely based on the same algorithm in `Python/peephole.c`.
+
+    '''
+    # Builds a map from current offset to offsets discounting NOPs.
+    addrmap = []
+    nops = 0
+    for i in instructions:
+        addrmap[i.offset:i.offset + i.size] = list(range(i.offset - nops, i.offset + i.size - nops))
+        if i.opcode == NOP:
+            nops += 1
+    args = []
+    offset = 0
+    targets = []
+    for i in instructions:
+        vals = dict(i._asdict())
+        vals['offset'] = offset
+        if i.opcode in dis.hasjabs:
+            vals['arg'] = vals['argval'] = target = addrmap[i.arg]
+            targets.append(target)
+        elif i.opcode in dis.hasjrel:
+            offset = i.offset
+            size = i.size
+            target = offset + i.arg + size
+            newoffset = addrmap[offset]
+            newtarget = addrmap[target]
+            targets.append(newtarget)
+            vals['arg'] = vals['argval'] = newtarget - newoffset - size
+        if i.opcode != NOP:
+            args.append(vals)
+            offset += i.size
+    # Unfortunately we need a third pass to adjust the is_jump_target
+    result = []
+    for vals in args:
+        offset = vals['offset']
+        vals['is_jump_target'] = offset in targets
+        result.append(Instruction(**vals))
+    return result
+
+
+def normalize_pypy_conditional(instructions):
+    '''Apply the pypy normalization rule described in 'scanners.rst'.
+
+    Rule:
+
+      If the target of a ``JUMP_FORWARD`` (or ``JUMP_ABSOLUTE``) is a
+      ``RETURN_VALUE`` replace the JUMP with the following instructions::
+
+        RETURN_VALUE
+        NOP
+        NOP
+
+    '''
+    index = {i.offset: i for i in instructions}
+    for i in instructions:
+        if i.opcode == JUMP_ABSOLUTE and index[i.arg].opcode == RETURN_VALUE \
+           or i.opcode == JUMP_FORWARD and index[i.offset + i.arg + i.size].opcode == RETURN_VALUE:
+            yield Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE,
+                              arg=None, argval=None, argrepr='',
+                              offset=i.offset, starts_line=i.starts_line,
+                              is_jump_target=i.is_jump_target)
+            yield Instruction(opname='NOP', opcode=NOP, arg=None, argval=None,
+                              argrepr='', offset=i.offset+1, starts_line=None,
+                              is_jump_target=False)
+            yield Instruction(opname='NOP', opcode=NOP, arg=None, argval=None,
+                              argrepr='', offset=i.offset+2, starts_line=None,
+                              is_jump_target=False)
+        else:
+            yield Instruction(i)
+
 
 # Local Variables:
 # fill-column: 150
