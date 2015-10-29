@@ -845,13 +845,22 @@ class Scanner(object):
         return targets
 
 
+# A cache from version to Scanners.
+# Since Scanners are not thread-safe the getscanner accepts a
+# get_current_thread argument so that scanners don't cross threads.
 __scanners = {}
 
 
-def getscanner(version):
-    if version not in __scanners:
-        __scanners[version] = Scanner(version)
-    return __scanners[version]
+from thread import get_ident
+
+
+def getscanner(version, get_current_thread=get_ident):
+    from xoutil import Unset
+    key = (version, get_current_thread())
+    result = __scanners.get(key, Unset)
+    if result is Unset:
+        __scanners[key] = result = Scanner(version)
+    return result
 
 # Local Variables:
 # fill-column: 150
