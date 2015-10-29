@@ -64,47 +64,46 @@ JUMPs = (JUMP_ABSOLUTE, JUMP_FORWARD)
 from .eight import Bytecode, Instruction as BaseInstruction
 
 
-class _Instruction(BaseInstruction):
+class Instruction(object):
+    def __init__(self, *args, **kwargs):
+        if args and len(args) > 1 or kwargs:
+            instruction = BaseInstruction(*args, **kwargs)
+        elif args and len(args) == 1:
+            which = args[0]
+            if isinstance(which, (Instruction, BaseInstruction)):
+                instruction = BaseInstruction(*which._asdict().values())
+            else:
+                raise TypeError('Invalid arguments for Instruction')
+        else:
+            raise TypeError('Instruction requires arguments')
+        self.__dict__.update({
+            field: getattr(instruction, field)
+            for field in BaseInstruction._fields
+        })
+
     @property
     def size(self):
         import dis
         return 1 if self.opcode < dis.HAVE_ARGUMENT else 3
 
+    @property
+    def _instruction(self):
+        return BaseInstruction(*self._asdict().values())
 
-class Instruction(object):
-    def __init__(self, *args, **kwargs):
-        if args and len(args) > 1 or kwargs:
-            self.__dict__['instruction'] = _Instruction(*args, **kwargs)
-        elif args and len(args) == 1:
-            which = args[0]
-            if isinstance(which, Instruction):
-                which = which.instruction
-            if isinstance(which, BaseInstruction):
-                self.__dict__['instruction'] = _Instruction(
-                    **dict(which._asdict()))
-            else:
-                raise TypeError('Invalid arguments for Instruction')
-        else:
-            raise TypeError('Instruction requires arguments')
+    def _asdict(self):
+        from xoutil.collections import OrderedDict
+        return OrderedDict([
+            (field, getattr(self, field))
+            for field in BaseInstruction._fields
+        ])
 
     def __repr__(self):
-        return repr(self.instruction)
-
-    def __getattr__(self, attrname):
-        return getattr(self.instruction, attrname)
-
-    def __setattr__(self, attrname, value):
-        intr = self.instruction
-        if intr and attrname in intr._fields:
-            self.__dict__['instruction'] = intr._replace(**{attrname: value})
-        else:
-            self.__dict__[attrname] = value
-
-    def __dir__(self):
-        return dir(self.instruction)
+        return repr(self._instruction)
 
     def __eq__(self, other):
-        return self.instruction == getattr(other, 'instruction', other)
+        from xoutil.objects import validate_attrs
+        return validate_attrs(self, other,
+                              force_equals=BaseInstruction._fields)
 
 
 class Token(object):

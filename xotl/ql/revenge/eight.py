@@ -103,7 +103,7 @@ def override(pred=True, default=None):
 
 # Python 2 port for dis.Bytecode and Instruction...
 if py3k:
-    from dis import Bytecode, Instruction
+    from dis import Bytecode, Instruction, _Instruction
 else:
     try:
         from xoutil.params import keywordonly   # migrate
