@@ -147,7 +147,7 @@ class Scanner(object):
         Token = self.Token  # shortcut
         code = self.code = array(str('B'), co.co_code)
         linestarts = list(dis.findlinestarts(co))
-        varnames = list(co.co_varnames)
+        varnames = tuple(co.co_varnames)
         n = len(code)
 
         # An index from byte-code index to the index containing the opcode
@@ -175,18 +175,14 @@ class Scanner(object):
             j += 1
         free = co.co_cellvars + co.co_freevars
         names = co.co_names
-
+        # cf:  A cross-reference index:  keys are offsets that are targets of jumps located in the values.
         cf = self.find_jump_targets(code)
-
         extended_arg = 0
         for offset in self.op_range(0, n):
             if offset in cf:
-                k = 0
-                for j in cf[offset]:
+                for k, j in enumerate(cf[offset]):
                     rv.append(Token('COME_FROM', None, repr(j),
                                     offset="%s_%d" % (offset, k)))
-                    k += 1
-
             op = code[offset]
             opname = dis.opname[op]
             oparg = pattr = None
@@ -842,10 +838,10 @@ class Scanner(object):
                             if (oparg > i):
                                 label = oparg
                 if label is not None and label != -1:
-                    targets[label] = targets.get(label, []) + [i]
+                    targets.setdefault(label, []).append(i)
             elif op == END_FINALLY and i in self.fixed_jumps:
                 label = self.fixed_jumps[i]
-                targets[label] = targets.get(label, []) + [i]
+                targets.setdefault(label, []).append(i)
         return targets
 
 
