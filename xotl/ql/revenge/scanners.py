@@ -550,9 +550,42 @@ class Scanner(object):
             target = parent['end']
         return target
 
+    def get_parent_structure(self, offset):
+        '''The minimal structure the given `offset` lies into.
+
+        Since structures don't overlap unless fully contained they form a
+        nested structure.  Minimal means there's no an inner structure which
+        contains the given `offset`.
+
+        The following diagram uses delimiters (brackets, braces and
+        parenthesis) to illustrate structures, the number over of the opening
+        delimiter simply names it.  Dots means an unspecified amount of
+        "space".  If `offset` matches the "*", the parent structure would be
+        the number 3.  If `offset` matches the "x", the parent structure would
+        be the number 4.
+
+        ::
+
+            1     2        3       4                5
+            [.... (....)...(...*...{...x...}...)....(..)]
+
+        '''
+        parent = self.structs[0]
+        the_start, the_end = parent['start'], parent['end']
+        for struct in self.structs[1:]:
+            start = struct['start']
+            end = struct['end']
+            if start <= offset < end and start >= the_start and end <= the_end:
+                the_start = start
+                the_end = end
+                parent = struct
+        return parent
+
     def detect_structure(self, pos, op=None):
-        """Detect structures and their boundaries to fix optimized jumps in
-        python2.3+
+        """Detect structures and their boundaries to fix optimized jumps in Python
+        2.3+
+
+        TODO:  What are structures and their boundaries?
 
         """
         # TODO: check the struct boundaries more precisely -Dan
@@ -560,17 +593,7 @@ class Scanner(object):
         # Ev remove this test and make op a mandatory argument -Dan
         if op is None:
             op = code[pos]
-        # Detect parent structure
-        parent = self.structs[0]
-        start = parent['start']
-        end = parent['end']
-        for s in self.structs:
-            _start = s['start']
-            _end = s['end']
-            if (_start <= pos < _end) and (_start >= start and _end <= end):
-                start = _start
-                end = _end
-                parent = s
+        parent = self.get_parent_structure(offset=pos)
         # We need to know how many new structures were added in this run
         if op == SETUP_LOOP:
             start = pos+3
@@ -812,10 +835,14 @@ class Scanner(object):
         """
         hasjrel = dis.hasjrel
         hasjabs = dis.hasjabs
-        n = len(code)
+        # Structs holds the current structures found in the bytecode the
+        # 'root' struct is the entire program and it spans from the first
+        # byte-code (offset 0) to the last (offset n-1).  The
+        # `detect_structure` method fills this data-structure with minor
+        # structures like loops, etc.
         self.structs = [{'type':  'root',
                          'start': 0,
-                         'end':   n-1}]
+                         'end':   self.get_code_size()-1}]
         self.loops = []  # All loop entry points
         self.fixed_jumps = {}  # Map fixed jumps to their real destination
         self.ignore_if = set()
