@@ -102,9 +102,9 @@ def override(pred=True, default=None):
 
 
 # Python 2 port for dis.Bytecode and Instruction...
-if py3k:
+try:
     from dis import Bytecode, Instruction, _Instruction
-else:
+except ImportError:
     try:
         from xoutil.params import keywordonly   # migrate
     except ImportError:
