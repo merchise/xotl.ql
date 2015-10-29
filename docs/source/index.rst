@@ -59,7 +59,7 @@ Additional documents:
 
    ponyorm
    thoughts
-   revenge
+   _revenge/index
    monads
    scratch
    references

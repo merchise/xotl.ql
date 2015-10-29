@@ -981,9 +981,9 @@ def without_nops(instructions):
 
 
 def normalize_pypy_conditional(instructions):
-    '''Apply the pypy normalization rule described in 'scanners.rst'.
+    '''Apply the pypy normalization rule.
 
-    Rule:
+    The pypy normalization rule states that:
 
       If the target of a ``JUMP_FORWARD`` (or ``JUMP_ABSOLUTE``) is a
       ``RETURN_VALUE`` replace the JUMP with the following instructions::
@@ -991,6 +991,9 @@ def normalize_pypy_conditional(instructions):
         RETURN_VALUE
         NOP
         NOP
+
+    This is rule does not only apply when using Pypy, the name simply comes
+    because Pypy compiles conditional expressions using JUMPs.
 
     '''
     index = {i.offset: i for i in instructions}
