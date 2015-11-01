@@ -29,28 +29,68 @@ del sys
 # We'll extend the tests to actually match our target AST.
 
 
-def test_expressions():
-    from xotl.ql.revenge import Uncompyled
-
+def test_basic_expressions():
     expressions = [
-        # expr, expected source if different
-        ('c(a if x else y)', None),
-        ('lambda : (a if x else y)', None),
-        ('a if x else y', 'if x:\n    return a\nreturn y'),
-        ('(a for a in this if a < y)', None),
         ('a + b', None),
         ('lambda x, y=1, *args, **kw: x + y', None),
-        ('[a for a in x if a < y]', None),
-        ('{k: v for k, v in this}', None),
-        ('{s for s in this if s < y}', None),
         ('c(a)', None),
-        ('a and b or c', None),
         ('a & b | c ^ d', None),
         ('a << b >> c', None),
         ('a + b * (d + c)', None),
+        ('a in b', None),
         ('a.attr.b[2:3]', None),
-        ('a[1] + list(b)', None)
+        ('a[1] + list(b)', None),
     ]
+    _do_test(expressions)
+
+
+def test_conditional_expressions():
+    expressions = [
+        # expr, expected source if different
+        ('(a if x else y) if (b if z else c) else (d if o else p)', None),
+        ('(a if x else y) if not (b if not z else c) else (d if o else p)', None),
+        ('c(a if x else y)', None),
+        ('lambda : (a if x else y)', None),
+        ('a if x else y', None),
+        ('a and b or c', None),
+    ]
+    _do_test(expressions)
+
+
+def test_comprehensions():
+    expressions = [
+        ('((a for a in b) for b in (x for x in this))', None),
+        ('[[a for a in b] for b in [x for x in this]]', None),
+        ('calling(a for a in this if a < y)', None),
+        ('[a for a in x if a < y]', None),
+        ('{k: v for k, v in this}', None),
+        ('{s for s in this if s < y}', None),
+        # self.env['res.users'].search([])
+        ("(user for user in table('res.users'))", None),
+        # self.search(cr, uid, [('id', 'not in', no_unlink_ids)])
+        ('(which for which in self if which.id not in no_unlik_ids)', None),
+        # ('object_merger_model', '=', True)
+        ('(which for which in self if which.object_merger_model == True)', None),
+        ('(which for which in self if which.object_merger_model)', None),
+        # [('stage_id', 'in', ('Done', 'Cancelled')), ('project_id', '=',
+        # project.id)]
+        ("(project for project in this if project.stage_id in ('Done', 'Cancelled') and project.id == project_id)", None),
+        # ['&',
+        # '|',
+        # ('email_from', '=like', "%%%s" % escape(sender)),   # Ends with _XXX@..
+        # ('email_from', '=like', '%%%s>' % escape(sender)),  # or _XXX@..>
+
+        # ('parent_id.parent_id', '=', None),
+        # ('res_id', '!=', 0),
+        # ('res_id', '!=', None)]
+    ]
+    _do_test(expressions)
+
+
+def _do_test(expressions):
+    import dis
+    from xotl.ql.revenge import Uncompyled, ParserError
+
     codes = [
         (
             compile(expr, '<test>', 'eval'),
@@ -59,46 +99,29 @@ def test_expressions():
         )
         for expr, expected in expressions
     ]
-    failures = []
     for code, expr, expected in codes:
         try:
             u = Uncompyled(code)
             assert u.source == expected
-        except AssertionError:
+        except AssertionError as error:
+            print()
+            print(expr)
+            print(error)
+            dis.dis(code)
+            for t in u.tokens:
+                print(str(t))
+            print(u.ast)
+            print(u.source)
+            pass
+        except ParserError as error:
+            print()
+            print(expr)
+            dis.dis(code)
             raise
         except Exception as error:
-            failures.append((expr, error, u.tokens))
-    assert not failures
-
-
-def test_comprehensions():
-    from xotl.ql.revenge import Uncompyled
-    wrapper = compile('(a for b in this if a < b)', '', 'eval')
-
-    # >>> dis.dis(compile('(a for b in this if a < b)', '', 'eval'))
-    #   1           0 LOAD_CONST               0 (<code object <genexpr>...>)
-    #               3 MAKE_FUNCTION            0
-    #               6 LOAD_NAME                0 (this)
-    #               9 GET_ITER
-    #              10 CALL_FUNCTION            1
-    #              13 RETURN_VALUE
-    Uncompyled(wrapper)
-
-    compr = wrapper.co_consts[0]
-    # >>> dis.dis(compr)
-    #   1           0 LOAD_FAST                0 (.0)
-    #         >>    3 FOR_ITER                23 (to 29)
-    #               6 STORE_FAST               1 (b)
-    #               9 LOAD_GLOBAL              0 (a)
-    #              12 LOAD_FAST                1 (b)
-    #              15 COMPARE_OP               0 (<)
-    #              18 POP_JUMP_IF_FALSE        3
-    #              21 LOAD_GLOBAL              0 (a)
-    #              24 YIELD_VALUE
-    #              25 POP_TOP
-    #              26 JUMP_ABSOLUTE            3
-    #         >>   29 LOAD_CONST               0 (None)
-    #              32 RETURN_VALUE
-
-    # This means we can build the AST for "bare" comprehensions.
-    Uncompyled(compr)
+            print()
+            print(expr)
+            dis.dis(code)
+            print(u.tokens)
+            print(u.ast)
+            raise
