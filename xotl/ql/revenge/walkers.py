@@ -149,7 +149,7 @@ RETURN_LOCALS = AST(
 NONE = AST(
     'expr',
     [
-        Token('LOAD_CONST', pattr=None)
+        Token('LOAD_CONST', argval=None)
     ]
 )
 
@@ -193,12 +193,12 @@ ASSIGN_DOC_STRING = lambda doc_string: (
                     AST(
                         'expr',
                         [
-                            Token('LOAD_CONST', pattr=doc_string)
+                            Token('LOAD_CONST', argval=doc_string)
                         ]
                     ),
                     AST(
                         'designator',
-                        [Token('STORE_NAME', pattr='__doc__')]
+                        [Token('STORE_NAME', argval='__doc__')]
                     )
                 ]
             )
@@ -225,13 +225,13 @@ NAME_MODULE = AST(
                 AST(
                     'expr',
                     [
-                        Token('LOAD_NAME', pattr='__name__')
+                        Token('LOAD_NAME', argval='__name__')
                     ]
                 ),
                 AST(
                     'designator',
                     [
-                        Token('STORE_NAME', pattr='__module__')
+                        Token('STORE_NAME', argval='__module__')
                     ]
                 )
             ]
@@ -244,7 +244,7 @@ INDENT_PER_LEVEL = ' '  # additional intent per pretty-print level
 
 TABLE_R = {
     'POP_TOP':          ('%|%c\n', 0),
-    'STORE_ATTR':       ('%c.%[1]{pattr}', 0),
+    'STORE_ATTR':       ('%c.%[1]{argval}', 0),
     'STORE_SLICE+0':    ('%c[:]', 0),
     'STORE_SLICE+1':    ('%c[%p:]', 0, (1, 100)),
     'STORE_SLICE+2':    ('%c[:%p]', 0, (1, 100)),
@@ -253,7 +253,7 @@ TABLE_R = {
     'DELETE_SLICE+1':   ('%|del %c[%c:]\n', 0, 1),
     'DELETE_SLICE+2':   ('%|del %c[:%c]\n', 0, 1),
     'DELETE_SLICE+3':   ('%|del %c[%c:%c]\n', 0, 1, 2),
-    'DELETE_ATTR':      ('%|del %c.%[-1]{pattr}\n', 0),
+    'DELETE_ATTR':      ('%|del %c.%[-1]{argval}\n', 0),
 }
 
 TABLE_R0 = {
@@ -308,28 +308,28 @@ TABLE_DIRECT = {
     'slice2': ('%c[:%p]', 0, (1, 100)),
     'slice3': ('%c[%p:%p]', 0, (1, 100), (2, 100)),
 
-    'IMPORT_FROM': ('%{pattr}', ),
+    'IMPORT_FROM': ('%{argval}', ),
 
-    'load_attr': ('%c.%[1]{pattr}', 0),
+    'load_attr': ('%c.%[1]{argval}', 0),
 
-    'LOAD_FAST': ('%{pattr}', ),
-    'LOAD_NAME': ('%{pattr}', ),
-    'LOAD_GLOBAL': ('%{pattr}', ),
-    'LOAD_DEREF': ('%{pattr}', ),
+    'LOAD_FAST': ('%{argval}', ),
+    'LOAD_NAME': ('%{argval}', ),
+    'LOAD_GLOBAL': ('%{argval}', ),
+    'LOAD_DEREF': ('%{argval}', ),
     'LOAD_LOCALS': ('locals()', ),
-    'LOAD_ASSERT': ('%{pattr}', ),
+    'LOAD_ASSERT': ('%{argval}', ),
 
-    'DELETE_FAST': ('%|del %{pattr}\n', ),
-    'DELETE_NAME': ('%|del %{pattr}\n', ),
-    'DELETE_GLOBAL': ('%|del %{pattr}\n', ),
+    'DELETE_FAST': ('%|del %{argval}\n', ),
+    'DELETE_NAME': ('%|del %{argval}\n', ),
+    'DELETE_GLOBAL': ('%|del %{argval}\n', ),
     'delete_subscr': ('%|del %c[%c]\n', 0, 1,),
     'binary_subscr': ('%c[%p]', 0, (1, 100)),
     'binary_subscr2': ('%c[%p]', 0, (1, 100)),
     'store_subscr': ('%c[%c]', 0, 1),
-    'STORE_FAST': ('%{pattr}', ),
-    'STORE_NAME': ('%{pattr}', ),
-    'STORE_GLOBAL': ('%{pattr}', ),
-    'STORE_DEREF': ('%{pattr}', ),
+    'STORE_FAST': ('%{argval}', ),
+    'STORE_NAME': ('%{argval}', ),
+    'STORE_GLOBAL': ('%{argval}', ),
+    'STORE_DEREF': ('%{argval}', ),
     'unpack': ('%C%,', (1, sys.maxsize, ', ')),
     'unpack_w_parens': ('(%C%,)', (1, sys.maxsize, ', ')),
     'unpack_list': ('[%C]', (1, sys.maxsize, ', ')),
@@ -352,7 +352,7 @@ TABLE_DIRECT = {
 
     'assign': ('%|%c = %p\n', -1, (0, 200)),
     'augassign1': ('%|%c %c %c\n', 0, 2, 1),
-    'augassign2': ('%|%c.%[2]{pattr} %c %c\n', 0, -3, -4),
+    'augassign2': ('%|%c.%[2]{argval} %c %c\n', 0, -3, -4),
 
     'designList': ('%c = %c', 0, -1),
     'and': ('%c and %c', 0, 2),
@@ -366,10 +366,10 @@ TABLE_DIRECT = {
     'ret_cond_not': ('%p if not %p else %p', (2, 27), (0, 22), (4, 27)),
     'conditional_lambda': ('(%c if %c else %c)', 2, 0, 3),
     'return_lambda': ('%c', 0),
-    'compare': ('%p %[-1]{pattr} %p', (0, 19), (1, 19)),
+    'compare': ('%p %[-1]{argval} %p', (0, 19), (1, 19)),
     'cmp_list': ('%p %p', (0, 20), (1, 19)),
-    'cmp_list1': ('%[3]{pattr} %p %p', (0, 19), (-2, 19)),
-    'cmp_list2': ('%[1]{pattr} %p', (0, 19)),
+    'cmp_list1': ('%[3]{argval} %p %p', (0, 19), (-2, 19)),
+    'cmp_list2': ('%[1]{argval} %p', (0, 19)),
 
     'funcdef': ('\n\n%|def %c\n', -2),  # -2 to handle closures
     'funcdefdeco': ('\n\n%c', 0),
@@ -377,7 +377,7 @@ TABLE_DIRECT = {
     'mkfuncdeco0': ('%|def %c\n', 0),
     'classdefdeco': ('%c', 0),
     'classdefdeco1': ('\n\n%|@%c%c', 0, 1),
-    'kwarg': ('%[0]{pattr}=%c', 1),
+    'kwarg': ('%[0]{argval}=%c', 1),
     'importlist2': ('%C', (0, sys.maxsize, ', ')),
 
     'assert': ('%|assert %c\n', 0),
@@ -443,7 +443,7 @@ TABLE_DIRECT = {
     'withstmt': ('%|with %c:\n%+%c%-', 0, 3),
     'withasstmt': ('%|with %c as %c:\n%+%c%-', 0, 2, 3),
     'passstmt': ('%|pass\n',),
-    'STORE_FAST': ('%{pattr}',),
+    'STORE_FAST': ('%{argval}',),
     'kv': ('%c: %c', 3, 1),
     'kv2': ('%c: %c', 1, 2),
     'mapexpr': ('{%[1]C}', (0, sys.maxsize, ', ')),
@@ -452,8 +452,8 @@ TABLE_DIRECT = {
 
     # Import style for 2.5
     'importstmt': ('%|import %c\n', 2),
-    'importstar': ('%|from %[2]{pattr} import *\n',),
-    'importfrom': ('%|from %[2]{pattr} import %c\n', 3),
+    'importstar': ('%|from %[2]{argval} import *\n',),
+    'importfrom': ('%|from %[2]{argval} import %c\n', 3),
     'importmultiple': ('%|import %c%c\n', 2, 3),
     'import_cont': (', %c', 2),
 
@@ -538,7 +538,7 @@ PRECEDENCE = {
 
 ASSIGN_TUPLE_PARAM = lambda param_name: AST('expr',
                                             [Token('LOAD_FAST',
-                                                   pattr=param_name)])
+                                                   argval=param_name)])
 
 #
 escape = re.compile(
@@ -566,8 +566,8 @@ def find_globals(node, globs):
     for n in node:
         if isinstance(n, AST):
             globs = find_globals(n, globs)
-        elif n.type in ('STORE_GLOBAL', 'DELETE_GLOBAL'):
-            globs.add(n.pattr)
+        elif n.name in ('STORE_GLOBAL', 'DELETE_GLOBAL'):
+            globs.add(n.argval)
     return globs
 
 
@@ -576,8 +576,8 @@ def find_all_globals(node, globs):
     for n in node:
         if isinstance(n, AST):
             globs = find_all_globals(n, globs)
-        elif n.type in ('STORE_GLOBAL', 'DELETE_GLOBAL', 'LOAD_GLOBAL'):
-            globs.add(n.pattr)
+        elif n.name in ('STORE_GLOBAL', 'DELETE_GLOBAL', 'LOAD_GLOBAL'):
+            globs.add(n.argval)
     return globs
 
 
@@ -587,7 +587,7 @@ def find_none(node):
             if not (n == 'return_stmt' or n == 'return_if_stmt'):
                 if find_none(n):
                     return True
-        elif n.type == 'LOAD_CONST' and n.pattr is None:
+        elif n.name == 'LOAD_CONST' and n.argval is None:
             return True
     return False
 
@@ -847,7 +847,7 @@ class Walker(GenericASTTraversal, object):
         else:
             n = node[0]
         self.prec = PRECEDENCE.get(n, -2)
-        if n == 'LOAD_CONST' and repr(n.pattr)[0] == '-':
+        if n == 'LOAD_CONST' and repr(n.argval)[0] == '-':
             self.prec = 6
         if p < self.prec:
             self.write('(')
@@ -877,7 +877,7 @@ class Walker(GenericASTTraversal, object):
         self.prune()
 
     def n_LOAD_CONST(self, node):
-        data = node.pattr
+        data = node.argval
         datatype = type(data)
         if datatype is IntType and data == minint:
             # convert to hex, since decimal representation
@@ -1025,9 +1025,9 @@ class Walker(GenericASTTraversal, object):
         self.prune()
 
     def n_import_as(self, node):
-        iname = node[0].pattr
+        iname = node[0].argval
         assert node[-1][-1].type.startswith('STORE_')
-        sname = node[-1][-1].pattr  # assume one of STORE_.... here
+        sname = node[-1][-1].argval  # assume one of STORE_.... here
         if iname == sname or iname.startswith(sname + '.'):
             self.write(iname)
         else:
@@ -1037,8 +1037,8 @@ class Walker(GenericASTTraversal, object):
     n_import_as_cont = n_import_as
 
     def n_importfrom(self, node):
-        if node[0].pattr > 0:
-            node[2].pattr = '.' * node[0].pattr + node[2].pattr
+        if node[0].argval > 0:
+            node[2].argval = '.' * node[0].argval + node[2].argval
         self.default(node)
 
     n_importstar = n_importfrom
@@ -1083,7 +1083,7 @@ class Walker(GenericASTTraversal, object):
     def comprehension_walk(self, node, iter_index):
         p = self.prec
         self.prec = 27
-        code = node[-5].attr
+        code = node[-5].argval
 
         assert type(code) == CodeType
         code = Code(code, self.scanner, self.currentclass)
@@ -1129,7 +1129,7 @@ class Walker(GenericASTTraversal, object):
     def n_classdef(self, node):
         # class definition ('class X(A,B,C):')
         cclass = self.currentclass
-        self.currentclass = str(node[0].pattr)
+        self.currentclass = str(node[0].argval)
 
         self.write('\n\n')
         self.write(self.indent, 'class ', self.currentclass)
@@ -1438,8 +1438,8 @@ class Walker(GenericASTTraversal, object):
                 return result
             else:
                 return name
-        defparams = node[:node[-1].attr]  # node[-1] == MAKE_xxx_n
-        code = node[-2].attr
+        defparams = node[:node[-1].arg]  # node[-1] == MAKE_xxx_n
+        code = node[-2].argval
         assert type(code) == CodeType
         code = Code(code, self.scanner, self.currentclass)
         # add defaults values to parameter names
@@ -1480,7 +1480,7 @@ class Walker(GenericASTTraversal, object):
             # docstring exists, dump it
             self.print_docstring(indent, code.co_consts[0])
         code._tokens = None  # save memory
-        assert ast == 'stmts'
+        # assert ast == 'stmts'
         all_globals = find_all_globals(ast, set())
         for g in ((all_globals & self.mod_globs) | find_globals(ast, set())):
             self.print_(self.indent, 'global ', g)

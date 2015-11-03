@@ -87,7 +87,7 @@ class _InternalParser(GenericASTBuilder):
         raise ParserError(token, token.offset)
 
     def typestring(self, token):
-        return token.type
+        return token.name
 
     def cleanup(self):
         """Remove recursive references.
@@ -134,8 +134,6 @@ class _InternalParser(GenericASTBuilder):
 
     def p_mapexpression():
         '''A map expression.
-
-        Include the
 
         Dictionary literals are built by creating a fixed sized dictionary and
         filling it with they values.
@@ -228,8 +226,7 @@ class _InternalParser(GenericASTBuilder):
         buildslice3 ::= expr expr expr BUILD_SLICE_3
         buildslice2 ::= expr expr BUILD_SLICE_2
 
-        # yield ::= expr YIELD_VALUE
-
+        # mklambda
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
 
@@ -604,8 +601,8 @@ class Parser(object):
         #    unpack ::= UNPACK_TUPLE {expr}^n
         #    unpack ::= UNPACK_SEQUENCE {expr}^n
         #
-        #    mkfunc ::= {expr}^n LOAD_CONST MAKE_FUNCTION_n
-        #    mkfunc ::= {expr}^n load_closure LOAD_CONST MAKE_FUNCTION_n
+        #    mklambda ::= {expr}^n LOAD_LAMBDA MAKE_FUNCTION_n
+        #    mklambda ::= {expr}^n load_closure LOAD_LAMBDA MAKE_FUNCTION_n
         #
         #    expr ::= expr {expr}^n CALL_FUNCTION_n
         #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
@@ -632,10 +629,11 @@ class Parser(object):
                     'mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k),
                     nop
                 )
-                rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
+                rule = None
             elif op == 'MAKE_CLOSURE':
                 self.add_rule(
-                    'mklambda ::= %s load_closure LOAD_LAMBDA %s' % ('expr '*v, k),
+                    'mklambda ::= %s load_closure LOAD_LAMBDA %s' % (
+                        'expr '*v, k),
                     nop
                 )
                 self.add_rule(
@@ -653,7 +651,7 @@ class Parser(object):
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
-                rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
+                rule = None
             elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
                         'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
                 na = (v & 0xff)           # positional parameters
@@ -662,9 +660,14 @@ class Parser(object):
                 nak = (len(op) - len('CALL_FUNCTION')) // 3
                 rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
                        + 'expr ' * nak + k
+            elif op == 'BUILD_SLICE':
+                # since BUILD_SLICE can come in only two forms, it's already
+                # embedded in our grammar, so just ignore it.
+                pass
             else:
                 raise Exception('unknown customize token %s' % k)
-            self.add_rule(rule, nop)
+            if rule:
+                self.add_rule(rule, nop)
         ast = self.parser.parse(tokens)
         return ast
 

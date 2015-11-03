@@ -33,6 +33,7 @@ def test_basic_expressions():
     expressions = [
         ('a + b', None),
         ('lambda x, y=1, *args, **kw: x + y', None),
+        ('(lambda x: x)(y)', None),
         ('c(a)', None),
         ('a & b | c ^ d', None),
         ('a << b >> c', None),
@@ -40,6 +41,7 @@ def test_basic_expressions():
         ('a in b', None),
         ('a.attr.b[2:3]', None),
         ('a[1] + list(b)', None),
+        ('{a: b,\n c: d}', None),
     ]
     _do_test(expressions)
 
@@ -53,12 +55,14 @@ def test_conditional_expressions():
         ('lambda : (a if x else y)', None),
         ('a if x else y', None),
         ('a and b or c', None),
+        ('(lambda: x) if x else (lambda y: y)(y)', None),
     ]
     _do_test(expressions)
 
 
 def test_comprehensions():
     expressions = [
+        ('((x, y) for x, y in this)', None),
         ('((a for a in b) for b in (x for x in this))', None),
         ('[[a for a in b] for b in [x for x in this]]', None),
         ('calling(a for a in this if a < y)', None),

@@ -263,30 +263,15 @@ from those customized tokens.  For instance for recognizing a
 Detecting higher level structures in the byte-code
 --------------------------------------------------
 
-While detecting the higher level structure of an expression is actually the
-job of the grammar in `~xotl.ql.revenge.parsers`:mod:, they can't be done
-without help.
+JUMP_BACK
+~~~~~~~~~
 
-For instance the ``a if b else c`` expression has three individual
-sub-expressions.  You can't simply think of a rule::
+A ``JUMP_ABSOLUTE`` that jumps to a previous instruction yields a virtual code
+``JUMP_BACK``.
 
-    conditional ::= expr POP_JUMP_IF_FALSE expr RETURN_VALUE expr RETURN_VALUE
-
-That rule would break for ``a if (x if b else c) else y``::
-
-  1           0 LOAD_NAME                0 (b)
-              3 POP_JUMP_IF_FALSE       12
-              6 LOAD_NAME                1 (x)
-              9 JUMP_FORWARD             3 (to 15)
-        >>   12 LOAD_NAME                2 (c)
-        >>   15 POP_JUMP_IF_FALSE       22
-             18 LOAD_NAME                3 (a)
-             21 RETURN_VALUE
-        >>   22 LOAD_NAME                4 (y)
-             25 RETURN_VALUE
-
-
-
+This allows the parser to recognize loops inside comprehensions more easily.
+The ``JUMP_ABSOLUTE`` in a comprehension always jumps to the ``FOR_ITER`` to
+get the next item.
 
 
 Toolkit

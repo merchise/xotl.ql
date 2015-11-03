@@ -60,12 +60,16 @@ from .parsers import ParserError
 
 
 class Uncompyled(object):   # TODO:  Find better name
-    def __init__(self, obj, version=None):
+    def __init__(self, obj, version=None, get_current_thread=None):
         if not version:
             import sys
             version = sys.version.split(' ')[0]
         code = self._extract_code(obj)
-        scanner = scanners.getscanner(version)
+        if get_current_thread:
+            scanner = scanners.getscanner(version, get_current_thread)
+        else:
+            # NON THREAD SAFE and NOT ISOLATED
+            scanner = scanners.getscanner(version, lambda: 0)
         self.walker = walker = walkers.Walker(scanner)
         tokens, customizations = scanner.disassemble(code)
         self.tokens = tokens
