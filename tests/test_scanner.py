@@ -18,65 +18,62 @@ from __future__ import (division as _py3_division,
 
 
 def test_scanner_normalization():
-    from xotl.ql.revenge.scanners import InstructionSetBuilder, LOAD_NAME
-    from xotl.ql.revenge.scanners import POP_JUMP_IF_FALSE, NOP
-    from xotl.ql.revenge.scanners import RETURN_VALUE
+    from xotl.ql.revenge.scanners import InstructionSetBuilder
     from xotl.ql.revenge.scanners import without_nops
 
     # The PyPy byte code for `a if b else c`:
     builder = InstructionSetBuilder()
     with builder() as Instruction:
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME,
+        Instruction(opname='LOAD_NAME',
                     arg=0, argval='x', argrepr='x',
-                    starts_line=1, is_jump_target=False),
-        Instruction(opname='POP_JUMP_IF_FALSE', opcode=POP_JUMP_IF_FALSE,
+                    starts_line=1),
+        Instruction(opname='POP_JUMP_IF_FALSE',
                     arg=12, argval=12, argrepr='',
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME, arg=1,
+                    starts_line=None),
+        Instruction(opname='LOAD_NAME', arg=1,
                     argval='a', argrepr='a',
-                    starts_line=None, is_jump_target=False),
+                    starts_line=None),
         # Replace the JUMP_FORWARD
         # Instruction(opname='JUMP_FORWARD', opcode=JUMP_FORWARD,
         #             arg=3, argval=15, argrepr='to 15', offset=9,
         #             starts_line=None, is_jump_target=False),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE, arg=None,
+        Instruction(opname='RETURN_VALUE', arg=None,
                     argval=None, argrepr='',
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='NOP', opcode=NOP, arg=None,
+                    starts_line=None),
+        Instruction(opname='NOP', arg=None,
                     argval=None, argrepr='',
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='NOP', opcode=NOP, arg=None,
+                    starts_line=None),
+        Instruction(opname='NOP', arg=None,
                     argval=None, argrepr='',
-                    starts_line=None, is_jump_target=False),
+                    starts_line=None),
         # End of replacement
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME,
+        Instruction(opname='LOAD_NAME',
                     arg=2, argval='y', argrepr='y',
-                    starts_line=None, is_jump_target=True),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE,
+                    starts_line=None),
+        Instruction(opname='RETURN_VALUE',
                     arg=None, argval=None, argrepr='',
-                    starts_line=None, is_jump_target=True)
+                    starts_line=None)
     modified_pypy_program = list(builder)
 
     builder = InstructionSetBuilder()
     with builder() as Instruction:
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME, arg=0,
+        Instruction(opname='LOAD_NAME', arg=0,
                     argval='x', argrepr='x',
-                    starts_line=1, is_jump_target=False),
-        Instruction(opname='POP_JUMP_IF_FALSE', opcode=POP_JUMP_IF_FALSE,
+                    starts_line=1),
+        Instruction(opname='POP_JUMP_IF_FALSE',
                     arg=10, argval=10, argrepr='',
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME, arg=1,
+                    starts_line=None),
+        Instruction(opname='LOAD_NAME', arg=1,
                     argval='a', argrepr='a', offset=6,
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE,
+                    starts_line=None),
+        Instruction(opname='RETURN_VALUE',
                     arg=None, argval=None, argrepr='',
-                    starts_line=None, is_jump_target=False),
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME, arg=2,
+                    starts_line=None),
+        Instruction(opname='LOAD_NAME', arg=2,
                     argval='y', argrepr='y',
-                    starts_line=None, is_jump_target=True),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE, arg=None,
-                    argval=None, argrepr='', starts_line=None,
-                    is_jump_target=False)
+                    starts_line=None),
+        Instruction(opname='RETURN_VALUE', arg=None,
+                    argval=None, argrepr='', starts_line=None)
     expected = list(builder)
     res = without_nops(modified_pypy_program)
     assert res == expected
@@ -227,8 +224,7 @@ def test_pypy_normalization():
 
 def test_real_pypy_normalization():
     from xotl.ql.revenge.scanners import InstructionSetBuilder, label
-    from xotl.ql.revenge.scanners import POP_JUMP_IF_FALSE, LOAD_NAME
-    from xotl.ql.revenge.scanners import RETURN_VALUE, getscanner
+    from xotl.ql.revenge.scanners import getscanner
 
     # The PyPy byte code for `a if x else y`:
     scanner = getscanner()
@@ -238,20 +234,17 @@ def test_real_pypy_normalization():
     with builder() as Instruction:
         Instruction(opname='LOAD_NAME',
                     arg=0, argval='x', argrepr='x',
-                    offset=0, starts_line=1, is_jump_target=False),
-        Instruction(opcode=POP_JUMP_IF_FALSE,
-                    arg=label('else y'), starts_line=None,
-                    is_jump_target=False),
-        Instruction(opname='LOAD_NAME', opcode=LOAD_NAME, arg=1,
-                    argval='a', argrepr='a', starts_line=None,
-                    is_jump_target=False),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE,
-                    arg=None, argval=None, argrepr='', starts_line=None,
-                    is_jump_target=False),
+                    starts_line=1, is_jump_target=False),
+        Instruction(opname='POP_JUMP_IF_FALSE',
+                    arg=label('else y'), starts_line=None)
+        Instruction(opname='LOAD_NAME', arg=1,
+                    argval='a', argrepr='a', starts_line=None)
+        Instruction(opname='RETURN_VALUE',
+                    arg=None, argval=None, argrepr='', starts_line=None)
         Instruction(label='else y',
-                    opname='LOAD_NAME', opcode=LOAD_NAME,
+                    opname='LOAD_NAME',
                     arg=2, argval='y', argrepr='y', starts_line=None),
-        Instruction(opname='RETURN_VALUE', opcode=RETURN_VALUE,
+        Instruction(opname='RETURN_VALUE',
                     arg=None, argval=None, argrepr='',
                     starts_line=None)
     expected_program = list(builder)
