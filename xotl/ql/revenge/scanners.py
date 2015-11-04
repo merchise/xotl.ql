@@ -75,12 +75,128 @@ CUSTOMIZABLE = (
 )
 
 
+from contextlib import contextmanager
 from .eight import Bytecode, Instruction as BaseInstruction
+
+
+class label(object):
+    '''Represent a named label in a instruction set building process.
+
+    See `InstructionSetBuilder`:class: for details.
+
+    '''
+    def __init__(self, which):
+        if isinstance(which, label):
+            name = which.name
+        else:
+            name = which
+        self.name = name
+
+    def __eq__(self, other):
+        if isinstance(other, label):
+            return self.name == other.name
+        else:
+            return self.name == other
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __repr__(self):
+        return '<label: %s>' % self.name
+
+
+class InstructionSetBuilder(object):
+    '''A helper to build a set of instructions.
+
+    Usage::
+
+        builder = InstructionSetBuilder()
+        with builder() as Intruction:
+            Instruction(opcode='LOAD_NAME', arg=0, argval='x')
+
+    Features:
+
+    - Keeps the offsets.
+
+    - Allows to set `named labels <label>`:class: as the arg of relative and
+      absolute jumps.
+
+    - Calculates jump targets.
+
+    '''
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.offset = 0
+        self.instructions = []
+        self.labels = {}
+
+    @contextmanager
+    def __call__(self):
+        self.reset()
+
+        def build(**kwargs):
+            labelname = kwargs.pop('label', None)
+            offset = kwargs.pop('offset', self.offset)
+            kwargs['offset'] = offset
+            result = Instruction(**kwargs)
+            self.offset += result.size
+            if labelname:
+                self.labels[label(labelname)] = len(self.instructions)
+            self.instructions.append(result)
+            return result
+
+        yield build
+
+    def __iter__(self):
+        self._resolve()
+        return iter(self.instructions)
+
+    @property
+    def current_instruction_set(self):
+        return list(self)
+
+    def _resolve(self):
+        set = self.instructions
+        targets = []
+        for instr in set:
+            if instr.opcode in dis.hasjabs and isinstance(instr.arg, label):
+                arg = instr.arg = set[self.labels[instr.arg]].offset
+                instr.argval = arg
+                instr.argrepr = ''
+                targets.append(arg)
+            elif instr.opcode in dis.hasjabs:
+                targets.append(instr.arg)
+            elif instr.opcode in dis.hasjrel and isinstance(instr.arg, label):
+                target = set[self.labels[instr.arg]].offset
+                instr.arg = arg = target - 3 - instr.offset
+                instr.argval = arg
+                instr.argrepr = 'to %d' % target
+                targets.append(target)
+            elif instr.opcode in dis.hasjrel:
+                targets.append(instr.arg + 3 + instr.offset)
+        for instr in set:
+            instr.is_jump_target = instr.offset in targets
 
 
 class Instruction(object):
     def __init__(self, *args, **kwargs):
         if args and len(args) > 1 or kwargs:
+            opname = kwargs.get('opname', None)
+            opcode = kwargs.get('opcode', None)
+            assert opname or opcode
+            if opname and not opcode:
+                opcode = dis.opmap[opname]
+            elif opcode and not opname:
+                opname = dis.opname[opcode]
+            kwargs['opname'] = opname
+            kwargs['opcode'] = opcode
+            kwargs.setdefault('arg', None)
+            kwargs.setdefault('argval', kwargs['arg'])
+            kwargs.setdefault('argrepr',
+                              repr(kwargs['arg']) if kwargs['arg'] else '')
+            kwargs.setdefault('is_jump_target', False)  # To be resolved
             instruction = BaseInstruction(*args, **kwargs)
         elif args and len(args) == 1:
             which = args[0]
