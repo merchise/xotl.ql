@@ -244,12 +244,13 @@ class Token(object):
 
     """
     def __init__(self, name, arg=None, argval=None,
-                 offset=-1, starts_line=False):
+                 offset=-1, starts_line=False, instruction=None):
         self.name = intern(str(name))
         self.arg = arg
         self.argval = argval
         self.offset = offset
         self.starts_line = starts_line
+        self.instruction = instruction
 
     @classmethod
     def from_instruction(cls, instruction):
@@ -258,7 +259,8 @@ class Token(object):
             arg=instruction.arg,
             argval=instruction.argval,
             offset=instruction.offset,
-            starts_line=instruction.starts_line
+            starts_line=instruction.starts_line,
+            instruction=instruction
         )
 
     @property
@@ -332,7 +334,7 @@ class Scanner(object):
         customizations = {}
 
         def emit(instruction):
-            result.append(Token.from_instruction(instruction))
+            result.append(instruction)
 
         def emit_const(instruction):
             const = instruction.argval
@@ -357,7 +359,7 @@ class Scanner(object):
             customizations[opname] = arg
             instruction.opname = opname
 
-        self.instructions = instructions = [Instruction(i) for i in Bytecode(co)]
+        instructions = [Instruction(i) for i in Bytecode(co)]
         for instruction in instructions:
             opcode = instruction.opcode
             if opcode in CUSTOMIZABLE:
@@ -374,7 +376,12 @@ class Scanner(object):
                 emit_const(instruction)
             else:
                 emit(instruction)
-        return result, customizations
+
+        tokens = [
+            Token.from_instruction(instruction)
+            for instruction in without_nops(normalize_pypy_conditional(result))
+        ]
+        return tokens, customizations
 
     def __disassemble(self, co, classname=None):
         """Disassemble a code object, returning a list of 'Token'.
@@ -1002,8 +1009,11 @@ except ImportError:
     from _thread import get_ident
 
 
-def getscanner(version, get_current_thread=get_ident):
+def getscanner(version=None, get_current_thread=get_ident):
     from xoutil import Unset
+    if not version:
+        from sys import version_info
+        version = '.'.join(str(component) for component in version_info[:2])
     key = (version, get_current_thread())
     result = __scanners.get(key, Unset)
     if result is Unset:
@@ -1022,6 +1032,7 @@ def without_nops(instructions):
     # Builds a map from current offset to offsets discounting NOPs.
     addrmap = []
     nops = 0
+    instructions = list(instructions)   # Consume the iterator once.
     for i in instructions:
         addrmap[i.offset:i.offset + i.size] = list(range(i.offset - nops, i.offset + i.size - nops))
         if i.opcode == NOP:
@@ -1073,6 +1084,7 @@ def normalize_pypy_conditional(instructions):
     '''
     JUMP_ABS, JUMP_FWD = JUMP_ABSOLUTE, JUMP_FORWARD  # noqa
     RET = RETURN_VALUE  # noqa
+    instructions = list(instructions)  # Consume an iterator only once.
     index = {i.offset: i for i in instructions}
     for i in instructions:
         fwdtarget = i.offset + i.arg + i.size if i.opcode == JUMP_FWD else None
