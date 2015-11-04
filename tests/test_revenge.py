@@ -49,12 +49,12 @@ def test_basic_expressions():
 def test_conditional_expressions():
     expressions = [
         # expr, expected source if different
+        ('a if x else y', None),
+        ('a and b or c', None),
         ('(a if x else y) if (b if z else c) else (d if o else p)', None),
         ('(a if x else y) if not (b if not z else c) else (d if o else p)', None),
         ('c(a if x else y)', None),
         ('lambda : (a if x else y)', None),
-        ('a if x else y', None),
-        ('a and b or c', None),
         ('(lambda: x) if x else (lambda y: y)(y)', None),
     ]
     _do_test(expressions)
@@ -93,6 +93,7 @@ def test_comprehensions():
 
 def _do_test(expressions):
     import dis
+    from xotl.ql.revenge.scanners import getscanner
     from xotl.ql.revenge import Uncompyled, ParserError
 
     codes = [
@@ -104,6 +105,7 @@ def _do_test(expressions):
         for expr, expected in expressions
     ]
     for code, expr, expected in codes:
+        u = None
         try:
             u = Uncompyled(code)
             assert u.source == expected
@@ -112,11 +114,14 @@ def _do_test(expressions):
             print(expr)
             print(error)
             dis.dis(code)
-            for t in u.tokens:
-                print(str(t))
-            print(u.ast)
-            print(u.source)
-            pass
+            if u:
+                for t in u.tokens:
+                    print(str(t))
+                print(u.ast)
+                print(u.source)
+            else:
+                for t, _ in getscanner().disassemble(code):
+                    print(str(t))
         except ParserError as error:
             print()
             print(expr)
@@ -126,6 +131,10 @@ def _do_test(expressions):
             print()
             print(expr)
             dis.dis(code)
-            print(u.tokens)
-            print(u.ast)
+            if u:
+                print(u.tokens)
+                print(u.ast)
+            else:
+                for t, _ in getscanner().disassemble(code):
+                    print(str(t))
             raise
