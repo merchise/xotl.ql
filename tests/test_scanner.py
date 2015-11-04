@@ -15,8 +15,6 @@
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
-import pytest
-from xoutil.eight import _pypy
 
 
 def test_scanner_normalization():
@@ -227,7 +225,6 @@ def test_pypy_normalization():
     assert modified_pypy_program == res
 
 
-@pytest.mark.skipif(not _pypy, reason='Only for Pypy')
 def test_real_pypy_normalization():
     from xotl.ql.revenge.scanners import InstructionSetBuilder, label
     from xotl.ql.revenge.scanners import POP_JUMP_IF_FALSE, LOAD_NAME
