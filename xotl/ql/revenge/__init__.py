@@ -61,9 +61,6 @@ from .parsers import ParserError
 
 class Uncompyled(object):   # TODO:  Find better name
     def __init__(self, obj, version=None, get_current_thread=None):
-        if not version:
-            import sys
-            version = sys.version.split(' ')[0]
         code = self._extract_code(obj)
         if get_current_thread:
             scanner = scanners.getscanner(version, get_current_thread)
