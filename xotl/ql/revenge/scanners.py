@@ -158,6 +158,10 @@ class InstructionSetBuilder(object):
         return iter(self.instructions)
 
     @property
+    def code(self):
+        return ''.join(i.code for i in self)
+
+    @property
     def current_instruction_set(self):
         return list(self)
 
@@ -215,6 +219,29 @@ class Instruction(object):
             field: getattr(instruction, field)
             for field in BaseInstruction._fields
         })
+
+    @property
+    def code(self):
+        '''Return the code string for this instruction.
+
+        .. note:: If the opcode contains an argument which is bigger than the
+           available two bytes, the opcode will be prepended by an
+           EXTENDED_ARG.
+
+        '''
+        if self.opcode >= dis.HAVE_ARGUMENT:
+            arg = self.arg
+            bytes_ = []
+            extended = arg >> 16
+            if extended:
+                bytes_ = [dis.EXTENDED_ARG, extended & 0xFF, extended >> 8]
+            else:
+                bytes_ = []
+            bytes_.extend([self.opcode, arg & 0xFF, arg >> 8])
+        else:
+            bytes_ = [self.opcode]
+        # TODO: Python 3
+        return ''.join(chr(b) for b in bytes_)
 
     @property
     def size(self):
