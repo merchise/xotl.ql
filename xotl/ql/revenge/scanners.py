@@ -200,6 +200,7 @@ class Instruction(object):
             kwargs.setdefault('argval', kwargs['arg'])
             kwargs.setdefault('argrepr',
                               repr(kwargs['arg']) if kwargs['arg'] else '')
+            kwargs.setdefault('starts_line', None)
             kwargs.setdefault('is_jump_target', False)  # To be resolved
             instruction = BaseInstruction(*args, **kwargs)
         elif args and len(args) == 1:
