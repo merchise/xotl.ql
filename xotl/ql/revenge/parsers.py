@@ -22,6 +22,7 @@ from .spark import GenericASTBuilder
 from xoutil.collections import UserList
 
 from .eight import override, py27, py3k
+from .exceptions import ParserError as RevengeParserError
 
 try:
     from sys import intern  # Py3k
@@ -67,7 +68,7 @@ class AST(UserList):
         return result[0]
 
 
-class ParserError(Exception):
+class ParserError(RevengeParserError):
     def __init__(self, token, offset, *args):
         super(ParserError, self).__init__(token, offset, *args)
         self.token = token

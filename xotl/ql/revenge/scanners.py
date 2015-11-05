@@ -34,6 +34,10 @@ try:
 except ImportError:
     from __builtin__ import intern
 
+
+from .exceptions import ScannerError, ScannerAssertionError  # noqa
+
+
 HAVE_ARGUMENT = dis.HAVE_ARGUMENT
 
 # This fills the module's global with all the byte-code opnames, NOP,
@@ -337,11 +341,13 @@ class Scanner(object):
             result.append(instruction)
 
         def emit_const(instruction):
+            if instruction.opcode not in dis.hasconst:
+                raise ScannerError("byte-code '%s' has no const" % instruction.opname)
             const = instruction.argval
             opname = instruction.opname
             if isinstance(const, types.CodeType):
                 if const.co_name == '<lambda>':
-                    assert instruction.opname == 'LOAD_CONST'
+                    assert instruction.opname == 'LOAD_CONST'   # XXX Needed?
                     opname = 'LOAD_LAMBDA'
                 elif const.co_name == '<genexpr>':
                     opname = 'LOAD_GENEXPR'
