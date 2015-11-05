@@ -56,30 +56,53 @@ import types
 from xoutil.decorator import memoized_property
 
 from . import scanners, walkers
+from .scanners import getscanner    # noqa
 from .parsers import ParserError
 
 
 class Uncompyled(object):   # TODO:  Find better name
     def __init__(self, obj, version=None, get_current_thread=None):
-        code = self._extract_code(obj)
+        self.code = code = self._extract_code(obj)
         if get_current_thread:
             scanner = scanners.getscanner(version, get_current_thread)
         else:
             # NON THREAD SAFE and NOT ISOLATED
             scanner = scanners.getscanner(version, lambda: 0)
-        self.walker = walker = walkers.Walker(scanner)
+        self.walker = walkers.Walker(scanner)
         tokens, customizations = scanner.disassemble(code)
         self.tokens = tokens
         self.customizations = customizations
-        try:
-            ast = walker.build_ast(tokens, customizations)
-        except ParserError as error:
-            raise error  # make the debugger print the locals
+        self._ast = None
 
-        # Go down in the AST until the root has more than one children.
-        while ast and len(ast) == 1:
-            ast = ast[0]
-        self.ast = ast
+    def dis(self):
+        # shortcut to print the code with dis
+        import dis
+        dis.dis(self.code)
+
+    @property
+    def ast(self):
+        if self._ast:
+            return self._ast
+        else:
+            tokens = self.tokens
+            customizations = self.customizations
+            try:
+                ast = self.walker.build_ast(tokens, customizations)
+            except ParserError as error:
+                # So the debugger print the locals
+                raise error
+            # Go down in the AST until the root has more than one children.
+            while ast and len(ast) == 1:
+                ast = ast[0]
+            self._ast = ast
+            return ast
+
+    @property
+    def safe_ast(self):
+        try:
+            return self.ast
+        except:
+            return None
 
     @memoized_property
     def source(self):

@@ -69,6 +69,7 @@ def test_comprehensions():
         ('[a for a in x if a < y]', None),
         ('{k: v for k, v in this}', None),
         ('{s for s in this if s < y}', None),
+        ('(lambda t: None)(a for x in this)', None),
         # self.env['res.users'].search([])
         ("(user for user in table('res.users'))", None),
         # self.search(cr, uid, [('id', 'not in', no_unlink_ids)])
@@ -93,8 +94,7 @@ def test_comprehensions():
 
 def _do_test(expressions):
     import dis
-    from xotl.ql.revenge.scanners import getscanner
-    from xotl.ql.revenge import Uncompyled, ParserError
+    from xotl.ql.revenge import Uncompyled
 
     codes = [
         (
@@ -109,32 +109,12 @@ def _do_test(expressions):
         try:
             u = Uncompyled(code)
             assert u.source == expected
-        except AssertionError as error:
-            print()
-            print(expr)
-            print(error)
-            dis.dis(code)
-            if u:
-                for t in u.tokens:
-                    print(str(t))
-                print(u.ast)
-                print(u.source)
-            else:
-                for t, _ in getscanner().disassemble(code):
-                    print(str(t))
-        except ParserError as error:
-            print()
-            print(expr)
-            dis.dis(code)
-            raise
-        except Exception as error:
+        except:
             print()
             print(expr)
             dis.dis(code)
             if u:
                 print(u.tokens)
-                print(u.ast)
-            else:
-                for t, _ in getscanner().disassemble(code):
-                    print(str(t))
+            if u and u.safe_ast:
+                print(u.safe_ast)
             raise
