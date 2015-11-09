@@ -4,7 +4,8 @@ Comparison with Pony_
 =====================
 
 :Date: Tue Apr 30, 2013 (2013-04-30.)
-:Document status: Very early draft.
+:Last Updated: Mon Nov 9, 2015 (2015-11-09)
+:Document status: Final.
 :Author: Manuel Vázquez Acosta (`@mvaled`__)
 :Summary: Describes and compares PonyORM and xotl.ql.  Proposes to explore
           bytecode disassembling as way to implement `xotl.ql`.
