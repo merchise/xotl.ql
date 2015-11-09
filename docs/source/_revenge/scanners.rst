@@ -145,8 +145,8 @@ Our parser can have several rules for recognizing these expressions::
 \... and so on.
 
 Notice, however, the last instruction in all the basic expression shown so far
-is RETURN_VALUE and that is not recognized by the grammar presented.  Before
-trying to attempt a solution for this issue, let's inspect conditional
+is `RETURN_VALUE`:opcode: and that is not recognized by the grammar presented.
+Before trying to attempt a solution for this issue, let's inspect conditional
 expressions.
 
 
@@ -156,7 +156,7 @@ Conditional and boolean expressions
 -----------------------------------
 
 Conditional and boolean expressions, on the other hand, do produce jumps in
-the byte-code.  They don't run linearly from top to bottom.
+the byte-code: they don't run straightforwardly from top to bottom.
 
 For instance, the simplest conditional expression "``a if x else y``", in
 Python 2.7 and 3.4 compiles to::
@@ -180,17 +180,18 @@ In Pypy 2.7.3::
            >>   12 LOAD_NAME                2 (c)
            >>   15 RETURN_VALUE
 
-The difference is the 9th offset.
+The difference is the 9th offset, where Python uses a ``RETURN_VALUE``, Pypy
+uses a `JUMP_FORWARD`:opcode:.
 
 It's easy to see we can do a transformation step for Pypy byte-code so that
 the final byte-code is the same as that of CPython:
 
-  If the target of a ``JUMP_FORWARD`` (or ``JUMP_ABSOLUTE``) is a
+  If the target of a ``JUMP_FORWARD`` (or `JUMP_ABSOLUTE`:opcode:) is a
   ``RETURN_VALUE`` replace the JUMP with a ``RETURN_VALUE``.
 
-Notice, however, this affect the offsets since JUMP_FORWARD has an argument
-and RETURN_VALUE does not.  Then to keep things simple we can modify the rule
-to be:
+Notice, however, this affect the offsets since ``JUMP_FORWARD`` has an
+argument and ``RETURN_VALUE`` does not.  Then to keep things simple we can
+modify the rule to pad as many `NOPs <NOP>`:opcode: as needed:
 
   If the target of a ``JUMP_FORWARD`` (or ``JUMP_ABSOLUTE``) is a
   ``RETURN_VALUE`` replace the JUMP with the following instructions::
@@ -227,7 +228,7 @@ We may think then, conditionals might be recognized by the following rules::
 However, let's first see how 'nested' conditional interact: ``a if (a1 if x1
 else y1) else y2``.  Inspecting the actual byte-code we see there's an issue
 with the ``then_result`` inside the condition expression since it does not end
-with the required RETURN_VALUE::
+with the required ``RETURN_VALUE``::
 
   >>> dis.dis(compile('a if (a1 if x1 else y1) else y2', '', 'eval'))
    1           0 LOAD_NAME                0 (x1)
@@ -243,9 +244,9 @@ with the required RETURN_VALUE::
 
 
 The inner conditional expression cannot *return* the value of ``a1`` or ``y1``
-but let it in the TOS to further inspection by the outer expression.  Surely
-we're going to see this pattern even when combining conditional expression
-with non-conditional ones as in::
+but let it in the top of the stack (TOS) to further inspection by the outer
+expression.  Surely we're going to see this pattern even when combining
+conditional expression with non-conditional ones as in::
 
   >>> dis.dis(compile('(a if x else y) + 1', '', 'eval'))
      1           0 LOAD_NAME                0 (x)
@@ -257,13 +258,13 @@ with non-conditional ones as in::
                 18 BINARY_ADD
                 19 RETURN_VALUE
 
-Notice that in both cases the JUMP_FORWARD targets the byte-code that handles
-(or leaves alone) the result of the conditional expression. So inner
-conditional expressions don't end with neither a JUMP or a RETURN_VALUE, but
-leave the TOS as it is.
+Notice that in both cases the `JUMP_FORWARD`:opcode: targets the byte-code
+that handles (or leaves alone) the result of the conditional expression. So
+inner conditional expressions don't end with neither a jump or a
+``RETURN_VALUE``, but leave the TOS as it is.
 
 This is actually the same issue with basic expression having a final
-RETURN_VALUE.
+``RETURN_VALUE``.
 
 This actually means that ``expr`` should not be considered a standalone
 expression but that always occur inside a bigger structure, so if we change
@@ -274,12 +275,12 @@ our rules to::
   then_result ::= expr JUMP_FORWARD
   then_result ::= expr JUMP_ABSOLUTE
 
-without the trailing RETURN_VALUE for the `else` result; now they work for
+without the trailing ``RETURN_VALUE`` for the `else` result; now they work for
 recognizing the expression shown so far.
 
-Since our ``expr`` cannot include the trailing RETURN_VALUE, that token needs
-to be matched by a higher level structure.  We'll call that 'returning an
-expression sentence', in fact we have already the rule::
+Since our ``expr`` cannot include the trailing ``RETURN_VALUE``, that token
+needs to be matched by a higher level structure.  We'll call that 'returning
+an expression sentence', in fact we have already the rule::
 
   returning_expression ::= expr RETURN_VALUE
 
@@ -308,9 +309,9 @@ the result is known.  There are not equivalent ``BINARY_*`` byte-code for the
                 6 LOAD_NAME                1 (b)
           >>    9 RETURN_VALUE
 
-Here the ``JUMP_IF_FALSE_OR_POP`` and ``JUMP_IF_TRUE_OR_POP`` do the
-evaluation and stop it if the result is known.  However, when combined things
-change::
+Here the `JUMP_IF_FALSE_OR_POP`:opcode: and `JUMP_IF_TRUE_OR_POP`:opcode: do
+the evaluation and stop it if the result is known.  However, when combined
+things change::
 
   >>> dis.dis(compile('x and a or y', '', 'eval'))
     1           0 LOAD_NAME                0 (x)
@@ -321,8 +322,8 @@ change::
           >>   15 RETURN_VALUE
 
 
-Now ``and`` is implemented by ``POP_JUMP_IF_FALSE``.  Of course they could
-have let the original structure, like Pypy 2.7 does::
+Now ``and`` is implemented by `POP_JUMP_IF_FALSE`:opcode:.  Of course they
+could have let the original structure, like Pypy 2.7 does::
 
   >>> dis.dis(compile('x and a or y', '', 'eval'))
     1           0 LOAD_NAME                0 (x)
@@ -354,7 +355,7 @@ won't help because of precedence issues::
           >>   15 RETURN_VALUE
 
 Notice that the instructions produced use the same tokens in the order.  The
-difference is that in the second expression both JUMPs go to the same offset.
+difference is that in the second expression both jumps go to the same offset.
 The rules above will confuse both expressions.
 
 To overcome this issue the scanner will have to provide more clues about this
