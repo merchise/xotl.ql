@@ -143,26 +143,26 @@ class GenericParser(object):
         fn = func
         rules = doc.split()
 
+        # First, detect all lines where a new production is given.
         index = []
         for i in range(len(rules)):
             if rules[i] == '::=':
                 index.append(i-1)
         index.append(len(rules))
 
+        # Now process each rule add it the rules.  We take care of making of
+        # splitting right hand sides with vertical bars into several rules.
         for i in range(len(index)-1):
             lhs = rules[index[i]]
-            rhs = rules[index[i]+2:index[i+1]]
-            rule = (lhs, tuple(rhs))
-
-            if _preprocess:
-                rule, fn = self.preprocess(rule, func)
-
-            if lhs in self.rules:
-                self.rules[lhs].append(rule)
-            else:
-                self.rules[lhs] = [rule]
-            self.rule2func[rule] = fn
-            self.rule2name[rule] = func.__name__[2:]
+            rhss = rules[index[i]+2:index[i+1]]
+            lhs_rules = self.rules.setdefault(lhs, [])
+            for rhs in iter_rhss(rhss):
+                rule = (lhs, tuple(rhs))
+                if _preprocess:
+                    rule, fn = self.preprocess(rule, func)
+                lhs_rules.append(rule)
+                self.rule2func[rule] = fn
+                self.rule2name[rule] = func.__name__[2:]
         self.ruleschanged = 1
 
     @classmethod
@@ -182,6 +182,16 @@ class GenericParser(object):
         production.
 
         If you need documentation inside the rules, use comments.
+
+        Rules may contain verticals bars to express alternatives.  This is
+        just syntactic sugar to avoid writing several rules.  The rule
+        ``nonterminal ::= A B | C D`` is actually converted to the following
+        two rules together::
+
+          nonterminal ::= A B
+          nonterminal ::= B D
+
+        No grouping or escaping is allowed.
 
         '''
         import re
@@ -803,3 +813,22 @@ def call_graphivz_script(script):
             tmpf.write(out)
             tmpf.flush()
             Popen(['eog', tmpf.name]).wait()
+
+
+def find(l, what):
+    try:
+        return l.index(what)
+    except ValueError:
+        return None
+
+
+def iter_rhss(rhss):
+    last = 0
+    pos = find(rhss, '|')
+    while pos is not None:
+        assert pos < (len(rhss) - 1), 'rhss must not end with |'
+        yield rhss[last:last+pos]
+        last += pos + 1
+        pos = find(rhss[last:], '|')
+    res = rhss[last:]
+    yield res
