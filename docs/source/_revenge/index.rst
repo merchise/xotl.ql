@@ -5,10 +5,10 @@
 .. module:: xotl.ql.revenge
 
 The goal of the package `!xotl.ql.revenge`:mod: is to transform pieces of
-`byte code` to an `AST` that is amenable to both transformation and
+`byte-code`:term: to a `QST`:term: that is amenable to both transformation and
 translation.
 
-This package is further explained in:
+The package is further explained in:
 
 .. toctree::
    :maxdepth: 1

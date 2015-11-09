@@ -160,6 +160,21 @@ Terms and glossary
        fetches objects from a remote system through REST interface.
 
 
+   QST
+   Query Syntax Tree
+
+       A type of `abstract syntax tree`:term:.  It describes the syntactical
+       structure of a `query expression`:term:.
+
+       Since the introduction of the `revenge module <xotl.ql.revenge>`:mod:
+       that uses compiler techniques to reverse engineer the Python
+       `byte-code`:term:, the term AST was being used both as inner structure
+       and as the main structure used by `query translators <query
+       translator>`:term:.  To disambiguate, the QST term specifically
+       describes the AST that `xotl.ql` produces as its output; whereas AST is
+       a more generic term that covers all AST structures, but most of the
+       time will refer to *intermediate* structures.
+
    reverse engineering
        Refers to either the (intellectual) activities, processes, and
        techniques to obtain the original Python source code given a

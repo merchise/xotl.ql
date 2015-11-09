@@ -4,7 +4,7 @@
  Query Syntax Tree
 ===================
 
-A Query Syntax Tree (QST) is just an *enriched*, but restricted to
+A `Query Syntax Tree`:term: (QST) is just an *enriched*, but restricted to
 expressions, variant of the Abstract Syntax Tree (AST) provided by the
 standard `ast`:mod: module.
 
