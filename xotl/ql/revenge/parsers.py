@@ -119,17 +119,10 @@ class _InternalParser(GenericASTBuilder):
 
         .. _rules:
 
-        expr ::= atom
-
-        atom ::= identifier
-        atom ::= literal
-
-        identifier  ::=  LOAD_FAST
-        identifier  ::= LOAD_NAME
-        identifier ::= LOAD_GLOBAL
-        identifier ::= LOAD_DEREF
-
-        literal ::= LOAD_CONST
+        expr        ::=  atom
+        atom        ::=  identifier | literal
+        identifier  ::=  LOAD_FAST | LOAD_NAME | LOAD_GLOBAL | LOAD_DEREF
+        literal     ::=  LOAD_CONST
 
         '''
 
@@ -188,20 +181,14 @@ class _InternalParser(GenericASTBuilder):
         expr ::= buildslice3
         expr ::= yield
 
-        binary_expr ::= expr expr binary_op
-        binary_op ::= BINARY_ADD
-        binary_op ::= BINARY_MULTIPLY
-        binary_op ::= BINARY_AND
-        binary_op ::= BINARY_OR
-        binary_op ::= BINARY_XOR
-        binary_op ::= BINARY_SUBTRACT
-        binary_op ::= BINARY_DIVIDE
-        binary_op ::= BINARY_TRUE_DIVIDE
-        binary_op ::= BINARY_FLOOR_DIVIDE
-        binary_op ::= BINARY_MODULO
-        binary_op ::= BINARY_LSHIFT
-        binary_op ::= BINARY_RSHIFT
-        binary_op ::= BINARY_POWER
+
+        binary_expr ::=  expr expr binary_op
+
+        binary_op ::= BINARY_ADD | BINARY_MULTIPLY | BINARY_AND | BINARY_OR |
+                      BINARY_XOR | BINARY_SUBTRACT | BINARY_DIVIDE |
+                      BINARY_TRUE_DIVIDE | BINARY_FLOOR_DIVIDE |
+                      BINARY_MODULO | BINARY_LSHIFT | BINARY_RSHIFT |
+                      BINARY_POWER
 
         unary_expr ::= expr unary_op
         unary_op ::= UNARY_POSITIVE
