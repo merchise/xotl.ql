@@ -210,7 +210,7 @@ class Instruction(object):
         elif args and len(args) == 1:
             which = args[0]
             if isinstance(which, (Instruction, BaseInstruction)):
-                instruction = BaseInstruction(*which._asdict().values())
+                instruction = BaseInstruction(*tuple(which))
             else:
                 raise TypeError('Invalid arguments for Instruction')
         else:
@@ -250,7 +250,7 @@ class Instruction(object):
 
     @property
     def _instruction(self):
-        return BaseInstruction(*self._asdict().values())
+        return BaseInstruction(*tuple(self))
 
     def _asdict(self):
         from xoutil.collections import OrderedDict
@@ -258,6 +258,9 @@ class Instruction(object):
             (field, getattr(self, field))
             for field in BaseInstruction._fields
         ])
+
+    def __iter__(self):
+        return iter(self._asdict().values())
 
     def __repr__(self):
         return repr(self._instruction)
