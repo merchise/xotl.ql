@@ -1065,6 +1065,10 @@ def without_nops(instructions):
 
     Loosely based on the same algorithm in `Python/peephole.c`.
 
+    :param instructions:  An iterable of `instructions <Instruction>`:class:.
+
+    :return: A generator of instructions.
+
     '''
     # Builds a map from current offset to offsets discounting NOPs.
     addrmap = []
@@ -1095,12 +1099,10 @@ def without_nops(instructions):
             args.append(vals)
             offset += i.size
     # Unfortunately we need a third pass to adjust the is_jump_target
-    result = []
     for vals in args:
         offset = vals['offset']
         vals['is_jump_target'] = offset in targets
-        result.append(Instruction(**vals))
-    return result
+        yield Instruction(**vals)
 
 
 def normalize_pypy_conditional(instructions):
@@ -1117,6 +1119,10 @@ def normalize_pypy_conditional(instructions):
 
     This is rule does not only apply when using Pypy, the name simply comes
     because Pypy compiles conditional expressions using JUMPs.
+
+    :param instructions:  An iterable of `instructions <Instruction>`:class:.
+
+    :return: A generator of instructions.
 
     '''
     JUMP_ABS, JUMP_FWD = JUMP_ABSOLUTE, JUMP_FORWARD  # noqa

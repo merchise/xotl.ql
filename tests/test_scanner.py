@@ -75,7 +75,7 @@ def test_scanner_normalization():
         Instruction(opname='RETURN_VALUE', arg=None,
                     argval=None, argrepr='', starts_line=None)
     expected = list(builder)
-    res = without_nops(modified_pypy_program)
+    res = list(without_nops(modified_pypy_program))
     assert res == expected
 
 
