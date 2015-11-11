@@ -173,7 +173,12 @@ class InstructionSetBuilder(object):
 
     @property
     def code(self):
-        return ''.join(i.code for i in self)
+        import array
+        res = array.array('B')
+        for i in self:
+            res.fromstring(i.code)
+        tobytes = getattr(res, 'tobytes', res.tostring)
+        return tobytes()
 
     @property
     def current_instruction_set(self):
@@ -243,6 +248,7 @@ class Instruction(object):
            EXTENDED_ARG.
 
         '''
+        import array
         if self.opcode >= dis.HAVE_ARGUMENT:
             arg = self.arg
             bytes_ = []
@@ -254,8 +260,10 @@ class Instruction(object):
             bytes_.extend([self.opcode, arg & 0xFF, arg >> 8])
         else:
             bytes_ = [self.opcode]
-        # TODO: Python 3
-        return ''.join(chr(b) for b in bytes_)
+        res = array.array('B')
+        res.fromstring(''.join(chr(b) for b in bytes_))
+        tobytes = getattr(res, 'tobytes', res.tostring)
+        return tobytes()
 
     @property
     def size(self):
