@@ -278,6 +278,29 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
+    @override(py27)
+    def p__comprehension(self, args):
+        '''Common comprehension structure in Python 2.7
+
+        _comprehension ::= MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+
+        '''
+
+    @p__comprehension.override(py3k)
+    def p__comprehension(self, args):
+        '''Common comprehension structure for Python 3.2+.
+
+        In Python 3k, MAKE_FUNCTION is always preceded by two LOAD_CONST.
+        setcomp, dictcomps and genexpr (and listcomp for Python 3) take the
+        first constant, we take the second since it's not important.
+
+        .. _rules:
+
+        _comprehension ::= LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
+                           CALL_FUNCTION_1
+
+        '''
+
     def p_list_comprehension(self, args):
         '''List comprehensions.
 
@@ -330,92 +353,31 @@ class _InternalParser(GenericASTBuilder):
         comp_ifnot ::= expr jmp_true comp_iter
         comp_for ::= expr _for designator comp_iter JUMP_BACK
 
-        '''
-
-    @override(py27)
-    def p_setcomp(self, args):
-        '''Set comprehensions in Python 2.7.
-
-        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER
-                    CALL_FUNCTION_1
+        setcomp ::= LOAD_SETCOMP _comprehension
 
         '''
 
-    @p_setcomp.override(py3k)
-    def p_setcomp(self, args):
-        '''Set comprehensions in Py3k.
+    def p_genexpr(self, args):
+        '''Generator expressions in Python 2.7.
 
-        Since MAKE_FUNCTION is preceded by two LOAD_CONST in Python 3.  This
-        customization is needed.
-
-        setcomp ::= LOAD_SETCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                    CALL_FUNCTION_1
-
-        '''
-
-    def p_genexpr_common(self, args):
-        '''Generator expressions.
-
-        Common parts to all python versions.
+        genexpr ::= LOAD_GENEXPR _comprehension
 
         expr ::= genexpr
         stmt ::= genexpr_func
         genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
 
         '''
-    @override(py27)
-    def p_genexpr(self, args):
-        '''Generator expressions in Python 2.7.
 
-        genexpr ::= LOAD_GENEXPR MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+    def p_dictcomp(self, args):
+        '''Dict comprehensions for Python 2.7.
 
-        '''
-
-    @p_genexpr.override(py3k)
-    def p_genexpr(self, args):
-        '''Generator expression for Python 3.
-
-        In Python 3k, MAKE_FUNCTION is always preceded by two LOAD_CONST, the
-        first LOAD_GENEXPR is actually a custom LOAD_CONST, the second sets
-        the name of the function.  Nevertheless for generator expressions the
-        is always "<genexpr>", thus the LOAD_GENEXPR.
-
-        .. _rules:
-
-        genexpr ::= LOAD_GENEXPR LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                    CALL_FUNCTION_1
-
-        '''
-
-    def p_dictcomp_common(self, args):
-        '''Dict comprehensions.
-
-        Common rules for all target Python versions.
-
-        .. _rules:
+        dictcomp ::= LOAD_DICTCOMP _comprehesion
 
         expr ::= dictcomp
         stmt ::= dictcomp_func
 
         dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
                 comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
-
-        '''
-    @override(py27)
-    def p_dictcomp(self, args):
-        '''Dict comprehensions for Python 2.7.
-
-        dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER
-                     CALL_FUNCTION_1
-
-        '''
-
-    @p_dictcomp.override(py3k)
-    def p_dictcomp(self, args):
-        '''Dict comprehensions for Python 3.
-
-        dictcomp ::= LOAD_DICTCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                     CALL_FUNCTION_1
 
         '''
 
