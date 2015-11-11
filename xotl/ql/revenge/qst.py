@@ -92,9 +92,12 @@ class PyASTNode(object):
 del validate_attrs, _eq_asts
 
 __all__ = []
-_nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop, pyast.keyword,
-          pyast.slice, pyast.operator, pyast.cmpop, pyast.comprehension,
-          pyast.arguments, pyast.expr_context]
+_nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop,
+          pyast.keyword, pyast.slice, pyast.operator, pyast.cmpop,
+          pyast.comprehension, pyast.arguments, pyast.expr_context]
+from xoutil.eight import _py3
+if _py3:
+    _nodes.append(pyast.arg)
 _current = 0
 
 while _current < len(_nodes):
