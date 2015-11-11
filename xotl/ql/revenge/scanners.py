@@ -65,9 +65,23 @@ del _py3, _py2, _pypy
 
 JUMP_IF_OR_POPs = (JUMP_IF_TRUE_OR_POP, JUMP_IF_FALSE_OR_POP)  # noqa
 POP_JUMP_IFs = (POP_JUMP_IF_TRUE, POP_JUMP_IF_FALSE)  # noqa
-POP_JUMPs = JUMP_IF_OR_POPs + POP_JUMP_IFs
+CONDITIONAL_JUMPs = JUMP_IF_OR_POPs + POP_JUMP_IFs
+UNCONDITIONAL_JUMPs = (JUMP_ABSOLUTE, JUMP_FORWARD)  # noqa
+RELATIVE_JUMPs = (FOR_ITER, JUMP_FORWARD)   # noqa
+ABSOLUTE_JUMPs = (JUMP_ABSOLUTE, ) + CONDITIONAL_JUMPs
 
-JUMPs = (JUMP_ABSOLUTE, JUMP_FORWARD)  # noqa
+
+ANY_JUMPs = RELATIVE_JUMPs + ABSOLUTE_JUMPs
+
+
+
+def JUMPS_ON_TRUE(x):
+    return x in (JUMP_IF_TRUE_OR_POP, POP_JUMP_IF_TRUE)
+
+
+def JUMPS_ON_FALSE(x):
+    return x in (JUMP_IF_FALSE_OR_POP, POP_JUMP_IF_FALSE)
+
 
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
@@ -810,7 +824,7 @@ class Scanner(object):
             op = self.code[i]
             if op == END_FINALLY:
                 if count_END_FINALLY == count_SETUP_:
-                    assert self.code[self.prev[i]] in JUMPs + (RETURN_VALUE, )
+                    assert self.code[self.prev[i]] in UNCONDITIONAL_JUMPs + (RETURN_VALUE, )
                     self.not_continue.add(self.prev[i])
                     return self.prev[i]
                 count_END_FINALLY += 1
@@ -881,7 +895,7 @@ class Scanner(object):
                 return
             # does this jump to right after another cond jump?
             # if so, it's part of a larger conditional
-            if (code[pre[target]] in POP_JUMPs) and (target > pos):
+            if (code[pre[target]] in CONDITIONAL_JUMPs) and (target > pos):
                 self.fixed_jumps[pos] = pre[target]
                 structs.append({'type':  'and/or',
                                 'start': start,
@@ -895,7 +909,7 @@ class Scanner(object):
                                     target)
                 match = self.remove_mid_line_ifs(match)
                 if match:
-                    if code[pre[rtarget]] in JUMPs \
+                    if code[pre[rtarget]] in UNCONDITIONAL_JUMPs \
                             and pre[rtarget] not in self.stmts \
                             and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:
                         if code[pre[pre[rtarget]]] == JUMP_ABSOLUTE \
@@ -931,17 +945,17 @@ class Scanner(object):
                 next = self.next_stmt[pos]
                 if pre[next] == pos:
                     pass
-                elif code[next] in JUMPs and target == self.get_target(next):
+                elif code[next] in UNCONDITIONAL_JUMPs and target == self.get_target(next):
                     if code[pre[next]] == POP_JUMP_IF_FALSE:
-                        if code[next] == JUMP_FORWARD or target != rtarget or code[pre[pre[rtarget]]] not in JUMPs:
+                        if code[next] == JUMP_FORWARD or target != rtarget or code[pre[pre[rtarget]]] not in UNCONDITIONAL_JUMPs:
                             self.fixed_jumps[pos] = pre[next]
                             return
-                elif code[next] == JUMP_ABSOLUTE and code[target] in JUMPs:
+                elif code[next] == JUMP_ABSOLUTE and code[target] in UNCONDITIONAL_JUMPs:
                     next_target = self.get_target(next)
                     if self.get_target(target) == next_target:
                         self.fixed_jumps[pos] = pre[next]
                         return
-                    elif code[next_target] in JUMPs and self.get_target(next_target) == self.get_target(target):
+                    elif code[next_target] in UNCONDITIONAL_JUMPs and self.get_target(next_target) == self.get_target(target):
                         self.fixed_jumps[pos] = pre[next]
                         return
             # don't add a struct for a while test, it's already taken care of
@@ -961,7 +975,7 @@ class Scanner(object):
                     rtarget = pre[rtarget]
             # does the if jump just beyond a jump op, then this is probably an
             # if statement
-            if code[pre[rtarget]] in JUMPs:
+            if code[pre[rtarget]] in UNCONDITIONAL_JUMPs:
                 if_end = self.get_target(pre[rtarget])
                 # is this a loop not an if?
                 if if_end < pre[rtarget] and code[pre[if_end]] == SETUP_LOOP:

@@ -603,6 +603,57 @@ since the iterable can be any expression, i.e. not a single ``LOAD_NAME``.
                         CALL_FUNCTION_1
 
 
+
+Terms used in this document
+---------------------------
+
+.. glossary::
+
+   absolute jump
+
+     Any `jump`:term: instructions that takes the actual `target`:term: offset
+     that it jumps to: `JUMP_ABSOLUTE`:opcode: and all the `conditional jumps
+     <conditional jump>`:term:.
+
+   conditional jump
+
+     An instruction that only jumps conditionally:
+     `JUMP_IF_FALSE_OR_POP`:opcode:, `JUMP_IF_TRUE_OR_POP`:opcode:,
+     `POP_JUMP_IF_FALSE`:opcode:, and `POP_JUMP_IF_TRUE`:opcode:.
+
+     .. note:: Despite the fact that `FOR_ITER`:opcode: only jumps when the
+        iterator is exhausted, we don't consider it neither a conditional jump
+        nor an `unconditional jump`:term:.
+
+   jump
+   jump instruction
+
+     Any instructions that jumps: `conditional jump`:term:, `unconditional
+     jump`:term:, `relative jump`:term: and `absolute jump`:term:.
+
+
+   relative jump
+
+     Any `jump`:term: instruction that takes a `delta` argument to calculate
+     the offset of the `target`:term:: `FOR_ITER`:opcode:, and
+     `JUMP_FORWARD`:opcode:.
+
+     .. note:: We don't list all the instructions but only those that show up
+        in expressions.
+
+   target
+
+     This term is used loosely to mean either the offset (after resolution for
+     `relative jumps <relative jump>`:term:), or the instruction at that
+     offset.
+
+   unconditional jump
+
+     Any of the instructions `JUMP_FORWARD`:opcode: and
+     `JUMP_ABSOLUTE`:opcode:
+
+
+
 API of the module
 -----------------
 
