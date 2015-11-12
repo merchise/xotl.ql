@@ -109,8 +109,10 @@ class Uncompyled(object):   # TODO:  Find better name
 
     @property
     def qst(self):
-        from . import qst
-        return qst.parse('1', '<unknown>', 'eval')
+        from .walkers import QstBuilder
+        builder = QstBuilder()
+        builder.preorder(self.ast)
+        return builder.stop()
 
     @property
     def safe_qst(self):
