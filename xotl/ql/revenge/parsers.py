@@ -449,23 +449,11 @@ class _InternalParser(GenericASTBuilder):
 
     def p_grammar(self, args):
         '''
-        stmts ::= stmts sstmt
-        stmts ::= sstmt
         sstmt ::= stmt
         sstmt ::= ifelsestmtr
         sstmt ::= return_stmt RETURN_LAST
 
-        stmts_opt ::= stmts
-        stmts_opt ::= passstmt
         passstmt ::=
-
-        _stmts ::= _stmts stmt
-        _stmts ::= stmt
-
-        c_stmts ::= _stmts
-        c_stmts ::= _stmts lastc_stmt
-        c_stmts ::= lastc_stmt
-        c_stmts ::= continue_stmts
 
         lastc_stmt ::= iflaststmt
         lastc_stmt ::= whileelselaststmt
@@ -474,34 +462,10 @@ class _InternalParser(GenericASTBuilder):
         lastc_stmt ::= ifelsestmtc
         lastc_stmt ::= tryelsestmtc
 
-        c_stmts_opt ::= c_stmts
-        c_stmts_opt ::= passstmt
-
-        l_stmts ::= _stmts
-        l_stmts ::= return_stmts
-        l_stmts ::= continue_stmts
-        l_stmts ::= _stmts lastl_stmt
-        l_stmts ::= lastl_stmt
-
         lastl_stmt ::= iflaststmtl
         lastl_stmt ::= ifelsestmtl
         lastl_stmt ::= forelselaststmtl
         lastl_stmt ::= tryelsestmtl
-
-        l_stmts_opt ::= l_stmts
-        l_stmts_opt ::= passstmt
-
-        suite_stmts ::= _stmts
-        suite_stmts ::= return_stmts
-        suite_stmts ::= continue_stmts
-
-        suite_stmts_opt ::= suite_stmts
-        suite_stmts_opt ::= passstmt
-
-        else_suite ::= suite_stmts
-        else_suitel ::= l_stmts
-        else_suitec ::= c_stmts
-        else_suitec ::= return_stmts
 
         designList ::= designator designator
         designList ::= designator DUP_TOP designList
@@ -526,11 +490,6 @@ class _InternalParser(GenericASTBuilder):
 
         stmt ::= return_stmt
         return_stmt ::= ret_expr RETURN_VALUE
-        return_stmts ::= return_stmt
-        return_stmts ::= _stmts return_stmt
-
-        return_if_stmts ::= return_if_stmt
-        return_if_stmts ::= _stmts return_if_stmt
         return_if_stmt ::= ret_expr RETURN_END_IF
 
         stmt ::= ifstmt
@@ -541,27 +500,10 @@ class _InternalParser(GenericASTBuilder):
         jmp_false    ::= POP_JUMP_IF_FALSE
         jmp_true    ::= POP_JUMP_IF_TRUE
 
-        ifstmt ::= testexpr _ifstmts_jump
-
         testexpr ::= testfalse
         testexpr ::= testtrue
         testfalse ::= expr jmp_false
         testtrue ::= expr jmp_true
-
-        _ifstmts_jump ::= return_if_stmts
-        _ifstmts_jump ::= c_stmts_opt JUMP_FORWARD COME_FROM
-
-        iflaststmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE
-
-        iflaststmtl ::= testexpr c_stmts_opt JUMP_BACK
-
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD else_suite COME_FROM
-
-        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE else_suitec
-
-        ifelsestmtr ::= testexpr return_if_stmts return_stmts
-
-        ifelsestmtl ::= testexpr c_stmts_opt JUMP_BACK else_suitel
 
         jmp_abs ::= JUMP_ABSOLUTE
         jmp_abs ::= JUMP_BACK
@@ -572,7 +514,7 @@ class _InternalParser(GenericASTBuilder):
         '''
 
     def nonterminal(self, nt, args):
-        collect = ('stmts', 'exprlist', 'kvlist', '_stmts', 'print_items')
+        collect = ('exprlist', 'kvlist', 'print_items')
         if nt in collect and len(args) > 1:
             #
             #  Collect iterated thingies together.
