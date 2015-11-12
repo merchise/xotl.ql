@@ -270,6 +270,57 @@ class QstBuilder(GenericASTTraversal, object):
         operation, right, left = children
         return qst.BinOp(left, operation, right)
 
+    _COMPARE_OPS_QST_CLS = {
+        'in': qst.In,
+        'not in': qst.NotIn,
+        'is': qst.Is,
+        'is not': qst.IsNot,
+        '==': qst.Eq,
+        '!=': qst.NotEq,
+        '<': qst.Lt,
+        '<=': qst.LtE,
+        '>': qst.Gt,
+        '>=': qst.GtE,
+    }
+    _COMPARE_OPS_QST_CLS_VALS = tuple(_COMPARE_OPS_QST_CLS.values())
+
+    @pushtostack
+    def n_COMPARE_OP(self, node):
+        return self._COMPARE_OPS_QST_CLS[node.argval]()
+
+    def n_cmp_list(self, node):
+        # Push a mark to the stack to know when to stop when building the list
+        # when exiting the node.  See `n_cmp_list_exit` method
+        self._stack.append(('cmp_list', ))
+
+    @pushtostack
+    def n_cmp_list_exit(self, node, children=None):
+        from .tools import split
+        sentinel = ('cmp_list', )
+        item, items = None, []
+        while item != sentinel:
+            item = self._stack.pop()
+            if item != sentinel:
+                items.append(item)
+        left = items.pop()  # The last item is the first.
+        # Then, in reversed stack other we'll have compare operators and the
+        # other operands.
+        cmpops, others = split(
+            reversed(items),
+            lambda item: isinstance(item, self._COMPARE_OPS_QST_CLS_VALS)
+        )
+        return qst.Compare(left, cmpops, others)
+
+    @pushtostack
+    @take_n(3)
+    def n_compare_exit(self, node, children=None):
+        cmpop, right, left = children
+        return qst.Compare(left, [cmpop], [right])
+
+    # Notice we should build a qst.Expression at the exit of every `expr`
+    # since that would (re)create the concrete syntax (for instance, that
+    # would make the left and right operands of binary operators instances of
+    # qst.Expression).  We only build the Expression at the last moment.
     @pushto('_stack')
     @take(1, '_stack', 'children')
     def n_ret_expr_exit(self, node, children=None):
