@@ -286,6 +286,8 @@ def test_basic_expressions():
         ('a[::st]', None),
 
         ('a.attr.b[2:3]', None),
+        ('a.attr.b[a[s]:n[l]:s[t]]', None),
+
 
         ('c()', None),
         ('c(a)', None),
