@@ -413,12 +413,12 @@ class QstBuilder(GenericASTTraversal, object):
     def n_cmp_list(self, node):
         # Push a mark to the stack to know when to stop when building the list
         # when exiting the node.  See `n_cmp_list_exit` method
-        self._stack.append(('cmp_list', ))
+        self._stack.append(('cmp_list', node))
 
     @pushtostack
     def n_cmp_list_exit(self, node, children=None):
         from .tools import split
-        sentinel = ('cmp_list', )
+        sentinel = ('cmp_list', node)
         item, items = None, []
         while item != sentinel:
             item = self._stack.pop()
