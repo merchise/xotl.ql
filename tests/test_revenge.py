@@ -274,6 +274,17 @@ def test_basic_expressions():
         ('a < b in c > d', None),
 
         ('a.b.c', None),
+
+        ('a[:]', None),
+        ('a[s]', None),
+        ('a[s:]', None),
+        ('a[s::st]', None),
+        ('a[:e]', None),
+        ('a[:e:st]', None),
+        ('a[s:e]', None),
+        ('a[s:e:st]', None),
+        ('a[::st]', None),
+
         ('a.attr.b[2:3]', None),
         ('a[1] + list(b)', None),
         ('{a: b,\n c: d}', None),

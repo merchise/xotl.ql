@@ -40,6 +40,9 @@ minint = -sys.maxsize-1
 
 pushtostack = pushto('_stack')
 take_n = lambda n: take(n, '_stack', 'children')
+take_one = take_n(1)
+take_two = take_n(2)
+take_three = take_n(3)
 
 
 # Helper classes and metaclass for doing some like::
@@ -235,6 +238,9 @@ class QstBuilder(GenericASTTraversal, object):
             cls = qst.Str
         elif isinstance(value, Number):
             cls = qst.Num
+        else:
+            assert value is None
+            cls = lambda x: x
         return cls(value)
 
     @pushtostack
@@ -250,7 +256,52 @@ class QstBuilder(GenericASTTraversal, object):
         return node
 
     @pushtostack
-    @take_n(2)
+    @take_two
+    def n_binary_subscr_exit(self, node, children=None):
+        slice_, value = children
+        # FIXME: This should be `qst.slice`.
+        if not isinstance(slice_, qst.pyast.slice):
+            # The slice may be already built for cases like ``a[s::st]`` where
+            # the buildslice3 rule creates the `qst.Slice` object.
+            slice_ = qst.Index(slice_)
+        return qst.Subscript(value, slice_, qst.Load())
+
+    @pushtostack
+    @take_one
+    def n_slice0_exit(self, node, children=None):
+        # This is ``obj[:]``
+        obj, = children
+        return qst.Subscript(obj, qst.Slice(None, None, None), qst.Load())
+
+    @pushtostack
+    @take_two
+    def n_slice1_exit(self, node, children=None):
+        # This is ``obj[lower:]``.
+        lower, obj = children
+        return qst.Subscript(obj, qst.Slice(lower, None, None), qst.Load)
+
+    @pushtostack
+    @take_two
+    def n_slice2_exit(self, node, children=None):
+        # This is ``obj[:upper]``.
+        upper, obj = children
+        return qst.Subscript(obj, qst.Slice(None, upper, None), qst.Load)
+
+    @pushtostack
+    @take_three
+    def n_slice3_exit(self, node, children=None):
+        # This is ``obj[lower:upper]``.
+        upper, lower, obj = children
+        return qst.Subscript(obj, qst.Slice(lower, upper, None), qst.Load)
+
+    @pushtostack
+    @take_three
+    def n_buildslice3_exit(self, node, children=None):
+        step, upper, lower = children
+        return qst.Slice(lower, upper, step)
+
+    @pushtostack
+    @take_two
     def n_load_attr_exit(self, node, children=None):
         load_attr, obj = children
         assert isinstance(load_attr, Token)
@@ -280,7 +331,7 @@ class QstBuilder(GenericASTTraversal, object):
         return cls()
 
     @pushtostack
-    @take_n(3)
+    @take_three
     def n_binary_expr_exit(self, node, children=None):
         operation, right, left = children
         return qst.BinOp(left, operation, right)
@@ -327,7 +378,7 @@ class QstBuilder(GenericASTTraversal, object):
         return qst.Compare(left, cmpops, others)
 
     @pushtostack
-    @take_n(3)
+    @take_three
     def n_compare_exit(self, node, children=None):
         cmpop, right, left = children
         return qst.Compare(left, [cmpop], [right])
@@ -337,7 +388,7 @@ class QstBuilder(GenericASTTraversal, object):
     # would make the left and right operands of binary operators instances of
     # qst.Expression).  We only build the Expression at the last moment.
     @pushto('_stack')
-    @take(1, '_stack', 'children')
+    @take_one
     def n_ret_expr_exit(self, node, children=None):
         body = children[0]
         return qst.Expression(body)
