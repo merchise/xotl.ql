@@ -50,10 +50,25 @@ def take(n, attr, kwargname):
     def decorator(f):
         def inner(self, *args, **kwargs):
             stack = setdefaultattr(self, attr, [])
-            items = []
-            for _ in range(n):
-                items.append(stack.pop())
+            items = pop_n(stack, n)
             kwargs[kwargname] = tuple(items)
             return f(self, *args, **kwargs)
         return inner
     return decorator
+
+
+def pop_n(stack, n):
+    items = []
+    for _ in range(n):
+        items.append(stack.pop())
+    return items
+
+
+def split(iterable, predicate):
+    true, false = [], []
+    for item in iter(iterable):
+        if predicate(item):
+            true.append(item)
+        else:
+            false.append(item)
+    return true, false
