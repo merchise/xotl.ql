@@ -242,6 +242,21 @@ class QstBuilder(GenericASTTraversal, object):
         load_name = self._ensure_child_token(node)
         return qst.Name(load_name.argval, qst.Load())
 
+    @pushtostack
+    def n_LOAD_ATTR(self, node):
+        # When visiting a LOAD_ATTR just put the token on the stack,
+        # `load_attr` will pick it and build the appropriate Attribute.
+        assert isinstance(node, Token)
+        return node
+
+    @pushtostack
+    @take_n(2)
+    def n_load_attr_exit(self, node, children=None):
+        load_attr, obj = children
+        assert isinstance(load_attr, Token)
+        attr = load_attr.argval
+        return qst.Attribute(obj, attr, qst.Load())
+
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
         'BINARY_MULTIPLY': qst.Mult,
