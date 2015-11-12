@@ -24,10 +24,13 @@ import dis
 from collections import namedtuple
 from array import array
 
-#  We'll only support 2.7 and 3.2+
-from sys import version_info as _vinfo
-assert _vinfo >= (2, 7, 0) and (not _vinfo >= (3, 0) or _vinfo >= (3, 2))
-del _vinfo
+#  We'll only support 2.7 and >=3.2,<3.5
+from xoutil.eight import _py3, _py2, _pypy
+from sys import version_info as _py_version
+assert _py_version >= (2, 7, 0) and (
+    not _py_version >= (3, 0) or (3, 2) <= _py_version < (3, 5))
+
+# Py3.5 changes BUILD_MAP, adds BUILD_MAP_UNPACK, BUILD_MAP_UNPACK_WITH_CALL
 
 try:
     from sys import intern  # Py3k
@@ -47,7 +50,7 @@ globals().update(
     {k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())}
 )
 
-from xoutil.eight import _py3, _py2, _pypy
+
 if _py3:
     PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
     STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
@@ -74,12 +77,11 @@ ABSOLUTE_JUMPs = (JUMP_ABSOLUTE, ) + CONDITIONAL_JUMPs
 ANY_JUMPs = RELATIVE_JUMPs + ABSOLUTE_JUMPs
 
 
-
-def JUMPS_ON_TRUE(x):
+def jumps_on_true(x):
     return x in (JUMP_IF_TRUE_OR_POP, POP_JUMP_IF_TRUE)
 
 
-def JUMPS_ON_FALSE(x):
+def jumps_on_false(x):
     return x in (JUMP_IF_FALSE_OR_POP, POP_JUMP_IF_FALSE)
 
 
@@ -91,6 +93,10 @@ CUSTOMIZABLE = (
     CALL_FUNCTION_VAR, CALL_FUNCTION_KW,                              # noqa
     CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS                     # noqa
 )
+
+
+# A virtual opcode that is not None
+COME_FROM = object()
 
 
 from contextlib import contextmanager
@@ -365,6 +371,29 @@ class Code(object):
         self._tokens, self._customize = scanner.disassemble(co, classname)
 
 
+class Structure(object):
+    def __init__(self, start, end, type_):
+        self.start = start
+        self.end = end
+        self.type = type_
+
+    def __repr__(self):
+        return '{{{start}, {end}, {type}}}'.format(**self.__dict__)
+
+    def restrict(self, target):
+        """Return the target within the parent structure boundaries.
+
+        If `target` is not completely contained within the parent
+        boundaries, return the end of the of the parent.  Otherwise,
+        return `target`.
+
+        """
+        if self.start < target < self.end:
+            return target
+        else:
+            return self.end
+
+
 class Scanner(object):
     def __init__(self, version, Token=Token):
         self.version = version
@@ -387,15 +416,131 @@ class Scanner(object):
         self.setTokenClass()
 
     def disassemble(self, co, classname=None):
+        'Produce the tokens for the code.'
         result = []
         customizations = {}
+        # The 'jumps' is filled by the `detect_structure` closure function
+        # below.  It maps the offset of jumping instructions to the farthest
+        # offset within the instruction 'structure'.  This allows to keep
+        # track of nested boolean and conditional expressions.  The structures
+        # are simply the span of instructions pertaining a single (outer)
+        # expression.  Some optimization steps make jumps outside the outer
+        # structures, jumps keep the right 'target' for those.
+        jumps = {}
+        BOOLSTRUCT = 'and/or'  # mark for nested conditionals
+        structures = []
+
+        def get_target_offset(inst):
+            if inst.opcode in dis.hasjabs:
+                target = inst.argval
+            elif inst.opcode in dis.hasjrel:
+                target = inst.argval + inst.offset + inst.size
+            else:
+                raise ScannerError(
+                    'Instruction %s has no target' % inst.opname
+                )
+            return target
+
+        def get_instruction_at(offset, instructions):
+            return next(i for i in enumerate(instructions) if i[-1].offset == offset)
+
+        def get_parent_structure(offset):
+            '''Return the minimal structure the given `offset` lies into.
+
+            Since structures don't overlap unless fully contained they form a
+            nested structure.  Minimal means there's no an inner structure
+            which contains the given `offset`.
+
+            An offset at the very end of a structure is part of the parent
+            structure.  An offset at the start of a structure is part of it.
+
+            In the diagram shown below dots are offsets, delimiter show the
+            start and end of structures.
+
+            ::
+
+                1     2        3       4                5
+                [     (    )   (       {       }   )    (  )]
+                .............................................
+                      ^            ^       ^   ^
+                      At 2         |       |   Not at 4
+                                   At 3    |
+                                           At 4
+
+            '''
+            parent = structures[0]
+            for struct in structures[1:]:
+                start = struct.start
+                end = struct.end
+                if parent.start <= start <= offset < end <= parent.end:
+                    parent = struct
+            return parent
+
+        def detect_structure(instruction, index, instructions):
+            parent = get_parent_structure(instruction.offset)
+            offset = instruction.offset
+            next_offset = offset + instruction.size
+            if instruction.opcode in POP_JUMP_IFs:
+                target = get_target_offset(instruction)
+                target_index, target_inst = get_instruction_at(target, instructions)
+                restricted = parent.restrict(target)
+                if target != restricted and parent.type == BOOLSTRUCT:
+                    # The target is not within the parent boundaries, this is
+                    # most likely an "out the loop" jump.
+                    #
+                    # The jumps map needs to be set from the current to the
+                    # last offset of the structure! This way we won't go
+                    # farther than we should.
+                    jumps[offset] = restricted
+                    return
+                above_target = instructions[target_index-1]
+                if target > offset and above_target.opcode in CONDITIONAL_JUMPs or above_target.opcode == RETURN_VALUE:
+                    # The instruction above the target is a conditional jump
+                    # or a RETURN_VALUE, this a likely a nested conditional.
+                    #
+                    # The jumps maps need to be to the instruction above the
+                    # target and a new structure is created spanning from the
+                    # next instruction to the instruction above the target.
+                    jumps[offset] = end = instructions[target_index-1].offset
+                    structures.append(Structure(next_offset, end, BOOLSTRUCT))
+                    return
+            elif instruction.opcode in JUMP_IF_OR_POPs:
+                target = get_target_offset(instruction)
+                restricted = parent.restrict(target)
+                jumps[offset] = restricted
+
+        def find_jump_targets(instructions):
+            '''Find all targets of jumps.
+
+            '''
+            last = instructions[-1].offset + instructions[-1].size
+            structures[:] = [Structure(0, last, 'root')]  # The whole program
+            result = {}
+            for index, instruction in enumerate(instructions):
+                detect_structure(instruction, index, instructions)
+                opcode = instruction.opcode
+                offset = instruction.offset
+                size = instruction.size
+                argval = instruction.argval
+                if opcode >= dis.HAVE_ARGUMENT:
+                    label = jumps.get(instruction.offset)
+                    if label is None:
+                        if opcode == JUMP_FORWARD:
+                            label = argval  + offset + size
+                        elif opcode in JUMP_IF_OR_POPs and argval > offset:
+                            label = argval
+                    if label is not None and label != -1:
+                        result.setdefault(label, []).append(offset)
+            return result
 
         def emit(instruction):
             result.append(instruction)
 
         def emit_const(instruction):
             if instruction.opcode not in dis.hasconst:
-                raise ScannerError("byte-code '%s' has no const" % instruction.opname)
+                raise ScannerError(
+                    "byte-code '%s' has no const" % instruction.opname
+                )
             const = instruction.argval
             opname = instruction.opname
             if isinstance(const, types.CodeType):
@@ -408,9 +553,15 @@ class Scanner(object):
                     opname = 'LOAD_DICTCOMP'
                 elif const.co_name == '<setcomp>':
                     opname = 'LOAD_SETCOMP'
+                elif const.co_name == '<listcomp>':
+                    opname = 'LOAD_LISTCOMP'
             res = Instruction(instruction)
             res.opname = opname
             return emit(res)
+
+        def emit_come_from(offset, target, index):
+            emit(Token('COME_FROM', COME_FROM, repr(target),
+                       offset="%s_%d" % (offset, index)))
 
         def customize(instruction):
             opname, arg = instruction.opname, instruction.arg
@@ -418,9 +569,16 @@ class Scanner(object):
             customizations[opname] = arg
             instruction.opname = opname
 
-        instructions = [Instruction(i) for i in Bytecode(co)]
-        for instruction in instructions:
+        instructions = list(without_nops(normalize_pypy_conditional(
+            Instruction(i) for i in Bytecode(co)
+        )))
+        targets = find_jump_targets(instructions)
+        for index, instruction in enumerate(instructions):
             opcode = instruction.opcode
+            offset = instruction.offset
+            _jumps = targets.get(offset, [])
+            for k, j in enumerate(_jumps):
+                emit_come_from(offset, j, k)
             if opcode in CUSTOMIZABLE:
                 customize(instruction)
             if opcode == JUMP_ABSOLUTE:  # noqa
@@ -437,8 +595,8 @@ class Scanner(object):
                 emit(instruction)
 
         tokens = [
-            Token.from_instruction(instruction)
-            for instruction in without_nops(normalize_pypy_conditional(result))
+            Token.from_instruction(i) if not isinstance(i, Token) else i
+            for i in result
         ]
         return tokens, customizations
 
@@ -840,7 +998,12 @@ class Scanner(object):
                 count_SETUP_ += 1
 
     def restrict_to_parent(self, target, parent):
-        """Restrict pos to parent boundaries."""
+        """Return the target within the parent structure boundaries.
+
+        If `target` is not completely contained within the parent boundaries,
+        return the end of the of the parent.  Otherwise, return `target`.
+
+        """
         if not (parent['start'] < target < parent['end']):
             target = parent['end']
         return target
@@ -852,17 +1015,21 @@ class Scanner(object):
         nested structure.  Minimal means there's no an inner structure which
         contains the given `offset`.
 
-        The following diagram uses delimiters (brackets, braces and
-        parenthesis) to illustrate structures, the number over of the opening
-        delimiter simply names it.  Dots means an unspecified amount of
-        "space".  If `offset` matches the "*", the parent structure would be
-        the number 3.  If `offset` matches the "x", the parent structure would
-        be the number 4.
+        An offset at the very end of a structure is part of the parent
+        structure.  An offset at the start of a structure is part of it.
+
+        In the diagram shown below dots are offsets, delimiter show the start
+        and end of structures.
 
         ::
 
             1     2        3       4                5
-            [.... (....)...(...*...{...x...}...)....(..)]
+            [     (    )   (       {       }   )    (  )]
+            .............................................
+                  ^            ^       ^   ^
+                  At 2         |       |   Not at 4
+                               At 3    |
+                                       At 4
 
         '''
         parent = self.structs[0]
@@ -870,7 +1037,7 @@ class Scanner(object):
         for struct in self.structs[1:]:
             start = struct['start']
             end = struct['end']
-            if start <= offset < end and start >= the_start and end <= the_end:
+            if the_start <= start <= offset < end <= the_end:
                 the_start = start
                 the_end = end
                 parent = struct
@@ -896,7 +1063,7 @@ class Scanner(object):
             target = self.get_target(pos, op)
             rtarget = self.restrict_to_parent(target, parent)
             pre = self.prev
-            # If the target is not within the parents struct this is must
+            # If the target is not within the parents struct this is most
             # likely a "out of the loop" jump: a fixed jump.
             if target != rtarget and parent['type'] == 'and/or':
                 self.fixed_jumps[pos] = rtarget
@@ -909,7 +1076,7 @@ class Scanner(object):
                                 'start': start,
                                 'end':   pre[target]})
                 return
-            # is this an if and
+            # is this an `if and`
             if op == POP_JUMP_IF_FALSE:
                 match = self.rem_or(start,
                                     self.next_stmt[pos],
@@ -1050,9 +1217,6 @@ class Scanner(object):
                             label = oparg
                 if label is not None and label != -1:
                     targets.setdefault(label, []).append(offset)
-            elif op == END_FINALLY and offset in self.fixed_jumps:
-                label = self.fixed_jumps[offset]
-                targets.setdefault(label, []).append(offset)
         return targets
 
 
@@ -1139,7 +1303,7 @@ def normalize_pypy_conditional(instructions):
         NOP
         NOP
 
-    This is rule does not only apply when using Pypy, the name simply comes
+    This rule does not only apply when using Pypy, the name simply comes
     because Pypy compiles conditional expressions using JUMPs.
 
     :param instructions:  An iterable of `instructions <Instruction>`:class:.

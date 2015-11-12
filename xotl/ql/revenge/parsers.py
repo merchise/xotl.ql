@@ -21,7 +21,9 @@ __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 from .spark import GenericASTBuilder
 from xoutil.collections import UserList
 
-from .eight import override, py27, py3k
+import sys
+_py_version = sys.version_info
+from .eight import override, py27, py32, py3k, py33, py34, pypy
 from .exceptions import ParserError as RevengeParserError
 
 try:
@@ -81,7 +83,7 @@ class ParserError(RevengeParserError):
 
 class _InternalParser(GenericASTBuilder):
     def __init__(self):
-        GenericASTBuilder.__init__(self, AST, 'stmts')
+        GenericASTBuilder.__init__(self, AST, 'sstmt')
         self.customized = {}
 
     def error(self, token):
@@ -156,7 +158,8 @@ class _InternalParser(GenericASTBuilder):
         '''
 
     def p_expr(self, args):
-        '''
+        '''The expression rules.
+
         expr ::= _mklambda
         expr ::= load_attr
         expr ::= binary_expr
@@ -231,11 +234,13 @@ class _InternalParser(GenericASTBuilder):
 
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
+        conditional ::= expr POP_JUMP_IF_FALSE expr COME_FROM RETURN_VALUE expr
 
         expr ::= conditionalnot
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr
                            COME_FROM
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_ABSOLUTE expr
+        conditionalnot ::= expr POP_JUMP_IF_TRUE expr COME_FROM RETURN_VALUE expr
 
         ret_expr ::= expr
         ret_expr ::= ret_and
@@ -278,53 +283,55 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    @override(py27)
+    # MAKE_FUNCTION changed from Python 2 to Python 3.  In Python 2 it's
+    # preceded only by the LOAD_CONST that contains the function code.  Since
+    # Python 3.3, a second LOAD_CONST with the name of the function is added.
+    #
+    # Since generator expressions, dict comprehensions, set comprehensions and
+    # lambdas use the MAKE_FUNCTION byte-code, we introduce a compatibility
+    # layer in our grammar.  The following ``_py_load_*`` are overridden in
+    # Python 3 with the second LOAD_CONST.  This way the rules for the bigger
+    # structures remain stable across Python versions.
+    #
+
+    @override(_py_version < (3, 3))
+    def p__py_loads(self, args):
+        '''
+        _py_load_genexpr   ::= LOAD_GENEXPR
+        _py_load_lambda    ::= LOAD_LAMBDA
+        _py_load_dictcomp  ::= LOAD_DICTCOMP
+        _py_load_setcomp   ::= LOAD_SETCOMP
+        '''
+
+    @p__py_loads.override(_py_version >= (3, 3))
+    def p__py_loads(self, args):
+        '''
+        _py_load_genexpr ::= LOAD_GENEXPR LOAD_CONST
+        _py_load_lambda    ::= LOAD_LAMBDA LOAD_CONST
+        _py_load_dictcomp  ::= LOAD_DICTCOMP LOAD_CONST
+        _py_load_setcomp   ::= LOAD_SETCOMP LOAD_CONST
+        '''
+
+    @override(py3k)
+    def p__py_load_listcomp(self, args):
+        '''In Python 3.2+ list comprehensions are also wrapped
+        inside a function.
+
+        _py_load_listcomp ::= LOAD_LISTCOMP
+
+        '''
+
+    @p__py_load_listcomp.override(_py_version >= (3, 3))
+    def p__py_load_listcomp(self, args):
+        '''
+        _py_load_listcomp ::= LOAD_LISTCOMP LOAD_CONST
+
+        '''
+
     def p__comprehension(self, args):
         '''Common comprehension structure in Python 2.7
 
         _comprehension ::= MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
-
-        '''
-
-    @p__comprehension.override(py3k)
-    def p__comprehension(self, args):
-        '''Common comprehension structure for Python 3.2+.
-
-        In Python 3k, MAKE_FUNCTION is always preceded by two LOAD_CONST.
-        setcomp, dictcomps and genexpr (and listcomp for Python 3) take the
-        first constant, we take the second since it's not important.
-
-        .. _rules:
-
-        _comprehension ::= LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                           CALL_FUNCTION_1
-
-        '''
-
-    def p_list_comprehension(self, args):
-        '''List comprehensions.
-
-        .. _rules:
-
-        expr ::= list_compr
-        list_compr ::= BUILD_LIST_0 list_iter
-
-        list_iter ::= list_for
-        list_iter ::= list_if
-        list_iter ::= list_if_not
-        list_iter ::= lc_body
-
-        .. COME_FROM is a custom token introduced by the scanner so that
-        .. we can know the point a jump was made.
-
-        _come_from ::= COME_FROM
-        _come_from ::=
-
-        list_for ::= expr _for designator list_iter JUMP_BACK
-        list_if ::= expr jmp_false list_iter
-        list_if_not ::= expr jmp_true list_iter
-
-        lc_body ::= expr LIST_APPEND
 
         '''
 
@@ -353,14 +360,73 @@ class _InternalParser(GenericASTBuilder):
         comp_ifnot ::= expr jmp_true comp_iter
         comp_for ::= expr _for designator comp_iter JUMP_BACK
 
-        setcomp ::= LOAD_SETCOMP _comprehension
+        setcomp ::= _py_load_setcomp _comprehension
+
+        '''
+
+    def p_list_comprehension_core(self, args):
+        '''List comprehensions.
+
+        This the core list comprehension stuff.  In Python 2 this will be
+        inlined, but in Python 3 will be enclosed in a function.  See
+        `p_list_comprehension` below.
+
+        .. _rules:
+
+        list_compr ::= BUILD_LIST_0 list_iter
+
+        list_iter ::= list_for
+        list_iter ::= list_if
+        list_iter ::= list_if_not
+        list_iter ::= lc_body
+
+        .. COME_FROM is a custom token introduced by the scanner so that
+        .. we can know the point a jump was made.
+
+        _come_from ::= COME_FROM
+        _come_from ::=
+
+        list_for ::= expr _for designator list_iter JUMP_BACK
+        list_if ::= expr jmp_false list_iter
+        list_if_not ::= expr jmp_true list_iter
+
+        lc_body ::= expr LIST_APPEND
+
+        '''
+
+    @override(py27)
+    def p_list_comprehension(self, args):
+        '''List comprehensions in Python 2.7 are 'exposed'.
+
+        expr ::= list_compr
+
+        '''
+
+    @p_list_comprehension.override(py3k)
+    def p_list_comprehension(self, args):
+        '''List comprehensions in Python 3.
+
+        Wrapped inside a function like the other comprehensions.
+
+        list_compr_expr ::= _py_load_listcomp _comprehension
+
+        expr ::= list_compr_expr
+        stmt ::= list_compr
+
+        '''
+
+    @override(pypy)
+    def p__pypy_listcomp(self, args):
+        '''
+        list_compr ::= expr BUILD_LIST_FROM_ARG _for designator list_iter
+                       JUMP_BACK
 
         '''
 
     def p_genexpr(self, args):
         '''Generator expressions in Python 2.7.
 
-        genexpr ::= LOAD_GENEXPR _comprehension
+        genexpr ::= _py_load_genexpr _comprehension
 
         expr ::= genexpr
         stmt ::= genexpr_func
@@ -371,7 +437,7 @@ class _InternalParser(GenericASTBuilder):
     def p_dictcomp(self, args):
         '''Dict comprehensions for Python 2.7.
 
-        dictcomp ::= LOAD_DICTCOMP _comprehesion
+        dictcomp ::= _py_load_dictcomp _comprehension
 
         expr ::= dictcomp
         stmt ::= dictcomp_func
@@ -559,6 +625,7 @@ class Parser(object):
         #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
         #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
         #
+        from xoutil.eight import _py3
         for k, v in list(customize.items()):
             # avoid adding the same rule twice to this parser
             if k in self.customized:
@@ -576,31 +643,38 @@ class Parser(object):
                 continue
             elif op == 'MAKE_FUNCTION':
                 self.add_rule(
-                    'mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k),
+                    'mklambda ::= %s _py_load_lambda %s' % ('expr '*v, k),
                     nop
                 )
                 rule = None
             elif op == 'MAKE_CLOSURE':
                 self.add_rule(
-                    'mklambda ::= %s load_closure LOAD_LAMBDA %s' % (
+                    'mklambda ::= %s load_closure _py_load_lambda %s' % (
                         'expr '*v, k),
                     nop
                 )
                 self.add_rule(
-                    'genexpr ::= %s load_closure LOAD_GENEXPR %s expr '
+                    'genexpr ::= %s load_closure _py_load_genexpr %s expr '
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
                 self.add_rule(
-                    'setcomp ::= %s load_closure LOAD_SETCOMP %s expr '
+                    'setcomp ::= %s load_closure _py_load_setcomp %s expr '
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
                 self.add_rule(
-                    'dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr '
+                    'dictcomp ::= %s load_closure _py_load_dictcomp %s expr '
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
+                if _py3:
+                    # self.add_rule(
+                    #     'list ::= %s load_closure _py_load_dictcomp %s expr '
+                    #     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    #     nop
+                    # )
+                    pass
                 rule = None
             elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
                         'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
@@ -613,7 +687,7 @@ class Parser(object):
             elif op == 'BUILD_SLICE':
                 # since BUILD_SLICE can come in only two forms, it's already
                 # embedded in our grammar, so just ignore it.
-                pass
+                rule = None
             else:
                 raise Exception('unknown customize token %s' % k)
             if rule:

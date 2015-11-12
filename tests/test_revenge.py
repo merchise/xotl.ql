@@ -327,7 +327,7 @@ def test_conditional_a_la_pypy():
                               (), '', '<module>', 1, '')
     u = Uncompyled(code)
     assert u.ast
-    # assert u.source == 'return x and a or y'
+    assert u.source == 'return x and a or y'
 
 
 def test_comprehensions():
@@ -387,7 +387,7 @@ def _do_test(expressions):
         try:
             u = Uncompyled(code)
             assert u.ast
-            # assert u.source == expected
+            assert u.source == expected
         except:
             print()
             print(expr)
