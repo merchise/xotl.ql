@@ -63,6 +63,7 @@ class PyASTNodeType(type(pyast.AST)):
 
 class PyASTNode(object):
     __eq__ = _eq_asts
+    __hash__ = None
 
     @classmethod
     def from_pyast(cls, node):

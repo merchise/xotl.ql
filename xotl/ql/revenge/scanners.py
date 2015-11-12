@@ -108,6 +108,22 @@ class label(object):
 
     See `InstructionSetBuilder`:class: for details.
 
+    When used as keys in dictionaries, labels and string are
+    indistinguishable::
+
+       >>> ls = {}
+       >>> ls['label1'] = 1
+       >>> ls[label('label1')] = 2
+
+       >>> ls
+       {'label1': 2}
+
+       >>> ls[label('label2')] = 3
+       >>> ls['label2'] = 4
+
+       >>> ls
+       {<label: label2>: 4, 'label1': 2}
+
     '''
     def __init__(self, which):
         if isinstance(which, label):
@@ -293,6 +309,8 @@ class Instruction(object):
     def __repr__(self):
         return repr(self._instruction)
 
+    __hash__ =  None   # we're are mutable, not suitable for keys.
+
     def __eq__(self, other):
         from xoutil.objects import validate_attrs
         return validate_attrs(self, other,
@@ -330,6 +348,8 @@ class Token(object):
     def type(self):
         # Several parts of the parser and walker assume a type attribute.  This is consistent with the type attribute for rules.
         return self.name
+
+    __hash__ = None
 
     def __eq__(self, other):
         if isinstance(other, Token):
