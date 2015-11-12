@@ -402,9 +402,13 @@ def _do_test(expressions, extract=lambda x: x):
                 print(u.tokens)
             if u and u.safe_ast:
                 print(u.safe_ast)
+            print('Result:')
             if u and u.safe_qst:
-                print('Result:')
                 print(u.safe_qst)
+            elif u:
+                print('Missing safe qst')
+            else:
+                print('None')
             print('Expected:')
             print(expected)
             raise
