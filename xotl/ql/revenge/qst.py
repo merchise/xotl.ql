@@ -65,6 +65,36 @@ class PyASTNode(object):
     __eq__ = _eq_asts
     __hash__ = None
 
+    def __str__(self):
+        def r(who):
+            if isinstance(who, PyASTNode):
+                return '<ast: %s>' % type(who).__name__
+            else:
+                return repr(who)
+        res = [r(self)]
+        children = [(getattr(self, field), field, 1) for field in self._fields]
+        while children:
+            child, field, depth = children.pop(0)
+            res.append(' ' * 3 * depth + '{}: '.format(field) + r(child))
+            fields = getattr(child, '_fields', [])
+            grandchildren = [
+                (getattr(child, f), f, depth + 1) for f in fields
+            ]
+            if grandchildren:
+                # If any grandchild is a list 'expand it', this helps to get a
+                # nicer visualization.
+                i = 0
+                while i < len(grandchildren):
+                    val, f, d = grandchildren[i]
+                    if isinstance(val, (list, tuple)):
+                        j = len(val)
+                        grandchildren[i:i+1] = [(v, f + '[]', d) for v in val]
+                        i += j
+                    else:
+                        i += 1
+                children[0:0] = grandchildren
+        return '\n'.join(res)
+
     @classmethod
     def from_pyast(cls, node):
         '''Convert an `ast.AST`:py:class: node into the equivalent qst node.'''
