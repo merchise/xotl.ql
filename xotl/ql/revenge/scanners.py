@@ -331,12 +331,12 @@ class Token(object):
         # Several parts of the parser and walker assume a type attribute.  This is consistent with the type attribute for rules.
         return self.name
 
-    def __cmp__(self, o):
-        if isinstance(o, Token):
+    def __eq__(self, other):
+        if isinstance(other, Token):
             # both are tokens: compare type and pattr
-            return cmp(self.name, o.name) or cmp(self.argval, o.argval)
+            return self.name == other.name and self.argval == other.argval
         else:
-            return cmp(self.name, o)
+            return self.name == other
 
     def __repr__(self):
         return '<%s(%s, %s): %s>' % (
