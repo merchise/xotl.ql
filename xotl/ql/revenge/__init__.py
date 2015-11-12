@@ -74,7 +74,7 @@ class Uncompyled(object):   # TODO:  Find better name
         else:
             # NON THREAD SAFE and NOT ISOLATED
             scanner = scanners.getscanner(version, lambda: 0)
-        self.walker = walkers.Walker(scanner)
+        self.walker = walkers.QstBuilder(scanner)
         tokens, customizations = scanner.disassemble(code)
         self._tokens = tokens
         self._customizations = customizations
