@@ -42,6 +42,9 @@ py35 = (3, 5) <= sys.version_info   # XXX: Not released as of today
 py2k = py27 or prepy27
 py3k = (3, 0) <= sys.version_info < (4, 0)
 
+pypy = sys.version.find('PyPy') >= 0
+_py_version = sys.version_info
+
 
 class unimplemented(object):
     '''Not implemented stub for `override`:func:.'''
@@ -109,6 +112,12 @@ except ImportError:
         from xoutil.params import keywordonly   # migrate
     except ImportError:
         keywordonly = lambda *names: lambda f: f
+
+    def _ord(i):
+        if isinstance(i, int):
+            return i
+        else:
+            return ord(i)
 
     class Bytecode(object):
         """The bytecode operations of a piece of code
@@ -194,8 +203,8 @@ except ImportError:
 
         """
         from xoutil.eight import zip
-        byte_increments = [ord(x) for x in code.co_lnotab[0::2]]
-        line_increments = [ord(x) for x in code.co_lnotab[1::2]]
+        byte_increments = [_ord(x) for x in code.co_lnotab[0::2]]
+        line_increments = [_ord(x) for x in code.co_lnotab[1::2]]
 
         lastlineno = None
         lineno = code.co_firstlineno
@@ -234,7 +243,7 @@ except ImportError:
         n = len(code)
         i = 0
         while i < n:
-            op = ord(code[i])
+            op = _ord(code[i])
             offset = i
             if linestarts is not None:
                 starts_line = linestarts.get(i, None)
@@ -246,7 +255,7 @@ except ImportError:
             argval = None
             argrepr = ''
             if op >= HAVE_ARGUMENT:
-                arg = ord(code[i]) + ord(code[i+1])*256 + extended_arg
+                arg = _ord(code[i]) + _ord(code[i+1])*256 + extended_arg
                 extended_arg = 0
                 i = i+2
                 if op == EXTENDED_ARG:
@@ -272,7 +281,7 @@ except ImportError:
                     argval, argrepr = _get_name_info(arg, cells)
                 elif op in hasnargs:
                     argrepr = "%d positional, %d keyword pair" % (
-                        ord(code[i-2]), ord(code[i-1]))
+                        _ord(code[i-2]), _ord(code[i-1]))
             yield Instruction(opname[op], op,
                               arg, argval, argrepr,
                               offset, starts_line, is_jump_target)
@@ -290,10 +299,10 @@ except ImportError:
         n = len(code)
         i = 0
         while i < n:
-            op = ord(code[i])
+            op = _ord(code[i])
             i = i+1
             if op >= HAVE_ARGUMENT:
-                arg = ord(code[i]) + ord(code[i+1])*256
+                arg = _ord(code[i]) + _ord(code[i+1])*256
                 i = i+2
                 label = -1
                 if op in hasjrel:
