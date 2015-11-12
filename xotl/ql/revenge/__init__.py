@@ -78,7 +78,6 @@ class Uncompyled(object):   # TODO:  Find better name
         tokens, customizations = scanner.disassemble(code)
         self._tokens = tokens
         self._customizations = customizations
-        self._ast = None
 
     def dis(self):
         # shortcut to print the code with dis
