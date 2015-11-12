@@ -38,6 +38,9 @@ from .tools import pushto, take
 
 minint = -sys.maxsize-1
 
+pushtostack = pushto('_stack')
+take_n = lambda n: take(n, '_stack', 'children')
+
 
 # Helper classes and metaclass for doing some like::
 #
@@ -216,7 +219,7 @@ class QstBuilder(GenericASTTraversal, object):
         assert len(self._stack) == 1
         return self._stack.pop()
 
-    @pushto('_stack')
+    @pushtostack
     def n_literal(self, node):
         from numbers import Number
         from xoutil.eight import string_types
@@ -228,7 +231,7 @@ class QstBuilder(GenericASTTraversal, object):
             cls = qst.Num
         return cls(value)
 
-    @pushto('_stack')
+    @pushtostack
     def n_identifier(self, node):
         load_name = self._ensure_child_token(node)
         return qst.Name(load_name.argval, qst.Load())
@@ -249,14 +252,14 @@ class QstBuilder(GenericASTTraversal, object):
         'BINARY_POWER': qst.Pow
     }
 
-    @pushto('_stack')
+    @pushtostack
     def n_binary_op(self, node):
         code = self._ensure_child_token(node)
         cls = self._BINARY_OPS_QST_CLS[code.name]
         return cls()
 
-    @pushto('_stack')
-    @take(3, '_stack', 'children')
+    @pushtostack
+    @take_n(3)
     def n_binary_expr_exit(self, node, children=None):
         operation, right, left = children
         return qst.BinOp(left, operation, right)
