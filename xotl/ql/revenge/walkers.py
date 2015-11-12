@@ -215,9 +215,15 @@ class QstBuilder(GenericASTTraversal, object):
         super(QstBuilder, self).__init__(ast)
         self._stack = []
 
-    def stop(self):
+    def stop(self, pop=True):
         assert len(self._stack) == 1
-        return self._stack.pop()
+        if not pop:
+            return self._stack[-1]
+        else:
+            return self._stack.pop()
+
+    def peek(self):
+        return self.stop(False)
 
     @pushtostack
     def n_literal(self, node):
