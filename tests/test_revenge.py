@@ -266,16 +266,19 @@ def test_real_pypy_normalization():
 def test_basic_expressions():
     expressions = [
         ('a + b', None),
-        ('lambda x, y=1, *args, **kw: x + y', None),
-        ('(lambda x: x)(y)', None),
-        ('c(a)', None),
         ('a & b | c ^ d', None),
         ('a << b >> c', None),
         ('a + b * (d + c)', None),
+
         ('a in b', None),
+        ('a < b in c > d', None),
+
         ('a.attr.b[2:3]', None),
         ('a[1] + list(b)', None),
         ('{a: b,\n c: d}', None),
+        ('lambda x, y=1, *args, **kw: x + y', None),
+        ('(lambda x: x)(y)', None),
+        ('c(a)', None),
     ]
     _do_test(expressions)
 
