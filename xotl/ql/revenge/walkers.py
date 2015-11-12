@@ -308,6 +308,62 @@ class QstBuilder(GenericASTTraversal, object):
         attr = load_attr.argval
         return qst.Attribute(obj, attr, qst.Load())
 
+    def n_call_function(self, node):
+        # Mark the entrance to the function call, this will allows to retrieve
+        # all the arguments. But first, push the number of positional
+        # arguments and keyword arguments, so that we know how may items to
+        # take from the stack
+        callfunc = node[-1]
+        assert isinstance(callfunc, Token) and \
+            callfunc.name.startswith('CALL_FUNCTION_')
+        name, val = callfunc.name.rsplit('_', 1)
+        val = int(val)
+        nargs = val & 0xFF
+        nkwargs = (val >> 8) & 0xFF
+        if name.endswith('_KW'):
+            kwargs = 1
+            name, _ = name.rsplit('_', 1)
+        else:
+            kwargs = None
+        if name.endswith('_VAR'):
+            starargs = 1
+        else:
+            starargs = None
+        self._stack.append((nargs, nkwargs, starargs, kwargs))
+        self._stack.append(('call_function', node))
+
+    @pushtostack
+    def n_call_function_exit(self, node, children=None):
+        sentinel = ('call_function', node)
+        item, items = None, []
+        while item != sentinel:
+            item = self._stack.pop()
+            if item != sentinel:
+                items.append(item)
+        nargs, nkwargs, starargs, kwarg = self._stack.pop()
+        func = items.pop()
+        args = []
+        for _ in range(nargs):
+            args.append(items.pop())
+        kws = []
+        for _ in range(nkwargs):
+            kws.append(items.pop())
+        if starargs:
+            starargs = items.pop()
+        if kwarg:
+            kwarg = items.pop()
+        assert not items
+        return qst.Call(func, args, kws, starargs, kwarg)
+
+    @pushtostack
+    @take_one
+    def n_kwarg_exit(self, node, children=None):
+        token = node[0]
+        value, = children
+        # Since the name will be enclose in a qst.Name (per LOAD_CONST) we
+        # need to unwrap it to build the `keyword`
+        return qst.keyword(token.argval, value)
+
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
         'BINARY_MULTIPLY': qst.Mult,

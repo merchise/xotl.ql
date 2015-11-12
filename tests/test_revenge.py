@@ -293,8 +293,11 @@ def test_basic_expressions():
         ('c(*args)', None),
         ('c(**kwargs)', None),
         ('c(*args, **kwargs)', None),
-        ('c()()', None),
-        ('c()(a, b=1, *args, **kwargs)', None),
+
+        ('c(b=1)(a)', None),
+
+        ('c(a, b=1, *args, **kwargs)', None),
+        ('c(a, b=1, *tuple(args), **dict(kwargs))', None),
 
         ('a[1] + list(b)', None),
         ('{a: b,\n c: d}', None),
