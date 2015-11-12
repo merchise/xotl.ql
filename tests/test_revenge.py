@@ -328,7 +328,12 @@ def test_conditional_a_la_pypy():
                               (), '', '<module>', 1, '')
     u = Uncompyled(code)
     assert u.safe_ast
-    assert u.qst == qst.parse('x and a or y')
+    expected = qst.parse('x and a or y')
+    try:
+        assert u.qst == expected
+    except:
+        print(u.qst)
+        print(expected)
 
 
 def test_comprehensions():
@@ -398,7 +403,10 @@ def _do_test(expressions, extract=lambda x: x):
             if u and u.safe_ast:
                 print(u.safe_ast)
             if u and u.safe_qst:
+                print('Result:')
                 print(u.safe_qst)
+            print('Expected:')
+            print(expected)
             raise
 
 
