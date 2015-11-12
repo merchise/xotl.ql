@@ -397,3 +397,26 @@ def _do_test(expressions):
             if u and u.safe_ast:
                 print(u.safe_ast)
             raise
+
+
+def test_embedded():
+    import dis
+    from xotl.ql.revenge import Uncompyled
+
+    this = iter([])
+    expressions = [
+        (a for a in this),    # noqa
+    ]
+    for expr in expressions:
+        try:
+            u = Uncompyled(expr.gi_code)
+            assert u.ast
+        except:
+            print()
+            print(expr)
+            dis.dis(expr.gi_code)
+            if u:
+                print(u.tokens)
+            if u and u.safe_ast:
+                print(u.safe_ast)
+            raise
