@@ -85,23 +85,32 @@ class Uncompyled(object):   # TODO:  Find better name
         import dis
         dis.dis(self.code)
 
-    @property
+    @memoized_property
     def ast(self):
-        if self._ast:
-            return self._ast
-        else:
-            tokens = self.tokens
-            customizations = self.customizations
-            try:
-                ast = self.walker.build_ast(tokens, customizations)
-            except ParserError as error:
-                # So the debugger print the locals
-                raise error
-            # Go down in the AST until the root has more than one children.
-            while ast and len(ast) == 1:
-                ast = ast[0]
-            self._ast = ast
-            return ast
+        tokens = self.tokens
+        customizations = self.customizations
+        try:
+            ast = self.walker.build_ast(tokens, customizations)
+        except ParserError as error:
+            # So the debugger print the locals
+            raise error
+        # Go down in the AST until the root has more than one children.
+        while ast and len(ast) == 1:
+            ast = ast[0]
+        self._ast = ast
+        return ast
+
+    @property
+    def qst(self):
+        from . import qst
+        return qst.parse('1', '<unknown>', 'eval')
+
+    @property
+    def safe_qst(self):
+        try:
+            return self.qst
+        except:
+            return None
 
     @property
     def safe_ast(self):

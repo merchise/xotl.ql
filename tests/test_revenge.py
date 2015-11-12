@@ -298,6 +298,7 @@ def test_conditional_expressions():
 
 
 def test_conditional_a_la_pypy():
+    from xotl.ql.revenge import qst
     # >>> dis.dis(compile('x and a or y', '', 'eval'))
     #   1           0 LOAD_NAME                0 (x)
     #               3 JUMP_IF_FALSE_OR_POP     9
@@ -326,8 +327,8 @@ def test_conditional_a_la_pypy():
         code = types.CodeType(0, 0, 3, 0, code, (), ('x', 'a', 'y'),
                               (), '', '<module>', 1, '')
     u = Uncompyled(code)
-    assert u.ast
-    assert u.source == 'return x and a or y'
+    assert u.safe_ast
+    assert u.qst == qst.parse('x and a or y')
 
 
 def test_comprehensions():
@@ -370,15 +371,15 @@ def test_comprehensions():
     _do_test(expressions)
 
 
-def _do_test(expressions):
+def _do_test(expressions, extract=lambda x: x):
     import dis
-    from xotl.ql.revenge import Uncompyled
+    from xotl.ql.revenge import Uncompyled, qst
 
     codes = [
         (
-            compile(expr, '<test>', 'eval'),
+            extract(compile(expr, '<test>', 'eval')),
             expr,
-            expected if expected else 'return ' + expr
+            qst.parse(expr, '<text>', 'eval'),
         )
         for expr, expected in expressions
     ]
@@ -386,8 +387,8 @@ def _do_test(expressions):
         u = None
         try:
             u = Uncompyled(code)
-            assert u.ast
-            assert u.source == expected
+            assert u.safe_ast
+            assert u.qst == expected
         except:
             print()
             print(expr)
@@ -396,6 +397,8 @@ def _do_test(expressions):
                 print(u.tokens)
             if u and u.safe_ast:
                 print(u.safe_ast)
+            if u and u.safe_qst:
+                print(u.safe_qst)
             raise
 
 
