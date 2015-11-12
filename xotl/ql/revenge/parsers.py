@@ -448,7 +448,8 @@ class _InternalParser(GenericASTBuilder):
         '''
 
     def p_grammar(self, args):
-        '''
+        '''The top-level grammar.
+
         sstmt ::= stmt
         sstmt ::= ifelsestmtr
         sstmt ::= return_stmt RETURN_LAST
@@ -510,6 +511,11 @@ class _InternalParser(GenericASTBuilder):
 
         _for ::= GET_ITER FOR_ITER
         _for ::= LOAD_CONST FOR_LOOP
+
+
+        # `kwarg` is used by the customization engine when CALL_FUNCTION_* are
+        # processed they are injected in the resultant `call_function` rule.
+        kwarg   ::= LOAD_CONST expr
 
         '''
 
