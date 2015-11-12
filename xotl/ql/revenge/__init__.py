@@ -76,14 +76,22 @@ class Uncompyled(object):   # TODO:  Find better name
             scanner = scanners.getscanner(version, lambda: 0)
         self.walker = walkers.Walker(scanner)
         tokens, customizations = scanner.disassemble(code)
-        self.tokens = tokens
-        self.customizations = customizations
+        self._tokens = tokens
+        self._customizations = customizations
         self._ast = None
 
     def dis(self):
         # shortcut to print the code with dis
         import dis
         dis.dis(self.code)
+
+    @property
+    def tokens(self):
+        return list(self._tokens)
+
+    @property
+    def customizations(self):
+        return dict(self._customizations)
 
     @memoized_property
     def ast(self):
