@@ -257,7 +257,7 @@ class _InternalParser(GenericASTBuilder):
         ret_cond_not ::= expr POP_JUMP_IF_TRUE expr RETURN_END_IF
                          ret_expr_or_cond
 
-        # The LAMBDA_MARKER is actually injected by the parser
+        # The LAMBDA_MARKER is actually injected by the walker
         return_lambda ::= ret_expr RETURN_VALUE LAMBDA_MARKER
         conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt
                                return_stmt LAMBDA_MARKER

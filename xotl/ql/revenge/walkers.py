@@ -239,6 +239,42 @@ NAME_MODULE = AST(
     ]
 )
 
+
+class QstBuilder(GenericASTTraversal, object):
+    @staticmethod
+    def build_ast(tokens, customize, **kwargs):
+        '''Build the AST for the tokens and customizations provided.
+
+        If the tokens are the code of a lambda function you should make
+
+        :keyword islambda: Indicates this is the definition code of a lambda.
+        :keyword isLambda: Deprecrated alias for `islambda`.
+
+        :keyword hasnone: Indicate that None appears as a Name ****
+        :keyword noneInNames: Deprecated alias for `hasnone`.
+
+        '''
+        from xoutil import Unset
+        islambda = kwargs.pop('islambda', Unset)
+        if islambda is Unset:
+            islambda = kwargs.pop('isLambda', Unset)
+        hasnone = kwargs.pop('hasnone', Unset)
+        if hasnone is Unset:
+            hasnone = kwargs.pop('noneInNames', Unset)
+        if islambda:
+            tokens.append(Token('LAMBDA_MARKER'))
+        elif len(tokens) > 2 or (len(tokens) == 2 and not hasnone):
+            if tokens[-1] == Token('RETURN_VALUE'):
+                if tokens[-2] == Token('LOAD_CONST'):
+                    del tokens[-2:]
+                else:
+                    tokens.append(Token('RETURN_LAST'))
+        if len(tokens) == 0:
+            return PASS
+        ast = parsers.parse(tokens, customize)
+        return ast
+
+
 TAB = ' ' * 4   # is less spacy than "\t"
 INDENT_PER_LEVEL = ' '  # additional intent per pretty-print level
 
@@ -592,7 +628,7 @@ def find_none(node):
     return False
 
 
-class Walker(GenericASTTraversal, object):
+class Walker(QstBuilder):
     stacked_params = ('f', 'indent', 'isLambda', '_globals')
 
     def __init__(self, scanner):
@@ -1529,18 +1565,3 @@ class Walker(GenericASTTraversal, object):
             else:
                 self.print_(self.traverse(ast, isLambda=isLambda))
         self.return_none = rn
-
-    @staticmethod
-    def build_ast(tokens, customize, isLambda=0, noneInNames=False):
-        if isLambda:
-            tokens.append(Token('LAMBDA_MARKER'))
-        elif len(tokens) > 2 or (len(tokens) == 2 and not noneInNames):
-            if tokens[-1] == Token('RETURN_VALUE'):
-                if tokens[-2] == Token('LOAD_CONST'):
-                    del tokens[-2:]
-                else:
-                    tokens.append(Token('RETURN_LAST'))
-        if len(tokens) == 0:
-            return PASS
-        ast = parsers.parse(tokens, customize)
-        return ast
