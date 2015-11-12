@@ -13,41 +13,6 @@
 #  See main module for license.
 #
 #
-#  Decompilation (walking AST)
-#
-#  All table-driven.  Step 1 determines a table (T) and a path to a
-#  table key (K) from the node type (N) (other nodes are shown as O):
-#
-#         N                  N               N=K
-#     / | ... \          / | ... \        / | ... \
-#    O  O      O        O  O      K      O  O      O
-#              |
-#              K
-#
-#  MAP_R0 (TABLE_R0)  MAP_R (TABLE_R)  MAP_DIRECT (TABLE_DIRECT)
-#
-#  The default is a direct mapping.  The key K is then extracted from the
-#  subtree and used to find a table entry T[K], if any.  The result is a
-#  format string and arguments (a la printf()) for the formatting engine.
-#  Escapes in the format string are:
-#
-#       %c      evaluate N[A] recursively*
-#       %C      evaluate N[A[0]]..N[A[1]-1] recursively, separate by A[2]*
-#
-#       %p and %P  are the same as %c and %C but preserving the precedence value.
-#
-#       %,      print ',' if last %C only printed one item (for tuples--unused)
-#       %|      tab to current indentation level
-#       %+      increase current indentation level
-#       %-      decrease current indentation level
-#       %{...}  evaluate ... in context of N
-#       %%      literal '%'
-#
-#  * indicates an argument (A) required.
-#
-#  The '%' may optionally be followed by a number (C) in square brackets,
-#  which makes the engine walk down to N[C] before evaluating the escape code.
-#
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -65,9 +30,11 @@ except ImportError:
     IntType = int
 
 from .spark import GenericASTTraversal
-from . import parsers
+from . import parsers, qst
 from .parsers import AST
 from .scanners import Token, Code
+
+from .tools import pushto, take
 
 minint = -sys.maxsize-1
 
@@ -241,6 +208,101 @@ NAME_MODULE = AST(
 
 
 class QstBuilder(GenericASTTraversal, object):
+    def __init__(self, ast=None):
+        super(QstBuilder, self).__init__(ast)
+        self._stack = []
+
+    def stop(self):
+        assert len(self._stack) == 1
+        return self._stack.pop()
+
+    @pushto('_stack')
+    def n_literal(self, node):
+        from numbers import Number
+        from xoutil.eight import string_types
+        load_const = self._ensure_child_token(node)
+        value = load_const.argval
+        if isinstance(value, string_types):
+            cls = qst.Str
+        elif isinstance(value, Number):
+            cls = qst.Num
+        return cls(value)
+
+    @pushto('_stack')
+    def n_identifier(self, node):
+        load_name = self._ensure_child_token(node)
+        return qst.Name(load_name.argval, qst.Load())
+
+    _BINARY_OPS_QST_CLS = {
+        'BINARY_ADD': qst.Add,
+        'BINARY_MULTIPLY': qst.Mult,
+        'BINARY_AND': qst.BitAnd,
+        'BINARY_OR': qst.BitOr,
+        'BINARY_XOR': qst.BitXor,
+        'BINARY_SUBTRACT': qst.Sub,
+        'BINARY_DIVIDE': qst.Div,
+        'BINARY_TRUE_DIVIDE': qst.Div,
+        'BINARY_FLOOR_DIVIDE': qst.FloorDiv,
+        'BINARY_MODULO': qst.Mod,
+        'BINARY_LSHIFT': qst.LShift,
+        'BINARY_RSHIFT': qst.RShift,
+        'BINARY_POWER': qst.Pow
+    }
+
+    @pushto('_stack')
+    def n_binary_op(self, node):
+        code = self._ensure_child_token(node)
+        cls = self._BINARY_OPS_QST_CLS[code.name]
+        return cls()
+
+    @pushto('_stack')
+    @take(3, '_stack', 'children')
+    def n_binary_expr_exit(self, node, children=None):
+        operation, right, left = children
+        return qst.BinOp(left, operation, right)
+
+    @pushto('_stack')
+    @take(1, '_stack', 'children')
+    def n_ret_expr_exit(self, node, children=None):
+        body = children[0]
+        return qst.Expression(body)
+
+    def _ensure_single_child(self, node, msg='%s must have a single child'):
+        if '%s' in msg:
+            name = self._find_name()
+            msg = msg % name
+        assert len(node) == 1
+        return node[0]
+
+    def _ensure_child_token(self, node, msg='%s must have single token child'):
+        if '%s' in msg:
+            name = self._find_name()
+            msg = msg % name
+        res = self._ensure_single_child(node, msg)
+        assert isinstance(res, Token), msg
+        return res
+
+    def _find_name(self):
+        res = None
+        depth = 0
+        try:
+            f = sys._getframe(3)
+        except:
+            f = None
+        try:
+            while f is not None and res is None and depth < 4:
+                name = f.f_code.co_name
+                if name and name.startswith('n_'):
+                    res = name
+                depth += 1
+                f = f.f_back
+            return res if res else 'This node'
+        except:
+            return 'This node'
+        finally:
+            f = None
+
+
     @staticmethod
     def build_ast(tokens, customize, **kwargs):
         '''Build the AST for the tokens and customizations provided.
@@ -274,6 +336,42 @@ class QstBuilder(GenericASTTraversal, object):
         ast = parsers.parse(tokens, customize)
         return ast
 
+
+#  Decompilation (walking AST)
+#
+#  All table-driven.  Step 1 determines a table (T) and a path to a
+#  table key (K) from the node type (N) (other nodes are shown as O):
+#
+#         N                  N               N=K
+#     / | ... \          / | ... \        / | ... \
+#    O  O      O        O  O      K      O  O      O
+#              |
+#              K
+#
+#  MAP_R0 (TABLE_R0)  MAP_R (TABLE_R)  MAP_DIRECT (TABLE_DIRECT)
+#
+#  The default is a direct mapping.  The key K is then extracted from the
+#  subtree and used to find a table entry T[K], if any.  The result is a
+#  format string and arguments (a la printf()) for the formatting engine.
+#  Escapes in the format string are:
+#
+#       %c      evaluate N[A] recursively*
+#       %C      evaluate N[A[0]]..N[A[1]-1] recursively, separate by A[2]*
+#
+#       %p and %P  are the same as %c and %C but preserving the precedence value.
+#
+#       %,      print ',' if last %C only printed one item (for tuples--unused)
+#       %|      tab to current indentation level
+#       %+      increase current indentation level
+#       %-      decrease current indentation level
+#       %{...}  evaluate ... in context of N
+#       %%      literal '%'
+#
+#  * indicates an argument (A) required.
+#
+#  The '%' may optionally be followed by a number (C) in square brackets,
+#  which makes the engine walk down to N[C] before evaluating the escape code.
+#
 
 TAB = ' ' * 4   # is less spacy than "\t"
 INDENT_PER_LEVEL = ' '  # additional intent per pretty-print level
