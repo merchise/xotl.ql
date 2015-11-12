@@ -294,7 +294,7 @@ def test_basic_expressions():
         ('c(**kwargs)', None),
         ('c(*args, **kwargs)', None),
 
-        ('c(b=1)(a)', None),
+        ('c(b=bb(a, i, *a, **kws))(a)', None),
 
         ('c(a, b=1, *args, **kwargs)', None),
         ('c(a, b=1, *tuple(args), **dict(kwargs))', None),
