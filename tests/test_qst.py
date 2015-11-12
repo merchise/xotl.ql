@@ -87,7 +87,7 @@ def test_comprehensions():
 def _do_test(expressions):
     codes = [
         (
-            qst.parse(expr, '<test>'),
+            qst.parse(expr),
             expr,
             qst.pyast.parse(expr, '<test>', 'eval')
         )
