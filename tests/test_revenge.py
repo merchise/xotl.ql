@@ -286,11 +286,20 @@ def test_basic_expressions():
         ('a[::st]', None),
 
         ('a.attr.b[2:3]', None),
+
+        ('c()', None),
+        ('c(a)', None),
+        ('c(b=1)', None),
+        ('c(*args)', None),
+        ('c(**kwargs)', None),
+        ('c(*args, **kwargs)', None),
+        ('c()()', None),
+        ('c()(a, b=1, *args, **kwargs)', None),
+
         ('a[1] + list(b)', None),
         ('{a: b,\n c: d}', None),
         ('lambda x, y=1, *args, **kw: x + y', None),
         ('(lambda x: x)(y)', None),
-        ('c(a)', None),
     ]
     _do_test(expressions)
 
