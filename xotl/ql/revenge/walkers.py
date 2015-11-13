@@ -42,11 +42,53 @@ from .eight import py3k as _py3, _py_version
 
 minint = -sys.maxsize-1
 
+# Helper: decorators that push/take item to/from a stack.
 pushtostack = pushto('_stack')
 take_n = lambda n: take(n, '_stack', 'children')
 take_one = take_n(1)
 take_two = take_n(2)
 take_three = take_n(3)
+
+
+def pushsentinel(f, name=None):
+    '''Decorator that pushes a sentinel to the stack.
+
+    The sentinel will be pushed *after* the execution of the decorated
+    function.
+
+    '''
+    def inner(self, node):
+        sentinel = _build_sentinel(f, node, name)
+        result = f(self, node)
+        self._stack.append(sentinel)
+        return result
+    return inner
+
+
+def take_until_sentinel(f, name=None):
+    '''Decorator that pops items until it founds the proper sentinel.
+
+    The decorated functions is expected to allow a keyword argument 'items'
+    that will contain the items popped.
+
+    '''
+    def inner(self, node, **kwargs):
+        sentinel = _build_sentinel(f, node, name)
+        items = pop_until_sentinel(self._stack, sentinel)
+        kwargs['items'] = items
+        return f(self, node, **kwargs)
+    return inner
+
+
+def _build_sentinel(f, node, name=None):
+    name = name if name else f.__name__
+    if name.startswith('n_'):
+        name = name[2:]
+    elif name.startswith('_n_'):
+        name = name[3:]
+    if name.endswith('_exit'):
+        name = name[:-5]
+    return (name, node)
 
 
 # Helper classes and metaclass for doing some like::
@@ -355,6 +397,7 @@ class QstBuilder(GenericASTTraversal, object):
         attr = load_attr.argval
         return qst.Attribute(obj, attr, qst.Load())
 
+    @pushsentinel
     def n_call_function(self, node):
         # Mark the entrance to the function call, this will allows to retrieve
         # all the arguments. But first, push the number of positional
@@ -377,12 +420,10 @@ class QstBuilder(GenericASTTraversal, object):
         else:
             starargs = None
         self._stack.append((nargs, nkwargs, starargs, kwargs))
-        self._stack.append(('call_function', node))
 
     @pushtostack
-    def n_call_function_exit(self, node, children=None):
-        sentinel = ('call_function', node)
-        items = pop_until_sentinel(self._stack, sentinel)
+    @take_until_sentinel
+    def n_call_function_exit(self, node, children=None, items=None):
         nargs, nkwargs, starargs, kwarg = self._stack.pop()
         func = items.pop()
         args = []
@@ -407,14 +448,13 @@ class QstBuilder(GenericASTTraversal, object):
         # need to unwrap it to build the `keyword`
         return qst.keyword(token.argval, value)
 
+    @pushsentinel
     def n_mapexpr(self, node):
-        # Push a sentinel
-        self._stack.append(('mapexpr', node))
+        pass
 
     @pushtostack
-    def n_mapexpr_exit(self, node, children=None):
-        sentinel = ('mapexpr', node)
-        items = pop_until_sentinel(self._stack, sentinel)
+    @take_until_sentinel
+    def n_mapexpr_exit(self, node, children=None, items=None):
         args = [], []  # keys, values
         # For {a: b, c: d}, items will be [c, d, a, b]... Reversed is [b, a,
         # d, c], so 0, 2, 4 ... are values, 1, 3, 5, ... are keys.
@@ -426,6 +466,7 @@ class QstBuilder(GenericASTTraversal, object):
     # function for lambda and comprehensions.
     n__py_load_lambda = _n_walk_innerfunc(islambda=True)
 
+    @pushsentinel
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
         # Push both the amount of that will be in the stack the sentinel
@@ -436,12 +477,10 @@ class QstBuilder(GenericASTTraversal, object):
             defaults = argc
             nkwonly = 0
         self._stack.append((defaults, nkwonly))
-        self._stack.append(('mklambda', node))
 
     @pushtostack
-    def n_mklambda_exit(self, node, children=None):
-        sentinel = ('mklambda', node)
-        items = pop_until_sentinel(self._stack, sentinel)
+    @take_until_sentinel
+    def n_mklambda_exit(self, node, children=None, items=None):
         # Annotations are not possible (inlined) in lambdas, we don't bother.
         ndefaults, nkwonly = self._stack.pop()
         defaults = []
