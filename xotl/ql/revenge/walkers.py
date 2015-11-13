@@ -34,7 +34,7 @@ from . import parsers, qst
 from .parsers import AST
 from .scanners import Token, Code
 
-from .tools import pushto, take
+from .tools import pushto, take, pop_until_sentinel
 
 minint = -sys.maxsize-1
 
@@ -335,11 +335,7 @@ class QstBuilder(GenericASTTraversal, object):
     @pushtostack
     def n_call_function_exit(self, node, children=None):
         sentinel = ('call_function', node)
-        item, items = None, []
-        while item != sentinel:
-            item = self._stack.pop()
-            if item != sentinel:
-                items.append(item)
+        items = pop_until_sentinel(self._stack, sentinel)
         nargs, nkwargs, starargs, kwarg = self._stack.pop()
         func = items.pop()
         args = []
@@ -419,11 +415,7 @@ class QstBuilder(GenericASTTraversal, object):
     def n_cmp_list_exit(self, node, children=None):
         from .tools import split
         sentinel = ('cmp_list', node)
-        item, items = None, []
-        while item != sentinel:
-            item = self._stack.pop()
-            if item != sentinel:
-                items.append(item)
+        items = pop_until_sentinel(self._stack, sentinel)
         left = items.pop()  # The last item is the first.
         # Then, in reversed stack other we'll have compare operators and the
         # other operands.

@@ -64,6 +64,24 @@ def pop_n(stack, n):
     return items
 
 
+def pop_until_sentinel(stack, sentinel):
+    '''Pop from the stack until a 'sentinel' object is found.
+
+    Return the list of objects pop in the order they were collected from the
+    stack.
+
+    If the sentinel is not found when the stack is exhausted, raise an
+    IndexError.
+
+    '''
+    item, items = None, []
+    while item != sentinel:
+        item = stack.pop()
+        if item != sentinel:
+            items.append(item)
+    return items
+
+
 def split(iterable, predicate):
     true, false = [], []
     for item in iter(iterable):

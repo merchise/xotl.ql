@@ -302,6 +302,7 @@ def test_basic_expressions():
         ('c(a, b=1, *tuple(args), **dict(kwargs))', None),
 
         ('a[1] + list(b)', None),
+
         ('{a: b,\n c: d}', None),
         ('lambda x, y=1, *args, **kw: x + y', None),
         ('(lambda x: x)(y)', None),
