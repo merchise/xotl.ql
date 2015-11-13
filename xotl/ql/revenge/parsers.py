@@ -128,7 +128,18 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    def p_mapexpression():
+    def p_mapexpression_common(self, args):
+        '''Common rules for map expressions across all Python versions.
+
+        expr ::= mapexpr
+
+        kvlist ::= kvlist kv
+        kvlist ::=
+
+        '''
+
+    @override((2, 7) <= _py_version < (3, 5))
+    def p_mapexpression(self, args):
         '''A map expression.
 
         Dictionary literals are built by creating a fixed sized dictionary and
@@ -138,11 +149,7 @@ class _InternalParser(GenericASTBuilder):
 
         .. _rules:
 
-        expr ::= mapexpr
         mapexpr ::= BUILD_MAP kvlist
-
-        kvlist ::= kvlist kv
-        kvlist ::=
 
         # This is the only one I've witnessed.
         kv3 ::= expr expr STORE_MAP
@@ -227,6 +234,12 @@ class _InternalParser(GenericASTBuilder):
 
         load_closure ::= load_closure LOAD_CLOSURE
         load_closure ::= LOAD_CLOSURE
+
+        .. COME_FROM is a custom token introduced by the scanner so that
+        .. we can know the point a jump was made.
+
+        _come_from ::= COME_FROM
+        _come_from ::=
 
         or   ::= expr POP_JUMP_IF_TRUE expr COME_FROM
         or   ::= expr JUMP_IF_TRUE_OR_POP expr COME_FROM
@@ -335,7 +348,28 @@ class _InternalParser(GenericASTBuilder):
     def p__comprehension(self, args):
         '''Common comprehension structure in Python 2.7
 
-        _comprehension ::= MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+        _comprehension ::= MAKE_FUNCTION_0 _comp_iterarable
+                           GET_ITER CALL_FUNCTION_1
+
+        _comp_iterarable ::= expr
+
+        comp_iter ::= comp_if
+        comp_iter ::= comp_ifnot
+        comp_iter ::= comp_for
+
+        comp_iter ::= comp_body
+
+        comp_body ::= set_comp_body
+        comp_body ::= gen_comp_body
+        comp_body ::= dict_comp_body
+
+        set_comp_body ::= expr SET_ADD
+        gen_comp_body ::= expr YIELD_VALUE POP_TOP
+        dict_comp_body ::= expr expr MAP_ADD
+
+        comp_if ::= expr jmp_false comp_iter
+        comp_ifnot ::= expr jmp_true comp_iter
+        comp_for ::= expr _for designator comp_iter JUMP_BACK
 
         '''
 
@@ -348,21 +382,6 @@ class _InternalParser(GenericASTBuilder):
         stmt ::= setcomp_func
         setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
                 JUMP_BACK RETURN_VALUE RETURN_LAST
-
-        comp_iter ::= comp_if
-        comp_iter ::= comp_ifnot
-        comp_iter ::= comp_for
-        comp_iter ::= comp_body
-        comp_body ::= set_comp_body
-        comp_body ::= gen_comp_body
-        comp_body ::= dict_comp_body
-        set_comp_body ::= expr SET_ADD
-        gen_comp_body ::= expr YIELD_VALUE POP_TOP
-        dict_comp_body ::= expr expr MAP_ADD
-
-        comp_if ::= expr jmp_false comp_iter
-        comp_ifnot ::= expr jmp_true comp_iter
-        comp_for ::= expr _for designator comp_iter JUMP_BACK
 
         setcomp ::= _py_load_setcomp _comprehension
 
@@ -383,12 +402,6 @@ class _InternalParser(GenericASTBuilder):
         list_iter ::= list_if
         list_iter ::= list_if_not
         list_iter ::= lc_body
-
-        .. COME_FROM is a custom token introduced by the scanner so that
-        .. we can know the point a jump was made.
-
-        _come_from ::= COME_FROM
-        _come_from ::=
 
         list_for ::= expr _for designator list_iter JUMP_BACK
         list_if ::= expr jmp_false list_iter
@@ -434,7 +447,10 @@ class _InternalParser(GenericASTBuilder):
 
         expr ::= genexpr
         stmt ::= genexpr_func
-        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
+        genexpr_func ::= _comprehension_iter FOR_ITER designator
+                         comp_iter JUMP_BACK
+
+        _comprehension_iter ::= LOAD_FAST
 
         '''
 

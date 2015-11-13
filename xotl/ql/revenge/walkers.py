@@ -291,7 +291,7 @@ class QstBuilder(GenericASTTraversal, object):
         return self.stop(False)
 
     def _n_walk_innerfunc(islambda=True):
-        def inner(self, node):
+        def _walk_innerfunc(self, node):
             # This will push the body, the name of the arguments, the name of
             # the vararg (or None), and the name of the kwarg (or None) of the
             # qst.Lambda, the values of the `defaults` are to be complete by
@@ -325,7 +325,7 @@ class QstBuilder(GenericASTTraversal, object):
                 kwarg = None
             self._stack.extend([args, vararg, kwarg])
             self.prune()
-        return inner
+        return _walk_innerfunc
 
     @pushtostack
     def n_literal(self, node):
@@ -370,6 +370,11 @@ class QstBuilder(GenericASTTraversal, object):
         return qst.Name(load_name.argval, qst.Load())
 
     n__comprehension_iter = n_identifier
+
+    @pushtostack
+    def n_designator(self, node):
+        store_fast = self._ensure_child_token(node)
+        return qst.Name(store_fast.argval, qst.Store())
 
     @pushtostack
     def n_LOAD_ATTR(self, node):
@@ -688,6 +693,121 @@ class QstBuilder(GenericASTTraversal, object):
             return right
         else:
             return qst.BoolOp(qst.Or(), [left, right])
+
+    # This pushes the inner body, args, vararg, kwonly, kwdefaults, and kwarg
+    # to the stack, there's no defaults to be retrieved from the stack.
+    n__py_load_genexpr = _n_walk_innerfunc(islambda=False)
+
+    @pushsentinel
+    def n_genexpr(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_genexpr_exit(self, node, children=None, items=None):
+        # The `item` will be ``[iterable, ...., qst.GeneratorExp]``, the space
+        # in between is the 'inner function' arg, vararg, etc...  We can
+        # safely ignore all function related args, since we're not going to
+        # produce a function definition.
+        #
+        # But the qst.GeneratorExp will have its first comprehesion with the
+        # wrong iterable, replace it.
+        iterable = items.pop(0)
+        genexpr = items.pop()
+        genexpr.generators[0].iter = iterable
+        return genexpr
+
+    @pushsentinel
+    def n_genexpr_func(self, node):
+        pass
+
+    # The comprehension stuff.
+    #
+    # Since `comp_if` may deeply nested and intertwined with comp_ifnot,
+    # comp_for, but with a single comp_body at the very end, we simply need to
+    # collect all the expressions inside the `comp_iter` and push the new if
+    # expression to the stack.  But this is the default, the milestones are
+    # comp_for and the top-level comprehension.  The `comp_ifnot` needs
+    # rewriting cause the 'expr' needs to be negated.
+    #
+    @pushtostack
+    @take_until_sentinel
+    def n_genexpr_func_exit(self, node, children=None, items=None):
+        # At this point we should at least three items in the stack.  `items`
+        # will be: [elt, ...., target, iterable].
+        #
+        # The items in between may be partially constructed
+        # `qst.comprehension` (the result of comp_for)
+        eltmark, elt = items.pop(0)
+        assert isinstance(eltmark, tuple) and eltmark[0] == 'elt'
+        iterable = _ensure_compilable(items.pop())
+        assert getattr(iterable, 'id', '').startswith('.')
+        target = _ensure_compilable(items.pop())
+        ifs = []
+        while items and not isinstance(items[-1], qst.pyast.comprehension):
+            item = items.pop()
+            ifs.append(_ensure_compilable(item))
+        comprehensions = list(reversed(items)) if items else []
+        comprehensions.insert(0, _ensure_compilable(
+            qst.comprehension(target, iterable, ifs)
+        ))
+        # XXX: Wrap it in an Expression since it will be unwrapped by
+        # _walk_innerfunc
+        return qst.Expression(_ensure_compilable(
+            qst.GeneratorExp(elt, comprehensions)
+        ))
+
+    @pushsentinel
+    def n_comp_for(self, node):
+        pass
+
+    @take_until_sentinel
+    def n_comp_for_exit(self, node, children=None, items=None):
+        # At this point the items should be [elt, .... , designator, iterable]
+        # just like at the top level generator... the items in between are
+        # conditions or other comprehensions we should leave.
+        iterable = _ensure_compilable(items.pop())
+        target = _ensure_compilable(items.pop())
+        ifs = []
+        # items should have more than one item to have any ifs or
+        # inner generators.
+        while len(items) > 1 and not isinstance(items[-1], qst.pyast.comprehension):
+            ifs.append(_ensure_compilable(items.pop()))
+        self._stack.append(_ensure_compilable(
+            qst.comprehension(target, iterable, ifs)
+        ))
+        for which in reversed(items):
+            self._stack.append(which)
+
+    @pushsentinel
+    def n_comp_if(self, node):
+        pass
+
+    @take_until_sentinel
+    def n_comp_if_exit(self, node, children=None, items=None):
+        self._stack.extend(reversed(items))
+
+    @pushsentinel
+    def n_comp_ifnot(self, node):
+        # We need to mark this cause we must negate the result.
+        pass
+
+    @take_until_sentinel
+    def n_comp_ifnot_exit(self, node, children=None, items=None):
+        # comp_ifnot ::= expr jmp_true comp_iter, we must negate the first
+        # 'expr' but leave others as is.  Since `items` is the
+        # stack-pop-order, i.e ``[...., expr]`` we need to inserted them in
+        # the reverse order.
+        for index, item in enumerate(reversed(items)):
+            if index == 0:
+                item = qst.UnaryOp(qst.Not(), item)
+            self._stack.append(item)
+
+    @pushtostack
+    @take_one
+    def n_comp_body_exit(self, node, children=None):
+        elt, = children
+        return (('elt', node), elt)
 
     @pushsentinel
     def n_build_list(self, node):

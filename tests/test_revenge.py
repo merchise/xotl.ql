@@ -391,6 +391,7 @@ def test_conditional_a_la_pypy():
 def test_comprehensions():
     expressions = [
         '(x for x in this if not p(x) if z(x))',
+        '(x for x in this if not p(x) and z(x))',
 
         '((x, x + 1) for x in this for y in x if p(y) if not q(x) and z(x))',
 
