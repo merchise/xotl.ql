@@ -704,13 +704,21 @@ class QstBuilder(GenericASTTraversal, object):
         assert isinstance(res, Token), msg
         return res
 
-    def _ensure_custom_tk(self, node, prefix):
+    def _ensure_custom_tk(self, node, prefixes):
         tk = node[-1]
-        if not prefix.endswith('_'):
-            prefix += '_'
-        assert isinstance(tk, Token) and tk.name.startswith(prefix)
-        opcode, custom = tk.name.rsplit('_', 1)
-        return opcode, int(custom)
+        assert isinstance(tk, Token)
+        if not isinstance(prefixes, (list, tuple)):
+            prefixes = [prefixes, ]
+        found = next(
+            (tk.name.rsplit('_', 1) for prefix in prefixes
+             if tk.name.rsplit('_', 1)[0] == prefix),
+            None
+        )
+        if found:
+            opcode, custom = found
+            return opcode, int(custom)
+        else:
+            assert False
 
     def _find_name(self):
         res = None
