@@ -232,6 +232,43 @@ class QstBuilder(GenericASTTraversal, object):
     def peek(self):
         return self.stop(False)
 
+    def _n_walk_innerfunc(islambda=True):
+        def inner(self, node):
+            # This will push the body, the name of the arguments, the name of
+            # the vararg (or None), and the name of the kwarg (or None) of the
+            # qst.Lambda, the values of the `defaults` are to be complete by
+            # the n_mklamdbda_exit.
+            from . import Uncompyled
+            # Notice the node[0], in Python 3.3+ node will have two items, the
+            # LOAD_LAMBDA and the LOAD_CONST, previous versions won't have the
+            # second.
+            load_lambda = node[0]
+            code = load_lambda.argval
+            hasnone = 'None' in code.co_names
+            uncompyled = Uncompyled(code, islambda=islambda, hasnone=hasnone)
+            # XXX: uncompyled.qst will contain a qst.Expression, but we need
+            # to keep only the body.
+            self._stack.append(uncompyled.qst.body)
+            # Argument names are the first of co_varnames
+            argcount = code.co_argcount
+            varnames = code.co_varnames
+            args = [qst.Name(name, qst.Param()) for name in varnames[:argcount]]
+            if CODE_HAS_VARARG(code):
+                # This means the code uses the vararg and co_varnames contains
+                # that name.
+                vararg = varnames[argcount]
+                argcount += 1
+            else:
+                vararg = None
+            if CODE_HAS_KWARG(code):
+                kwarg = varnames[argcount]
+                argcount += 1
+            else:
+                kwarg = None
+            self._stack.extend([args, vararg, kwarg])
+            self.prune()
+        return inner
+
     @pushtostack
     def n_literal(self, node):
         from numbers import Number
@@ -385,40 +422,9 @@ class QstBuilder(GenericASTTraversal, object):
             args[(i + 1) % 2].append(which)
         return qst.Dict(*args)
 
-    def n__py_load_lambda(self, node):
-        # This will push the body, the name of the arguments, the name of the
-        # vararg (or None), and the name of the kwarg (or None) of the
-        # qst.Lambda, the values of the `defaults` are to be complete by the
-        # n_mklamdbda_exit.
-        from . import Uncompyled
-        # Notice the node[0], in Python 3.3+ node will have two items, the
-        # LOAD_LAMBDA and the LOAD_CONST, previous versions won't have the
-        # second.
-        load_lambda = node[0]
-        code = load_lambda.argval
-        hasnone = 'None' in code.co_names
-        uncompyled = Uncompyled(code, islambda=True, hasnone=hasnone)
-        # XXX: uncompyled.qst will contain a qst.Expression, but we need to
-        # keep only the body.
-        self._stack.append(uncompyled.qst.body)
-        # Argument names are the first of co_varnames
-        argcount = code.co_argcount
-        varnames = code.co_varnames
-        args = [qst.Name(name, qst.Param()) for name in varnames[:argcount]]
-        if CODE_HAS_VARARG(code):
-            # This means the code uses the vararg and co_varnames contains
-            # that name.
-            vararg = varnames[argcount]
-            argcount += 1
-        else:
-            vararg = None
-        if CODE_HAS_KWARG(code):
-            kwarg = varnames[argcount]
-            argcount += 1
-        else:
-            kwarg = None
-        self._stack.extend([args, vararg, kwarg])
-        self.prune()
+    # The _n_walk_innerfunc builds method that pushes the body of the inner
+    # function for lambda and comprehensions.
+    n__py_load_lambda = _n_walk_innerfunc(islambda=True)
 
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
