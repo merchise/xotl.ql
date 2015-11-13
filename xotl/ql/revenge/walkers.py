@@ -372,9 +372,26 @@ class QstBuilder(GenericASTTraversal, object):
     n__comprehension_iter = n_identifier
 
     @pushtostack
-    def n_designator(self, node):
-        store_fast = self._ensure_child_token(node)
-        return qst.Name(store_fast.argval, qst.Store())
+    def n_STORE_FAST(self, node):
+        assert isinstance(node, Token) and node.name.startswith('STORE_')
+        return qst.Name(node.argval, qst.Store())
+    n_STORE_NAME = n_STORE_GLOBAL = n_STORE_DEREF = n_STORE_FAST
+
+    @pushsentinel
+    def n_unpack(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_unpack_exit(self, node, children=None, items=None):
+        return qst.Tuple(list(reversed(items)), qst.Load())
+
+    @pushtostack
+    @take_one
+    def n_designator_exit(self, node, children=None):
+        target, = children
+        target.ctx = qst.Store()   # designators are stores
+        return target
 
     @pushtostack
     def n_LOAD_ATTR(self, node):
