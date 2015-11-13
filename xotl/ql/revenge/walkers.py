@@ -544,11 +544,43 @@ class QstBuilder(GenericASTTraversal, object):
     # since that would (re)create the concrete syntax (for instance, that
     # would make the left and right operands of binary operators instances of
     # qst.Expression).  We only build the Expression at the last moment.
-    @pushto('_stack')
+    @pushtostack
     @take_one
     def n_ret_expr_exit(self, node, children=None):
         body = children[0]
         return qst.Expression(body)
+
+    @pushtostack
+    @take_three
+    def n_conditional_exit(self, node, children=None):
+        orelse, body, test = children
+        return qst.IfExp(test, body, orelse)
+
+    @pushtostack
+    @take_two
+    def n_and_exit(self, node, children=None):
+        right, left = children
+        # Since BoolOps are 'collapsible': a and b and c collapse into a
+        # single BoolOp
+        if isinstance(right, qst.pyast.BoolOp) and isinstance(right.op, qst.pyast.And):
+            # collapse
+            right.values[0:0] = [left]
+            return right
+        else:
+            return qst.BoolOp(qst.And(), [left, right])
+
+    @pushtostack
+    @take_two
+    def n_or_exit(self, node, children=None):
+        right, left = children
+        # Since BoolOps are 'collapsible': a or b or c collapse into a
+        # single BoolOp
+        if isinstance(right, qst.pyast.BoolOp) and isinstance(right.op, qst.pyast.Or):
+            # collapse
+            right.values[0:0] = [left]
+            return right
+        else:
+            return qst.BoolOp(qst.Or(), [left, right])
 
     def _ensure_single_child(self, node, msg='%s must have a single child'):
         if '%s' in msg:
