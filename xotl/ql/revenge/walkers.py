@@ -162,117 +162,13 @@ class isifsentence(Sentence):
         except (TypeError, IndexError):
             return False
 
+
 # Some ASTs used for comparing code fragments (like 'return None' at
 # the end of functions).
+NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
+                                                           argval=None)])])])
 
-RETURN_LOCALS = AST(
-    'return_stmt',
-    [
-        AST(
-            'ret_expr',
-            [
-                AST(
-                    'expr',
-                    [Token('LOAD_LOCALS')]
-                )
-            ]
-        ),
-        Token('RETURN_VALUE')
-    ]
-)
-
-NONE = AST(
-    'expr',
-    [
-        Token('LOAD_CONST', argval=None)
-    ]
-)
-
-RETURN_NONE = AST(
-    'stmt',
-    [
-        AST(
-            'return_stmt',
-            [
-                NONE,
-                Token('RETURN_VALUE')
-            ]
-        )
-    ]
-)
-
-PASS = AST(
-    'stmts',
-    [
-        AST(
-            'sstmt',
-            [
-                AST(
-                    'stmt',
-                    [
-                        AST('passstmt', [])
-                    ]
-                )
-            ]
-        )
-    ]
-)
-
-ASSIGN_DOC_STRING = lambda doc_string: (
-    AST(
-        'stmt',
-        [
-            AST(
-                'assign',
-                [
-                    AST(
-                        'expr',
-                        [
-                            Token('LOAD_CONST', argval=doc_string)
-                        ]
-                    ),
-                    AST(
-                        'designator',
-                        [Token('STORE_NAME', argval='__doc__')]
-                    )
-                ]
-            )
-        ]
-    )
-)
-
-BUILD_TUPLE_0 = AST(
-    'expr',
-    [
-        AST(
-            'build_list',
-            [Token('BUILD_TUPLE_0')]
-        )
-    ]
-)
-
-NAME_MODULE = AST(
-    'stmt',
-    [
-        AST(
-            'assign',
-            [
-                AST(
-                    'expr',
-                    [
-                        Token('LOAD_NAME', argval='__name__')
-                    ]
-                ),
-                AST(
-                    'designator',
-                    [
-                        Token('STORE_NAME', argval='__module__')
-                    ]
-                )
-            ]
-        )
-    ]
-)
+RETURN_NONE = AST('return_stmt', [NONE, Token('RETURN_VALUE')])
 
 
 class QstBuilder(GenericASTTraversal, object):
@@ -908,7 +804,8 @@ class QstBuilder(GenericASTTraversal, object):
         :keyword islambda: Indicates this is the definition code of a lambda.
         :keyword isLambda: Deprecrated alias for `islambda`.
 
-        :keyword hasnone: Indicate that None appears as a Name ****
+        :keyword hasnone: Indicate that None appears as a name.  Usually not
+                          needed since we inspect it.
         :keyword noneInNames: Deprecated alias for `hasnone`.
 
         '''
@@ -928,7 +825,9 @@ class QstBuilder(GenericASTTraversal, object):
                 else:
                     tokens.append(Token('RETURN_LAST'))
         if len(tokens) == 0:
-            return PASS
+            # This is probably a LOAD_CONST None RETURN_VALUE that was
+            # suppressed in Python 3.4 and Pypy.
+            return RETURN_NONE
         ast = parsers.parse(tokens, customize)
         return ast
 

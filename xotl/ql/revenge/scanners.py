@@ -351,6 +351,13 @@ class Token(object):
 
     __hash__ = None
 
+    def __len__(self):
+        return 0
+
+    def __bool__(self):
+        return True
+    __nonzero__ = __bool__
+
     def __eq__(self, other):
         if isinstance(other, Token):
             # both are tokens: compare type and pattr

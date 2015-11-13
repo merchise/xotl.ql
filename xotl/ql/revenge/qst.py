@@ -149,7 +149,7 @@ while _current < len(_nodes):
 # This None as a name.  Only use this for comparison, not as a return value.
 LOAD_NONE = Name('None', Load())   # noqa
 if _py_version >= (3, 4):
-    NONE_CT = NameConstant('None')   # noqa
+    NONE_CT = NameConstant(None)        # noqa
 else:
     NONE_CT = None
 

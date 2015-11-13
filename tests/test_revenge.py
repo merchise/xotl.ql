@@ -259,6 +259,8 @@ def test_real_pypy_normalization():
 
 def test_basic_expressions():
     expressions = [
+        'None',
+        'lambda t: None',
         '[1, d]',
         '(1, d)',
         '{1, d}',  # Avoid constants since they're folded by compiler
@@ -287,6 +289,8 @@ def test_basic_expressions():
         'a[s:e]',
         'a[s:e:st]',
         'a[::st]',
+        'a[:None]',
+        'a[None:None:None]',
 
         'a.attr.b[2:3]',
         'a.attr.b[a[s]:n[l]:s[t]]',
@@ -330,6 +334,8 @@ def test_conditional_expressions():
         'a and (b or c)',
         'a and b or c',
         'a or b or c',
+
+        'None and 1',
 
         'c(a if x else y)',
         'lambda : (a if x else y)',
