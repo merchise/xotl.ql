@@ -9,43 +9,11 @@
 # This is a fork of the uncompyle2 package.  It's been modified to better
 # suite our coding standards and aim.
 #
-# The original copyright notice is kept below.
+# The original copyright notice is kept in the file 'LICENCE.txt'.
 #
 # The name 'revenge' stands for "REVerse ENGineering using an Earley parser"
 # ;)
 #
-# The goal of the uncompyle2 package was to produce source code from byte-code
-# of full Python programs.  Our goal is much, much smaller: we need to obtain
-# an (pythonic) AST for *expressions* from the byte-code.  This means we don't
-# have to keep the entire parser for full-blown programs.
-#
-
-#  Copyright (c) 1999 John Aycock
-#  Copyright (c) 2000 by hartmut Goebel <h.goebel@crazy-compilers.com>
-#
-#  Permission is hereby granted, free of charge, to any person obtaining
-#  a copy of this software and associated documentation files (the
-#  "Software"), to deal in the Software without restriction, including
-#  without limitation the rights to use, copy, modify, merge, publish,
-#  distribute, sublicense, and/or sell copies of the Software, and to
-#  permit persons to whom the Software is furnished to do so, subject to
-#  the following conditions:
-#
-#  The above copyright notice and this permission notice shall be
-#  included in all copies or substantial portions of the Software.
-#
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-#  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-#  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-#  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-#  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
-# See the file 'CHANGES' for a list of changes
-#
-# NB. This is not a masterpiece of software, but became more like a hack.
-#     Probably a complete rewrite would be sensefull. hG/2000-12-27
 #
 
 from __future__ import (division as _py3_division,
@@ -78,7 +46,7 @@ class Uncompyled(object):   # TODO:  Find better name
         self.walker = walkers.QstBuilder(scanner)
         tokens, customizations = scanner.disassemble(code)
         self.islambda = islambda
-        self.hasnone = hasnone
+        self.hasnone = hasnone or ('None' in code.co_names)
         self._tokens = tokens
         self._customizations = customizations
 
@@ -100,9 +68,11 @@ class Uncompyled(object):   # TODO:  Find better name
         tokens = self.tokens
         customizations = self.customizations
         try:
-            ast = self.walker.build_ast(tokens, customizations,
-                                        islambda=self.islambda,
-                                        hasnone=self.hasnone)
+            ast = self.walker.build_ast(
+                tokens, customizations,
+                islambda=self.islambda,
+                hasnone=self.hasnone
+            )
         except ParserError as error:
             # So the debugger print the locals
             raise error
