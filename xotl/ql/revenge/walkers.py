@@ -267,6 +267,12 @@ class QstBuilder(GenericASTTraversal, object):
         return qst.Subscript(value, slice_, qst.Load())
 
     @pushtostack
+    @take_two
+    def n_buildslice2_exit(self, node, children=None):
+        upper, lower = children
+        return qst.Slice(lower, upper, None)
+
+    @pushtostack
     @take_one
     def n_slice0_exit(self, node, children=None):
         # This is ``obj[:]``
@@ -278,21 +284,21 @@ class QstBuilder(GenericASTTraversal, object):
     def n_slice1_exit(self, node, children=None):
         # This is ``obj[lower:]``.
         lower, obj = children
-        return qst.Subscript(obj, qst.Slice(lower, None, None), qst.Load)
+        return qst.Subscript(obj, qst.Slice(lower, None, None), qst.Load())
 
     @pushtostack
     @take_two
     def n_slice2_exit(self, node, children=None):
         # This is ``obj[:upper]``.
         upper, obj = children
-        return qst.Subscript(obj, qst.Slice(None, upper, None), qst.Load)
+        return qst.Subscript(obj, qst.Slice(None, upper, None), qst.Load())
 
     @pushtostack
     @take_three
     def n_slice3_exit(self, node, children=None):
         # This is ``obj[lower:upper]``.
         upper, lower, obj = children
-        return qst.Subscript(obj, qst.Slice(lower, upper, None), qst.Load)
+        return qst.Subscript(obj, qst.Slice(lower, upper, None), qst.Load())
 
     @pushtostack
     @take_three
