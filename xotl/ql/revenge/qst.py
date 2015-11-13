@@ -29,24 +29,27 @@ import ast as pyast
 #
 #    qst.Name('a', qst.Load()) == qst.Name('b', qst.Load())
 #
+class PyASTNodeType(type(pyast.AST)):
+    def __instancecheck__(self, instance):
+        pass
 
 
-from xoutil.objects import validate_attrs
-if getattr(validate_attrs, '_positive_testing', None):
-    # If `validate_attrs` uses the old implementation of negative testing, it
-    # cannot be used for implementing __eq__.
-    def _eq_asts(self, other):
-        from xoutil.objects import validate_attrs as validate
-        return validate(self, other, force_equals=self._fields)
-else:
-    def _eq_asts(self, other):
+class PyASTNode(object):
+    def __eq__(self, other):
         from xoutil.objects import smart_getter
         from operator import eq
         res = True
-        get_from_source = smart_getter(self)
-        get_from_target = smart_getter(other)
         i = 0
         attrs = self._fields
+        if not attrs:
+            # If no attrs only check for typing, both should have the same
+            # name (_ast.Load and qst.Load, etc.) and one must a subclass of
+            # the other.
+            self, other = type(self), type(other)
+            attrs = ('__name__', )
+            res = issubclass(self, other) or issubclass(other, self)
+        get_from_source = lambda a: getattr(self, a)
+        get_from_target = lambda a: getattr(other, a)
         while res and (i < len(attrs)):
             attr = attrs[i]
             if eq(get_from_source(attr), get_from_target(attr)):
@@ -55,14 +58,6 @@ else:
                 res = False
         return res
 
-
-class PyASTNodeType(type(pyast.AST)):
-    def __instancecheck__(self, instance):
-        pass
-
-
-class PyASTNode(object):
-    __eq__ = _eq_asts
     __hash__ = None
 
     def __str__(self):
@@ -120,7 +115,6 @@ class PyASTNode(object):
             setattr(res, field, value)
         return res
 
-del validate_attrs, _eq_asts
 
 __all__ = []
 _nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop,

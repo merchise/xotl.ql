@@ -21,6 +21,13 @@ from __future__ import (division as _py3_division,
 from xotl.ql.revenge import qst
 
 
+def test_comparison():
+    assert qst.Load() != qst.Param(), 'Different types are never equal'
+    assert qst.Gt() != qst.Lt() != qst.Eq()
+    assert qst.Name('a', qst.Load()) == qst.Name('a', qst.Load())
+    assert qst.pyast.Load() == qst.Load()
+
+
 def test_basic_expressions():
     expressions = [
         ('a + b', None),
