@@ -252,8 +252,16 @@ class QstBuilder(GenericASTTraversal, object):
                         [_build_qst(v) for v in value],
                         qst.Load()
                     )
+                elif value is Ellipsis:
+                    value = qst.Ellipsis()
                 else:
+                    # XXX: Sometime this is None and sometimes this must be
+                    # qst.Name('None', qst.Load()), it depends on whether
+                    # there's Name in the code object.  Or this is part of a
+                    # slice.  Most of the time this the right choice is as a
+                    # name, so slices must deal with this return value.
                     assert value is None
+                    value = qst.Name('None', qst.Load())
             return _ensure_compilable(cls(value))
 
         load_const = self._ensure_child_token(node)

@@ -260,7 +260,10 @@ def test_real_pypy_normalization():
 def test_basic_expressions():
     expressions = [
         'None',
+        'Ellipsis',
         'lambda t: None',
+        'lambda t: Ellipsis',
+
         '[1, d]',
         '(1, d)',
         '{1, d}',  # Avoid constants since they're folded by compiler
@@ -316,9 +319,11 @@ def test_basic_expressions():
     _do_test(expressions)
 
 
-@pytest.mark.skipif(not _py3, reason='keyword-only is only allowed in Python3')
-def test_basic_expressions_kwonly():
+@pytest.mark.skipif(not _py3, reason='Syntax only allowed in Python3')
+def test_basic_expressions_py3only():
     expressions = [
+        '...',   # Ellipsis
+        'a[:...]',
         'lambda *, a=1, b=2: a + b',
     ]
     _do_test(expressions)
@@ -397,29 +402,24 @@ def test_conditional_a_la_pypy():
 def test_comprehensions():
     expressions = [
         '(x for x in this if not p(x) if z(x))',
-        '(x for x in this if not p(x) and z(x))',
+        '(x for x in this if not p(x) or z(x))',
+        '(x for x in this if not p(x) if z(x))',
 
-        '((x, x + 1) for x in this for y in x if p(y) if not q(x) and z(x))',
+        '((x, x + 1) for x in this for y in x if p(y) if not q(x) if z(x))',
 
-        '[x for x in this]',
-        '[x for x in this if p(x)]',
+        # '[x for x in this]',
+        # '[x for x in this if p(x)]',
 
         '((x, y) for x, y in this)',
-        '[(x, y) for x, y in this]',
+        # '[(x, y) for x, y in this]',
 
         '((a for a in b) for b in (x for x in this))',
-        '[[a for a in b] for b in [x for x in this]]',
+        # '[[a for a in b] for b in [x for x in this]]',
         'calling(a for a in this if a < y)',
-        '[a for a in x if a < y]',
-        '{k: v for k, v in this}',
-        '{s for s in this if s < y}',
+        # '[a for a in x if a < y]',
+        # '{k: v for k, v in this}',
+        # '{s for s in this if s < y}',
         '(lambda t: None)(a for x in this)',
-
-        "(user for user in table('res.users'))",
-        '(which for which in self if which.id not in no_unlik_ids)',
-        '(which for which in self if which.object_merger_model == True)',
-        '(which for which in self if which.object_merger_model)',
-        "(project for project in this if project.stage_id in ('Done', 'Cancelled') and project.id == project_id)",
     ]
     _do_test(expressions)
 
