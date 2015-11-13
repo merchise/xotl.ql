@@ -414,7 +414,7 @@ def _do_test(expressions, extract=lambda x: x):
         (
             extract(compile(expr, '<test>', 'eval')),
             expr,
-            qst.parse(expr, '<text>', 'eval'),
+            extract(qst.parse(expr, '<text>', 'eval')),
         )
         for expr, expected in expressions
     ]
@@ -424,6 +424,7 @@ def _do_test(expressions, extract=lambda x: x):
             u = Uncompyled(code)
             assert u.safe_ast
             assert u.qst == expected
+            assert compile(u.qst, '', 'eval')  # Ensure we can compile the QST
         except:
             print()
             print(expr)

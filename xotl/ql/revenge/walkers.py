@@ -43,11 +43,27 @@ from .eight import py3k as _py3, _py_version
 minint = -sys.maxsize-1
 
 # Helper: decorators that push/take item to/from a stack.
-pushtostack = pushto('_stack')
 take_n = lambda n: take(n, '_stack', 'children')
 take_one = take_n(1)
 take_two = take_n(2)
 take_three = take_n(3)
+
+
+def _ensure_compilable(astnode):
+    if isinstance(astnode, qst.PyASTNode):
+        attrs = getattr(astnode, '_attributes', [])
+        if 'lineno' in attrs:
+            astnode.lineno = 1
+        if 'col_offset' in attrs:
+            astnode.col_offset = 0
+    return astnode
+
+
+def pushtostack(f):
+    @pushto('_stack')
+    def inner(self, *args, **kw):
+        return _ensure_compilable(f(self, *args, **kw))
+    return inner
 
 
 def pushsentinel(f, name=None):
@@ -313,24 +329,47 @@ class QstBuilder(GenericASTTraversal, object):
 
     @pushtostack
     def n_literal(self, node):
-        from numbers import Number
-        from xoutil.eight import string_types
+        def _build_qst(value):
+            from numbers import Number
+            from xoutil.eight import string_types
+            if isinstance(value, string_types):
+                cls = qst.Str
+            elif isinstance(value, Number):
+                cls = qst.Num
+            else:
+                # This is the case for folded constants like ``(1, 2)`` and
+                # None, etc.  The QST to support this stuff.  Translators
+                # might not.
+                cls = lambda x: x
+                if isinstance(value, list):
+                    value = qst.List(
+                        [_build_qst(v) for v in value],
+                        qst.Load()
+                    )
+                elif isinstance(value, dict):
+                    value = qst.Dict(
+                        [_build_qst(k) for k in value],
+                        [_build_qst(v) for v in value.values()]
+                    )
+                elif isinstance(value, tuple):
+                    value = qst.Tuple(
+                        [_build_qst(v) for v in value],
+                        qst.Load()
+                    )
+                else:
+                    assert value is None
+            return _ensure_compilable(cls(value))
+
         load_const = self._ensure_child_token(node)
         value = load_const.argval
-        if isinstance(value, string_types):
-            cls = qst.Str
-        elif isinstance(value, Number):
-            cls = qst.Num
-        else:
-            # This is the case for folded constants like ``(1, 2)`` and None,
-            # etc.  The QST to support this stuff.  Translators might not.
-            cls = lambda x: x
-        return cls(value)
+        return _build_qst(value)
 
     @pushtostack
     def n_identifier(self, node):
         load_name = self._ensure_child_token(node)
         return qst.Name(load_name.argval, qst.Load())
+
+    n__comprehension_iter = n_identifier
 
     @pushtostack
     def n_LOAD_ATTR(self, node):
@@ -486,20 +525,20 @@ class QstBuilder(GenericASTTraversal, object):
         ndefaults, nkwonly = self._stack.pop()
         defaults = []
         for _ in range(ndefaults):
-            defaults.append(items.pop())
+            defaults.append(_ensure_compilable(items.pop()))
         kwonly = []
         kwdefaults = []
         for i in range(nkwonly):
             kw = items.pop()   # we get a qst.keyword
-            kwonly.append(qst.arg(kw.arg, None))
+            kwonly.append(_ensure_compilable(qst.arg(kw.arg, None)))
             kwdefaults.append(kw.value)
         body = items.pop()
-        args = items.pop()
+        args = [_ensure_compilable(a) for a in items.pop()]
         vararg = items.pop()
         kwarg = items.pop()
         if _py3:
             # Recast args (they were qst.Name) as qst.arg in Python 3
-            args = [qst.arg(arg.id, None) for arg in args]
+            args = [_ensure_compilable(qst.arg(arg.id, None)) for arg in args]
             if _py_version < (3, 4):
                 # Before Python 3,4 the vararg and kwarg were not enclosed
                 # inside qst.arg and their annotations followed them in the
@@ -507,13 +546,13 @@ class QstBuilder(GenericASTTraversal, object):
                 arguments = qst.arguments(args, vararg, None, kwonly, kwarg,
                                           None, defaults, kwdefaults)
             else:
-                vararg = qst.arg(vararg, None) if vararg else None
-                kwarg = qst.arg(kwarg, None) if kwarg else None
+                vararg = _ensure_compilable(qst.arg(vararg, None) if vararg else None)
+                kwarg = _ensure_compilable(qst.arg(kwarg, None) if kwarg else None)
                 arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
                                           kwarg, defaults)
         else:
             arguments = qst.arguments(args, vararg, kwarg, defaults)
-        return qst.Lambda(arguments, body)
+        return qst.Lambda(_ensure_compilable(arguments), body)
 
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
@@ -670,7 +709,6 @@ class QstBuilder(GenericASTTraversal, object):
             return 'This node'
         finally:
             f = None
-
 
     @staticmethod
     def build_ast(tokens, customize, **kwargs):
