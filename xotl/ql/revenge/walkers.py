@@ -689,6 +689,28 @@ class QstBuilder(GenericASTTraversal, object):
         else:
             return qst.BoolOp(qst.Or(), [left, right])
 
+    @pushsentinel
+    def n_build_list(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_list_exit(self, node, children=None, items=None):
+        opcode, nitems = self._ensure_custom_tk(
+            node, ('BUILD_LIST', 'BUILD_SET', 'BUILD_TUPLE')
+        )
+        if opcode == 'BUILD_LIST':
+            cls = qst.List
+            args = (qst.Load(), )
+        elif opcode == 'BUILD_SET':
+            cls = qst.Set
+            args = ()
+        else:
+            assert opcode == 'BUILD_TUPLE'
+            cls = qst.Tuple
+            args = (qst.Load(), )
+        return cls(list(reversed(items)), *args)
+
     def _ensure_single_child(self, node, msg='%s must have a single child'):
         if '%s' in msg:
             name = self._find_name()
