@@ -263,6 +263,11 @@ def test_basic_expressions():
         '(1, d)',
         '{1, d}',  # Avoid constants since they're folded by compiler
 
+        'not a',
+        '~a',
+        '+a',
+        '-a',
+
         'a + b',
         'a & b | c ^ d',
         'a << b >> c',

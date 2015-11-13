@@ -582,6 +582,28 @@ class QstBuilder(GenericASTTraversal, object):
         operation, right, left = children
         return qst.BinOp(left, operation, right)
 
+    _UNARY_OPS_QST_CLS = {
+        'UNARY_POSITIVE': qst.UAdd,
+        'UNARY_NEGATIVE': qst.USub,
+        'UNARY_INVERT': qst.Invert,
+        'UNARY_NOT': qst.Not,
+    }
+
+    @pushtostack
+    def n_unary_op(self, node):
+        operator = self._ensure_child_token(node)
+        return self._UNARY_OPS_QST_CLS[operator.name]()
+
+    n___unary_not = n_unary_op
+
+    @pushtostack
+    @take_two
+    def n_unary_expr_exit(self, node, children=None):
+        op, operand = children
+        return qst.UnaryOp(op, operand)
+
+    n_unary_not_exit = n_unary_expr_exit
+
     _COMPARE_OPS_QST_CLS = {
         'in': qst.In,
         'not in': qst.NotIn,
