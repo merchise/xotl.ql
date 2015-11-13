@@ -24,19 +24,15 @@ from __future__ import (division as _py3_division,
 from xoutil.types import new_class
 import ast as pyast
 
+
 # For each AST class in the Python ast module we build a new one here that
 # supports equality comparison::
 #
 #    qst.Name('a', qst.Load()) == qst.Name('b', qst.Load())
 #
-class PyASTNodeType(type(pyast.AST)):
-    def __instancecheck__(self, instance):
-        pass
-
-
 class PyASTNode(object):
     def __eq__(self, other):
-        from xoutil.objects import smart_getter
+        from xoutil import Unset
         from operator import eq
         res = True
         i = 0
@@ -48,8 +44,8 @@ class PyASTNode(object):
             self, other = type(self), type(other)
             attrs = ('__name__', )
             res = issubclass(self, other) or issubclass(other, self)
-        get_from_source = lambda a: getattr(self, a)
-        get_from_target = lambda a: getattr(other, a)
+        get_from_source = lambda a: getattr(self, a, Unset)
+        get_from_target = lambda a: getattr(other, a, Unset)
         while res and (i < len(attrs)):
             attr = attrs[i]
             if eq(get_from_source(attr), get_from_target(attr)):
