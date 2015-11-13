@@ -322,7 +322,8 @@ class QstBuilder(GenericASTTraversal, object):
         elif isinstance(value, Number):
             cls = qst.Num
         else:
-            assert value is None
+            # This is the case for folded constants like ``(1, 2)`` and None,
+            # etc.  The QST to support this stuff.  Translators might not.
             cls = lambda x: x
         return cls(value)
 
