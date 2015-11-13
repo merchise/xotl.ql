@@ -28,6 +28,21 @@ def test_comparison():
     assert qst.pyast.Load() == qst.Load()
 
 
+def test_none_eq():
+    LOAD_NONE = qst.Name('None', qst.Load())
+    # A top level None does not equal to LOAD_NONE
+    assert None != LOAD_NONE, 'A top-level cmp is not None'
+
+    # Yet when used as the argument for other structures they compare equal
+    a = qst.Slice(None, None, None)
+    b = qst.Slice(
+        qst.Name('None', qst.Load()),
+        None,
+        None
+    )
+    assert a == b
+
+
 def test_basic_expressions():
     expressions = [
         ('a + b', None),

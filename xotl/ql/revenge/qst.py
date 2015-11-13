@@ -21,6 +21,8 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+from .eight import _py_version
+
 from xoutil.types import new_class
 import ast as pyast
 
@@ -48,7 +50,15 @@ class PyASTNode(object):
         get_from_target = lambda a: getattr(other, a, Unset)
         while res and (i < len(attrs)):
             attr = attrs[i]
-            if eq(get_from_source(attr), get_from_target(attr)):
+            sattr = get_from_source(attr)
+            tattr = get_from_target(attr)
+            if eq(sattr, tattr):
+                i += 1
+            elif sattr is Unset or tattr is Unset:
+                res = False
+            elif sattr is None and tattr == LOAD_NONE or tattr == NONE_CT:
+                i += 1
+            elif tattr is None and sattr == LOAD_NONE or sattr == NONE_CT:
                 i += 1
             else:
                 res = False
@@ -134,6 +144,14 @@ while _current < len(_nodes):
     if _more:
         _nodes.extend(_more)
     _current += 1
+
+
+# This None as a name.  Only use this for comparison, not as a return value.
+LOAD_NONE = Name('None', Load())   # noqa
+if _py_version >= (3, 4):
+    NONE_CT = NameConstant('None')   # noqa
+else:
+    NONE_CT = None
 
 
 def parse(source, filename='<unknown>', mode='eval'):
