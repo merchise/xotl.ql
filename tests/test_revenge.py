@@ -340,12 +340,20 @@ def test_conditional_expressions():
         'a and b or c',
         'a or b or c',
 
-        'None and 1',
-
         'c(a if x else y)',
         'lambda : (a if x else y)',
         '(lambda: x) if x else (lambda y: y)(y)',
     ]
+    _do_test(expressions)
+
+
+def test_conditional_expressions_with_possible_folding():
+    expressions = [
+        # (expression, (alternatives...))
+        #  This will be folded to None in Python 3.4+ and Pypy.
+        ('None and 1', ('None', )),
+    ]
+
     _do_test(expressions)
 
 
@@ -428,20 +436,33 @@ def _do_test(expressions, extract=lambda x: x):
     import dis
     from xotl.ql.revenge import Uncompyled, qst
 
-    codes = [
-        (
-            extract(compile(expr, '<test>', 'eval')),
-            expr,
-            extract(qst.parse(expr, '<text>', 'eval')),
-        )
-        for expr in expressions
-    ]
+    class alternatives(object):
+        def __new__(cls, expr, alt):
+            if not isinstance(alt, tuple):
+                alt = (alt, )
+            res = object.__new__(cls)
+            res.alts = [qst.parse(a) for a in alt]
+            res.alts.insert(0, qst.parse(expr))
+            return res
+
+        def __eq__(self, qst):
+            return any(qst == alt for alt in self.alts)
+
+    codes = []
+    for expr in expressions:
+        if isinstance(expr, tuple):
+            expr, alts = expr
+        else:
+            alts = expr
+        codes.append((compile(expr, '<test>', 'eval'),
+                      expr,
+                      alternatives(expr, alts)))
     for code, expr, expected in codes:
         u = None
         try:
             u = Uncompyled(code)
             assert u.safe_ast
-            assert u.qst == expected
+            assert expected == u.qst  # compare alternatives first...
             assert compile(u.qst, '', 'eval')  # Ensure we can compile the QST
         except:
             print()
