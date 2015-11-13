@@ -90,3 +90,11 @@ def split(iterable, predicate):
         else:
             false.append(item)
     return true, false
+
+
+def CODE_HAS_VARARG(code):
+    return code.co_flags & 0x04
+
+
+def CODE_HAS_KWARG(code):
+    return code.co_flags & 0x08

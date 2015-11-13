@@ -35,6 +35,10 @@ from .parsers import AST
 from .scanners import Token, Code
 
 from .tools import pushto, take, pop_until_sentinel
+from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
+
+from .eight import py3k as _py3, _py_version
+
 
 minint = -sys.maxsize-1
 
@@ -381,6 +385,90 @@ class QstBuilder(GenericASTTraversal, object):
             args[(i + 1) % 2].append(which)
         return qst.Dict(*args)
 
+    def n__py_load_lambda(self, node):
+        # This will push the body, the name of the arguments, the name of the
+        # vararg (or None), and the name of the kwarg (or None) of the
+        # qst.Lambda, the values of the `defaults` are to be complete by the
+        # n_mklamdbda_exit.
+        from . import Uncompyled
+        # Notice the node[0], in Python 3.3+ node will have two items, the
+        # LOAD_LAMBDA and the LOAD_CONST, previous versions won't have the
+        # second.
+        load_lambda = node[0]
+        code = load_lambda.argval
+        hasnone = 'None' in code.co_names
+        uncompyled = Uncompyled(code, islambda=True, hasnone=hasnone)
+        # XXX: uncompyled.qst will contain a qst.Expression, but we need to
+        # keep only the body.
+        self._stack.append(uncompyled.qst.body)
+        # Argument names are the first of co_varnames
+        argcount = code.co_argcount
+        varnames = code.co_varnames
+        args = [qst.Name(name, qst.Param()) for name in varnames[:argcount]]
+        if CODE_HAS_VARARG(code):
+            # This means the code uses the vararg and co_varnames contains
+            # that name.
+            vararg = varnames[argcount]
+            argcount += 1
+        else:
+            vararg = None
+        if CODE_HAS_KWARG(code):
+            kwarg = varnames[argcount]
+            argcount += 1
+        else:
+            kwarg = None
+        self._stack.extend([args, vararg, kwarg])
+        self.prune()
+
+    def n_mklambda(self, node, children=None):
+        _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
+        # Push both the amount of that will be in the stack the sentinel
+        if _py3:
+            defaults = argc & 0xFF
+            nkwonly = (argc >> 8) & 0xFF
+        else:
+            defaults = argc
+            nkwonly = 0
+        self._stack.append((defaults, nkwonly))
+        self._stack.append(('mklambda', node))
+
+    @pushtostack
+    def n_mklambda_exit(self, node, children=None):
+        sentinel = ('mklambda', node)
+        items = pop_until_sentinel(self._stack, sentinel)
+        # Annotations are not possible (inlined) in lambdas, we don't bother.
+        ndefaults, nkwonly = self._stack.pop()
+        defaults = []
+        for _ in range(ndefaults):
+            defaults.append(items.pop())
+        kwonly = []
+        kwdefaults = []
+        for i in range(nkwonly):
+            kw = items.pop()   # we get a qst.keyword
+            kwonly.append(qst.arg(kw.arg, None))
+            kwdefaults.append(kw.value)
+        body = items.pop()
+        args = items.pop()
+        vararg = items.pop()
+        kwarg = items.pop()
+        if _py3:
+            # Recast args (they were qst.Name) as qst.arg in Python 3
+            args = [qst.arg(arg.id, None) for arg in args]
+            if _py_version < (3, 4):
+                # Before Python 3,4 the vararg and kwarg were not enclosed
+                # inside qst.arg and their annotations followed them in the
+                # constructor.
+                arguments = qst.arguments(args, vararg, None, kwonly, kwarg,
+                                          None, defaults, kwdefaults)
+            else:
+                vararg = qst.arg(vararg, None) if vararg else None
+                kwarg = qst.arg(kwarg, None) if kwarg else None
+                arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
+                                          kwarg, defaults)
+        else:
+            arguments = qst.arguments(args, vararg, kwarg, defaults)
+        return qst.Lambda(arguments, body)
+
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
         'BINARY_MULTIPLY': qst.Mult,
@@ -476,6 +564,14 @@ class QstBuilder(GenericASTTraversal, object):
         res = self._ensure_single_child(node, msg)
         assert isinstance(res, Token), msg
         return res
+
+    def _ensure_custom_tk(self, node, prefix):
+        tk = node[-1]
+        if not prefix.endswith('_'):
+            prefix += '_'
+        assert isinstance(tk, Token) and tk.name.startswith(prefix)
+        opcode, custom = tk.name.rsplit('_', 1)
+        return opcode, int(custom)
 
     def _find_name(self):
         res = None

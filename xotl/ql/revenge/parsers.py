@@ -590,8 +590,17 @@ class Parser(object):
                 # no need to add a rule
                 continue
             elif op == 'MAKE_FUNCTION':
+                if _py3:
+                    ndefaults = v & 0xFF
+                    nkwonly = (v >> 8) & 0xFF
+                    nannotations = (v >> 16) & 0x7FFF
+                    assert nannotations == 0
+                else:
+                    ndefaults = v
+                    nkwonly = 0
                 self.add_rule(
-                    'mklambda ::= %s _py_load_lambda %s' % ('expr '*v, k),
+                    'mklambda ::= %s %s _py_load_lambda %s' % (
+                        'expr ' * ndefaults, 'kwarg ' * nkwonly, k),
                     nop
                 )
                 rule = None
