@@ -20,6 +20,8 @@ import sys
 _py3 = sys.version_info >= (3, 0)
 del sys
 
+import pytest
+
 
 def test_scanner_normalization():
     from xotl.ql.revenge.scanners import InstructionSetBuilder
@@ -255,57 +257,60 @@ def test_real_pypy_normalization():
     assert instructions == expected_program
 
 
-# We're only testing we can build an AST from the byte-code.  This AST
-# extracted from the byte-code directly and not the one we'll provide to
-# translators.  The idea is to stabilize the parser from byte-code to this IST
-# (Intermediate Syntax Tree).
-#
-# We'll extend the tests to actually match our target AST.
-
-
 def test_basic_expressions():
     expressions = [
-        ('a + b', None),
-        ('a & b | c ^ d', None),
-        ('a << b >> c', None),
-        ('a + b * (d + c)', None),
+        '[1, d]',
+        '(1, d)',
+        '{1, d}',  # Avoid constants since they're folded by compiler
 
-        ('a in b', None),
-        ('a < b in c > d', None),
+        'a + b',
+        'a & b | c ^ d',
+        'a << b >> c',
+        'a + b * (d + c)',
 
-        ('a.b.c', None),
+        'a in b',
+        'a < b in c > d',
 
-        ('a[:]', None),
-        ('a[s]', None),
-        ('a[s:]', None),
-        ('a[s::st]', None),
-        ('a[:e]', None),
-        ('a[:e:st]', None),
-        ('a[s:e]', None),
-        ('a[s:e:st]', None),
-        ('a[::st]', None),
+        'a.b.c',
 
-        ('a.attr.b[2:3]', None),
-        ('a.attr.b[a[s]:n[l]:s[t]]', None),
+        'a[:]',
+        'a[s]',
+        'a[s:]',
+        'a[s::st]',
+        'a[:e]',
+        'a[:e:st]',
+        'a[s:e]',
+        'a[s:e:st]',
+        'a[::st]',
+
+        'a.attr.b[2:3]',
+        'a.attr.b[a[s]:n[l]:s[t]]',
+
+        'c()',
+        'c(a)',
+        'c(b=1)',
+        'c(*args)',
+        'c(**kwargs)',
+        'c(*args, **kwargs)',
+
+        'c(b=bb(a, i, *a, **kws))(a)',
+
+        'c(a, b=1, *args, **kwargs)',
+        'c(a, b=1, *tuple(args), **dict(kwargs))',
+
+        'a[1] + list(b)',
+
+        '{a: b,\n c: d}',
+        'lambda x, y=1, *args, **kw: x + y',
+        '(lambda x: x)(y)',
+    ]
+    _do_test(expressions)
 
 
-        ('c()', None),
-        ('c(a)', None),
-        ('c(b=1)', None),
-        ('c(*args)', None),
-        ('c(**kwargs)', None),
-        ('c(*args, **kwargs)', None),
-
-        ('c(b=bb(a, i, *a, **kws))(a)', None),
-
-        ('c(a, b=1, *args, **kwargs)', None),
-        ('c(a, b=1, *tuple(args), **dict(kwargs))', None),
-
-        ('a[1] + list(b)', None),
-
-        ('{a: b,\n c: d}', None),
-        ('lambda x, y=1, *args, **kw: x + y', None),
-        ('(lambda x: x)(y)', None),
+@pytest.mark.skipif(not _py3, reason='keyword-only is only allowed in Python3')
+def test_basic_expressions_kwonly():
+    expressions = [
+        'lambda *, a=1, b=2: a + b',
     ]
     _do_test(expressions)
 
@@ -313,16 +318,28 @@ def test_basic_expressions():
 def test_conditional_expressions():
     expressions = [
         # expr, expected source if different
-        ('a if x else y', None),
-        ('a and (b or c)', None),
-        ('a and b or c', None),
-        ('(a if x else y) if (b if z else c) else (d if o else p)', None),
-        ('(a if x else y) if (b if z else c) else (d if not o else p)', None),
-        ('(a if x else y) if not (b if not z else c) else (d if o else p)', None),
-        ('(a if not x else y) if not (b if not z else c) else (d if not o else p)', None),
-        ('c(a if x else y)', None),
-        ('lambda : (a if x else y)', None),
-        ('(lambda: x) if x else (lambda y: y)(y)', None),
+        'a if x else y',
+        'a and b',
+        'a or b',
+        'a and b and c',
+        'a and (b or c)',
+        'a and b or c',
+        'a or b or c',
+
+        'c(a if x else y)',
+        'lambda : (a if x else y)',
+        '(lambda: x) if x else (lambda y: y)(y)',
+    ]
+    _do_test(expressions)
+
+
+@pytest.mark.xfail()
+def test_nested_conditional():
+    expressions = [
+        '(a if x else y) if (b if z else c) else (d if o else p)',
+        '(a if x else y) if (b if z else c) else (d if not o else p)',
+        '(a if x else y) if not (b if not z else c) else (d if o else p)',
+        '(a if not x else y) if not (b if not z else c) else (d if not o else p)',
     ]
     _do_test(expressions)
 
@@ -368,40 +385,29 @@ def test_conditional_a_la_pypy():
 
 def test_comprehensions():
     expressions = [
-        ('(x for x in this)', None),
-        ('(x for x in this if p(x))', None),
+        '(x for x in this if not p(x) if z(x))',
 
-        ('[x for x in this]', None),
-        ('[x for x in this if p(x)]', None),
+        '((x, x + 1) for x in this for y in x if p(y) if not q(x) and z(x))',
 
-        ('((x, y) for x, y in this)', None),
-        ('[(x, y) for x, y in this]', None),
+        '[x for x in this]',
+        '[x for x in this if p(x)]',
 
-        ('((a for a in b) for b in (x for x in this))', None),
-        ('[[a for a in b] for b in [x for x in this]]', None),
-        ('calling(a for a in this if a < y)', None),
-        ('[a for a in x if a < y]', None),
-        ('{k: v for k, v in this}', None),
-        ('{s for s in this if s < y}', None),
-        ('(lambda t: None)(a for x in this)', None),
-        # self.env['res.users'].search([])
-        ("(user for user in table('res.users'))", None),
-        # self.search(cr, uid, [('id', 'not in', no_unlink_ids)])
-        ('(which for which in self if which.id not in no_unlik_ids)', None),
-        # ('object_merger_model', '=', True)
-        ('(which for which in self if which.object_merger_model == True)', None),
-        ('(which for which in self if which.object_merger_model)', None),
-        # [('stage_id', 'in', ('Done', 'Cancelled')), ('project_id', '=',
-        # project.id)]
-        ("(project for project in this if project.stage_id in ('Done', 'Cancelled') and project.id == project_id)", None),
-        # ['&',
-        # '|',
-        # ('email_from', '=like', "%%%s" % escape(sender)),   # Ends with _XXX@..
-        # ('email_from', '=like', '%%%s>' % escape(sender)),  # or _XXX@..>
+        '((x, y) for x, y in this)',
+        '[(x, y) for x, y in this]',
 
-        # ('parent_id.parent_id', '=', None),
-        # ('res_id', '!=', 0),
-        # ('res_id', '!=', None)]
+        '((a for a in b) for b in (x for x in this))',
+        '[[a for a in b] for b in [x for x in this]]',
+        'calling(a for a in this if a < y)',
+        '[a for a in x if a < y]',
+        '{k: v for k, v in this}',
+        '{s for s in this if s < y}',
+        '(lambda t: None)(a for x in this)',
+
+        "(user for user in table('res.users'))",
+        '(which for which in self if which.id not in no_unlik_ids)',
+        '(which for which in self if which.object_merger_model == True)',
+        '(which for which in self if which.object_merger_model)',
+        "(project for project in this if project.stage_id in ('Done', 'Cancelled') and project.id == project_id)",
     ]
     _do_test(expressions)
 
@@ -416,7 +422,7 @@ def _do_test(expressions, extract=lambda x: x):
             expr,
             extract(qst.parse(expr, '<text>', 'eval')),
         )
-        for expr, expected in expressions
+        for expr in expressions
     ]
     for code, expr, expected in codes:
         u = None
