@@ -67,7 +67,8 @@ from .parsers import ParserError
 
 
 class Uncompyled(object):   # TODO:  Find better name
-    def __init__(self, obj, version=None, get_current_thread=None):
+    def __init__(self, obj, version=None, get_current_thread=None,
+                 islambda=False, hasnone=False):
         self.code = code = self._extract_code(obj)
         if get_current_thread:
             scanner = scanners.getscanner(version, get_current_thread)
@@ -76,6 +77,8 @@ class Uncompyled(object):   # TODO:  Find better name
             scanner = scanners.getscanner(version, lambda: 0)
         self.walker = walkers.QstBuilder(scanner)
         tokens, customizations = scanner.disassemble(code)
+        self.islambda = islambda
+        self.hasnone = hasnone
         self._tokens = tokens
         self._customizations = customizations
 
@@ -97,7 +100,9 @@ class Uncompyled(object):   # TODO:  Find better name
         tokens = self.tokens
         customizations = self.customizations
         try:
-            ast = self.walker.build_ast(tokens, customizations)
+            ast = self.walker.build_ast(tokens, customizations,
+                                        islambda=self.islambda,
+                                        hasnone=self.hasnone)
         except ParserError as error:
             # So the debugger print the locals
             raise error
@@ -109,8 +114,7 @@ class Uncompyled(object):   # TODO:  Find better name
 
     @property
     def qst(self):
-        from .walkers import QstBuilder
-        builder = QstBuilder()
+        builder = self.walker
         builder.preorder(self.ast)
         return builder.stop()
 
