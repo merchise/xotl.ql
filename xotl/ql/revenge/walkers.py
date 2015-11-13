@@ -360,6 +360,21 @@ class QstBuilder(GenericASTTraversal, object):
         # need to unwrap it to build the `keyword`
         return qst.keyword(token.argval, value)
 
+    def n_mapexpr(self, node):
+        # Push a sentinel
+        self._stack.append(('mapexpr', node))
+
+    @pushtostack
+    def n_mapexpr_exit(self, node, children=None):
+        sentinel = ('mapexpr', node)
+        items = pop_until_sentinel(self._stack, sentinel)
+        args = [], []  # keys, values
+        # For {a: b, c: d}, items will be [c, d, a, b]... Reversed is [b, a,
+        # d, c], so 0, 2, 4 ... are values, 1, 3, 5, ... are keys.
+        for i, which in enumerate(reversed(items)):
+            args[(i + 1) % 2].append(which)
+        return qst.Dict(*args)
+
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
         'BINARY_MULTIPLY': qst.Mult,
