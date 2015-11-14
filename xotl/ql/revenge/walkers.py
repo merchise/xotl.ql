@@ -709,9 +709,14 @@ class QstBuilder(GenericASTTraversal, object):
         # 'expr' but leave others as is.  Since `items` is the
         # stack-pop-order, i.e ``[...., expr]`` we need to inserted them in
         # the reverse order.
+        _ec = _ensure_compilable
         for index, item in enumerate(reversed(items)):
             if index == 0:
-                item = qst.UnaryOp(qst.Not(), item)
+                item = _ensure_compilable(
+                    qst.UnaryOp(
+                        _ec(qst.Not()), _ec(item)
+                    )
+                )
             self._stack.append(item)
 
     @pushtostack
