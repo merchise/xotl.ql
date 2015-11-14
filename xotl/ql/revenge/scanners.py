@@ -207,25 +207,23 @@ class InstructionSetBuilder(object):
         return list(self)
 
     def _resolve(self):
-        set = self.instructions
+        instrs = self.instructions
         targets = []
-        for instr in set:
+        for instr in instrs:
             if instr.opcode in dis.hasjabs and isinstance(instr.arg, label):
-                arg = instr.arg = set[self.labels[instr.arg]].offset
+                arg = instr.arg = instrs[self.labels[instr.arg]].offset
                 instr.argval = arg
                 instr.argrepr = ''
                 targets.append(arg)
-            elif instr.opcode in dis.hasjabs:
-                targets.append(instr.arg)
             elif instr.opcode in dis.hasjrel and isinstance(instr.arg, label):
-                target = set[self.labels[instr.arg]].offset
+                target = instrs[self.labels[instr.arg]].offset
                 instr.arg = arg = target - 3 - instr.offset
                 instr.argval = target
                 instr.argrepr = 'to %d' % target
                 targets.append(target)
-            elif instr.opcode in dis.hasjrel:
-                targets.append(instr.arg + 3 + instr.offset)
-        for instr in set:
+            elif instr.opcode in dis.hasjrel or instr.opcode in dis.hasjabs:
+                targets.append(instr.target)
+        for instr in instrs:
             instr.is_jump_target = instr.offset in targets
 
 
