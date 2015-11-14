@@ -324,13 +324,18 @@ class Token(object):
     as output by dis.dis().
 
     """
-    def __init__(self, name, arg=None, argval=None,
+    def __init__(self, name, arg=None, argval=None, argrepr=None,
                  offset=-1, starts_line=False, instruction=None):
         self.name = intern(str(name))
         self.arg = arg
-        self.argval = argval
+        self.argval = argval or arg
+        self.argrepr = argrepr or repr(argval)
         self.offset = offset
         self.starts_line = starts_line
+        if instruction:
+            self.is_jump_target = instruction.is_jump_target
+        else:
+            self.is_jump_target = False
         self.instruction = instruction
 
     @classmethod
@@ -339,6 +344,7 @@ class Token(object):
             instruction.opname,
             arg=instruction.arg,
             argval=instruction.argval,
+            argrepr=instruction.argrepr,
             offset=instruction.offset,
             starts_line=instruction.starts_line,
             instruction=instruction
@@ -587,8 +593,12 @@ class Scanner(object):
             return emit(res)
 
         def emit_come_from(offset, target, index):
-            emit(Token('COME_FROM', COME_FROM, repr(target),
-                       offset="%s_%d" % (offset, index)))
+            emit(Token('COME_FROM',
+                       arg=target,
+                       argval=target,
+                       argrepr='from %s' % j,
+                       offset="%s_%d" %
+                       (offset, index)))
 
         def customize(instruction):
             opname, arg = instruction.opname, instruction.arg
@@ -1358,6 +1368,41 @@ def normalize_pypy_conditional(instructions):
                               is_jump_target=False)
         else:
             yield Instruction(i)
+
+def xdis(f, native=False):
+    '''Utility for quickly inspected the tokens produced by the scanner.
+
+    :keyword native: Show only the tokens that match 'native' opcodes.
+                     Virtual tokens are hidden and customizations regain their
+                     original name.
+
+    '''
+    scanner = getscanner()
+    tokens, customizations = scanner.disassemble(f)
+    for token in tokens:
+        if native and token.name in customizations:
+            token.name, _ = token.name.rsplit('_', 1)
+        if not native or token.name in dis.opname:
+            _print_token(token)
+
+
+def _print_token(token):
+    lineno = token.starts_line
+    offset = token.offset
+    name = token.name
+    argval = token.argval
+    argrepr = token.argrepr
+    istarget = token.is_jump_target
+    print(' ', end='')   # pad
+    print(str(lineno).ljust(3) if lineno else ' ' * 3, end=' ')
+    print('>> ' if istarget else '   ', end='')
+    print(str(offset).rjust(4), end=' ')
+    print(str(name).ljust(20), end=' ')
+    print(str(argval).ljust(4) if argval else ' ' * 4, end=' ')
+    if argval:
+        print('({})'.format(argrepr).ljust(6))
+    else:
+        print()
 
 
 # Local Variables:
