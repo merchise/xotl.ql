@@ -646,6 +646,14 @@ class QstBuilder(GenericASTTraversal, object):
 
     n_setcomp_exit = _n_comp_exit('setcomp')
 
+    n__py_load_dictcomp = _n_walk_innerfunc(islambda=False)
+
+    @pushsentinel
+    def n_dictcomp(self, node):
+        pass
+
+    n_dictcomp_exit = _n_comp_exit('dictcomp')
+
     # The comprehension stuff.
     #
     # Since `comp_if` may deeply nested and intertwined with comp_ifnot,
@@ -696,6 +704,21 @@ class QstBuilder(GenericASTTraversal, object):
     n_setcomp_func_exit = _n_compfunc_exit(qst.SetComp, 'setcomp_func')
 
     @pushsentinel
+    def n_dictcomp_func(self, node):
+        pass
+
+    def _build_DictComp(elt, generators):
+        assert isinstance(elt, dict)
+        key = elt['key']
+        val = elt['val']
+        return qst.DictComp(key, val, generators)
+
+    n_dictcomp_func_exit = _n_compfunc_exit(
+        _build_DictComp, 'dictcomp_func'
+    )
+    del _build_DictComp
+
+    @pushsentinel
     def n_comp_for(self, node):
         pass
 
@@ -742,7 +765,19 @@ class QstBuilder(GenericASTTraversal, object):
     @take_one
     def n_comp_body_exit(self, node, children=None):
         elt, = children
-        return (('elt', node), elt)
+        return (('elt', node), _ensure_compilable(elt))
+
+    @pushtostack
+    @take_two
+    def n_dict_comp_body_exit(self, node, children=None):
+        # Dict comprehensions always have two elt expressions: one for the
+        # keys and other for the values.  This method simply wraps them in a
+        # single value because the upper-production `comp_body` takes a single
+        # item from the stack.  This way, both values will reach the
+        # `n_dictcomp_func_exit` method, but packed, but is is easy to unpack
+        # them.
+        key, val = children
+        return {'key': _ensure_compilable(key), 'val': _ensure_compilable(val)}
 
     @pushsentinel
     def n_build_list(self, node):

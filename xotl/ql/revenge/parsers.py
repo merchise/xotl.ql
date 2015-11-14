@@ -468,15 +468,16 @@ class _InternalParser(GenericASTBuilder):
         '''
 
     def p_dictcomp(self, args):
-        '''Dict comprehensions for Python 2.7.
+        '''Dict comprehensions.
 
         dictcomp ::= _py_load_dictcomp _comprehension
 
         expr ::= dictcomp
         stmt ::= dictcomp_func
 
-        dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
+        dictcomp_func ::= BUILD_MAP _comprehension_iter
+                          FOR_ITER designator
+                          comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
         '''
 

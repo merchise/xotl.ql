@@ -506,7 +506,15 @@ def test_comprehensions_genexpr():
 
 def test_comprehensions_dictcomp():
     expressions = [
-        # '{k: v for k, v in this}',
+        '{k: v for k, v in this}',
+
+        ('{k: v for k, v in this if not p(k) and p(v)}',
+         (
+             '{k: v for k, v in this if not p(k) if p(v)}', ), ),
+
+        '{s:f(s) for s in this if not p(s) or z(x)}',
+        '{s:v for s in this if p(s) for v in this if not p(v)}',
+        '{s:{a for a in b} for s, b in {x for x in this}}',
     ]
     _do_test(expressions)
 
