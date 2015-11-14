@@ -456,8 +456,15 @@ class Scanner(object):
     def resetTokenClass(self):
         self.setTokenClass()
 
-    def disassemble(self, co, classname=None):
+    def disassemble(self, co, normalize=True):
         'Produce the tokens for the code.'
+        if normalize is True:
+            normalize = keep_single_return
+        elif normalize is False:
+            normalize = lambda x: x
+        else:
+            from xoutil.functools import compose as _dot
+            normalize = _dot(*normalize)
         result = []
         customizations = {}
         # The 'jumps' is filled by the `detect_structure` closure function
@@ -605,9 +612,7 @@ class Scanner(object):
             customizations[opname] = arg
             instruction.opname = opname
 
-        instructions = list(without_nops(normalize_pypy_conditional(
-            Instruction(i) for i in Bytecode(co)
-        )))
+        instructions = list(normalize(Instruction(i) for i in Bytecode(co)))
         targets = find_jump_targets(instructions)
         for index, instruction in enumerate(instructions):
             opcode = instruction.opcode
@@ -1413,7 +1418,7 @@ def normalize_pypy_conditional(instructions):
         else:
             yield Instruction(i)
 
-def xdis(f, native=False):
+def xdis(f, native=False, normalize=True):
     '''Utility for quickly inspected the tokens produced by the scanner.
 
     :keyword native: Show only the tokens that match 'native' opcodes.
@@ -1422,7 +1427,7 @@ def xdis(f, native=False):
 
     '''
     scanner = getscanner()
-    tokens, customizations = scanner.disassemble(f)
+    tokens, customizations = scanner.disassemble(f, normalize=normalize)
     for token in tokens:
         if native and token.name in customizations:
             token.name, _ = token.name.rsplit('_', 1)
