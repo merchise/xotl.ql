@@ -549,7 +549,7 @@ scanner transforms them in *customized* versions depending on the argument.
 
 For instance the instruction ``BUILD_LIST 3`` yields a token
 ``<BUILD_LIST_3>`` [#token-repr]_.  The scanner actually returns the stream of
-tokens a map from *customized* code names to arguments.  This means that a
+tokens and a map from *customized* code names to arguments.  This means that a
 *customized* code must be produced per argument value found in the original
 instruction set.
 
