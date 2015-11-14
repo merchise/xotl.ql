@@ -473,17 +473,6 @@ class Scanner(object):
         BOOLSTRUCT = 'and/or'  # mark for nested conditionals
         structures = []
 
-        def get_target_offset(inst):
-            if inst.opcode in dis.hasjabs:
-                target = inst.argval
-            elif inst.opcode in dis.hasjrel:
-                target = inst.argval + inst.offset + inst.size
-            else:
-                raise ScannerError(
-                    'Instruction %s has no target' % inst.opname
-                )
-            return target
-
         def get_instruction_at(offset, instructions):
             return next(i for i in enumerate(instructions) if i[-1].offset == offset)
 
