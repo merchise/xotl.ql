@@ -251,13 +251,11 @@ class _InternalParser(GenericASTBuilder):
 
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
-        conditional ::= expr POP_JUMP_IF_FALSE expr COME_FROM RETURN_VALUE expr
 
         expr ::= conditionalnot
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr
                            COME_FROM
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_ABSOLUTE expr
-        conditionalnot ::= expr POP_JUMP_IF_TRUE expr COME_FROM RETURN_VALUE expr
 
         ret_expr ::= expr
         ret_expr ::= ret_and
