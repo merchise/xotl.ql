@@ -373,6 +373,20 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
+    @override(pypy)
+    def p__comprehensions_changes_in_pypy(self, args):
+        '''Alternative rules for Pypy.
+
+        In Pypy we've seen the pattern of jumping forward the next comp_iter
+        or jump back.
+
+        comp_iter  ::= comp_ifnotor
+        comp_iter  ::= comp_ifornot
+        comp_ifnotor ::= expr jmp_false expr jmp_true JUMP_BACK comp_iter
+        comp_ifnotor ::= expr jmp_true expr jmp_false JUMP_BACK comp_iter
+
+        '''
+
     def p_setcomp_common(self, args):
         '''Set comprehensions.
 

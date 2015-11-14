@@ -742,6 +742,65 @@ class QstBuilder(GenericASTTraversal, object):
             args = (qst.Load(), )
         return cls(list(reversed(items)), *args)
 
+    @pushsentinel
+    def n_comp_ifnotor(self, node):
+        pass
+
+    @take_until_sentinel
+    def n_comp_ifnotor_exit(self, node, children=None, items=None):
+        # This a hack for Pypy.
+        #
+        #  comp_ifnotor ::= expr jmp_false expr jmp_true JUMP_BACK comp_iter
+        #
+        #  It wraps the pattern if not ... or ... in a comprehension.
+        #
+        _ec = _ensure_compilable
+        false = items.pop()
+        true = items.pop()
+        self._stack.append(_ensure_compilable(
+            qst.BoolOp(
+                _ec(qst.Or()),
+                [
+                    _ec(qst.UnaryOp(
+                        _ec(qst.Not()), _ensure_compilable(false)
+                    )),
+                    _ensure_compilable(true)
+                ]
+            )
+        ))
+        for item in reversed(items):
+            self._stack.append(item)
+
+    @pushsentinel
+    def n_comp_ifornot(self, node):
+        pass
+
+    @take_until_sentinel
+    def n_comp_ifornot_exit(self, node, children=None, items=None):
+        # This a hack for Pypy.
+        #
+        #  comp_ifornot ::= expr jmp_true expr jmp_false JUMP_BACK comp_iter
+        #
+        #  It wraps the pattern if not ... or ... in a comprehension.
+        #
+        _ec = _ensure_compilable
+        true = items.pop()
+        false = items.pop()
+        self._stack.append(_ensure_compilable(
+            qst.BoolOp(
+                _ec(qst.Or()),
+                [
+                    _ensure_compilable(true),
+                    _ec(qst.UnaryOp(
+                        _ec(qst.Not()), _ensure_compilable(false)
+                    )),
+                ]
+            )
+        ))
+        for item in reversed(items):
+            self._stack.append(item)
+
+
     def _ensure_single_child(self, node, msg='%s must have a single child'):
         if '%s' in msg:
             name = self._find_name()
