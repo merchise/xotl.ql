@@ -201,7 +201,8 @@ The algorithm for removing ``NOPs`` may be ported from the
 ``Python/peephole.c``.
 
 .. seealso:: The functions `without_nops`:func: and
-             `normalize_pypy_conditional`:func:.
+             `normalize_pypy_conditional`:func: and
+             `keep_single_return`:func:.
 
 After the normalization step, we get the same byte-code and our analysis can
 proceed as if we were dealing with CPython.
@@ -796,6 +797,8 @@ Terms used in this document
 
 API of the module
 -----------------
+
+.. autofunction:: keep_single_return
 
 .. autofunction:: without_nops
 

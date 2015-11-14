@@ -1328,6 +1328,18 @@ def without_nops(instructions):
 
 
 def keep_single_return(instructions):
+    '''Transform the instructions so the a single RETURN_VALUE is kept at the
+    bottom.
+
+    If the original `instructions` have not a RETURN_VALUE at the very end,
+    return the same instructions set.
+
+    Otherwise all but the last RETURN_VALUE will be replaced by a JUMP_FORWARD
+    that targets the RETURN_VALUE at the end of the instructions.
+
+    Offsets and jump targets are updated.
+
+    '''
     instructions = list(instructions)
     last = instructions[-1]
     if last.opcode == RETURN_VALUE:
