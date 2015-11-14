@@ -482,11 +482,19 @@ def test_conditional_a_la_pypy():
 
 def test_comprehensions():
     expressions = [
-        '(x for x in this if not p(x) if z(x))',
-        '(x for x in this if not p(x) or z(x))',
-        '(x for x in this if not p(x) if z(x))',
+        # expression, alternatives
+        ('(x for x in this if not p(x) if z(x))',
+         (
+             '(x for x in this if not p(x) and z(x))', )),
 
-        '((x, x + 1) for x in this for y in x if p(y) if not q(x) if z(x))',
+        '(x for x in this if not p(x) or z(x))',
+
+        ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
+         (
+             '(x for x in this for y in x if p(y) and not q(x) and z(x))',
+             '(x for x in this for y in x if p(y) if not q(x) and z(x))',
+             '(x for x in this for y in x if p(y) and not q(x) if z(x))',
+         )),
 
         # '[x for x in this]',
         # '[x for x in this if p(x)]',
