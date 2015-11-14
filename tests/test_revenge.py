@@ -480,7 +480,7 @@ def test_conditional_a_la_pypy():
         print(expected)
 
 
-def test_comprehensions():
+def test_comprehensions_genexpr():
     expressions = [
         # expression, alternatives
         ('(x for x in this if not p(x) if z(x))',
@@ -496,19 +496,45 @@ def test_comprehensions():
              '(x for x in this for y in x if p(y) and not q(x) if z(x))',
          )),
 
+        '((x, y) for x, y in this)',
+        '((a for a in b) for b in (x for x in this))',
+        'calling(a for a in this if a < y)',
+        '(lambda t: None)(a for x in this)',
+    ]
+    _do_test(expressions)
+
+
+def test_comprehensions_dictcomp():
+    expressions = [
+        # '{k: v for k, v in this}',
+    ]
+    _do_test(expressions)
+
+
+def test_comprehensions_setcomp():
+    expressions = [
+        '{s for s in this if not p(s) and z(x)}',
+        '{s for s in this if not p(s) or z(x)}',
+        '{s for s in this if s < y}',
+        '{{a for a in b} for b in {x for x in this}}',
+    ]
+    _do_test(expressions)
+
+
+def test_comprehensions_listcomp():
+    expressions = [
+        # ('[x for x in this if not p(x) if z(x)]',
+        #  (
+        #      '[x for x in this if not p(x) and z(x)]', )),
+
+        # '[x for x in this if not p(x) or z(x)]',
+
         # '[x for x in this]',
         # '[x for x in this if p(x)]',
-
-        '((x, y) for x, y in this)',
-        # '[(x, y) for x, y in this]',
-
-        '((a for a in b) for b in (x for x in this))',
-        # '[[a for a in b] for b in [x for x in this]]',
-        'calling(a for a in this if a < y)',
         # '[a for a in x if a < y]',
-        # '{k: v for k, v in this}',
-        # '{s for s in this if s < y}',
-        '(lambda t: None)(a for x in this)',
+        # '[(x, y) for x, y in this]',
+        # '[[a for a in b] for b in [x for x in this]]',
+        # 'calling([a for a in this if a < y])',
     ]
     _do_test(expressions)
 
