@@ -559,10 +559,6 @@ class Scanner(object):
                     label = jumps.get(instruction.offset)
                     if label is None:
                         if opcode == JUMP_FORWARD:
-                            arg = instruction.arg
-                            label = arg  + offset + size
-                            assert label == argval
-                        elif opcode in JUMP_IF_OR_POPs and argval > offset:
                             label = argval
                     if label is not None and label != -1:
                         result.setdefault(label, []).append(offset)
