@@ -95,10 +95,6 @@ CUSTOMIZABLE = (
 )
 
 
-# A virtual opcode that is not None
-COME_FROM = object()
-
-
 from contextlib import contextmanager
 from .eight import Bytecode, Instruction as BaseInstruction
 

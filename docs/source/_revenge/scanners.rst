@@ -389,10 +389,13 @@ things change::
 
 
 Now the ``and`` is implemented by `POP_JUMP_IF_FALSE`:opcode:.  This is
-because the byte-code we get was submitted to several optimization steps.  If
-unoptimized we would've seen the same instructions.  You may confirm that Pypy
-2.7 doesn't use the ``POP_JUMP_IF_FALSE`` for the expression above, but keeps
-the ``JUMP_IF_FALSE_OR_POP``.
+because the `jumps <jump>`:term: are optimized in several ways by Python VMs.
+Optimization changes the layout of the code.  It is responsible for the
+changes we've seen before.  We have collected some of the optimization steps
+performed by the CPython VM `below <Optimizations_>`__.  If unoptimized we
+would've seen the same instructions.  You may confirm that Pypy 2.7 doesn't
+use the ``POP_JUMP_IF_FALSE`` for the expression above, but keeps the
+``JUMP_IF_FALSE_OR_POP``.
 
 We'll see that changing the precedence by grouping don't change the
 instructions but the target of the first jump::
@@ -431,9 +434,9 @@ But first let's take more samples::
 These cases show that several ``and`` and ``or`` together are simply changed
 to target the same "final" offset.
 
-Notice that jumps in conditional and boolean expressions target the *first
-instruction that deals with result of the boolean sub-expression*.
-Pictorially for a ``a and b`` this is like::
+The first observation we can make is that jumps in conditional and boolean
+expressions target the *first instruction that deals with the result of the
+boolean sub-expression*.  Pictorially for a ``a and b`` this is like::
 
 
   expr JUMP_IF_FALSE_OR_POP  ..... <SOME_INSTRUCTION>
@@ -441,9 +444,9 @@ Pictorially for a ``a and b`` this is like::
                          +--------/
 
 The entire program after the jump and before its target *contains* the
-instructions for the other operand to the boolean operator.  Notice that the
-instruction just before the target is not necessarily the last instruction of
-the other operand, it may be another jump or `RETURN_VALUE` like in::
+instructions for the other operand to the boolean operator.  The instruction
+just before the target is not necessarily the last instruction of the other
+operand, it may be another jump or `RETURN_VALUE` like in::
 
   >>> dis.dis(compile('a and b or c', '', 'eval'))
     1           0 LOAD_NAME                0 (a)
@@ -453,41 +456,139 @@ the other operand, it may be another jump or `RETURN_VALUE` like in::
           >>   12 LOAD_NAME                2 (c)
           >>   15 RETURN_VALUE
 
-More complex expression will have any amount of 'space' between the jump and
-the target.
+Furthermore, jumps may skip several operands at once (remind ``a and b and
+c``).
 
-We see some optimization applied:
+It seems that the key to solving this issue is to keep track of the jumps and
+their targets and produce virtual codes that allow the structure to be
+retrieved by the parser.
 
-- If the target of `JUMP_IF_FALSE_OR_POP`:opcode:
-  (`JUMP_IF_TRUE_OR_POP`:opcode:) is a `conditional jump`:term: of the *same
-  truth-testing kind* then update the target to be that of the previous
-  target.
+Keeping track of jumps and targets in the scanner
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  This is the rule that collapses several ``and`` and ``or`` together.
+Our first approach is to place a simple ``<COME_FROM>`` virtual token at the
+*most likely end* of the sub-expression after a conditional jump.  Our
+definition of the *most likely end* is rather intuitive and we'll extend it as
+we analyze further.
 
-- If the target of ``JUMP_IF_*_OR_POP`` is a conditional jump of *the opposite
-  truth-testing kind*, change the instruction to ``POP_JUMP_IF_*`` targeting
-  the next instruction of the previous target.
+In the simplest cases, it will be placed just before the
+`RETURN_VALUE`:opcode: at the end::
 
-  This is what happens for ``x and a or b`` and also for ``(x or a) and b``::
+  >>> from xotl.ql.revenge.scanners import xdis
+  >>> xdis(compile('a and b', '', 'eval'))
+   1         0 LOAD_NAME            a    (a)
+             3 JUMP_IF_FALSE_OR_POP 9    (9)
+             6 LOAD_NAME            b    (b)
+           9_0 COME_FROM            3    (from 3)
+       >>    9 RETURN_VALUE
 
-    >>> dis.dis(compile('x and a or b', '', 'eval'))
-      1           0 LOAD_NAME                0 (x)
-                  3 POP_JUMP_IF_FALSE       12
-                  6 LOAD_NAME                1 (a)
-                  9 JUMP_IF_TRUE_OR_POP     15
-            >>   12 LOAD_NAME                2 (b)
-            >>   15 RETURN_VALUE
+For the sake of readability ``COME_FROM`` indicates the offset from which it
+is reached.
 
-    >>> dis.dis(compile('(x or a) and b', '', 'eval'))
-      1           0 LOAD_NAME                0 (x)
-                  3 POP_JUMP_IF_TRUE        12
-                  6 LOAD_NAME                1 (a)
-                  9 JUMP_IF_FALSE_OR_POP    15
-            >>   12 LOAD_NAME                2 (b)
-            >>   15 RETURN_VALUE
+In this case the COME_FROM token marks the end of the right-hand
+sub-expression.
 
-\... and others.
+For collapsed
+
+
+  >>> def f4():
+  ...     return (a if x else y) if (b if z else c) else (d if o else p)
+
+  >>> dis.dis(compile('(a if x else y) if (b if z else c) else (d if o else p)', '', 'eval'))
+    1           0 LOAD_NAME                0 (z)
+                3 POP_JUMP_IF_FALSE       12
+                6 LOAD_NAME                1 (b)
+                9 JUMP_FORWARD             3 (to 15)
+          >>   12 LOAD_NAME                2 (c)
+          >>   15 POP_JUMP_IF_FALSE       34
+               18 LOAD_NAME                3 (x)
+               21 POP_JUMP_IF_FALSE       30
+               24 LOAD_NAME                4 (a)
+               27 JUMP_ABSOLUTE           47
+          >>   30 LOAD_NAME                5 (y)
+               33 RETURN_VALUE
+          >>   34 LOAD_NAME                6 (o)
+               37 POP_JUMP_IF_FALSE       44
+               40 LOAD_NAME                7 (d)
+               43 RETURN_VALUE
+          >>   44 LOAD_NAME                8 (p)
+          >>   47 RETURN_VALUE
+
+  >>> def f5():
+  ...     if (b if z else c): return (a if x else y)
+  ...     return (d if o else p)
+
+  >>> dis.dis(f5)
+    2           0 LOAD_GLOBAL              0 (z)
+                3 POP_JUMP_IF_FALSE       12
+                6 LOAD_GLOBAL              1 (b)
+                9 JUMP_FORWARD             3 (to 15)
+          >>   12 LOAD_GLOBAL              2 (c)
+          >>   15 POP_JUMP_IF_FALSE       32
+               18 LOAD_GLOBAL              3 (x)
+               21 POP_JUMP_IF_FALSE       28
+               24 LOAD_GLOBAL              4 (a)
+               27 RETURN_VALUE
+          >>   28 LOAD_GLOBAL              5 (y)
+               31 RETURN_VALUE
+    3     >>   32 LOAD_GLOBAL              6 (o)
+               35 POP_JUMP_IF_FALSE       42
+               38 LOAD_GLOBAL              7 (d)
+               41 RETURN_VALUE
+          >>   42 LOAD_GLOBAL              8 (p)
+               45 RETURN_VALUE
+
+The difference between the produced byte codes is that in the first program
+the offset 27 is a `JUMP_ABSOLUTE`:opcode: to the final `RETURN_VALUE`:opcode:
+whereas in the second program the offset 27 is *the* `RETURN_VALUE`:opcode:.
+Just as we did before, we can perform a simple normalization step to always
+get the second program.  In fact, the scanner sees both programs as the same::
+
+
+  >>> from xotl.ql.revenge.scanners import xdis
+  >>> xdis(f4, native=True)
+   2         0 LOAD_GLOBAL          z    (z)
+             3 POP_JUMP_IF_FALSE    12   (12)
+             6 LOAD_GLOBAL          b    (b)
+             9 JUMP_FORWARD         3    (to 15)
+       >>   12 LOAD_GLOBAL          c    (c)
+       >>   15 POP_JUMP_IF_FALSE    32   (32)
+            18 LOAD_GLOBAL          x    (x)
+            21 POP_JUMP_IF_FALSE    28   (28)
+            24 LOAD_GLOBAL          a    (a)
+            27 RETURN_VALUE
+       >>   28 LOAD_GLOBAL          y    (y)
+            31 RETURN_VALUE
+       >>   32 LOAD_GLOBAL          o    (o)
+            35 POP_JUMP_IF_FALSE    42   (42)
+            38 LOAD_GLOBAL          d    (d)
+            41 RETURN_VALUE
+       >>   42 LOAD_GLOBAL          p    (p)
+            45 RETURN_VALUE
+
+Yet we have missed another possible optimization: The ``JUMP_FORWARD`` at
+the 9th offset goes to a ``POP_JUMP_IF_FALSE``, so it can be replaced.  If we
+do so, the program will look like::
+
+   2         0 LOAD_GLOBAL          z    (z)
+             3 POP_JUMP_IF_FALSE    12   (12)
+             6 LOAD_GLOBAL          b    (b)
+             9 POP_JUMP_IF_FALSE    32   (to 32)
+       >>   12 LOAD_GLOBAL          c    (c)
+       >>   15 POP_JUMP_IF_FALSE    32   (32)
+            18 LOAD_GLOBAL          x    (x)
+            21 POP_JUMP_IF_FALSE    28   (28)
+            24 LOAD_GLOBAL          a    (a)
+            27 RETURN_VALUE
+       >>   28 LOAD_GLOBAL          y    (y)
+            31 RETURN_VALUE
+       >>   32 LOAD_GLOBAL          o    (o)
+            35 POP_JUMP_IF_FALSE    42   (42)
+            38 LOAD_GLOBAL          d    (d)
+            41 RETURN_VALUE
+       >>   42 LOAD_GLOBAL          p    (p)
+            45 RETURN_VALUE
+
 
 
 
@@ -746,7 +847,6 @@ since the iterable can be any expression, i.e. not a single ``LOAD_NAME``.
                         CALL_FUNCTION_1
 
 
-
 Terms used in this document
 ---------------------------
 
@@ -795,6 +895,40 @@ Terms used in this document
      Any of the instructions `JUMP_FORWARD`:opcode: and
      `JUMP_ABSOLUTE`:opcode:
 
+
+Optimizations
+-------------
+
+- If the target of `JUMP_IF_FALSE_OR_POP`:opcode:
+  (`JUMP_IF_TRUE_OR_POP`:opcode:) is a `conditional jump`:term: of the *same
+  truth-testing kind* then update the target to be that of the previous
+  target.
+
+  This is the rule that collapses several ``and`` and ``or`` together.
+
+- If the target of ``JUMP_IF_*_OR_POP`` is a conditional jump of *the opposite
+  truth-testing kind*, change the instruction to ``POP_JUMP_IF_*`` targeting
+  the next instruction of the previous target.
+
+  This is what happens for ``x and a or b`` and also for ``(x or a) and b``::
+
+    >>> dis.dis(compile('x and a or b', '', 'eval'))
+      1           0 LOAD_NAME                0 (x)
+                  3 POP_JUMP_IF_FALSE       12
+                  6 LOAD_NAME                1 (a)
+                  9 JUMP_IF_TRUE_OR_POP     15
+            >>   12 LOAD_NAME                2 (b)
+            >>   15 RETURN_VALUE
+
+    >>> dis.dis(compile('(x or a) and b', '', 'eval'))
+      1           0 LOAD_NAME                0 (x)
+                  3 POP_JUMP_IF_TRUE        12
+                  6 LOAD_NAME                1 (a)
+                  9 JUMP_IF_FALSE_OR_POP    15
+            >>   12 LOAD_NAME                2 (b)
+            >>   15 RETURN_VALUE
+
+\... and others.
 
 
 API of the module
