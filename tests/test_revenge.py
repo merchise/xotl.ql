@@ -513,7 +513,11 @@ def test_comprehensions_dictcomp():
 
 def test_comprehensions_setcomp():
     expressions = [
-        '{s for s in this if not p(s) and z(x)}',
+        ('{s for s in this if not p(s) and z(x)}',
+         (
+             # alternatives
+             '{s for s in this if not p(s) if z(x)}', ),),
+
         '{s for s in this if not p(s) or z(x)}',
         '{s for s in this if s < y}',
         '{{a for a in b} for b in {x for x in this}}',

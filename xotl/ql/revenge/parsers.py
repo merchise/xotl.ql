@@ -392,8 +392,9 @@ class _InternalParser(GenericASTBuilder):
 
         expr ::= setcomp
         stmt ::= setcomp_func
-        setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
-                JUMP_BACK RETURN_VALUE RETURN_LAST
+        setcomp_func ::= BUILD_SET_0 _comprehension_iter
+                         FOR_ITER designator comp_iter
+                         JUMP_BACK RETURN_VALUE RETURN_LAST
 
         setcomp ::= _py_load_setcomp _comprehension
 

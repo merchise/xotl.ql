@@ -638,9 +638,13 @@ class QstBuilder(GenericASTTraversal, object):
 
     n_genexpr_exit = _n_comp_exit('genexpr')
 
+    n__py_load_setcomp = _n_walk_innerfunc(islambda=False)
+
     @pushsentinel
-    def n_genexpr_func(self, node):
+    def n_setcomp(self, node):
         pass
+
+    n_setcomp_exit = _n_comp_exit('setcomp')
 
     # The comprehension stuff.
     #
@@ -679,7 +683,17 @@ class QstBuilder(GenericASTTraversal, object):
             ))
         return pushtostack(take_until_sentinel(n_compfunc_exit, sentinel))
 
+    @pushsentinel
+    def n_genexpr_func(self, node):
+        pass
+
     n_genexpr_func_exit = _n_compfunc_exit(qst.GeneratorExp, 'genexpr_func')
+
+    @pushsentinel
+    def n_setcomp_func(self, node):
+        pass
+
+    n_setcomp_func_exit = _n_compfunc_exit(qst.SetComp, 'setcomp_func')
 
     @pushsentinel
     def n_comp_for(self, node):
@@ -897,4 +911,4 @@ class QstBuilder(GenericASTTraversal, object):
         ast = parsers.parse(tokens, customize)
         return ast
 
-    del _n_walk_innerfunc, _n_compfunc_exit
+    del _n_walk_innerfunc, _n_compfunc_exit, _n_comp_exit
