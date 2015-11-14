@@ -1215,51 +1215,6 @@ class Scanner(object):
             target = self.get_target(pos, op)
             self.fixed_jumps[pos] = self.restrict_to_parent(target, parent)
 
-    def find_jump_targets(self, code):
-        """Detect all offsets in a byte code which are jump targets.
-
-        Return the list of offsets.
-
-        This procedure is modelled after dis.findlables(), but here for each
-        target the number of jumps are counted.
-
-        """
-        hasjrel = dis.hasjrel
-        hasjabs = dis.hasjabs
-        # Structs holds the current structures found in the bytecode the
-        # 'root' struct is the entire program and it spans from the first
-        # byte-code (offset 0) to the last (offset n-1).  The
-        # `detect_structure` method fills this data-structure with minor
-        # structures like loops, etc.
-        self.structs = structs = [{'type':  'root',
-                                   'start': 0,
-                                   'end':   self.get_code_size()-1}]
-        self.loops = []  # All loop entry points
-        self.fixed_jumps = {}  # Map fixed jumps to their real destination
-        self.ignore_if = set()
-        self.build_stmt_indices()
-        self.not_continue = set()
-        self.return_end_ifs = set()
-        targets = {}
-        for instr in self.instructions:
-            # Determine structures and fix jumps for 2.3+
-            # this method fills `self.fixed_jumps`.
-            self.detect_structure(instr.offset, instr.opcode, structs=structs)
-            op = instr.opcode
-            offset = instr.offset
-            if op >= HAVE_ARGUMENT:
-                label = self.fixed_jumps.get(offset)
-                oparg = instr.arg
-                if label is None:
-                    if op in hasjrel and op != FOR_ITER:
-                        label = offset + 3 + oparg
-                    elif op in hasjabs:
-                        if op in JUMP_IF_OR_POPs and oparg > offset:
-                            label = oparg
-                if label is not None and label != -1:
-                    targets.setdefault(label, []).append(offset)
-        return targets
-
 
 # A cache from version to Scanners.
 # Since Scanners are not thread-safe the getscanner accepts a
