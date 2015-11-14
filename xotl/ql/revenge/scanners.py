@@ -262,6 +262,16 @@ class Instruction(object):
         })
 
     @property
+    def target(self):
+        opcode = self.opcode
+        assert opcode in ANY_JUMPs
+        if opcode in dis.hasjrel:
+            return self.argval + self.size + self.offset
+        else:
+            assert opcode in dis.hasjabs
+            return self.argval
+
+    @property
     def code(self):
         '''Return the code string for this instruction.
 
@@ -514,7 +524,7 @@ class Scanner(object):
             offset = instruction.offset
             next_offset = offset + instruction.size
             if instruction.opcode in POP_JUMP_IFs:
-                target = get_target_offset(instruction)
+                target = instruction.target
                 target_index, target_inst = get_instruction_at(target, instructions)
                 restricted = parent.restrict(target)
                 if target != restricted and parent.type == BOOLSTRUCT:
@@ -538,7 +548,7 @@ class Scanner(object):
                     structures.append(Structure(next_offset, end, BOOLSTRUCT))
                     return
             elif instruction.opcode in JUMP_IF_OR_POPs:
-                target = get_target_offset(instruction)
+                target = instruction.target
                 restricted = parent.restrict(target)
                 jumps[offset] = restricted
 
