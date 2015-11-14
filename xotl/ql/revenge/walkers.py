@@ -699,14 +699,6 @@ class QstBuilder(GenericASTTraversal, object):
             self._stack.append(which)
 
     @pushsentinel
-    def n_comp_if(self, node):
-        pass
-
-    @take_until_sentinel
-    def n_comp_if_exit(self, node, children=None, items=None):
-        self._stack.extend(reversed(items))
-
-    @pushsentinel
     def n_comp_ifnot(self, node):
         # We need to mark this cause we must negate the result.
         pass
