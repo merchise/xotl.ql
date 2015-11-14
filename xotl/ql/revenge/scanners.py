@@ -338,7 +338,7 @@ class Token(object):
                  offset=-1, starts_line=False, instruction=None):
         self.name = intern(str(name))
         self.arg = arg
-        self.argval = argval or arg
+        self.argval = argval
         self.argrepr = argrepr or repr(argval)
         self.offset = offset
         self.starts_line = starts_line
