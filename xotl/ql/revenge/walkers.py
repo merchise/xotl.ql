@@ -621,20 +621,22 @@ class QstBuilder(GenericASTTraversal, object):
     def n_genexpr(self, node):
         pass
 
-    @pushtostack
-    @take_until_sentinel
-    def n_genexpr_exit(self, node, children=None, items=None):
-        # The `item` will be ``[iterable, ...., qst.GeneratorExp]``, the space
-        # in between is the 'inner function' arg, vararg, etc...  We can
-        # safely ignore all function related args, since we're not going to
-        # produce a function definition.
-        #
-        # But the qst.GeneratorExp will have its first comprehesion with the
-        # wrong iterable, replace it.
-        iterable = items.pop(0)
-        genexpr = items.pop()
-        genexpr.generators[0].iter = iterable
-        return genexpr
+    def _n_comp_exit(sentinel):
+        def n_comp_exit(self, node, children=None, items=None):
+            # The `item` will be ``[iterable, ...., qstComp]``, the space in
+            # between is the 'inner function' arg, vararg, etc...  We can
+            # safely ignore all function related args, since we're not going
+            # to produce a function definition.
+            #
+            # But the qstComp will have its first comprehesion with the wrong
+            # iterable, replace it.
+            iterable = items.pop(0)
+            compr = items.pop()
+            compr.generators[0].iter = iterable
+            return compr
+        return pushtostack(take_until_sentinel(n_comp_exit, sentinel))
+
+    n_genexpr_exit = _n_comp_exit('genexpr')
 
     @pushsentinel
     def n_genexpr_func(self, node):
@@ -649,32 +651,35 @@ class QstBuilder(GenericASTTraversal, object):
     # comp_for and the top-level comprehension.  The `comp_ifnot` needs
     # rewriting cause the 'expr' needs to be negated.
     #
-    @pushtostack
-    @take_until_sentinel
-    def n_genexpr_func_exit(self, node, children=None, items=None):
-        # At this point we should at least three items in the stack.  `items`
-        # will be: [elt, ...., target, iterable].
-        #
-        # The items in between may be partially constructed
-        # `qst.comprehension` (the result of comp_for)
-        eltmark, elt = items.pop(0)
-        assert isinstance(eltmark, tuple) and eltmark[0] == 'elt'
-        iterable = _ensure_compilable(items.pop())
-        assert getattr(iterable, 'id', '').startswith('.')
-        target = _ensure_compilable(items.pop())
-        ifs = []
-        while items and not isinstance(items[-1], qst.pyast.comprehension):
-            item = items.pop()
-            ifs.append(_ensure_compilable(item))
-        comprehensions = list(reversed(items)) if items else []
-        comprehensions.insert(0, _ensure_compilable(
-            qst.comprehension(target, iterable, ifs)
-        ))
-        # XXX: Wrap it in an Expression since it will be unwrapped by
-        # _walk_innerfunc
-        return qst.Expression(_ensure_compilable(
-            qst.GeneratorExp(elt, comprehensions)
-        ))
+
+    def _n_compfunc_exit(qstClass, sentinel):
+        def n_compfunc_exit(self, node, children=None, items=None):
+            # At this point we should at least three items in the stack.
+            # `items` will be: [elt, ...., target, iterable].
+            #
+            # The items in between may be partially constructed
+            # `qst.comprehension` (the result of comp_for)
+            eltmark, elt = items.pop(0)
+            assert isinstance(eltmark, tuple) and eltmark[0] == 'elt'
+            iterable = _ensure_compilable(items.pop())
+            assert getattr(iterable, 'id', '').startswith('.')
+            target = _ensure_compilable(items.pop())
+            ifs = []
+            while items and not isinstance(items[-1], qst.pyast.comprehension):
+                item = items.pop()
+                ifs.append(_ensure_compilable(item))
+            comprehensions = list(reversed(items)) if items else []
+            comprehensions.insert(0, _ensure_compilable(
+                qst.comprehension(target, iterable, ifs)
+            ))
+            # XXX: Wrap it in an Expression since it will be unwrapped by
+            # _walk_innerfunc
+            return qst.Expression(_ensure_compilable(
+                qstClass(elt, comprehensions)
+            ))
+        return pushtostack(take_until_sentinel(n_compfunc_exit, sentinel))
+
+    n_genexpr_func_exit = _n_compfunc_exit(qst.GeneratorExp, 'genexpr_func')
 
     @pushsentinel
     def n_comp_for(self, node):
@@ -805,7 +810,6 @@ class QstBuilder(GenericASTTraversal, object):
         for item in reversed(items):
             self._stack.append(item)
 
-
     def _ensure_single_child(self, node, msg='%s must have a single child'):
         if '%s' in msg:
             name = self._find_name()
@@ -892,3 +896,5 @@ class QstBuilder(GenericASTTraversal, object):
             return RETURN_NONE
         ast = parsers.parse(tokens, customize)
         return ast
+
+    del _n_walk_innerfunc, _n_compfunc_exit
