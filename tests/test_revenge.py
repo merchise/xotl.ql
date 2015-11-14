@@ -23,6 +23,73 @@ del sys
 import pytest
 
 
+def test_scanner_normalization_single_return():
+    from xotl.ql.revenge.scanners import InstructionSetBuilder, label
+    from xotl.ql.revenge.scanners import keep_single_return
+
+    builder = InstructionSetBuilder()
+    with builder() as Instruction:
+        Instruction(label='start',
+                    opname='LOAD_NAME', arg=0,
+                    argval='x', argrepr='x',
+                    starts_line=1),
+        Instruction(opname='POP_JUMP_IF_FALSE', arg=label('back'),
+                    starts_line=None),
+        Instruction(opname='LOAD_NAME', arg=1,
+                    argval='a', argrepr='a',
+                    starts_line=None),
+        Instruction(opname='RETURN_VALUE',
+                    arg=None, argval=None, argrepr='',
+                    starts_line=None),
+        Instruction(label='back',
+                    opname='LOAD_NAME', arg=2,
+                    argval='y', argrepr='y',
+                    starts_line=None),
+        # Let's make some jumps here but to see other jumps are not affected.
+        # Since the return value above takes a single byte but the
+        # JUMP_FORWARD takes 3 bytes, all offsets below that point are to be
+        # shifted whereas those above will remain.
+        Instruction(opname='JUMP_ABSOLUTE', arg=label('back'),
+                    starts_line=None)
+        Instruction(opname='JUMP_FORWARD', arg=label('next'),
+                    starts_line=None),
+        Instruction(label='next',
+                    opname='FOR_ITER', arg=label('start'), starts_line=None)
+        Instruction(opname='RETURN_VALUE', arg=None,
+                    argval=None, argrepr='', starts_line=None)
+    original = list(builder)
+
+    builder = InstructionSetBuilder()
+    with builder() as Instruction:
+        Instruction(label='start',
+                    opname='LOAD_NAME', arg=0,
+                    argval='x', argrepr='x',
+                    starts_line=1),
+        Instruction(opname='POP_JUMP_IF_FALSE', arg=label('back'),
+                    starts_line=None),
+        Instruction(opname='LOAD_NAME', arg=1, argval='a', argrepr='a',
+                    starts_line=None),
+        Instruction(opname='JUMP_FORWARD', arg=label('retval'),
+                    starts_line=None),
+        Instruction(label='back',
+                    opname='LOAD_NAME', arg=2,
+                    argval='y', argrepr='y',
+                    starts_line=None),
+        # Let's make loop here to the instruction just above but to see other
+        # jumps are not affected.
+        Instruction(opname='JUMP_ABSOLUTE', arg=label('back'),
+                    starts_line=None)
+        Instruction(opname='JUMP_FORWARD', arg=label('next'),
+                    starts_line=None),
+        Instruction(label='next',
+                    opname='FOR_ITER', arg=label('start'), starts_line=None)
+        Instruction(label='retval',
+                    opname='RETURN_VALUE', arg=None,
+                    argval=None, argrepr='', starts_line=None)
+    expected = list(builder)
+    assert list(keep_single_return(original)) == expected
+
+
 def test_scanner_normalization():
     from xotl.ql.revenge.scanners import InstructionSetBuilder
     from xotl.ql.revenge.scanners import without_nops

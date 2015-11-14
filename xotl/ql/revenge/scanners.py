@@ -1338,6 +1338,39 @@ def without_nops(instructions):
         yield Instruction(**vals)
 
 
+def keep_single_return(instructions):
+    instructions = list(instructions)
+    last = instructions[-1]
+    if last.opcode == RETURN_VALUE:
+        builder = InstructionSetBuilder()
+        lastlabel = label('previous-offset-%s' % last.offset)
+        l = len(instructions) - 1
+        with builder() as Instruction:
+            for index, inst in enumerate(instructions):
+                opname = inst.opname
+                opcode = inst.opcode
+                arg = inst.arg
+                argval = inst.argval
+                argrepr = inst.argrepr
+                starts_line = inst.starts_line
+                this = 'previous-offset-%s' % inst.offset
+                if opcode == RETURN_VALUE:
+                    if index != l:
+                        # Don't replace the last RETURN_VALUE, but when doing
+                        # it, make the jump go the last label.
+                        opcode = JUMP_FORWARD
+                        opname = 'JUMP_FORWARD'
+                        arg = lastlabel
+                elif opcode in ANY_JUMPs:
+                    arg = label('previous-offset-%s' % inst.target)
+                Instruction(label=this, opname=opname, opcode=opcode, arg=arg,
+                            argval=argval, argrepr=argrepr,
+                            starts_line=starts_line)
+        return list(builder)
+    else:
+        return instructions
+
+
 def normalize_pypy_conditional(instructions):
     '''Apply the pypy normalization rule.
 
