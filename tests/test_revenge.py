@@ -297,7 +297,8 @@ def test_pypy_normalization():
 
 def test_real_pypy_normalization():
     from xotl.ql.revenge.scanners import InstructionSetBuilder, label
-    from xotl.ql.revenge.scanners import getscanner
+    from xotl.ql.revenge.scanners import getscanner, without_nops
+    from xotl.ql.revenge.scanners import normalize_pypy_conditional
 
     # The PyPy byte code for `a if x else y`:
     builder = InstructionSetBuilder()
@@ -319,7 +320,10 @@ def test_real_pypy_normalization():
                     starts_line=None)
     expected_program = list(builder)
     scanner = getscanner()
-    tokens, customize = scanner.disassemble(compile('a if x else y', '', 'eval'))
+    tokens, customize = scanner.disassemble(
+        compile('a if x else y', '', 'eval'),
+        normalize=(normalize_pypy_conditional, without_nops)
+    )
     instructions = [token.instruction for token in tokens if token.instruction]
     assert instructions == expected_program
 
