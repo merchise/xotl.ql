@@ -414,11 +414,13 @@ def test_conditional_expressions():
     _do_test(expressions)
 
 
-def test_conditional_expressions_with_possible_folding():
+def test_expressions_with_possible_folding():
     expressions = [
         # (expression, (alternatives...))
-        #  This will be folded to None in Python 3.4+ and Pypy.
+        ('1 + 3', ('4', )),
+
         ('None and 1', ('None', )),
+        ('None and 1 or 3', ('3', )),
     ]
 
     _do_test(expressions)
@@ -514,6 +516,9 @@ def _do_test(expressions, extract=lambda x: x):
 
         def __eq__(self, qst):
             return any(qst == alt for alt in self.alts)
+
+        def __repr__(self):
+            return 'Any of:\n'+'\n'.join(str(alt) for alt in self.alts)
 
     codes = []
     for expr in expressions:

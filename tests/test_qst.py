@@ -18,7 +18,10 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+import pytest
 from xotl.ql.revenge import qst
+
+from sys import version_info as _py_version
 
 
 def test_comparison():
@@ -41,6 +44,14 @@ def test_none_eq():
         None
     )
     assert a == b
+
+
+@pytest.mark.skipif(_py_version < (3, 4),
+                    reason='NameConstant is only valid in Python 3.4+')
+def test_none_eq34():
+    LOAD_NONE = qst.Name('None', qst.Load())
+    NAME_CT = qst.NameConstant(None)
+    assert LOAD_NONE == NAME_CT
 
 
 def test_basic_expressions():

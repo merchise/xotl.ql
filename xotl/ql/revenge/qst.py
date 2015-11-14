@@ -38,6 +38,11 @@ class PyASTNode(object):
         from operator import eq
         res = True
         i = 0
+        # Explicitly deal with NameConstant None.
+        if is_constant(self, None):
+            return other is None or is_constant(other, None) or other == LOAD_NONE
+        elif is_constant(other, None):
+            return self is None or self == LOAD_NONE
         attrs = self._fields
         if not attrs:
             # If no attrs only check for typing, both should have the same
@@ -152,6 +157,16 @@ if _py_version >= (3, 4):
     NONE_CT = NameConstant(None)        # noqa
 else:
     NONE_CT = None
+
+    # Declares the NameConstant object with an impossible value so that tests
+    # for it in __eq__ above don't fail under Python <3.4.
+    class NameConstant(object):
+        value = object()
+
+
+def is_constant(which, value):
+    'Test if which is a NameConstant for `value`.'
+    return isinstance(which, NameConstant) and which.value is value
 
 
 def parse(source, filename='<unknown>', mode='eval'):
