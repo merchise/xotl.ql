@@ -220,7 +220,7 @@ class InstructionSetBuilder(object):
             elif instr.opcode in dis.hasjrel and isinstance(instr.arg, label):
                 target = set[self.labels[instr.arg]].offset
                 instr.arg = arg = target - 3 - instr.offset
-                instr.argval = arg
+                instr.argval = target
                 instr.argrepr = 'to %d' % target
                 targets.append(target)
             elif instr.opcode in dis.hasjrel:
@@ -264,9 +264,9 @@ class Instruction(object):
     @property
     def target(self):
         opcode = self.opcode
-        assert opcode in ANY_JUMPs
         if opcode in dis.hasjrel:
-            return self.argval + self.size + self.offset
+            assert self.argval == self.arg + self.size + self.offset
+            return self.argval
         else:
             assert opcode in dis.hasjabs
             return self.argval
@@ -558,7 +558,9 @@ class Scanner(object):
                     label = jumps.get(instruction.offset)
                     if label is None:
                         if opcode == JUMP_FORWARD:
-                            label = argval  + offset + size
+                            arg = instruction.arg
+                            label = arg  + offset + size
+                            assert label == argval
                         elif opcode in JUMP_IF_OR_POPs and argval > offset:
                             label = argval
                     if label is not None and label != -1:
