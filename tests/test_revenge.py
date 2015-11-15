@@ -546,6 +546,8 @@ GENEXPRS = [
          '(x for x in this if not p(x) and z(x))', )),
 
     '(x for x in this if not p(x) or z(x))',
+    '(x for x in this if not p(x) or z(x) or y(x) or not h(x))',
+    '(x for x in this if not p(x) or (z(x) and y(x) and not h(x)))',
 
     ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
      (
