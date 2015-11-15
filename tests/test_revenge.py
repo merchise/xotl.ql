@@ -328,119 +328,6 @@ def test_real_pypy_normalization():
     assert instructions == expected_program
 
 
-def test_basic_expressions():
-    expressions = [
-        'None',
-        'Ellipsis',
-        'lambda t: None',
-        'lambda t: Ellipsis',
-
-        '[1, d]',
-        '(1, d)',
-        '{1, d}',  # Avoid constants since they're folded by compiler
-
-        'not a',
-        '~a',
-        '+a',
-        '-a',
-
-        'a + b',
-        'a & b | c ^ d',
-        'a << b >> c',
-        'a + b * (d + c)',
-
-        'a in b',
-        'a < b in c > d',
-
-        'a.b.c',
-
-        'a[:]',
-        'a[s]',
-        'a[s:]',
-        'a[s::st]',
-        'a[:e]',
-        'a[:e:st]',
-        'a[s:e]',
-        'a[s:e:st]',
-        'a[::st]',
-        'a[:None]',
-        'a[None:None:None]',
-
-        'a.attr.b[2:3]',
-        'a.attr.b[a[s]:n[l]:s[t]]',
-
-        'c()',
-        'c(a)',
-        'c(b=1)',
-        'c(*args)',
-        'c(**kwargs)',
-        'c(*args, **kwargs)',
-
-        'c(b=bb(a, i, *a, **kws))(a)',
-
-        'c(a, b=1, *args, **kwargs)',
-        'c(a, b=1, *tuple(args), **dict(kwargs))',
-
-        'a[1] + list(b)',
-
-        '{a: b,\n c: d}',
-        'lambda x, y=1, *args, **kw: x + y',
-        '(lambda x: x)(y)',
-    ]
-    _do_test(expressions)
-
-
-@pytest.mark.skipif(not _py3, reason='Syntax only allowed in Python3')
-def test_basic_expressions_py3only():
-    expressions = [
-        '...',   # Ellipsis
-        'a[:...]',
-        'lambda *, a=1, b=2: a + b',
-    ]
-    _do_test(expressions)
-
-
-def test_conditional_expressions():
-    expressions = [
-        # expr, expected source if different
-        'a if x else y',
-        'a and b',
-        'a or b',
-        'a and b and c',
-        'a and (b or c)',
-        'a and b or c',
-        'a or b or c',
-
-        'c(a if x else y)',
-        'lambda : (a if x else y)',
-        '(lambda: x) if x else (lambda y: y)(y)',
-    ]
-    _do_test(expressions)
-
-
-def test_expressions_with_possible_folding():
-    expressions = [
-        # (expression, (alternatives...))
-        ('1 + 3', ('4', )),
-
-        ('None and 1', ('None', )),
-        ('None and 1 or 3', ('3', )),
-    ]
-
-    _do_test(expressions)
-
-
-@pytest.mark.xfail()
-def test_nested_conditional():
-    expressions = [
-        '(a if x else y) if (b if z else c) else (d if o else p)',
-        '(a if x else y) if (b if z else c) else (d if not o else p)',
-        '(a if x else y) if not (b if not z else c) else (d if o else p)',
-        '(a if not x else y) if not (b if not z else c) else (d if not o else p)',
-    ]
-    _do_test(expressions)
-
-
 def test_conditional_a_la_pypy():
     from xotl.ql.revenge import qst
     # >>> dis.dis(compile('x and a or y', '', 'eval'))
@@ -480,132 +367,6 @@ def test_conditional_a_la_pypy():
         print(expected)
 
 
-def test_comprehensions_genexpr():
-    expressions = [
-        # expression, alternatives
-        ('(x for x in this if not p(x) if z(x))',
-         (
-             '(x for x in this if not p(x) and z(x))', )),
-
-        '(x for x in this if not p(x) or z(x))',
-
-        ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
-         (
-             '(x for x in this for y in x if p(y) and not q(x) and z(x))',
-             '(x for x in this for y in x if p(y) if not q(x) and z(x))',
-             '(x for x in this for y in x if p(y) and not q(x) if z(x))',
-         )),
-
-        '((x, y) for x, y in this)',
-        '((a for a in b) for b in (x for x in this))',
-        'calling(a for a in this if a < y)',
-        '(lambda t: None)(a for x in this)',
-    ]
-    _do_test(expressions)
-
-
-def test_comprehensions_dictcomp():
-    expressions = [
-        '{k: v for k, v in this}',
-
-        ('{k: v for k, v in this if not p(k) and p(v)}',
-         (
-             '{k: v for k, v in this if not p(k) if p(v)}', ), ),
-
-        '{s:f(s) for s in this if not p(s) or z(x)}',
-        '{s:v for s in this if p(s) for v in this if not p(v)}',
-        '{s:{a for a in b} for s, b in {x for x in this}}',
-    ]
-    _do_test(expressions)
-
-
-def test_comprehensions_setcomp():
-    expressions = [
-        ('{s for s in this if not p(s) and z(x)}',
-         (
-             # alternatives
-             '{s for s in this if not p(s) if z(x)}', ),),
-
-        '{s for s in this if not p(s) or z(x)}',
-        '{s for s in this if s < y}',
-        '{{a for a in b} for b in {x for x in this}}',
-    ]
-    _do_test(expressions)
-
-
-def test_comprehensions_listcomp():
-    expressions = [
-        # ('[x for x in this if not p(x) if z(x)]',
-        #  (
-        #      '[x for x in this if not p(x) and z(x)]', )),
-
-        # '[x for x in this if not p(x) or z(x)]',
-
-        # '[x for x in this]',
-        # '[x for x in this if p(x)]',
-        # '[a for a in x if a < y]',
-        # '[(x, y) for x, y in this]',
-        # '[[a for a in b] for b in [x for x in this]]',
-        # 'calling([a for a in this if a < y])',
-    ]
-    _do_test(expressions)
-
-
-def _do_test(expressions, extract=lambda x: x):
-    import dis
-    from xotl.ql.revenge import Uncompyled, qst
-
-    class alternatives(object):
-        def __new__(cls, expr, alt):
-            if not isinstance(alt, tuple):
-                alt = (alt, )
-            res = object.__new__(cls)
-            res.alts = [qst.parse(a) for a in alt]
-            res.alts.insert(0, qst.parse(expr))
-            return res
-
-        def __eq__(self, qst):
-            return any(qst == alt for alt in self.alts)
-
-        def __repr__(self):
-            return 'Any of:\n'+'\n'.join(str(alt) for alt in self.alts)
-
-    codes = []
-    for expr in expressions:
-        if isinstance(expr, tuple):
-            expr, alts = expr
-        else:
-            alts = expr
-        codes.append((compile(expr, '<test>', 'eval'),
-                      expr,
-                      alternatives(expr, alts)))
-    for code, expr, expected in codes:
-        u = None
-        try:
-            u = Uncompyled(code)
-            assert u.safe_ast
-            assert expected == u.qst  # compare alternatives first...
-            assert compile(u.qst, '', 'eval')  # Ensure we can compile the QST
-        except:
-            print()
-            print(expr)
-            dis.dis(code)
-            if u:
-                print(u.tokens)
-            if u and u.safe_ast:
-                print(u.safe_ast)
-            print('Result:')
-            if u and u.safe_qst:
-                print(u.safe_qst)
-            elif u:
-                print('Missing safe qst')
-            else:
-                print('None')
-            print('Expected:')
-            print(expected)
-            raise
-
-
 def test_embedded():
     import dis
     from xotl.ql.revenge import Uncompyled
@@ -627,3 +388,218 @@ def test_embedded():
             if u and u.safe_ast:
                 print(u.safe_ast)
             raise
+
+
+class Alternatives(object):
+    def __new__(cls, expr, alt):
+        from xotl.ql.revenge import qst
+        if not isinstance(alt, tuple):
+            alt = (alt, )
+        res = object.__new__(cls)
+        res.alts = [qst.parse(a) for a in alt]
+        res.alts.insert(0, qst.parse(expr))
+        return res
+
+    def __eq__(self, qst):
+        return any(qst == alt for alt in self.alts)
+
+    def __repr__(self):
+        return 'Any of:\n'+'\n'.join(str(alt) for alt in self.alts)
+
+
+def _build_test(expr):
+    if isinstance(expr, tuple):
+        expr, alts = expr
+    else:
+        alts = expr
+
+    def test_expr():
+        from xotl.ql.revenge import Uncompyled
+        sample = expr  # make local so that it appears in error reports.
+        code = compile(sample, '', 'eval')
+        expected = Alternatives(sample, alts)
+        u = Uncompyled(code)
+        result = u.qst
+        result_ = str(result)
+        assert expected == result
+        assert compile(result, '', 'eval')
+        assert result_
+    return test_expr
+
+
+def _inject_tests(exprs, fmt, wrap=lambda x: x):
+    for i, expr in enumerate(exprs):
+        _test = wrap(_build_test(expr))
+        globals()[fmt % i] = _test
+
+
+BASIC_EXPRESSIONS = [
+    'None',
+    'Ellipsis',
+    'lambda t: None',
+    'lambda t: Ellipsis',
+
+    '[1, d]',
+    '(1, d)',
+    '{1, d}',  # Avoid constants since they're folded by compiler
+
+    'not a',
+    '~a',
+    '+a',
+    '-a',
+
+    'a + b',
+    'a & b | c ^ d',
+    'a << b >> c',
+    'a + b * (d + c)',
+
+    'a in b',
+    'a < b in c > d',
+
+    'a.b.c',
+
+    'a[:]',
+    'a[s]',
+    'a[s:]',
+    'a[s::st]',
+    'a[:e]',
+    'a[:e:st]',
+    'a[s:e]',
+    'a[s:e:st]',
+    'a[::st]',
+    'a[:None]',
+    'a[None:None:None]',
+
+    'a.attr.b[2:3]',
+    'a.attr.b[a[s]:n[l]:s[t]]',
+
+    'c()',
+    'c(a)',
+    'c(b=1)',
+    'c(*args)',
+    'c(**kwargs)',
+    'c(*args, **kwargs)',
+
+    'c(b=bb(a, i, *a, **kws))(a)',
+
+    'c(a, b=1, *args, **kwargs)',
+    'c(a, b=1, *tuple(args), **dict(kwargs))',
+
+    'a[1] + list(b)',
+
+    '{a: b,\n c: d}',
+    'lambda x, y=1, *args, **kw: x + y',
+    '(lambda x: x)(y)',
+]
+_inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
+
+BASIC_EXPRESSIONS_PY3 = [
+    '...',   # Ellipsis
+    'a[:...]',
+    'lambda *, a=1, b=2: a + b',
+]
+_inject_tests(
+    BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d',
+    pytest.mark.skipif(not _py3, reason='Syntax only allowed in Python3'))
+
+
+CONDITIONAL_EXPRESSIONS = [
+    # expr, expected source if different
+    'a if x else y',
+    'a and b',
+    'a or b',
+    'a and b and c',
+    'a and (b or c)',
+    'a and b or c',
+    'a or b or c',
+
+    'c(a if x else y)',
+    'lambda : (a if x else y)',
+    '(lambda: x) if x else (lambda y: y)(y)',
+]
+_inject_tests(CONDITIONAL_EXPRESSIONS, 'test_conditional_expressions_%d')
+
+
+CONDITIONAL_EXPRESSIONS_FOLDED = [
+    # (expression, (alternatives...))
+    ('1 + 3', ('4', )),
+
+    ('None and 1', ('None', )),
+    ('None and 1 or 3', ('3', )),
+]
+_inject_tests(CONDITIONAL_EXPRESSIONS_FOLDED,
+              'test_expressions_with_possible_folding_%d')
+
+NESTED_CONDITIONAL_EXPRS = [
+    '(a if x else y) if (b if z else c) else (d if o else p)',
+    '(a if x else y) if (b if z else c) else (d if not o else p)',
+    '(a if x else y) if not (b if not z else c) else (d if o else p)',
+    '(a if not x else y) if not (b if not z else c) else (d if not o else p)',
+]
+_inject_tests(NESTED_CONDITIONAL_EXPRS, 'test_nested_conditional_%d',
+              pytest.mark.xfail())
+
+
+GENEXPRS = [
+    ('(x for x in this if not p(x) if z(x))',
+     (
+         '(x for x in this if not p(x) and z(x))', )),
+
+    '(x for x in this if not p(x) or z(x))',
+
+    ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
+     (
+         '(x for x in this for y in x if p(y) and not q(x) and z(x))',
+         '(x for x in this for y in x if p(y) if not q(x) and z(x))',
+         '(x for x in this for y in x if p(y) and not q(x) if z(x))',
+     )),
+
+    '((x, y) for x, y in this)',
+    '((a for a in b) for b in (x for x in this))',
+    'calling(a for a in this if a < y)',
+    '(lambda t: None)(a for x in this)',
+]
+_inject_tests(GENEXPRS, 'test_comprehensions_genexpr_%d')
+
+
+DICTCOMPS = [
+    '{k: v for k, v in this}',
+
+    ('{k: v for k, v in this if not p(k) and p(v)}',
+     (
+         '{k: v for k, v in this if not p(k) if p(v)}', ), ),
+
+    '{s:f(s) for s in this if not p(s) or z(x)}',
+    '{s:v for s in this if p(s) for v in this if not p(v)}',
+    '{s:{a for a in b} for s, b in {x for x in this}}',
+]
+_inject_tests(DICTCOMPS, 'test_comprehensions_dictcomp_%d')
+
+SETCOMPS = [
+    ('{s for s in this if not p(s) and z(x)}',
+     (
+         # alternatives
+         '{s for s in this if not p(s) if z(x)}', ),),
+
+    '{s for s in this if not p(s) or z(x)}',
+    '{s for s in this if s < y}',
+    '{{a for a in b} for b in {x for x in this}}',
+]
+_inject_tests(SETCOMPS, 'test_comprehensions_setcomp_%d')
+
+
+LISTCOMPS = [
+    ('[x for x in this if not p(x) if z(x)]',
+     (
+         '[x for x in this if not p(x) and z(x)]', )),
+
+    '[x for x in this if not p(x) or z(x)]',
+
+    '[x for x in this]',
+    '[x for x in this if p(x)]',
+    '[a for a in x if a < y]',
+    '[(x, y) for x, y in this]',
+    '[[a for a in b] for b in [x for x in this]]',
+    'calling([a for a in this if a < y])',
+]
+#  _inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
