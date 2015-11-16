@@ -22,103 +22,86 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-
-from xoutil.eight.meta import metaclass
-
-
-_unary_operators = {
-    '__pos__': '+A',
-    '__neg__': '-A',
-    '__abs__': '|A|',
-    '__invert__': '~A',
-}
-
-_binary_operators = {
-    '__add__': 'A+B',
-    '__sub__': 'A-B',
-    '__mul__': 'A*B',
-    '__div__': 'A/B',
-    '__truediv__': 'A/B',
-    '__floordiv__': 'A//B',
-    '__pow__': 'A**B',
-    '__mod__': 'A%B',
-    '__divmod__': 'A/%B',
-    '__lshift__': 'A<<B',
-    '__rshift__': 'A>>B',
-    '__and__': 'A&B',
-    '__xor__': 'A^B',
-    '__or__': 'A|B'
-}
-
-_rbinary_operators = {
-    '__r{}__'.format(attr.strip('_')): val
-    for attr, val in _binary_operators.items()
-}
-
-# Non reversible
-_binary_operators.update({
-    '__getitem__': 'A[B]',
-})
-
-
-def _expression_type(name, bases, attrs):
-    for attr, val in _binary_operators.items():
-        operator = (lambda v: lambda self, other: res((v, self, other)))(val)
-        operator.__name__ = attr
-        attrs[attr] = operator
-    for attr, val in _rbinary_operators.items():
-        operator = (lambda v: lambda self, other: res((v, other, self)))(val)
-        operator.__name__ = attr
-        attrs[attr] = operator
-    for attr, val in _unary_operators.items():
-        operator = (lambda v: lambda self: res((v, self)))(val)
-        operator.__name__ = attr
-        attrs[attr] = operator
-    res = type(name, bases, attrs)
-    return res
-
-
-class Expression(object):
-    pass
-
-
-class Expr(metaclass(_expression_type), Expression):
-    def __init__(self, val=None):
-        self.val = val
-
-    def __repr__(self):
-        return '<expr: {0!r}>'.format(self.val)
-
-    def __call__(self, *args, **kwargs):
-        return Expr(('F(...)', self, args, kwargs))
-
-
-def Var(name):
-    return Expr(('var', name))
-
-
-def Name(name):
-    return Expr(('token', name))
+import ast
 
 
 def detect_names(expr, debug=False):
-    trap = trapper()
-    res = eval(expr, trap)
-    if not isinstance(res, Expression):
-        raise ValueError('Invalid expression')
-    if not debug:
-        return trap.keys()
-    else:
-        return trap.keys(), res
+    '''Detect the (variable) names that are used free in the 'expr'.
+
+    Examples::
+
+        >>> detect_names('all(x for x in this for y in those if p(y)'
+        ...              '      for z in y)')
+        {'this', 'those', 'p', 'all'}
+
+        >>> detect_names('(lambda x: lambda y: x + y)(x)')
+
+    '''
+    tree = ast.parse(expr, '', 'eval')
+    detector = NameDetectorVisitor()
+    detector.visit(tree.body)  # Go directly to the body
+    return detector.freevars
 
 
-class trapper(dict):
-    def __getitem__(self, key):
-        try:
-            return dict.__getitem__(self, key)
-        except KeyError:
-            if not key.startswith('__'):
-                self[key] = res = Name(key)
-                return res
+class NameDetectorVisitor(ast.NodeVisitor):
+    def _with_new_frame(f=None):
+        def method(self, node):
+            self.push_stack_frame()
+            if f is None:
+                self.generic_visit(node)
             else:
-                raise
+                f(self, node)
+            self.pop_stack_frame()
+        return method
+
+    def __init__(self):
+        self.frame = frame = set()
+        self.stack = [frame]
+        self.freevars = set()
+
+    def push_stack_frame(self):
+        self.frame = frame = set()
+        self.stack.append(frame)
+
+    def pop_stack_frame(self):
+        return self.stack.pop(-1)
+
+    def visit_Name(self, node):
+        if isinstance(node.ctx, (ast.Store, ast.Param)):
+            self.bind_variable(node.id)
+        elif node.id not in self.bound_variables:
+            self.report_free_variable(node.id)
+        else:
+            self.report_bound_variable(node.id)
+
+    @property
+    def bound_variables(self):
+        return {name for frame in self.stack for name in frame}
+
+    def bind_variable(self, name):
+        self.frame.add(name)
+
+    def report_free_variable(self, name):
+        self.freevars.add(name)
+
+    def report_bound_variable(self, name):
+        pass
+
+    visit_Lambda = _with_new_frame()
+
+    @_with_new_frame
+    def visit_GeneratorExp(self, node):
+        # Invert the order of fields so that bound variables are properly
+        # detected in the current frame.
+        for comp in node.generators:
+            self.visit(comp)
+        self.visit(node.elt)
+
+    visit_SetComp = visit_ListComp = visit_GeneratorExp
+
+    @_with_new_frame
+    def visit_DictComp(self, node):
+        for comp in node.comprehesions:
+            self.visit(comp)
+        self.visit(node.key)
+        self.visit(node.value)
