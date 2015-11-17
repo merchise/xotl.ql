@@ -47,8 +47,6 @@ class Type(object):
 class Empty(Type):
     '''Any empty collection.
 
-    As a special case Undefined is considered an empty collection.
-
     '''
     def __new__(cls):
         '''Create the singleton instance of Empty.
@@ -276,7 +274,7 @@ class Operator(Type):
     '''Any operator.
 
     Allows to represent the application of an operator deferring the
-    application of it.
+    application.
 
     Useful to represent applications of an operator over a spine::
 

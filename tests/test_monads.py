@@ -19,7 +19,7 @@ from __future__ import (division as _py3_division,
 
 
 from xoutil import Undefined
-from xotl.ql._monads import Empty, Join, Map, Unit, Cons
+from xotl.ql.translation._monads import Empty, Join, Map, Unit, Cons, Foldr
 
 
 def test_empty():
@@ -36,3 +36,11 @@ def test_simple_query():
     query = Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
     result = query()  # execute the query naively
     assert result.aslist() == [x for x in range(1, 50) if predicate(x)]
+
+
+def test_foldr():
+    from functools import reduce
+    import operator
+    assert reduce(operator.add, Cons(1, [2]).asiter(), 0) == 3
+    assert Foldr(operator.add, 0, Cons(1, [2]))() == 3
+    assert reduce(Foldr(operator.add), Cons(1, [2])) == 3

@@ -4,13 +4,13 @@
  Monads Comprehension
 ======================
 
-.. automodule:: xotl.ql._monads
+.. automodule:: xotl.ql.translation._monads
 
 
 Algebra operator as abstractions
 ================================
 
-To stress the idea of abstraction of algorithms notice that engines may
+To stress the idea of abstraction of algorithms, notice that engines may
 proceed differently to obtain the result of |map f l|.
 
 If we can sensibly split `l`:math: into `l_1, l_2, ..., l_n`:math: then:
