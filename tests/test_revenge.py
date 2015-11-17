@@ -18,6 +18,7 @@ from __future__ import (division as _py3_division,
 
 import sys
 _py3 = sys.version_info >= (3, 0)
+_pypy = 'PyPy' in sys.version
 del sys
 
 import pytest
@@ -546,8 +547,6 @@ GENEXPRS = [
          '(x for x in this if not p(x) and z(x))', )),
 
     '(x for x in this if not p(x) or z(x))',
-    '(x for x in this if not p(x) or z(x) or y(x) or not h(x))',
-    '(x for x in this if not p(x) or (z(x) and y(x) and not h(x)))',
 
     ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
      (
@@ -562,6 +561,14 @@ GENEXPRS = [
     '(lambda t: None)(a for x in this)',
 ]
 _inject_tests(GENEXPRS, 'test_comprehensions_genexpr_%d')
+
+
+GENEXPRS_NOT_PYPY = [
+    '(x for x in this if not p(x) or z(x) or y(x) or not h(x))',
+    '(x for x in this if not p(x) or (z(x) and y(x) and not h(x)))',
+]
+_inject_tests(GENEXPRS_NOT_PYPY, 'test_comprehensions_genexpr2_%d',
+              pytest.mark.xfail(_pypy, reason='Pypy support not completed'))
 
 
 DICTCOMPS = [
