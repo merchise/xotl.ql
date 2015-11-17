@@ -671,8 +671,7 @@ class QstBuilder(GenericASTTraversal, object):
             #
             # The items in between may be partially constructed
             # `qst.comprehension` (the result of comp_for)
-            eltmark, elt = items.pop(0)
-            assert isinstance(eltmark, tuple) and eltmark[0] == 'elt'
+            elt = items.pop(0)
             iterable = _ensure_compilable(items.pop())
             assert getattr(iterable, 'id', '').startswith('.')
             target = _ensure_compilable(items.pop())
@@ -765,7 +764,7 @@ class QstBuilder(GenericASTTraversal, object):
     @take_one
     def n_comp_body_exit(self, node, children=None):
         elt, = children
-        return (('elt', node), _ensure_compilable(elt))
+        return _ensure_compilable(elt)
 
     @pushtostack
     @take_two
