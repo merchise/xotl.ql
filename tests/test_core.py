@@ -16,42 +16,42 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_import)
 
+from xotl.ql.core import this, Universe, normalize_query
+
 
 def test_this_uniqueness():
-    from xotl.ql import this
-    from xotl.ql.core import universe
-
-    assert this is universe()
+    assert this is Universe()
     assert this is this.whatever
     assert this is this[:90]
 
 
 def test_this_iterable():
-    from xotl.ql import this
     try:
         iter(this)
     except TypeError:
         assert False, 'this should be iterable'
 
 
-def test_queries():
-    from xotl.ql import this
-    # Test that no error happens at the query expression definition time.
-    (e for e in this)
-    ((x for x in e) for e in this)
-    (e for e in (x for x in this))
-    (e for e in this if e(y for y in this))
-    (e for e in this if any(x for x in e))
-    (x for x, y in this)
+def _build_test(generator):
+    def test_expr():
+        query = normalize_query(generator)
+        assert query.qst
 
-    # Rather invalid but syntactically correct in Python
-    (x for x[1] in this)     # noqa
-    (x for x.y in this)      # noqa
 
-    # Invalid in Python syntax
-    try:
-        eval('(x for x + 1 in this)')
-    except SyntaxError:
-        pass
-    else:
-        assert False, 'In Python you cannot assign to an expression'
+def _inject_tests(expressions, fmt, mark=lambda x: x):
+    for index, expr in enumerate(expressions):
+        test = mark(_build_test(expr))
+        globals()[fmt % index] = test
+
+
+QUERIES = [
+    (e for e in this),
+    ((x for x in e) for e in this),
+    (e for e in (x for x in this)),
+    (e for e in this if e(y for y in this)),
+    (e for e in this if any(x for x in e)),
+    (x for x, y in this),
+    (x for x[1] in this),     # noqa
+    (x for x.y in this),      # noqa
+]
+_inject_tests(QUERIES, 'test_query_%d')

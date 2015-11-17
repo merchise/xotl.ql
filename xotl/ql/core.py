@@ -24,7 +24,7 @@ from __future__ import (division as _py3_division,
 from xotl.ql import interfaces
 
 
-class universe(object):
+class Universe(object):
     '''The class of the `this`:obj: object.
 
     The `this` object is simply a name from which objects can be drawn in a
@@ -34,7 +34,7 @@ class universe(object):
     def __new__(cls):
         res = getattr(cls, 'instance', None)
         if not res:
-            res = super(universe, cls).__new__(cls)
+            res = super(Universe, cls).__new__(cls)
             cls.instance = res
         return res
 
@@ -51,7 +51,7 @@ class universe(object):
         raise StopIteration
     __next__ = next
 
-this = universe()
+this = Universe()
 
 
 class QueryObject(object):
