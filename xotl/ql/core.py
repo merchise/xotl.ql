@@ -21,6 +21,9 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+from xotl.ql import interfaces
+
+
 class universe(object):
     '''The class of the `this`:obj: object.
 
@@ -51,11 +54,21 @@ class universe(object):
 this = universe()
 
 
+class QueryObject(object):
+    def __init__(self, qst, expression=None):
+        from weakref import weakref
+        self.qst = qst
+        self.expression = weakref.ref(expression) if expression else None
+
+
 def get_query_object(generator, **kwargs):
     '''Get the query object from a query expression.
 
     '''
-    pass
+    from xotl.ql.revenge import Uncompyled
+    qst = Uncompyled(generator)
+    return QueryObject(qst)
+
 
 # Alias to the old API.
 these = get_query_object
@@ -73,8 +86,7 @@ def normalize_query(which, **kwargs):
     if isinstance(which, GeneratorType):
         return get_query_object(which, **kwargs)
     else:
-        from xotl.ql.interfaces import QueryObject
-        if not all(hasattr(which, attr) for attr in QueryObject.names()):
+        if not isinstance(which, interfaces.QueryObject):
             raise TypeError('Query object expected, but object provided '
                             'is not: %r' % type(which))
         return which
