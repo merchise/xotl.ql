@@ -176,3 +176,22 @@ def parse(source, filename='<unknown>', mode='eval'):
     assert mode == 'eval'
     res = pyast.parse(source, filename, mode)
     return Expression.from_pyast(res)    # noqa
+
+
+def ensure_compilable(st):
+    visitor = SetAttributesVisitor(lineno=1, col_offset=0)
+    visitor.visit(st)
+    return st
+
+
+class SetAttributesVisitor(pyast.NodeVisitor):
+    def __init__(self, **attrs):
+        self.attrs = attrs
+
+    def generic_visit(self, node):
+        from xoutil import Unset
+        get = lambda a: getattr(node, a, Unset)
+        for attr, val in self.attrs.items():
+            if get(attr) is Unset:
+                setattr(node, attr, val)
+        return super(SetAttributesVisitor, self).generic_visit(node)

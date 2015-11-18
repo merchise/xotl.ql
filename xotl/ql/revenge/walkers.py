@@ -45,20 +45,10 @@ take_two = take_n(2)
 take_three = take_n(3)
 
 
-def _ensure_compilable(astnode):
-    if isinstance(astnode, qst.PyASTNode):
-        attrs = getattr(astnode, '_attributes', [])
-        if 'lineno' in attrs:
-            astnode.lineno = 1
-        if 'col_offset' in attrs:
-            astnode.col_offset = 0
-    return astnode
-
-
 def pushtostack(f):
     @pushto('_stack')
     def inner(self, *args, **kw):
-        return _ensure_compilable(f(self, *args, **kw))
+        return f(self, *args, **kw)
     return inner
 
 
@@ -260,7 +250,7 @@ class QstBuilder(GenericASTTraversal, object):
                     # name, so slices must deal with this return value.
                     assert value is None
                     value = qst.Name('None', qst.Load())
-            return _ensure_compilable(cls(value))
+            return cls(value)
 
         load_const = self._ensure_child_token(node)
         value = load_const.argval
@@ -449,20 +439,20 @@ class QstBuilder(GenericASTTraversal, object):
         ndefaults, nkwonly = self._stack.pop()
         defaults = []
         for _ in range(ndefaults):
-            defaults.append(_ensure_compilable(items.pop()))
+            defaults.append(items.pop())
         kwonly = []
         kwdefaults = []
         for i in range(nkwonly):
             kw = items.pop()   # we get a qst.keyword
-            kwonly.append(_ensure_compilable(qst.arg(kw.arg, None)))
+            kwonly.append(qst.arg(kw.arg, None))
             kwdefaults.append(kw.value)
         body = items.pop()
-        args = [_ensure_compilable(a) for a in items.pop()]
+        args = [a for a in items.pop()]
         vararg = items.pop()
         kwarg = items.pop()
         if _py3:
             # Recast args (they were qst.Name) as qst.arg in Python 3
-            args = [_ensure_compilable(qst.arg(arg.id, None)) for arg in args]
+            args = [qst.arg(arg.id, None) for arg in args]
             if _py_version < (3, 4):
                 # Before Python 3,4 the vararg and kwarg were not enclosed
                 # inside qst.arg and their annotations followed them in the
@@ -470,13 +460,13 @@ class QstBuilder(GenericASTTraversal, object):
                 arguments = qst.arguments(args, vararg, None, kwonly, kwarg,
                                           None, defaults, kwdefaults)
             else:
-                vararg = _ensure_compilable(qst.arg(vararg, None) if vararg else None)
-                kwarg = _ensure_compilable(qst.arg(kwarg, None) if kwarg else None)
+                vararg = qst.arg(vararg, None) if vararg else None
+                kwarg = qst.arg(kwarg, None) if kwarg else None
                 arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
                                           kwarg, defaults)
         else:
             arguments = qst.arguments(args, vararg, kwarg, defaults)
-        return qst.Lambda(_ensure_compilable(arguments), body)
+        return qst.Lambda(arguments, body)
 
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
@@ -672,22 +662,18 @@ class QstBuilder(GenericASTTraversal, object):
             # The items in between may be partially constructed
             # `qst.comprehension` (the result of comp_for)
             elt = items.pop(0)
-            iterable = _ensure_compilable(items.pop())
+            iterable = items.pop()
             assert getattr(iterable, 'id', '').startswith('.')
-            target = _ensure_compilable(items.pop())
+            target = items.pop()
             ifs = []
             while items and not isinstance(items[-1], qst.pyast.comprehension):
                 item = items.pop()
-                ifs.append(_ensure_compilable(item))
+                ifs.append(item)
             comprehensions = list(reversed(items)) if items else []
-            comprehensions.insert(0, _ensure_compilable(
-                qst.comprehension(target, iterable, ifs)
-            ))
+            comprehensions.insert(0, qst.comprehension(target, iterable, ifs))
             # XXX: Wrap it in an Expression since it will be unwrapped by
             # _walk_innerfunc
-            return qst.Expression(_ensure_compilable(
-                qstClass(elt, comprehensions)
-            ))
+            return qst.Expression(qstClass(elt, comprehensions))
         return pushtostack(take_until_sentinel(n_compfunc_exit, sentinel))
 
     @pushsentinel
@@ -726,16 +712,14 @@ class QstBuilder(GenericASTTraversal, object):
         # At this point the items should be [elt, .... , designator, iterable]
         # just like at the top level generator... the items in between are
         # conditions or other comprehensions we should leave.
-        iterable = _ensure_compilable(items.pop())
-        target = _ensure_compilable(items.pop())
+        iterable = items.pop()
+        target = items.pop()
         ifs = []
         # items should have more than one item to have any ifs or
         # inner generators.
         while len(items) > 1 and not isinstance(items[-1], qst.pyast.comprehension):
-            ifs.append(_ensure_compilable(items.pop()))
-        self._stack.append(_ensure_compilable(
-            qst.comprehension(target, iterable, ifs)
-        ))
+            ifs.append(items.pop())
+        self._stack.append(qst.comprehension(target, iterable, ifs))
         for which in reversed(items):
             self._stack.append(which)
 
@@ -750,21 +734,16 @@ class QstBuilder(GenericASTTraversal, object):
         # 'expr' but leave others as is.  Since `items` is the
         # stack-pop-order, i.e ``[...., expr]`` we need to inserted them in
         # the reverse order.
-        _ec = _ensure_compilable
         for index, item in enumerate(reversed(items)):
             if index == 0:
-                item = _ensure_compilable(
-                    qst.UnaryOp(
-                        _ec(qst.Not()), _ec(item)
-                    )
-                )
+                item = qst.UnaryOp(qst.Not(), item)
             self._stack.append(item)
 
     @pushtostack
     @take_one
     def n_comp_body_exit(self, node, children=None):
         elt, = children
-        return _ensure_compilable(elt)
+        return elt
 
     @pushtostack
     @take_two
@@ -776,7 +755,7 @@ class QstBuilder(GenericASTTraversal, object):
         # `n_dictcomp_func_exit` method, but packed, but is is easy to unpack
         # them.
         key, val = children
-        return {'key': _ensure_compilable(key), 'val': _ensure_compilable(val)}
+        return {'key': key, 'val': val}
 
     @pushsentinel
     def n_build_list(self, node):
@@ -812,20 +791,14 @@ class QstBuilder(GenericASTTraversal, object):
         #
         #  It wraps the pattern if not ... or ... in a comprehension.
         #
-        _ec = _ensure_compilable
         false = items.pop()
         true = items.pop()
-        self._stack.append(_ensure_compilable(
+        self._stack.append(
             qst.BoolOp(
-                _ec(qst.Or()),
-                [
-                    _ec(qst.UnaryOp(
-                        _ec(qst.Not()), _ensure_compilable(false)
-                    )),
-                    _ensure_compilable(true)
-                ]
+                qst.Or(),
+                [qst.UnaryOp(qst.Not(), false), true]
             )
-        ))
+        )
         for item in reversed(items):
             self._stack.append(item)
 
@@ -841,20 +814,19 @@ class QstBuilder(GenericASTTraversal, object):
         #
         #  It wraps the pattern if not ... or ... in a comprehension.
         #
-        _ec = _ensure_compilable
         true = items.pop()
         false = items.pop()
-        self._stack.append(_ensure_compilable(
+        self._stack.append(
             qst.BoolOp(
-                _ec(qst.Or()),
+                qst.Or(),
                 [
-                    _ensure_compilable(true),
-                    _ec(qst.UnaryOp(
-                        _ec(qst.Not()), _ensure_compilable(false)
-                    )),
+                    true,
+                    qst.UnaryOp(
+                        qst.Not(), false
+                    ),
                 ]
             )
-        ))
+        )
         for item in reversed(items):
             self._stack.append(item)
 

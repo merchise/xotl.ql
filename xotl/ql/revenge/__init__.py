@@ -84,9 +84,10 @@ class Uncompyled(object):   # TODO:  Find better name
 
     @property
     def qst(self):
+        from .qst import ensure_compilable
         builder = self.walker
         builder.preorder(self.ast)
-        return builder.stop()
+        return ensure_compilable(builder.stop())
 
     @property
     def safe_qst(self):
