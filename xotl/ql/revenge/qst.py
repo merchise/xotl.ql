@@ -73,15 +73,18 @@ class PyASTNode(object):
 
     def __str__(self):
         def r(who):
-            if isinstance(who, PyASTNode):
+            if isinstance(who, pyast.AST):
                 return '<ast: %s>' % type(who).__name__
             else:
                 return repr(who)
-        res = [r(self)]
-        children = [(getattr(self, field), field, 1) for field in self._fields]
+        res = []
+        children = [(self, None, 0)]
         while children:
             child, field, depth = children.pop(0)
-            res.append(' ' * 3 * depth + '{}: '.format(field) + r(child))
+            if field:
+                res.append(' ' * 3 * depth + '{}: '.format(field) + r(child))
+            else:
+                res.append(' ' * 3 * depth + r(child))
             fields = getattr(child, '_fields', [])
             grandchildren = [
                 (getattr(child, f), f, depth + 1) for f in fields
