@@ -360,7 +360,10 @@ class Union(Type):
             return Cons(x, Union(xs, ys)())
 
     def __iter__(self):
-        raise TypeError('Partial union is not iterable')
+        if self.xs is Undefined or self.ys is Undefined:
+            raise TypeError('Partial union is not iterable')
+        else:
+            return iter(self())
 
 
 class Intersection(Type):
