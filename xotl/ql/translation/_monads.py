@@ -37,6 +37,12 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 from xoutil import Undefined
+from xotl.ql import qst
+
+import sys
+_py_version = sys.version_info
+_py3 = _py_version >= (3, 0)
+del sys
 
 
 class Type(object):
@@ -363,7 +369,7 @@ class Union(Type):
         if self.xs is Undefined or self.ys is Undefined:
             raise TypeError('Partial union is not iterable')
         else:
-            return iter(self())
+            return self().asiter()
 
 
 class Intersection(Type):
@@ -495,3 +501,136 @@ class SortedCons(Type):
 
 # MC is a denotational semantics of the comprehension syntax in the sense it
 # assigns a meaning to every comprehension expression.
+
+# NOTE: Since MC implies building 'lambdas' we split the algorithm in a
+# syntactical transformation from generators to function calls, and then
+# compile the function-calls syntax and execute it to the get the actual
+# result.
+#
+
+def _mc(stree):
+    def Call(f, a=None):
+        from xotl.ql import qst
+        if a:
+            return qst.Call(f, [a], [], None, None)
+        else:
+            return qst.Call(f, [], [], None, None)
+
+    class generator(object):
+        def __init__(self, target, iter):
+            self.target = target
+            self.iter = iter
+
+    class genexpr(object):
+        def __init__(self, elt, *exprs):
+            self.elt = elt
+            self.exprs = exprs
+
+        @classmethod
+        def from_qst(cls, qst):
+            elt = qst.elt
+            exprs = []
+            for gen in qst.generators:
+                exprs.append(generator(gen.target, gen.iter))
+                exprs.extend(gen.ifs)
+            return cls(elt, *exprs)
+
+    def _build_lambda(target, body):
+        if isinstance(target, qst.pyast.Name):
+            params = [target.id]
+        else:
+            assert isinstance(target, qst.pyast.Tuple)
+            params = [t.id for t in target.elts]
+        return qst.Lambda(
+            _make_arguments(*params),
+            body
+        )
+
+    def _mc_routine(node):
+        if isinstance(node, qst.pyast.GeneratorExp):
+            return _mc_routine(genexpr.from_qst(node))
+        elif isinstance(node, genexpr):
+            elt = node.elt
+            exprs = node.exprs
+            if not exprs:
+                # MC [e | ] -> Unit(MC e)
+                return Call(
+                    qst.Name('Unit', qst.Load()),
+                    _mc_routine(elt)
+                )
+            else:
+                if len(exprs) > 1:
+                    # MC [e | q, p] = join(MC [MC [e|p] | q])
+                    q, p = exprs[:-1], exprs[-1]
+                    return Call(
+                        qst.Name('Join', qst.Load()),
+                        _mc_routine(
+                            genexpr(_mc_routine(genexpr(elt, p)), *q)
+                        )
+                    )
+                else:
+                    g = exprs[0]
+                    if isinstance(g, generator):
+                        # MC [e | x <- q]  = map (lambda x: MC e) (MC q)
+                        return Call(
+                            Call(
+                                qst.Name('Map', qst.Load()),
+                                _build_lambda(g.target, elt)
+                            ),
+                            _mc_routine(g.iter)
+                        )
+                    else:
+                        # MC [e | p]  = if MC p then MC [e | ] else Empty()
+                        else_ = Call(qst.Name('Empty', qst.Load()))
+                        then_ = _mc_routine(genexpr(elt))
+                        cond_ = _mc_routine(g)
+                        return qst.IfExp(cond_, then_, else_)
+        elif isinstance(node, (list, tuple)):
+            cls = type(node)
+            return cls(_mc_routine(item) for item in node)
+        elif isinstance(node, (qst.pyast.Name, qst.pyast.Num, qst.pyast.Str,
+                               qst.pyast.Ellipsis, qst.pyast.boolop,
+                               qst.pyast.operator, qst.pyast.unaryop,
+                               qst.pyast.cmpop, qst.pyast.expr_context)):
+            return node
+        elif isinstance(node, qst.pyast.AST):
+            # TODO: Walk inside other structures that may contain a
+            # comprehension.
+            fields = node._fields
+            cls = type(node)
+            res = cls()
+            for field in fields:
+                setattr(res, field, _mc_routine(getattr(node, field)))
+            return res
+        elif node is None:
+            return None
+        elif isinstance(node, builtins_types):
+            return node
+        else:
+            assert False
+
+    return qst.ensure_compilable(_mc_routine(stree))
+
+
+def _make_arguments(*names):
+    from xotl.ql import qst
+    if _py3:
+        if _py_version >= (3, 4):
+            return qst.arguments(
+                [qst.arg(name, None) for name in names],
+                None, [], [], None, []
+            )
+        else:
+            return qst.arguments(
+                [qst.arg(name, None) for name in names],
+                None, None, [], None, None, [], []
+            )
+    else:
+        return qst.arguments(
+            [qst.Name(name, qst.Param()) for name in names],
+            None, None, []
+        )
+
+
+from xoutil.eight import string_types, integer_types, class_types, binary_type
+builtins_types = string_types + integer_types + class_types + (binary_type, )
