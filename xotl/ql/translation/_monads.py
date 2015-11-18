@@ -36,6 +36,9 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
+import operator
+from functools import total_ordering
+
 from xoutil import Undefined
 from xotl.ql import qst
 
@@ -484,6 +487,56 @@ class SortedCons(Type):
             else:
                 return Cons(y, SortedCons(self.order, x, ys)())
 
+
+@total_ordering
+class InfinityType(object):
+    _positive = None
+    _negative = None
+
+    def __new__(cls, sign):
+        if sign < 0:
+            res = cls._negative
+            if not res:
+                cls._negative = res = object.__new__(cls)
+                res.sign = -1
+        else:
+            res = cls._positive
+            if not res:
+                cls._positive = res = object.__new__(cls)
+                res.sign = 1
+        return res
+
+    def __init__(self, sign):
+        self.sign = -1 if sign < 0 else 1
+
+    def __lt__(self, other):
+        from numbers import Number
+        if isinstance(other, Number):
+            return self.sign < 0   # True iff -Infinity
+        elif isinstance(other, InfinityType):
+            return self.sign < other.sign
+        else:
+            raise TypeError('Incomparable types')
+
+    def __eq__(self, other):
+        from numbers import Number
+        if isinstance(other, Number):
+            return False
+        elif isinstance(other, InfinityType):
+            return self.sign == other.sign
+        else:
+            raise TypeError('Incomparable types')
+
+    def __neg__(self):
+        return type(self)(-self.sign)
+
+Infinity = InfinityType(+1)
+
+Min = Foldr(lambda x, y: x if x < y else y, Infinity)
+Max = Foldr(lambda x, y: x if x > y else y, -Infinity)
+Sum = lambda s, initial=0: Foldr(lambda x, y: x + y, initial, s)
+All = Foldr(operator.and_, True)
+Any = Foldr(operator.or_, False)
 
 # Translation from comprehension syntax to monadic constructors
 #

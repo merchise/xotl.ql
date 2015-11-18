@@ -20,6 +20,7 @@ from __future__ import (division as _py3_division,
 _avoid_modules = ('xotl.ql.*',
                   'xoutil.*',
                   'py.*',
+                  'IPython.*',
 
                   # The name of the builtins module is different in Pythons
                   # versions.
@@ -34,10 +35,10 @@ def defined(who, modules):
     package.
 
     '''
-    try:
-        mod = who.__module__
-    except AttributeError:
+    if not isinstance(who, type):
         mod = type(who).__module__
+    else:
+        mod = who.__module__
 
     def check(target):
         if target.endswith('.*'):
@@ -57,7 +58,8 @@ def _iter_classes(accept=None, use_ignores=False):
     '''
     import gc
     if use_ignores:
-        filterby = lambda x: x.__module__ not in _avoid_modules and (not accept or accept(x))
+        filterby = lambda x: not defined(x, _avoid_modules) and (
+            not accept or accept(x))
     else:
         filterby = accept
     return (ob for ob in gc.get_objects()
@@ -85,7 +87,8 @@ def _iter_objects(accept=None, use_ignores=False):
     '''
     import gc
     if use_ignores:
-        filterby = lambda x: type(x).__module__ not in _avoid_modules and (not accept or accept(x))
+        filterby = lambda x: not defined(x, _avoid_modules) and (
+            not accept or accept(x))
     else:
         filterby = accept
     return (ob for ob in gc.get_objects()
@@ -117,3 +120,75 @@ class _object(object):
     '''The type for objects build by ``new(object, ...)``.'''
     def __init__(self, **kwargs):
         self.__dict__ = kwargs.copy()
+
+
+class ExecPlan(object):
+    def __init__(self, query):
+        from ._monads import _mc
+        self.query = query
+        qst = query.qst
+        self.plan = plan = _mc(qst)
+        self.compiled = compile(plan, '', 'eval')
+
+    def __call__(self, modules=None, use_ignores=True):
+        from ._monads import Min, Max, Sum, All, Any
+        return eval(self.compiled, {
+            'this': PythonObjectsCollection(modules, use_ignores=use_ignores),
+            'all': All,
+            'any': Any,
+            'sum': Sum,
+            'min': Min,
+            'max': Max,
+        })
+
+
+class PythonObjectsCollection(object):
+    '''Represent the entire collection of Python objects.'''
+
+    def __init__(self, modules=None, use_ignores=True):
+        self.modules = modules
+        self.use_ignores = use_ignores
+
+    @property
+    def collection(self):
+        modules = self.modules
+        if modules:
+            res = _iter_objects(accept=_filter_by_pkg(*modules),
+                                use_ignores=self.use_ignores)
+        else:
+            res = _iter_objects(use_ignores=self.use_ignores)
+        return res
+
+    def __iter__(self):
+        res = self.collection
+        x = next(res)
+        return iter(LightCons(x, res))
+
+    def asiter(self):
+        x, xs = self
+        yield x
+        for x in xs.asiter():
+            yield x
+
+
+class LightCons(object):
+    def __init__(self, x, xs):
+        self.x = x
+        self.xs = xs
+
+    def __iter__(self):
+        from ._monads import Empty
+        yield self.x
+        xs = self.xs
+        peek = next(xs, Empty())
+        if isinstance(peek, Empty):
+            yield peek
+        else:
+            yield LightCons(peek, xs)
+
+    def asiter(self):
+        x, xs = self
+        while xs:
+            yield x
+            x, xs = xs
+        yield x
