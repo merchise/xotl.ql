@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Unreleased. Release 0.3.0
+-------------------------
+
+.. include:: history/changes-0.3.0.rst
+
+
 Release 0.2.1
 -------------
 
