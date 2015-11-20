@@ -22,23 +22,56 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
-from zope.interface import Interface, Attribute
+try:
+    from xoutil.eight.meta import metaclass
+except ImportError:
+    from xoutil.objects import metaclass
 
 
-class IQueryObject(Interface):
-    '''The required API-level interface for query objects.
+class InterfaceType(type):
+    def __instancecheck__(self, instance):
+        import types
+        attrs = [attr for attr, val in self.__dict__.items()
+                 if isinstance(val, (Attribute, types.FunctionType))]
+        res = True
+        while res and attrs:
+            attr = attrs.pop()
+            res = hasattr(instance, attr)
+        return res
+    __subclasscheck__ = __instancecheck__
 
-    Query objects provide access to the AST for the query.
+
+class Interface(metaclass(InterfaceType)):
+    '''Define an interface.
+
+    Interfaces support a weak 'instance' test definition::
+
+      >>> class IStartswith(Interface):
+      ...    def startswith():
+      ...        pass
+
+      >>> isinstance('', IStartswith)
+      True
 
     '''
-    expression = Attribute('expression',
-                           'Weak reference to the query expression.')
-
-    def walk(self):
-        '''Yield the nodes of the AST for the query.'''
 
 
-class IQueryExecutionPlan(Interface):
+class Attribute(object):
+    def __init__(self, name, doc):
+        self.name = name
+        self.__doc__ = doc
+
+
+class QueryObject(Interface):
+    '''The required API-level interface for query objects.
+
+    Query objects provide access to the QST for the query.
+
+    '''
+    qst = Attribute('qst', 'The Query Syntax Tree')
+
+
+class QueryExecutionPlan(Interface):
     '''Required API-level interface for a query execution plan.
 
     '''
@@ -69,7 +102,7 @@ class IQueryExecutionPlan(Interface):
                >>> query = naive_translation(which for which in this)
 
                >>> from itertools import tee
-               >>> from six.moves import zip
+               >>> from xoutil.eight import zip
                >>> product = zip(tee(query()))
 
            Doing a simple ``zip(query(), query())`` would work without error

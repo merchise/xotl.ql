@@ -10,6 +10,14 @@ practical effect in xotl.ql.*
 *This document is rather a thinking pad I use when I need to think about query
 languages in general and how they apply to xotl.ql.*
 
+The goal of `xotl.ql` is not to provide a full implementation of a query
+language since that implies executing those queries.  At the same time, we
+can't restrict our interpretation of the language to exactly match any of the
+languages we find on the `referenced articles <References>`:doc:.  Our goal is
+to provide a foundation on the grounds of the syntactical layout of
+comprehensions for others to actually implement a full query language for a
+particular `object store`:term:.
+
 The general query language (as an AST) we are trying to apply is the monads
 comprehension as described in [MCQL]_.  There are several mismatches to be
 conciliated before actually having this kind of query language in Python.
@@ -75,7 +83,6 @@ encourages for documents) is contained inside `parent`:
 If `children` is not fully contained in `parent` such kind of translation is
 not possible, so the :term:`query translator` might use several views and
 integrate it's results with Python code.
-
 
 The algorithm for translation may be decomposed like the following:
 

@@ -26,7 +26,7 @@ from __future__ import (division as _py3_division,
 __version__ = 'SPARK-0.7 (pre-alpha-7) xotl.ql.revenge - 0.3.0'
 
 
-from six.moves import range
+from xoutil.eight import range
 
 
 def _namelist(instance):
@@ -34,7 +34,7 @@ def _namelist(instance):
     for c in classlist:
         for b in c.__bases__:
             classlist.append(b)
-        for name in list(c.__dict__.keys()):
+        for name in c.__dict__.keys():
             if name not in namedict:
                 namelist.append(name)
                 namedict[name] = 1
@@ -52,14 +52,13 @@ class _State(object):
 
 class GenericParser(object):
     #
-    #  An Earley parser, as per J. Earley, "An Efficient Context-Free
-    #  Parsing Algorithm", CACM 13(2), pp. 94-102.  Also J. C. Earley,
-    #  "An Efficient Context-Free Parsing Algorithm", Ph.D. thesis,
-    #  Carnegie-Mellon University, August 1968.  New formulation of
-    #  the parser according to J. Aycock, "Practical Earley Parsing
-    #  and the SPARK Toolkit", Ph.D. thesis, University of Victoria,
-    #  2001, and J. Aycock and R. N. Horspool, "Practical Earley
-    #  Parsing", unpublished paper, 2001.
+    #  An Earley parser, as per J. Earley, "An Efficient Context-Free Parsing
+    #  Algorithm", CACM 13(2), pp. 94-102.  Also J. C. Earley, "An Efficient
+    #  Context-Free Parsing Algorithm", Ph.D. thesis, Carnegie-Mellon
+    #  University, August 1968.  New formulation of the parser according to
+    #  J. Aycock, "Practical Earley Parsing and the SPARK Toolkit",
+    #  Ph.D. thesis, University of Victoria, 2001, and J. Aycock and
+    #  R. N. Horspool, "Practical Earley Parsing", unpublished paper, 2001.
     #
 
     def __init__(self, start):
@@ -75,9 +74,9 @@ class GenericParser(object):
     _BOF = '|-'
 
     #
-    #  When pickling, take the time to generate the full state machine;
-    #  some information is then extraneous, too.  Unfortunately we
-    #  can't save the rule2func map.
+    #  When pickling, take the time to generate the full state machine; some
+    #  information is then extraneous, too.  Unfortunately we can't save the
+    #  rule2func map.
     #
     def __getstate__(self):
         if self.ruleschanged:
@@ -90,7 +89,7 @@ class GenericParser(object):
             self.makeNewRules()
             self.ruleschanged = 0
             self.edges, self.cores = {}, {}
-            self.states = { 0: self.makeState0() }
+            self.states = {0: self.makeState0()}
             self.makeState(0, self._BOF)
         #
         #  XXX - should find a better way to do this..
@@ -98,14 +97,14 @@ class GenericParser(object):
         changes = 1
         while changes:
             changes = 0
-            for k, v in list(self.edges.items()):
+            for k, v in self.edges.items():
                 if v is None:
                     state, sym = k
                     if state in self.states:
                         self.goto(state, sym)
                         changes = 1
         rv = self.__dict__.copy()
-        for s in list(self.states.values()):
+        for s in self.states.values():
             del s.items
         del rv['rule2func']
         del rv['nullable']
@@ -124,9 +123,8 @@ class GenericParser(object):
         self.__dict__ = D
 
     #
-    #  A hook for GenericASTBuilder and GenericASTMatcher.  Mess
-    #  thee not with this; nor shall thee toucheth the _preprocess
-    #  argument to addRule.
+    #  A hook for GenericASTBuilder and GenericASTMatcher.  Mess thee not with
+    #  this; nor shall thee toucheth the _preprocess argument to addRule.
     #
     def preprocess(self, rule, func):
         return rule, func
@@ -145,26 +143,26 @@ class GenericParser(object):
         fn = func
         rules = doc.split()
 
+        # First, detect all lines where a new production is given.
         index = []
         for i in range(len(rules)):
             if rules[i] == '::=':
                 index.append(i-1)
         index.append(len(rules))
 
+        # Now process each rule add it the rules.  We take care of making of
+        # splitting right hand sides with vertical bars into several rules.
         for i in range(len(index)-1):
             lhs = rules[index[i]]
-            rhs = rules[index[i]+2:index[i+1]]
-            rule = (lhs, tuple(rhs))
-
-            if _preprocess:
-                rule, fn = self.preprocess(rule, func)
-
-            if lhs in self.rules:
-                self.rules[lhs].append(rule)
-            else:
-                self.rules[lhs] = [rule]
-            self.rule2func[rule] = fn
-            self.rule2name[rule] = func.__name__[2:]
+            rhss = rules[index[i]+2:index[i+1]]
+            lhs_rules = self.rules.setdefault(lhs, [])
+            for rhs in iter_rhss(rhss):
+                rule = (lhs, tuple(rhs))
+                if _preprocess:
+                    rule, fn = self.preprocess(rule, func)
+                lhs_rules.append(rule)
+                self.rule2func[rule] = fn
+                self.rule2name[rule] = func.__name__[2:]
         self.ruleschanged = 1
 
     @classmethod
@@ -184,6 +182,16 @@ class GenericParser(object):
         production.
 
         If you need documentation inside the rules, use comments.
+
+        Rules may contain verticals bars to express alternatives.  This is
+        just syntactic sugar to avoid writing several rules.  The rule
+        ``nonterminal ::= A B | C D`` is actually converted to the following
+        two rules together::
+
+          nonterminal ::= A B
+          nonterminal ::= B D
+
+        No grouping or escaping is allowed.
 
         '''
         import re
@@ -221,8 +229,7 @@ class GenericParser(object):
     def computeNull(self):
         self.nullable = {}
         tbd = []
-
-        for rulelist in list(self.rules.values()):
+        for rulelist in self.rules.values():
             lhs = rulelist[0][0]
             self.nullable[lhs] = 0
             for rule in rulelist:
@@ -231,9 +238,8 @@ class GenericParser(object):
                     self.nullable[lhs] = 1
                     continue
                 #
-                #  We only need to consider rules which
-                #  consist entirely of nonterminal symbols.
-                #  This should be a savings on typical
+                #  We only need to consider rules which consist entirely of
+                #  nonterminal symbols.  This should be a savings on typical
                 #  grammars.
                 #
                 for sym in rhs:
@@ -271,7 +277,7 @@ class GenericParser(object):
 
     def makeNewRules(self):
         worklist = []
-        for rulelist in list(self.rules.values()):
+        for rulelist in self.rules.values():
             for rule in rulelist:
                 worklist.append((rule, 0, 1, rule))
 
@@ -281,11 +287,10 @@ class GenericParser(object):
             while i < n:
                 sym = rhs[i]
                 if sym not in self.rules or \
-                    not self.nullable[sym]:
-                        candidate = 0
-                        i = i + 1
-                        continue
-
+                   not self.nullable[sym]:
+                    candidate = 0
+                    i = i + 1
+                    continue
                 newrhs = list(rhs)
                 newrhs[i] = self._NULLABLE+sym
                 newrule = (lhs, tuple(newrhs))
@@ -307,13 +312,12 @@ class GenericParser(object):
         return None
 
     def error(self, token):
-        print("Syntax error at or near `%s' token" % token)
-        raise SystemExit
+        # XXX: Should we make this a SyntaxError?
+        raise RuntimeError("Syntax error at or near `%s' token" % token)
 
     def parse(self, tokens):
         sets = [[(1, 0), (2, 0)]]
         self.links = {}
-
         if self.ruleschanged:
             self.computeNull()
             self.newrules = {}
@@ -323,33 +327,26 @@ class GenericParser(object):
             self.edges, self.cores = {}, {}
             self.states = {0: self.makeState0()}
             self.makeState(0, self._BOF)
-
         for i in range(len(tokens)):
             sets.append([])
-
             if sets[i] == []:
                 break
             self.makeSet(tokens[i], sets, i)
         else:
             sets.append([])
             self.makeSet(None, sets, len(tokens))
-
         finalitem = (self.finalState(tokens), 0)
         if finalitem not in sets[-2]:
             if len(tokens) > 0:
                 self.error(tokens[i-1])
             else:
                 self.error(None)
-
         return self.buildTree(self._START, finalitem,
                               tokens, len(sets)-2)
 
     def isnullable(self, sym):
-        #
-        #  For symbols in G_e only.  If we weren't supporting 1.5,
-        #  could just use sym.startswith().
-        #
-        return self._NULLABLE == sym[0:len(self._NULLABLE)]
+        #  For symbols in G_e only.
+        return sym.startswith(self._NULLABLE)
 
     def skip(self, lhs_rhs, pos=0):
         (lhs, rhs) = lhs_rhs
@@ -410,11 +407,10 @@ class GenericParser(object):
                             new = (prule, ppos)
                             NK.items.append(new)
             #
-            #  Problem: we know K needs generating, but we
-            #  don't yet know about NK.  Can't commit anything
-            #  regarding NK to self.edges until we're sure.  Should
-            #  we delay committing on both K and NK to avoid this
-            #  hacky code?  This creates other problems..
+            #  Problem: we know K needs generating, but we don't yet know
+            #  about NK.  Can't commit anything regarding NK to self.edges
+            #  until we're sure.  Should we delay committing on both K and NK
+            #  to avoid this hacky code?  This creates other problems..
             #
             if X is K:
                 edges = {}
@@ -423,9 +419,9 @@ class GenericParser(object):
             return k
 
         #
-        #  Check for \epsilon-nonkernel's core.  Unfortunately we
-        #  need to know the entire set of predicted nonterminals
-        #  to do this without accidentally duplicating states.
+        #  Check for \epsilon-nonkernel's core.  Unfortunately we need to know
+        #  the entire set of predicted nonterminals to do this without
+        #  accidentally duplicating states.
         #
         tcore = tuple(sorted(predicted.keys()))
         if tcore in self.cores:
@@ -739,24 +735,100 @@ class GenericASTTraversal(object):
     def preorder(self, node=None):
         if node is None:
             node = self.ast
-
         try:
-            name = 'n_' + self.typestring(node)
-            if hasattr(self, name):
-                func = getattr(self, name)
-                func(node)
-            else:
-                self.default(node)
+            result = self.dispatch(node)
         except GenericASTTraversalPruningException:
             return
-
+        children = []
         for kid in node:
-            self.preorder(kid)
+            children.append(self.preorder(kid))
+        r = self.dispatch_exit(node, children=children)
+        if r:
+            result = r
+        return result
 
-        name = name + '_exit'
-        if hasattr(self, name):
-            func = getattr(self, name)
-            func(node)
+    def dispatch(self, node, default=None):
+        if default is None:
+            default = self.default
+        name = 'n_' + self.typestring(node)
+        func = getattr(self, name, default)
+        return func(node)
+
+    def dispatch_exit(self, node, children=None):
+        name = 'n_' + self.typestring(node) + '_exit'
+        func = getattr(self, name, None)
+        if func:
+            return func(node, children=children)
 
     def default(self, node):
         pass
+
+
+def get_grammar_arrows(p, start):
+    '''Get the links between grammar nodes.
+
+    Yield pairs (2-tuples).  Each tuple ``(head, tail)`` means that tail is in
+    the right side of some production ``head ::= ... tail ...``.
+
+    '''
+    rules = list(p.rules[start])
+    seen = set()
+    while rules:
+        head, prod = rules.pop(0)
+        seen.add(head)
+        new = set()
+        for which in prod:
+            if which not in new and which not in seen:
+                new.add(which)
+                yield head, which
+                rules.extend(p.rules.get(which, []))
+
+
+def get_closure(p, *starts):
+    '''Get all the nodes reachable from start.'''
+    return {
+        head
+        for start in starts
+        for head, _ in get_grammar_arrows(p, start)
+    }
+
+
+def get_graphivz_script(p, *starts):
+    lines = ['digraph G {']
+    for head, tail in get_grammar_arrows(p, start):
+        lines.append('{head} -> {tail};'.format(head=head, tail=tail))
+    lines.append('}')
+    return '\n'.join(lines)
+
+
+def call_graphivz_script(script):
+    '''Shows a graph using dot and eog.'''
+    from tempfile import NamedTemporaryFile
+    from subprocess import Popen, PIPE
+    dotcmd = ['dot', '-Tpng']
+    dotproc = Popen(dotcmd, stdin=PIPE, stdout=PIPE)
+    out, err = dotproc.communicate(script)
+    if out:
+        with NamedTemporaryFile(suffix='.png') as tmpf:
+            tmpf.write(out)
+            tmpf.flush()
+            Popen(['eog', tmpf.name]).wait()
+
+
+def find(l, what):
+    try:
+        return l.index(what)
+    except ValueError:
+        return None
+
+
+def iter_rhss(rhss):
+    last = 0
+    pos = find(rhss, '|')
+    while pos is not None:
+        assert pos < (len(rhss) - 1), 'rhss must not end with |'
+        yield rhss[last:last+pos]
+        last += pos + 1
+        pos = find(rhss[last:], '|')
+    res = rhss[last:]
+    yield res

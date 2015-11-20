@@ -6,6 +6,13 @@
 Welcome to the *pythonic* query language!
 =========================================
 
+.. note:: This is the documentation of the development branch.
+
+   This branch contains an undergoing restatement of its implementation.  The
+   intermediate language (previously seen as an AST) is been `re-evaluated
+   <monads>`:ref:.
+
+
 This package provides an implementation of a query language for Python.
 The query language is based on Python's generator expression.  A query
 in this language looks like this::
@@ -52,7 +59,7 @@ Additional documents:
 
    ponyorm
    thoughts
-   revenge
+   _revenge/index
    monads
    scratch
    references

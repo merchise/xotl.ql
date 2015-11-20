@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.core
-#----------------------------------------------------------------------
-# Copyright (c) 2012-2014 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2012-2015 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -21,7 +21,10 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
-class universe(object):
+from xotl.ql import interfaces
+
+
+class Universe(object):
     '''The class of the `this`:obj: object.
 
     The `this` object is simply a name from which objects can be drawn in a
@@ -31,7 +34,7 @@ class universe(object):
     def __new__(cls):
         res = getattr(cls, 'instance', None)
         if not res:
-            res = super(universe, cls).__new__(cls)
+            res = super(Universe, cls).__new__(cls)
             cls.instance = res
         return res
 
@@ -48,13 +51,24 @@ class universe(object):
         raise StopIteration
     __next__ = next
 
-this = universe()
+this = Universe()
+
+
+class QueryObject(object):
+    def __init__(self, qst, expression=None):
+        from weakref import weakref
+        self.qst = qst
+        self.expression = weakref.ref(expression) if expression else None
 
 
 def get_query_object(generator, **kwargs):
     '''Get the query object from a query expression.
 
     '''
+    from xotl.ql.revenge import Uncompyled
+    qst = Uncompyled(generator)
+    return QueryObject(qst)
+
 
 # Alias to the old API.
 these = get_query_object
@@ -72,64 +86,46 @@ def normalize_query(which, **kwargs):
     if isinstance(which, GeneratorType):
         return get_query_object(which, **kwargs)
     else:
-        from xotl.ql.interfaces import QueryObject
-        if not all(hasattr(which, attr) for attr in QueryObject.names()):
+        if not isinstance(which, interfaces.QueryObject):
             raise TypeError('Query object expected, but object provided '
                             'is not: %r' % type(which))
         return which
 
 
 def thesefy(target):
-    '''Make a class support iteration like `this`:obj:.
+    '''Allow an object to participate in queries.
 
-    Example::
+    Example as a wrapper::
 
-        @thesefy
-        class Entity(object):
+        class People(object):
+            # ...
             pass
 
-    Then, the following query is possible::
+        query = (who for who in thesefy(People))
 
-        query = (entity for entity in Entity)
+    Example as a decorator::
 
-    And it will be equivalent to::
+        @thesefy
+        class People(object):
+            pass
 
-        query = (entity for entity in (e for e in this if instance(e, Entity)))
+        query = (who for who in People)
 
-    Other examples::
-
-        Integers = thesefy(int)
-        query = (i for i in Integers if i < 10)
+    If your classes already support the operable protocol (i.e implement
+    ``__iter__``) this does nothing.
 
     '''
-    from xoutil import Unset
+    if getattr(target, '__iter__', None):
+        return target
 
     class new_meta(type(target)):
-        def __new__(cls, name, bases, attrs):
-            from xoutil.iterators import dict_update_new
-            baseattrs = {'__doc__': getattr(bases[0], '__doc__', ''),
-                         '__module__': getattr(bases[0], '__module__', '')}
-            dict_update_new(attrs, baseattrs)
-            return super(new_meta, cls).__new__(cls, name, bases, attrs)
-
         def __iter__(self):
-            from types import GeneratorType
-            try:
-                result = super(new_meta, self).__iter__()
-            except AttributeError:
-                result = Unset
-            if isinstance(result, GeneratorType):
-                return result
-            elif result is Unset:
-                return (obj for obj in this if isinstance(obj, target))
-            else:
-                raise TypeError('Class {target} has a metaclass with an '
-                                '__iter__ that does not support thesefy'
-                                .format(target=target))
+            return self
 
-    from xoutil.objects import metaclass
+        def next(self):
+            raise StopIteration
+        __next__ = next
 
-    class new_class(metaclass(new_meta), target):
-        pass
-
+    from xoutil.objects import copy_class
+    new_class = copy_class(target, meta=new_meta)
     return new_class

@@ -25,8 +25,8 @@ keywords in the queries.  The same happened for built-in functions like
 `all`:func:, `any`:func:, `sum`:func:, `max`:func: and `min`:func.  There were
 all being replicated in the expression language.
 
-Since then the `uncompyle2` package showed an Early Grammar that's easy to
-modify to build a recognizer for Python's byte-code and extract an AST.
+Since then the `uncompyle2` package showed an Early Grammar that's fairly easy
+to modify to build a recognizer for Python's byte-code and extract an AST.
 Previous experimentation proved it would be practical to adapt it to the query
 language needs.
 
@@ -42,8 +42,8 @@ Changes in the API
 ------------------
 
 This is a total rewrite of the module, so the API is heavily changed.  The
-following remarks are not the only thing changed but some highlights about the
-changes:
+following remarks are not the only things that changed but some highlights
+about the changes:
 
 - We are not using ``zope.component`` anymore.  Those are deemed outside the
   scope of an AST for Query Languages.

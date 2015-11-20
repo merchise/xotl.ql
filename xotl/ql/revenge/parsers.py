@@ -21,7 +21,10 @@ __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 from .spark import GenericASTBuilder
 from xoutil.collections import UserList
 
-from .eight import override, py27, py3k
+import sys
+_py_version = sys.version_info
+from .eight import override, py27, py32, py3k, py33, py34, pypy
+from .exceptions import ParserError as RevengeParserError
 
 try:
     from sys import intern  # Py3k
@@ -38,27 +41,38 @@ class AST(UserList):
         return self.data[item]
 
     def __eq__(self, o):
-        from six import string_types
         if isinstance(o, AST):
             return self.type == o.type and UserList.__eq__(self, o)
-        elif isinstance(o, string_types):
-            return self.type == o
         else:
-            from xoutil.eight import typeof
-            raise TypeError('Cannot compare AST to %s' % typeof(o).__name__)
+            # Don't forbid other types since we may try to compare AST with
+            # Tokens.
+            return self.type == o
 
     def __hash__(self):
         return hash(self.type)
 
     def __repr__(self, indent=''):
-        rv = str(self.type)
-        for k in self:
-            rv = rv + '\n' + str(k).replace(str('\n'), str('\n   '))
-        return rv
+        result = ['']
+
+        def pre(who, indent=0):
+            result[0] += ' ' * indent
+            result[0] += who.type if isinstance(who, AST) else repr(who)
+            result[0] += '\n'
+            try:
+                children = iter(who)
+            except TypeError:
+                pass
+            else:
+                for child in children:
+                    pre(child, indent=indent+4)
+
+        pre(self)
+        return result[0]
 
 
-class ParserError(Exception):
-    def __init__(self, token, offset):
+class ParserError(RevengeParserError):
+    def __init__(self, token, offset, *args):
+        super(ParserError, self).__init__(token, offset, *args)
         self.token = token
         self.offset = offset
 
@@ -67,10 +81,16 @@ class ParserError(Exception):
             (self.token, self.offset)
 
 
-class Parser(GenericASTBuilder):
+class _InternalParser(GenericASTBuilder):
     def __init__(self):
-        GenericASTBuilder.__init__(self, AST, 'stmts')
+        GenericASTBuilder.__init__(self, AST, 'sstmt')
         self.customized = {}
+
+    def error(self, token):
+        raise ParserError(token, token.offset)
+
+    def typestring(self, token):
+        return token.name
 
     def cleanup(self):
         """Remove recursive references.
@@ -79,599 +99,80 @@ class Parser(GenericASTBuilder):
 
         """
         for dict in (self.rule2func, self.rules, self.rule2name):
-            for i in list(dict.keys()):
+            for i in dict:
                 dict[i] = None
         for i in dir(self):
             setattr(self, i, None)
 
-    def error(self, token):
-            raise ParserError(token, token.offset)
+    # The rules draw concepts presented in the 'Expressions' document in the
+    # Python documentation.  However, the rules there are presented not for
+    # lexical analysis, and sometimes are cumbersome to follow.
+    #
+    # The `yield_atom` is not supported by this grammar since it must occur
+    # within a generator definition.
+    #
 
-    def typestring(self, token):
-        return token.type
+    def p_atoms(self):
+        '''The atoms are the most basic element of an expression.
 
-    def p_funcdef(self, args):
-        '''Function definitions.
-
-        .. _rules:
-
-        stmt ::= funcdef
-        funcdef ::= mkfunc designator
-
-        stmt ::= funcdefdeco
-        funcdefdeco ::= mkfuncdeco designator
-
-        mkfuncdeco ::= expr mkfuncdeco CALL_FUNCTION_1
-        mkfuncdeco ::= expr mkfuncdeco0 CALL_FUNCTION_1
-        mkfuncdeco0 ::= mkfunc
-
-        load_closure ::= load_closure LOAD_CLOSURE
-        load_closure ::= LOAD_CLOSURE
-
-        '''
-
-    def p_list_comprehension(self, args):
-        '''List comprehensions.
+        According to the Python documentation those include: literals,
+        identifiers and 'enclosures'.  Since enclosure, however, are actually
+        more structured we'll include them later.
 
         .. _rules:
 
-        expr ::= list_compr
-        list_compr ::= BUILD_LIST_0 list_iter
-
-        list_iter ::= list_for
-        list_iter ::= list_if
-        list_iter ::= list_if_not
-        list_iter ::= lc_body
-
-        .. COME_FROM is custom token introduced by the scanner so that we can
-        .. know the point a jump was made.
-
-        _come_from ::= COME_FROM
-        _come_from ::=
-
-        list_for ::= expr _for designator list_iter JUMP_BACK
-        list_if ::= expr jmp_false list_iter
-        list_if_not ::= expr jmp_true list_iter
-
-        lc_body ::= expr LIST_APPEND
+        expr        ::=  atom
+        atom        ::=  identifier | literal
+        identifier  ::=  LOAD_FAST | LOAD_NAME | LOAD_GLOBAL | LOAD_DEREF
+        literal     ::=  LOAD_CONST
 
         '''
 
-    def p_setcomp_common(self, args):
-        '''Set comprehensions.
+    def p_mapexpression_common(self, args):
+        '''Common rules for map expressions across all Python versions.
 
-        Common productions in all target Python versions.
+        expr ::= mapexpr
 
-        expr ::= setcomp
-        stmt ::= setcomp_func
-        setcomp_func ::= BUILD_SET_0 LOAD_FAST FOR_ITER designator comp_iter
-                JUMP_BACK RETURN_VALUE RETURN_LAST
-
-        comp_iter ::= comp_if
-        comp_iter ::= comp_ifnot
-        comp_iter ::= comp_for
-        comp_iter ::= comp_body
-        comp_body ::= set_comp_body
-        comp_body ::= gen_comp_body
-        comp_body ::= dict_comp_body
-        set_comp_body ::= expr SET_ADD
-        gen_comp_body ::= expr YIELD_VALUE POP_TOP
-        dict_comp_body ::= expr expr MAP_ADD
-
-        comp_if ::= expr jmp_false comp_iter
-        comp_ifnot ::= expr jmp_true comp_iter
-        comp_for ::= expr _for designator comp_iter JUMP_BACK
+        kvlist ::= kvlist kv
+        kvlist ::=
 
         '''
 
-    @override(py27)
-    def p_setcomp(self, args):
-        '''Set comprehensions in Python 2.7.
+    @override((2, 7) <= _py_version < (3, 5))
+    def p_mapexpression(self, args):
+        '''A map expression.
 
-        setcomp ::= LOAD_SETCOMP MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
+        Dictionary literals are built by creating a fixed sized dictionary and
+        filling it with they values.
 
-        '''
-
-    @p_setcomp.override(py3k)
-    def p_setcomp(self, args):
-        '''Set comprehensions in Py3k.
-
-        Since MAKE_FUNCTION is preceded by two LOAD_CONST in Python 3.  This
-        customization is needed.
-
-        setcomp ::= LOAD_SETCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                    CALL_FUNCTION_1
-
-        '''
-
-    def p_genexpr_common(self, args):
-        '''Generator expressions.
-
-        Common parts to all python versions.
-
-        expr ::= genexpr
-        stmt ::= genexpr_func
-        genexpr_func ::= LOAD_FAST FOR_ITER designator comp_iter JUMP_BACK
-
-        '''
-    @override(py27)
-    def p_genexpr(self, args):
-        '''Generator expressions in Python 2.7.
-
-        genexpr ::= LOAD_GENEXPR MAKE_FUNCTION_0 expr GET_ITER CALL_FUNCTION_1
-
-        '''
-
-    @p_genexpr.override(py3k)
-    def p_genexpr(self, args):
-        '''Generator expression for Python 3.
-
-        In Python 3k, MAKE_FUNCTION is always preceded by two LOAD_CONST, the
-        first LOAD_GENEXPR is actually a custom LOAD_CONST, the second sets
-        the name of the function.  Nevertheless for generator expressions the
-        is always "<genexpr>", thus the LOAD_GENEXPR.
+        It starts with a BUILD_MAP followed by the list of (key, value).
 
         .. _rules:
 
-        genexpr ::= LOAD_GENEXPR LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                    CALL_FUNCTION_1
+        mapexpr ::= BUILD_MAP kvlist
 
-        '''
+        # This is the only one I've witnessed.
+        kv3 ::= expr expr STORE_MAP
 
-    def p_dictcomp_common(self, args):
-        '''Dict comprehensions.
 
-        Common rules for all target Python versions.
+        # Don't know yet when these are produced for kvlist.
+        kvlist ::= kvlist kv2
+        kvlist ::= kvlist kv3
 
-        .. _rules:
-
-        expr ::= dictcomp
-        stmt ::= dictcomp_func
-
-        dictcomp_func ::= BUILD_MAP LOAD_FAST FOR_ITER designator
-                comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
-
-        '''
-    @override(py27)
-    def p_dictcomp(self, args):
-        '''Dict comprehensions for Python 2.7.
-
-        dictcomp ::= LOAD_DICTCOMP MAKE_FUNCTION_0 expr GET_ITER
-                     CALL_FUNCTION_1
-
-        '''
-
-    @p_dictcomp.override(py3k)
-    def p_dictcomp(self, args):
-        '''Dict comprehensions for Python 3.
-
-        dictcomp ::= LOAD_DICTCOMP LOAD_CONST MAKE_FUNCTION_0 expr GET_ITER
-                     CALL_FUNCTION_1
-
-        '''
-
-    def p_augmented_assign(self, args):
-        '''Augmented assign.
-
-        These are the operators ``+=``, ``-=``, etc.
-
-        .. _rules:
-
-        stmt ::= augassign1
-        stmt ::= augassign2
-        augassign1 ::= expr expr inplace_op designator
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SUBSCR
-        augassign1 ::= expr expr inplace_op ROT_TWO   STORE_SLICE+0
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SLICE+1
-        augassign1 ::= expr expr inplace_op ROT_THREE STORE_SLICE+2
-        augassign1 ::= expr expr inplace_op ROT_FOUR  STORE_SLICE+3
-        augassign2 ::= expr DUP_TOP LOAD_ATTR expr
-                inplace_op ROT_TWO   STORE_ATTR
-
-        inplace_op ::= INPLACE_ADD
-        inplace_op ::= INPLACE_SUBTRACT
-        inplace_op ::= INPLACE_MULTIPLY
-        inplace_op ::= INPLACE_DIVIDE
-        inplace_op ::= INPLACE_TRUE_DIVIDE
-        inplace_op ::= INPLACE_FLOOR_DIVIDE
-        inplace_op ::= INPLACE_MODULO
-        inplace_op ::= INPLACE_POWER
-        inplace_op ::= INPLACE_LSHIFT
-        inplace_op ::= INPLACE_RSHIFT
-        inplace_op ::= INPLACE_AND
-        inplace_op ::= INPLACE_XOR
-        inplace_op ::= INPLACE_OR
-        '''
-
-    def p_assign(self, args):
-        '''
-        stmt ::= assign
-        assign ::= expr DUP_TOP designList
-        assign ::= expr designator
-
-        stmt ::= assign2
-        stmt ::= assign3
-        assign2 ::= expr expr ROT_TWO designator designator
-        assign3 ::= expr expr expr ROT_THREE ROT_TWO designator designator
-                    designator
-        '''
-
-    def p_print(self, args):
-        '''
-        stmt ::= print_items_stmt
-        stmt ::= print_nl
-        stmt ::= print_items_nl_stmt
-
-        print_items_stmt ::= expr PRINT_ITEM print_items_opt
-        print_items_nl_stmt ::= expr PRINT_ITEM print_items_opt
-                                PRINT_NEWLINE_CONT
-        print_items_opt ::= print_items
-        print_items_opt ::=
-        print_items ::= print_items print_item
-        print_items ::= print_item
-        print_item ::= expr PRINT_ITEM_CONT
-        print_nl ::= PRINT_NEWLINE
-        '''
-
-    def p_print_to(self, args):
-        '''
-        stmt ::= print_to
-        stmt ::= print_to_nl
-        stmt ::= print_nl_to
-        print_to ::= expr print_to_items POP_TOP
-        print_to_nl ::= expr print_to_items PRINT_NEWLINE_TO
-        print_nl_to ::= expr PRINT_NEWLINE_TO
-        print_to_items ::= print_to_items print_to_item
-        print_to_items ::= print_to_item
-        print_to_item ::= DUP_TOP expr ROT_TWO PRINT_ITEM_TO
-        '''
-
-    def p_import20(self, args):
-        '''
-        stmt ::= importstmt
-        stmt ::= importfrom
-        stmt ::= importstar
-        stmt ::= importmultiple
-
-        importlist2 ::= importlist2 import_as
-        importlist2 ::= import_as
-        import_as ::= IMPORT_NAME designator
-        import_as ::= IMPORT_NAME load_attrs designator
-        import_as ::= IMPORT_FROM designator
-
-        importstmt ::= LOAD_CONST LOAD_CONST import_as
-        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME IMPORT_STAR
-        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME importlist2 POP_TOP
-        importstar ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT IMPORT_STAR
-        importfrom ::= LOAD_CONST LOAD_CONST IMPORT_NAME_CONT importlist2
-                       POP_TOP
-        importmultiple ::= LOAD_CONST LOAD_CONST import_as imports_cont
-
-        imports_cont ::= imports_cont import_cont
-        imports_cont ::= import_cont
-        import_cont ::= LOAD_CONST LOAD_CONST import_as_cont
-        import_as_cont ::= IMPORT_NAME_CONT designator
-        import_as_cont ::= IMPORT_NAME_CONT load_attrs designator
-        import_as_cont ::= IMPORT_FROM designator
-
-        load_attrs ::= LOAD_ATTR
-        load_attrs ::= load_attrs LOAD_ATTR
-        '''
-
-    def p_grammar(self, args):
-        '''
-        stmts ::= stmts sstmt
-        stmts ::= sstmt
-        sstmt ::= stmt
-        sstmt ::= ifelsestmtr
-        sstmt ::= return_stmt RETURN_LAST
-
-        stmts_opt ::= stmts
-        stmts_opt ::= passstmt
-        passstmt ::=
-
-        _stmts ::= _stmts stmt
-        _stmts ::= stmt
-
-        c_stmts ::= _stmts
-        c_stmts ::= _stmts lastc_stmt
-        c_stmts ::= lastc_stmt
-        c_stmts ::= continue_stmts
-
-        lastc_stmt ::= iflaststmt
-        lastc_stmt ::= whileelselaststmt
-        lastc_stmt ::= forelselaststmt
-        lastc_stmt ::= ifelsestmtr
-        lastc_stmt ::= ifelsestmtc
-        lastc_stmt ::= tryelsestmtc
-
-        c_stmts_opt ::= c_stmts
-        c_stmts_opt ::= passstmt
-
-        l_stmts ::= _stmts
-        l_stmts ::= return_stmts
-        l_stmts ::= continue_stmts
-        l_stmts ::= _stmts lastl_stmt
-        l_stmts ::= lastl_stmt
-
-        lastl_stmt ::= iflaststmtl
-        lastl_stmt ::= ifelsestmtl
-        lastl_stmt ::= forelselaststmtl
-        lastl_stmt ::= tryelsestmtl
-
-        l_stmts_opt ::= l_stmts
-        l_stmts_opt ::= passstmt
-
-        suite_stmts ::= _stmts
-        suite_stmts ::= return_stmts
-        suite_stmts ::= continue_stmts
-
-        suite_stmts_opt ::= suite_stmts
-        suite_stmts_opt ::= passstmt
-
-        else_suite ::= suite_stmts
-        else_suitel ::= l_stmts
-        else_suitec ::= c_stmts
-        else_suitec ::= return_stmts
-
-        designList ::= designator designator
-        designList ::= designator DUP_TOP designList
-
-        designator ::= STORE_FAST
-        designator ::= STORE_NAME
-        designator ::= STORE_GLOBAL
-        designator ::= STORE_DEREF
-        designator ::= expr STORE_ATTR
-        designator ::= expr STORE_SLICE+0
-        designator ::= expr expr STORE_SLICE+1
-        designator ::= expr expr STORE_SLICE+2
-        designator ::= expr expr expr STORE_SLICE+3
-        designator ::= store_subscr
-        store_subscr ::= expr expr STORE_SUBSCR
-        designator ::= unpack
-        designator ::= unpack_list
-
-        stmt ::= classdef
-        stmt ::= call_stmt
-        call_stmt ::= expr POP_TOP
-
-        stmt ::= return_stmt
-        return_stmt ::= ret_expr RETURN_VALUE
-        return_stmts ::= return_stmt
-        return_stmts ::= _stmts return_stmt
-
-        return_if_stmts ::= return_if_stmt
-        return_if_stmts ::= _stmts return_if_stmt
-        return_if_stmt ::= ret_expr RETURN_END_IF
-
-
-        stmt ::= break_stmt
-        break_stmt ::= BREAK_LOOP
-
-        stmt ::= continue_stmt
-        continue_stmt ::= CONTINUE
-        continue_stmt ::= CONTINUE_LOOP
-        continue_stmts ::= _stmts lastl_stmt continue_stmt
-        continue_stmts ::= lastl_stmt continue_stmt
-        continue_stmts ::= continue_stmt
-
-        stmt ::= raise_stmt0
-        stmt ::= raise_stmt1
-        stmt ::= raise_stmt2
-        stmt ::= raise_stmt3
-
-        raise_stmt0 ::= RAISE_VARARGS_0
-        raise_stmt1 ::= expr RAISE_VARARGS_1
-        raise_stmt2 ::= expr expr RAISE_VARARGS_2
-        raise_stmt3 ::= expr expr expr RAISE_VARARGS_3
-
-        stmt ::= exec_stmt
-        exec_stmt ::= expr exprlist DUP_TOP EXEC_STMT
-        exec_stmt ::= expr exprlist EXEC_STMT
-
-        stmt ::= assert
-        stmt ::= assert2
-        stmt ::= ifstmt
-        stmt ::= ifelsestmt
-
-        stmt ::= whilestmt
-        stmt ::= whilenotstmt
-        stmt ::= while1stmt
-        stmt ::= whileelsestmt
-        stmt ::= while1elsestmt
-        stmt ::= forstmt
-        stmt ::= forelsestmt
-        stmt ::= trystmt
-        stmt ::= tryelsestmt
-        stmt ::= tryfinallystmt
-        stmt ::= withstmt
-        stmt ::= withasstmt
-
-        stmt ::= del_stmt
-        del_stmt ::= DELETE_FAST
-        del_stmt ::= DELETE_NAME
-        del_stmt ::= DELETE_GLOBAL
-        del_stmt ::= expr DELETE_SLICE+0
-        del_stmt ::= expr expr DELETE_SLICE+1
-        del_stmt ::= expr expr DELETE_SLICE+2
-        del_stmt ::= expr expr expr DELETE_SLICE+3
-        del_stmt ::= delete_subscr
-        delete_subscr ::= expr expr DELETE_SUBSCR
-        del_stmt ::= expr DELETE_ATTR
-
-        kwarg   ::= LOAD_CONST expr
-
-        classdef ::= LOAD_CONST expr mkfunc
-                    CALL_FUNCTION_0 BUILD_CLASS designator
-
-        stmt ::= classdefdeco
-        classdefdeco ::= classdefdeco1 designator
-        classdefdeco1 ::= expr classdefdeco1 CALL_FUNCTION_1
-        classdefdeco1 ::= expr classdefdeco2 CALL_FUNCTION_1
-        classdefdeco2 ::= LOAD_CONST expr mkfunc CALL_FUNCTION_0 BUILD_CLASS
-
-        assert ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT RAISE_VARARGS_1
-
-        assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr CALL_FUNCTION_1 RAISE_VARARGS_1
-
-        assert2 ::= assert_expr POP_JUMP_IF_TRUE
-                LOAD_ASSERT expr RAISE_VARARGS_2
-
-        assert_expr ::= expr
-        assert_expr ::= assert_expr_or
-        assert_expr ::= assert_expr_and
-        assert_expr_or ::= assert_expr POP_JUMP_IF_TRUE expr
-        assert_expr_and ::= assert_expr POP_JUMP_IF_FALSE expr
-
-
-        _jump ::= JUMP_ABSOLUTE
-        _jump ::= JUMP_FORWARD
-        _jump ::= JUMP_BACK
-
-        jmp_false    ::= POP_JUMP_IF_FALSE
-        jmp_true    ::= POP_JUMP_IF_TRUE
-
-        ifstmt ::= testexpr _ifstmts_jump
-
-
-        testexpr ::= testfalse
-        testexpr ::= testtrue
-        testfalse ::= expr jmp_false
-        testtrue ::= expr jmp_true
-
-        _ifstmts_jump ::= return_if_stmts
-        _ifstmts_jump ::= c_stmts_opt JUMP_FORWARD COME_FROM
-
-        iflaststmt ::= testexpr c_stmts_opt JUMP_ABSOLUTE
-
-        iflaststmtl ::= testexpr c_stmts_opt JUMP_BACK
-
-        ifelsestmt ::= testexpr c_stmts_opt JUMP_FORWARD else_suite COME_FROM
-
-        ifelsestmtc ::= testexpr c_stmts_opt JUMP_ABSOLUTE else_suitec
-
-        ifelsestmtr ::= testexpr return_if_stmts return_stmts
-
-        ifelsestmtl ::= testexpr c_stmts_opt JUMP_BACK else_suitel
-
-
-        trystmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle COME_FROM
-
-        tryelsestmt ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suite COME_FROM
-
-        tryelsestmtc ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suitec COME_FROM
-
-        tryelsestmtl ::= SETUP_EXCEPT suite_stmts_opt POP_BLOCK
-                try_middle else_suitel COME_FROM
-
-        try_middle ::= jmp_abs COME_FROM except_stmts
-                END_FINALLY
-        try_middle ::= JUMP_FORWARD COME_FROM except_stmts
-                END_FINALLY COME_FROM
-
-        except_stmts ::= except_stmts except_stmt
-        except_stmts ::= except_stmt
-
-        except_stmt ::= except_cond1 except_suite
-        except_stmt ::= except_cond2 except_suite
-        except_stmt ::= except
-
-        except_suite ::= c_stmts_opt JUMP_FORWARD
-        except_suite ::= c_stmts_opt jmp_abs
-        except_suite ::= return_stmts
-
-        except_cond1 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP POP_TOP POP_TOP
-
-        except_cond2 ::= DUP_TOP expr COMPARE_OP
-                POP_JUMP_IF_FALSE POP_TOP designator POP_TOP
-
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt JUMP_FORWARD
-        except  ::=  POP_TOP POP_TOP POP_TOP c_stmts_opt jmp_abs
-        except  ::=  POP_TOP POP_TOP POP_TOP return_stmts
-
-        jmp_abs ::= JUMP_ABSOLUTE
-        jmp_abs ::= JUMP_BACK
-
-
-
-        tryfinallystmt ::= SETUP_FINALLY suite_stmts
-                POP_BLOCK LOAD_CONST
-                COME_FROM suite_stmts_opt END_FINALLY
-
-        withstmt ::= expr SETUP_WITH POP_TOP suite_stmts_opt
-                POP_BLOCK LOAD_CONST COME_FROM
-                WITH_CLEANUP END_FINALLY
-
-        withasstmt ::= expr SETUP_WITH designator suite_stmts_opt
-                POP_BLOCK LOAD_CONST COME_FROM
-                WITH_CLEANUP END_FINALLY
-
-        whilestmt ::= SETUP_LOOP
-                testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK COME_FROM
-
-        whilestmt ::= SETUP_LOOP
-                testexpr
-                return_stmts
-                POP_BLOCK COME_FROM
-
-        while1stmt ::= SETUP_LOOP l_stmts JUMP_BACK COME_FROM
-        while1stmt ::= SETUP_LOOP return_stmts COME_FROM
-        while1elsestmt ::= SETUP_LOOP l_stmts JUMP_BACK else_suite COME_FROM
-
-        whileelsestmt ::= SETUP_LOOP testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK
-                else_suite COME_FROM
-
-        whileelselaststmt ::= SETUP_LOOP testexpr
-                l_stmts_opt JUMP_BACK
-                POP_BLOCK
-                else_suitec COME_FROM
-
-        _for ::= GET_ITER FOR_ITER
-        _for ::= LOAD_CONST FOR_LOOP
-
-        for_block ::= l_stmts_opt JUMP_BACK
-        for_block ::= return_stmts _come_from
-
-        forstmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK COME_FROM
-
-        forelsestmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suite COME_FROM
-
-        forelselaststmt ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suitec COME_FROM
-
-        forelselaststmtl ::= SETUP_LOOP expr _for designator
-                for_block POP_BLOCK else_suitel COME_FROM
+        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
+        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
 
         '''
 
     def p_expr(self, args):
-        '''
+        '''The expression rules.
+
         expr ::= _mklambda
-        expr ::= SET_LINENO
-        expr ::= LOAD_FAST
-        expr ::= LOAD_NAME
-        expr ::= LOAD_CONST
-        expr ::= LOAD_GLOBAL
-        expr ::= LOAD_DEREF
-        expr ::= LOAD_LOCALS
         expr ::= load_attr
         expr ::= binary_expr
         expr ::= binary_expr_na
         expr ::= build_list
         expr ::= cmp
-        expr ::= mapexpr
         expr ::= and
         expr ::= and2
         expr ::= or
@@ -681,7 +182,6 @@ class Parser(GenericASTBuilder):
         expr ::= unary_convert
         expr ::= binary_subscr
         expr ::= binary_subscr2
-        expr ::= load_attr
         expr ::= get_iter
         expr ::= slice0
         expr ::= slice1
@@ -692,29 +192,25 @@ class Parser(GenericASTBuilder):
         expr ::= yield
 
 
+        binary_expr ::=  expr expr binary_op
 
-        binary_expr ::= expr expr binary_op
-        binary_op ::= BINARY_ADD
-        binary_op ::= BINARY_MULTIPLY
-        binary_op ::= BINARY_AND
-        binary_op ::= BINARY_OR
-        binary_op ::= BINARY_XOR
-        binary_op ::= BINARY_SUBTRACT
-        binary_op ::= BINARY_DIVIDE
-        binary_op ::= BINARY_TRUE_DIVIDE
-        binary_op ::= BINARY_FLOOR_DIVIDE
-        binary_op ::= BINARY_MODULO
-        binary_op ::= BINARY_LSHIFT
-        binary_op ::= BINARY_RSHIFT
-        binary_op ::= BINARY_POWER
+        binary_op ::= BINARY_ADD | BINARY_MULTIPLY | BINARY_AND | BINARY_OR |
+                      BINARY_XOR | BINARY_SUBTRACT | BINARY_DIVIDE |
+                      BINARY_TRUE_DIVIDE | BINARY_FLOOR_DIVIDE |
+                      BINARY_MODULO | BINARY_LSHIFT | BINARY_RSHIFT |
+                      BINARY_POWER
 
         unary_expr ::= expr unary_op
         unary_op ::= UNARY_POSITIVE
         unary_op ::= UNARY_NEGATIVE
         unary_op ::= UNARY_INVERT
 
-        unary_not ::= expr UNARY_NOT
-        unary_convert ::= expr UNARY_CONVERT
+        # The ``__unary_not`` simply makes thing easier to implement in the
+        # walker of the syntax tree since creates the same depth as in
+        # unary_expr.
+
+        unary_not ::= expr __unary_not
+        __unary_not ::= UNARY_NOT
 
         binary_subscr ::= expr expr BINARY_SUBSCR
         binary_subscr2 ::= expr expr DUP_TOPX_2 BINARY_SUBSCR
@@ -732,10 +228,18 @@ class Parser(GenericASTBuilder):
         buildslice3 ::= expr expr expr BUILD_SLICE_3
         buildslice2 ::= expr expr BUILD_SLICE_2
 
-        yield ::= expr YIELD_VALUE
-
+        # mklambda
         _mklambda ::= load_closure mklambda
         _mklambda ::= mklambda
+
+        load_closure ::= load_closure LOAD_CLOSURE
+        load_closure ::= LOAD_CLOSURE
+
+        .. COME_FROM is a custom token introduced by the scanner so that
+        .. we can know the point a jump was made.
+
+        _come_from ::= COME_FROM
+        _come_from ::=
 
         or   ::= expr POP_JUMP_IF_TRUE expr COME_FROM
         or   ::= expr JUMP_IF_TRUE_OR_POP expr COME_FROM
@@ -744,8 +248,10 @@ class Parser(GenericASTBuilder):
         and2 ::= _jump POP_JUMP_IF_FALSE COME_FROM expr COME_FROM
 
         expr ::= conditional
+
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_FORWARD expr COME_FROM
         conditional ::= expr POP_JUMP_IF_FALSE expr JUMP_ABSOLUTE expr
+
         expr ::= conditionalnot
         conditionalnot ::= expr POP_JUMP_IF_TRUE expr JUMP_FORWARD expr
                            COME_FROM
@@ -766,46 +272,289 @@ class Parser(GenericASTBuilder):
         ret_cond_not ::= expr POP_JUMP_IF_TRUE expr RETURN_END_IF
                          ret_expr_or_cond
 
-        stmt ::= return_lambda
-        stmt ::= conditional_lambda
-
+        # The LAMBDA_MARKER is actually injected by the walker
         return_lambda ::= ret_expr RETURN_VALUE LAMBDA_MARKER
         conditional_lambda ::= expr POP_JUMP_IF_FALSE return_if_stmt
                                return_stmt LAMBDA_MARKER
 
         cmp ::= cmp_list
         cmp ::= compare
+
         compare ::= expr expr COMPARE_OP
-        cmp_list ::= expr cmp_list1 ROT_TWO POP_TOP
-                _come_from
-        cmp_list1 ::= expr DUP_TOP ROT_THREE
-                COMPARE_OP JUMP_IF_FALSE_OR_POP
-                cmp_list1 COME_FROM
-        cmp_list1 ::= expr DUP_TOP ROT_THREE
-                COMPARE_OP JUMP_IF_FALSE_OR_POP
-                cmp_list2 COME_FROM
+
+        cmp_list ::= expr cmp_list1 ROT_TWO POP_TOP _come_from
+
+        cmp_list1 ::= expr DUP_TOP ROT_THREE COMPARE_OP JUMP_IF_FALSE_OR_POP
+                      cmp_list1 COME_FROM
+        cmp_list1 ::= expr DUP_TOP ROT_THREE COMPARE_OP JUMP_IF_FALSE_OR_POP
+                      cmp_list2 COME_FROM
         cmp_list2 ::= expr COMPARE_OP JUMP_FORWARD
         cmp_list2 ::= expr COMPARE_OP RETURN_VALUE
-        mapexpr ::= BUILD_MAP kvlist
-
-        kvlist ::= kvlist kv
-        kvlist ::= kvlist kv2
-        kvlist ::= kvlist kv3
-        kvlist ::=
-
-        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
-        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
-        kv3 ::= expr expr STORE_MAP
 
         exprlist ::= exprlist expr
         exprlist ::= expr
 
         nullexprlist ::=
+
+        '''
+
+    # MAKE_FUNCTION changed from Python 2 to Python 3.  In Python 2 it's
+    # preceded only by the LOAD_CONST that contains the function code.  Since
+    # Python 3.3, a second LOAD_CONST with the name of the function is added.
+    #
+    # Since generator expressions, dict comprehensions, set comprehensions and
+    # lambdas use the MAKE_FUNCTION byte-code, we introduce a compatibility
+    # layer in our grammar.  The following ``_py_load_*`` are overridden in
+    # Python 3 with the second LOAD_CONST.  This way the rules for the bigger
+    # structures remain stable across Python versions.
+    #
+
+    @override(_py_version < (3, 3))
+    def p__py_loads(self, args):
+        '''
+        _py_load_genexpr   ::= LOAD_GENEXPR
+        _py_load_lambda    ::= LOAD_LAMBDA
+        _py_load_dictcomp  ::= LOAD_DICTCOMP
+        _py_load_setcomp   ::= LOAD_SETCOMP
+        '''
+
+    @p__py_loads.override(_py_version >= (3, 3))
+    def p__py_loads(self, args):
+        '''
+        _py_load_genexpr ::= LOAD_GENEXPR LOAD_CONST
+        _py_load_lambda    ::= LOAD_LAMBDA LOAD_CONST
+        _py_load_dictcomp  ::= LOAD_DICTCOMP LOAD_CONST
+        _py_load_setcomp   ::= LOAD_SETCOMP LOAD_CONST
+        '''
+
+    @override(py3k)
+    def p__py_load_listcomp(self, args):
+        '''In Python 3.2+ list comprehensions are also wrapped
+        inside a function.
+
+        _py_load_listcomp ::= LOAD_LISTCOMP
+
+        '''
+
+    @p__py_load_listcomp.override(_py_version >= (3, 3))
+    def p__py_load_listcomp(self, args):
+        '''
+        _py_load_listcomp ::= LOAD_LISTCOMP LOAD_CONST
+
+        '''
+
+    def p__comprehension(self, args):
+        '''Common comprehension structure in Python 2.7
+
+        _comprehension ::= MAKE_FUNCTION_0 _comp_iterarable
+                           GET_ITER CALL_FUNCTION_1
+
+        _comp_iterarable ::= expr
+
+        comp_iter ::= comp_if
+        comp_iter ::= comp_ifnot
+        comp_iter ::= comp_for
+
+        comp_iter ::= comp_body
+
+        comp_body ::= set_comp_body
+        comp_body ::= gen_comp_body
+        comp_body ::= dict_comp_body
+
+        set_comp_body ::= expr SET_ADD
+        gen_comp_body ::= expr YIELD_VALUE POP_TOP
+        dict_comp_body ::= expr expr MAP_ADD
+
+        comp_if ::= expr jmp_false comp_iter
+        comp_ifnot ::= expr jmp_true comp_iter
+        comp_for ::= expr _for designator comp_iter JUMP_BACK
+
+        '''
+
+    @override(pypy)
+    def p__comprehensions_changes_in_pypy(self, args):
+        '''Alternative rules for Pypy.
+
+        In Pypy we've seen the pattern of jumping forward the next comp_iter
+        or jump back.
+
+        comp_iter  ::= comp_ifnotor
+        comp_iter  ::= comp_ifornot
+        comp_ifnotor ::= expr jmp_false expr jmp_true JUMP_BACK comp_iter
+        comp_ifnotor ::= expr jmp_true expr jmp_false JUMP_BACK comp_iter
+
+        '''
+
+    def p_setcomp_common(self, args):
+        '''Set comprehensions.
+
+        Common productions in all target Python versions.
+
+        expr ::= setcomp
+        stmt ::= setcomp_func
+        setcomp_func ::= BUILD_SET_0 _comprehension_iter
+                         FOR_ITER designator comp_iter
+                         JUMP_BACK RETURN_VALUE RETURN_LAST
+
+        setcomp ::= _py_load_setcomp _comprehension
+
+        '''
+
+    def p_list_comprehension_core(self, args):
+        '''List comprehensions.
+
+        This the core list comprehension stuff.  In Python 2 this will be
+        inlined, but in Python 3 will be enclosed in a function.  See
+        `p_list_comprehension` below.
+
+        .. _rules:
+
+        list_compr ::= BUILD_LIST_0 list_iter
+
+        list_iter ::= list_for
+        list_iter ::= list_if
+        list_iter ::= list_if_not
+        list_iter ::= lc_body
+
+        list_for ::= expr _for designator list_iter JUMP_BACK
+        list_if ::= expr jmp_false list_iter
+        list_if_not ::= expr jmp_true list_iter
+
+        lc_body ::= expr LIST_APPEND
+
+        '''
+
+    @override(py27)
+    def p_list_comprehension(self, args):
+        '''List comprehensions in Python 2.7 are 'exposed'.
+
+        expr ::= list_compr
+
+        '''
+
+    @p_list_comprehension.override(py3k)
+    def p_list_comprehension(self, args):
+        '''List comprehensions in Python 3.
+
+        Wrapped inside a function like the other comprehensions.
+
+        list_compr_expr ::= _py_load_listcomp _comprehension
+
+        expr ::= list_compr_expr
+        stmt ::= list_compr
+
+        '''
+
+    @override(pypy)
+    def p__pypy_listcomp(self, args):
+        '''
+        list_compr ::= expr BUILD_LIST_FROM_ARG _for designator list_iter
+                       JUMP_BACK
+
+        '''
+
+    def p_genexpr(self, args):
+        '''Generator expressions in Python 2.7.
+
+        genexpr ::= _py_load_genexpr _comprehension
+
+        expr ::= genexpr
+        stmt ::= genexpr_func
+        genexpr_func ::= _comprehension_iter FOR_ITER designator
+                         comp_iter JUMP_BACK
+
+        _comprehension_iter ::= LOAD_FAST
+
+        '''
+
+    def p_dictcomp(self, args):
+        '''Dict comprehensions.
+
+        dictcomp ::= _py_load_dictcomp _comprehension
+
+        expr ::= dictcomp
+        stmt ::= dictcomp_func
+
+        dictcomp_func ::= BUILD_MAP _comprehension_iter
+                          FOR_ITER designator
+                          comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
+
+        '''
+
+    def p_grammar(self, args):
+        '''The top-level grammar.
+
+        sstmt ::= stmt
+        sstmt ::= ifelsestmtr
+        sstmt ::= return_stmt RETURN_LAST
+
+        passstmt ::=
+
+        lastc_stmt ::= iflaststmt
+        lastc_stmt ::= whileelselaststmt
+        lastc_stmt ::= forelselaststmt
+        lastc_stmt ::= ifelsestmtr
+        lastc_stmt ::= ifelsestmtc
+        lastc_stmt ::= tryelsestmtc
+
+        lastl_stmt ::= iflaststmtl
+        lastl_stmt ::= ifelsestmtl
+        lastl_stmt ::= forelselaststmtl
+        lastl_stmt ::= tryelsestmtl
+
+        designList ::= designator designator
+        designList ::= designator DUP_TOP designList
+
+        designator ::= STORE_FAST
+        designator ::= STORE_NAME
+        designator ::= STORE_GLOBAL
+        designator ::= STORE_DEREF
+        designator ::= expr STORE_ATTR
+        designator ::= expr STORE_SLICE+0
+        designator ::= expr expr STORE_SLICE+1
+        designator ::= expr expr STORE_SLICE+2
+        designator ::= expr expr expr STORE_SLICE+3
+        designator ::= store_subscr
+        designator ::= unpack
+        designator ::= unpack_list
+
+        store_subscr ::= expr expr STORE_SUBSCR
+
+        stmt ::= return_lambda
+        stmt ::= conditional_lambda
+
+        stmt ::= return_stmt
+        return_stmt ::= ret_expr RETURN_VALUE
+        return_if_stmt ::= ret_expr RETURN_END_IF
+
+        stmt ::= ifstmt
+        _jump ::= JUMP_ABSOLUTE
+        _jump ::= JUMP_FORWARD
+        _jump ::= JUMP_BACK
+
+        jmp_false    ::= POP_JUMP_IF_FALSE
+        jmp_true    ::= POP_JUMP_IF_TRUE
+
+        testexpr ::= testfalse
+        testexpr ::= testtrue
+        testfalse ::= expr jmp_false
+        testtrue ::= expr jmp_true
+
+        jmp_abs ::= JUMP_ABSOLUTE
+        jmp_abs ::= JUMP_BACK
+
+        _for ::= GET_ITER FOR_ITER
+        _for ::= LOAD_CONST FOR_LOOP
+
+
+        # `kwarg` is used by the customization engine when CALL_FUNCTION_* are
+        # processed they are injected in the resultant `call_function` rule.
+        kwarg   ::= LOAD_CONST expr
+
         '''
 
     def nonterminal(self, nt, args):
-        collect = ('stmts', 'exprlist', 'kvlist', '_stmts', 'print_items')
-
+        collect = ('exprlist', 'kvlist', 'print_items')
         if nt in collect and len(args) > 1:
             #
             #  Collect iterated thingies together.
@@ -816,11 +565,6 @@ class Parser(GenericASTBuilder):
             rv = GenericASTBuilder.nonterminal(self, nt, args)
         return rv
 
-    def __ambiguity(self, children):
-        # only for debugging! to be removed hG/2000-10-15
-        print(children)
-        return GenericASTBuilder.ambiguity(self, children)
-
     def resolve(self, list):
         if len(list) == 2 and 'funcdef' in list and 'assign' in list:
             return 'funcdef'
@@ -828,66 +572,121 @@ class Parser(GenericASTBuilder):
             return 'expr'
         return GenericASTBuilder.resolve(self, list)
 
+
 nop = lambda self, args: None
-p = Parser()
 
 
-def parse(tokens, customize):
-    #
-    #  Special handling for opcodes that take a variable number
-    #  of arguments -- we add a new rule for each:
-    #
-    #    expr ::= {expr}^n BUILD_LIST_n
-    #    expr ::= {expr}^n BUILD_TUPLE_n
-    #    unpack_list ::= UNPACK_LIST {expr}^n
-    #    unpack ::= UNPACK_TUPLE {expr}^n
-    #    unpack ::= UNPACK_SEQEUENE {expr}^n
-    #    mkfunc ::= {expr}^n LOAD_CONST MAKE_FUNCTION_n
-    #    mkfunc ::= {expr}^n load_closure LOAD_CONST MAKE_FUNCTION_n
-    #    expr ::= expr {expr}^n CALL_FUNCTION_n
-    #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
-    #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
-    #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
-    #
-    global p
-    for k, v in list(customize.items()):
-        # avoid adding the same rule twice to this parser
-        if k in p.customized:
-            continue
-        p.customized[k] = None
-        op = k[:k.rfind('_')]
-        if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
-            rule = 'build_list ::= ' + 'expr '*v + k
-        elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
-            rule = 'unpack ::= ' + k + ' designator'*v
-        elif op == 'UNPACK_LIST':
-            rule = 'unpack_list ::= ' + k + ' designator'*v
-        elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
-            # no need to add a rule
-            continue
-        elif op == 'MAKE_FUNCTION':
-            p.addRule('mklambda ::= %s LOAD_LAMBDA %s' % ('expr '*v, k), nop)
-            rule = 'mkfunc ::= %s LOAD_CONST %s' % ('expr '*v, k)
-        elif op == 'MAKE_CLOSURE':
-            p.addRule('mklambda ::= %s load_closure LOAD_LAMBDA %s' %
-                      ('expr '*v, k), nop)
-            p.addRule('genexpr ::= %s load_closure LOAD_GENEXPR %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            p.addRule('setcomp ::= %s load_closure LOAD_SETCOMP %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            p.addRule('dictcomp ::= %s load_closure LOAD_DICTCOMP %s expr '
-                      'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k), nop)
-            rule = 'mkfunc ::= %s load_closure LOAD_CONST %s' % ('expr '*v, k)
-        elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
-                    'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
-            na = (v & 0xff)           # positional parameters
-            nk = (v >> 8) & 0xff      # keyword parameters
-            # number of apply equiv arguments:
-            nak = (len(op) - len('CALL_FUNCTION')) // 3
-            rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
-                   + 'expr ' * nak + k
-        else:
-            raise Exception('unknown customize token %s' % k)
-        p.addRule(rule, nop)
-    ast = p.parse(tokens)
-    return ast
+class Parser(object):
+    def __init__(self):
+        self.parser = _InternalParser()
+
+    @property
+    def customized(self):
+        return self.parser.customized
+
+    def add_rule(self, rule, operation):
+        self.parser.addRule(rule, operation)
+
+    def parse(self, tokens, customize):
+        #
+        #  Special handling for opcodes that take a variable number of
+        #  arguments -- we add a new rule for each:
+        #
+        #    expr ::= {expr}^n BUILD_LIST_n
+        #    expr ::= {expr}^n BUILD_TUPLE_n
+        #
+        #    unpack_list ::= UNPACK_LIST {expr}^n
+        #    unpack ::= UNPACK_TUPLE {expr}^n
+        #    unpack ::= UNPACK_SEQUENCE {expr}^n
+        #
+        #    mklambda ::= {expr}^n LOAD_LAMBDA MAKE_FUNCTION_n
+        #    mklambda ::= {expr}^n load_closure LOAD_LAMBDA MAKE_FUNCTION_n
+        #
+        #    expr ::= expr {expr}^n CALL_FUNCTION_n
+        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
+        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
+        #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
+        #
+        from xoutil.eight import _py3
+        for k, v in list(customize.items()):
+            # avoid adding the same rule twice to this parser
+            if k in self.customized:
+                continue
+            self.customized[k] = None
+            op = k[:k.rfind('_')]
+            if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
+                rule = 'build_list ::= ' + 'expr '*v + k
+            elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
+                rule = 'unpack ::= ' + k + ' designator'*v
+            elif op == 'UNPACK_LIST':
+                rule = 'unpack_list ::= ' + k + ' designator'*v
+            elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
+                # no need to add a rule
+                continue
+            elif op == 'MAKE_FUNCTION':
+                if _py3:
+                    ndefaults = v & 0xFF
+                    nkwonly = (v >> 8) & 0xFF
+                    nannotations = (v >> 16) & 0x7FFF
+                    assert nannotations == 0
+                else:
+                    ndefaults = v
+                    nkwonly = 0
+                self.add_rule(
+                    'mklambda ::= %s %s _py_load_lambda %s' % (
+                        'expr ' * ndefaults, 'kwarg ' * nkwonly, k),
+                    nop
+                )
+                rule = None
+            elif op == 'MAKE_CLOSURE':
+                self.add_rule(
+                    'mklambda ::= %s load_closure _py_load_lambda %s' % (
+                        'expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'genexpr ::= %s load_closure _py_load_genexpr %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'setcomp ::= %s load_closure _py_load_setcomp %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                self.add_rule(
+                    'dictcomp ::= %s load_closure _py_load_dictcomp %s expr '
+                    'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    nop
+                )
+                if _py3:
+                    # self.add_rule(
+                    #     'list ::= %s load_closure _py_load_dictcomp %s expr '
+                    #     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
+                    #     nop
+                    # )
+                    pass
+                rule = None
+            elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
+                        'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
+                na = (v & 0xff)           # positional parameters
+                nk = (v >> 8) & 0xff      # keyword parameters
+                # number of apply equiv arguments:
+                nak = (len(op) - len('CALL_FUNCTION')) // 3
+                rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
+                       + 'expr ' * nak + k
+            elif op == 'BUILD_SLICE':
+                # since BUILD_SLICE can come in only two forms, it's already
+                # embedded in our grammar, so just ignore it.
+                rule = None
+            else:
+                raise Exception('unknown customize token %s' % k)
+            if rule:
+                self.add_rule(rule, nop)
+        ast = self.parser.parse(tokens)
+        return ast
+
+
+def parse(tokens, customized):
+    p = Parser()
+    return p.parse(tokens, customized)

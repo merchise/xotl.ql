@@ -11,10 +11,13 @@
 #
 # Created on 2014-11-06
 
+'''An scratch pad for ideas.
+
+.. warning:: Nothing done in here is guarantee to remain in this package.
+
+'''
+
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
-
-
-# Just a notepad
