@@ -176,6 +176,35 @@ def test_mc_routine_4():
     assert res is True
 
 
+def test_mc_routine_5():
+    from xotl.ql import qst
+    from xotl.ql.translation._monads import _mc
+    this = list(range(10, 15)) + list(range(5, 10))
+    genexpr = qst.parse('(x for x in this if 7 < x < 13)')
+    result = _mc(genexpr)
+    # In this test, we won't use our implementation of the monadic functions
+    # but translate them directly to Python.
+    res = eval(compile(result, '', 'eval'),
+               {'this': this,
+                'Join': lambda x: [i for b in x for i in b],
+                'Map': lambda f: lambda x: [f(i) for i in x],
+                'Empty': lambda: [],
+                'Unit': lambda x: [x]})
+    assert res == [10, 11, 12, 8, 9]
+
+    genexpr = qst.parse('sorted(x for x in this if 7 < x < 13)')
+    result = _mc(genexpr)
+    # In this test, we won't use our implementation of the monadic functions
+    # but translate them directly to Python.
+    res = eval(compile(result, '', 'eval'),
+               {'this': this,
+                'Join': lambda x: [i for b in x for i in b],
+                'Map': lambda f: lambda x: [f(i) for i in x],
+                'Empty': lambda: [],
+                'Unit': lambda x: [x]})
+    assert res == [8, 9, 10, 11, 12]
+
+
 def Call(f, a=None):
     from xotl.ql import qst
     if a:
