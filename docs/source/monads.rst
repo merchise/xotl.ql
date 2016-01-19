@@ -141,10 +141,6 @@ Internal representation
        >>> reduce(operator.add, Cons(1, [2]).asiter(), 0)
        3
 
-       # Want to pass a `Cons` to `reduce`? Use `Foldr`:
-       >>> reduce(Foldr(operator.add, 10), Cons(1, [2]))
-       3
-
    As noted in [QLFunc]_ the `Cons`:class: operator (|:|) needs to be further
    specified for *set* and *bags*.  Also the "|+|" infix operator needs to be
    commutative if |:| is left-commutative and idempotent if |:| is
