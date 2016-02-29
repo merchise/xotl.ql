@@ -21,7 +21,6 @@ __all__ = ['Token', 'Scanner', 'getscanner']
 
 import types
 import dis
-from collections import namedtuple
 from array import array
 
 #  We'll only support 2.7 and >=3.2,<3.5
@@ -191,8 +190,8 @@ class InstructionSetBuilder(object):
 
     @property
     def code(self):
-        import array
-        res = array.array('B')
+        '''Return the byte-code for the current set of instructions.'''
+        res = array('B')
         for i in self:
             res.fromstring(i.code)
         tobytes = getattr(res, 'tobytes', res.tostring)
@@ -274,7 +273,6 @@ class Instruction(object):
            EXTENDED_ARG.
 
         '''
-        import array
         if self.opcode >= dis.HAVE_ARGUMENT:
             arg = self.arg
             bytes_ = []
@@ -286,7 +284,7 @@ class Instruction(object):
             bytes_.extend([self.opcode, arg & 0xFF, arg >> 8])
         else:
             bytes_ = [self.opcode]
-        res = array.array('B')
+        res = array('B')
         res.fromstring(''.join(chr(b) for b in bytes_))
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
@@ -470,12 +468,16 @@ class Scanner(object):
         # are simply the span of instructions pertaining a single (outer)
         # expression.  Some optimization steps make jumps outside the outer
         # structures, jumps keep the right 'target' for those.
+        #
+        # Nested conditional are problematic since they may RETURN at any
+        # moment.
         jumps = {}
         BOOLSTRUCT = 'and/or'  # mark for nested conditionals
         structures = []
 
         def get_instruction_at(offset, instructions):
-            return next(i for i in enumerate(instructions) if i[-1].offset == offset)
+            return next(i for i in enumerate(instructions)
+                        if i[-1].offset == offset)
 
         def get_parent_structure(offset):
             '''Return the minimal structure the given `offset` lies into.
