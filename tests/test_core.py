@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # xotl.ql.tests.test_this
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2015 Merchise Autrement
+# Copyright (c) 2012-2016 Merchise Autrement
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -16,6 +16,7 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_import)
 
+from xoutil import Unset
 from xotl.ql.core import this, Universe, normalize_query
 
 
@@ -32,10 +33,21 @@ def test_this_iterable():
         assert False, 'this should be iterable'
 
 
-def _build_test(generator):
+def _build_test(generator, names=None):
     def test_expr():
         query = normalize_query(generator)
         assert query.qst
+        if names:
+            for name, val in names.items():
+                if val is not Unset:
+                    val = query.get_name(name)
+                else:
+                    try:
+                        query.get_name(name)
+                    except:
+                        raise
+                    else:
+                        pass
 
 
 def _inject_tests(expressions, fmt, mark=lambda x: x):
@@ -55,3 +67,33 @@ QUERIES = [
     (x for x.y in this),      # noqa
 ]
 _inject_tests(QUERIES, 'test_query_%d')
+
+
+global_sentinel = 12
+
+
+def test_names():
+    from xotl.ql.core import get_predicate_object
+
+    def f(a=100):
+        return lambda y: global_sentinel < y < a
+
+    pred = get_predicate_object(f())
+    assert pred.qst
+    assert pred.get_name('a') == 100
+
+    # Test that globals may change
+    global global_sentinel
+    assert pred.get_name('global_sentinel') == global_sentinel
+    global_sentinel = 90
+    assert pred.get_name('global_sentinel') == global_sentinel
+
+    try:
+        get_predicate_object(f)
+    except:
+        pass  # not an expression
+    else:
+        assert False
+
+    q = normalize_query(x for x in this)
+    assert q.get_name('.0') is this

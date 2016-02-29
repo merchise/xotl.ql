@@ -69,17 +69,41 @@ class QueryObject(Interface):
 
     '''
     qst = Attribute('qst', 'The Query Syntax Tree')
+    partition = Attribute('partition', 'A slice indicating how much to fetch '
+                          'from the data store.  The interpretation of this '
+                          'slice value should be consistent with that of '
+                          'Python own slice type.')
+
+    def limit_by(self, limit):
+        '''Return a new query object limited by limit.
+
+        If this query object already has a limit it will be ignore.
+
+        '''
+
+    def offset(self, offset):
+        '''Return a new query object with a new offset.'''
+
+    def get(self, name):
+        '''Give the value for the `name`.
+
+        Queries are defined in a scope where they could access any name
+        (e.g. variables).  The translator may need to access the value of such
+        names.
+
+        '''
 
 
 class QueryExecutionPlan(Interface):
     '''Required API-level interface for a query execution plan.
 
     '''
-    query = Attribute('query',
-                      'The original query object this plan was '
-                      'built from.  Even if the translator was given a '
-                      'query expression directly, like in most of our '
-                      'examples, this must be a query object.')
+    query = Attribute(
+        'query',
+        'The original query object this plan was built from.  Even if the '
+        'translator was given a query expression directly, like in most of '
+        'our examples, this must be a query object.'
+    )
 
     def __call__(self, **kwargs):
         '''Execution plans are callable.

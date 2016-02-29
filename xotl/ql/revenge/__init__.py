@@ -30,14 +30,17 @@ assert _py_version >= (2, 7, 0) and (
 del _py_version
 
 from . import scanners, walkers
-from .scanners import getscanner    # noqa
+from .scanners import getscanner   # noqa:  exported
 from .parsers import ParserError
 
 
-class Uncompyled(object):   # TODO:  Find better name
+class Uncompyled(object):
+    '''A query object which is built from byte-code.
+    '''
     def __init__(self, obj, version=None, get_current_thread=None,
                  islambda=False, hasnone=False):
-        self.code = code = self._extract_code(obj)
+        code = self._extract_code(obj)
+        self.code = code
         if get_current_thread:
             scanner = scanners.getscanner(version, get_current_thread)
         else:
@@ -103,19 +106,15 @@ class Uncompyled(object):   # TODO:  Find better name
         except:
             return None
 
-    @memoized_property
-    def source(self):
-        self.walker.gen_source(self.ast, self.customizations)
-        return self.walker.f.getvalue()
-
-    @staticmethod
-    def _extract_code(obj):
+    @classmethod
+    def _extract_code(cls, obj):
         if isinstance(obj, types.CodeType):
             return obj
         elif isinstance(obj, types.GeneratorType):
             return obj.gi_code
         elif isinstance(obj, types.FunctionType):
-            from xoutil.objects import get_first_of
-            return get_first_of(obj, 'func_code', '__code__')
+            # We regard the closure-provided values as a kind of locals
+            # variable
+            return obj.__code__
         else:
             raise TypeError('Invalid code object')
