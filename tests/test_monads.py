@@ -58,23 +58,23 @@ def test_mc_routine_1():
     # MC [x | x <- this, predicate(x)]
     # = Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
     expected = Call(
-        Name('Join', Load()),
+        Name('join', Load()),
         Call(
             Call(
-                Name('Map', Load()),
+                Name('map', Load()),
                 Lambda(
                     _make_arguments('x'),
                     IfExp(
                         Call(Name('predicate', Load()), Name('x', Load())),
-                        Call(Name('Unit', Load()), Name('x', Load())),
-                        Call(Name('Empty', Load()))
+                        Call(Name('unit', Load()), Name('x', Load())),
+                        Call(Name('empty', Load()))
                     )
                 )
             ),
             Name('this', Load())
         )
     )
-    result = _mc(genexpr)
+    result = _mc(genexpr, map='map', join='join', zero='empty', unit='unit')
     try:
         assert result.body == expected
     except:
@@ -85,8 +85,8 @@ def test_mc_routine_1():
     predicate = lambda x: 's' in x
     this = Cons('I should be in the result', ['But I cannot be'])
     res = eval(compile(result, '', 'eval'),
-               {'this': this, 'predicate': predicate, 'Join': Join,
-                'Map': Map, 'Empty': Empty, 'Unit': Unit})
+               {'this': this, 'predicate': predicate, 'join': Join,
+                'map': Map, 'empty': Empty, 'unit': Unit})
     assert res().aslist() == ['I should be in the result']
 
 

@@ -538,6 +538,7 @@ Sum = lambda s, initial=0: Foldr(lambda x, y: x + y, initial, s)
 All = Foldr(operator.and_, True)
 Any = Foldr(operator.or_, False)
 
+
 # Translation from comprehension syntax to monadic constructors
 #
 # MC [e | ]         =   Unit(MC e)
@@ -560,8 +561,15 @@ Any = Foldr(operator.or_, False)
 # compile the function-calls syntax and execute it to the get the actual
 # result.
 #
+# This, in fact, it's quite helpful: We transform a query syntax tree to a
+# function-calling (by function names) program: so the function 'Map' does not
+# need to be the Map type defined in this module, but any callable with the
+# same signature.  So 'Map' could be defined as 'lambda f:lambda l: map(f, l)'
+# using the builtin 'map' function -- provided the other constructors produce
+# type-compatible values.  See ExecPlan in module 'py.py'.
+#
 
-def _mc(stree):
+def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
     def Call(f, a=None):
         from xotl.ql import qst
         if a:
@@ -608,7 +616,7 @@ def _mc(stree):
             if not exprs:
                 # MC [e | ] -> Unit(MC e)
                 return Call(
-                    qst.Name('Unit', qst.Load()),
+                    qst.Name(unit, qst.Load()),
                     _mc_routine(elt)
                 )
             else:
@@ -616,7 +624,7 @@ def _mc(stree):
                     # MC [e | q, p] = join(MC [MC [e|p] | q])
                     q, p = exprs[:-1], exprs[-1]
                     return Call(
-                        qst.Name('Join', qst.Load()),
+                        qst.Name(join, qst.Load()),
                         _mc_routine(
                             genexpr(_mc_routine(genexpr(elt, p)), *q)
                         )
@@ -627,14 +635,14 @@ def _mc(stree):
                         # MC [e | x <- q]  = map (lambda x: MC e) (MC q)
                         return Call(
                             Call(
-                                qst.Name('Map', qst.Load()),
+                                qst.Name(map, qst.Load()),
                                 _build_lambda(g.target, elt)
                             ),
                             _mc_routine(g.iter)
                         )
                     else:
                         # MC [e | p]  = if MC p then MC [e | ] else Empty()
-                        else_ = Call(qst.Name('Empty', qst.Load()))
+                        else_ = Call(qst.Name(zero, qst.Load()))
                         then_ = _mc_routine(genexpr(elt))
                         cond_ = _mc_routine(g)
                         return qst.IfExp(cond_, then_, else_)
