@@ -37,8 +37,8 @@ def pushto(attr):
 
 
 def take(n, attr, kwargname):
-    '''Makes a method take `n` items from the stack `self.<attr>` and passes
-    it as keyword `kwargname`.
+    '''Makes a method that takes `n` items from the stack `self.<attr>` and
+    passes it as keyword `kwargname`.
 
     Items are passed in extraction-order.  For instance, if the stack (as a
     list) contains the item ``[1, 2, 3, 4]``, and `n` is 3, the keyword
