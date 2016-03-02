@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # test_revenge
 # ---------------------------------------------------------------------
-# Copyright (c) 2015 Merchise Autrement and Contributors
+# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -597,6 +597,12 @@ SETCOMPS = [
 _inject_tests(SETCOMPS, 'test_comprehensions_setcomp_%d')
 
 
+NESTED_GENEXPRS = [
+    '(y for y in (a for a in this))',
+]
+_inject_tests(NESTED_GENEXPRS, 'test_nested_genexprs_%d')
+
+
 LISTCOMPS = [
     ('[x for x in this if not p(x) if z(x)]',
      (
@@ -612,3 +618,28 @@ LISTCOMPS = [
     'calling([a for a in this if a < y])',
 ]
 #  _inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
+
+
+def test_nested_genexprs_ext_1():
+    from xotl.ql.revenge import Uncompyled
+    this = iter([])
+
+    def nested():
+        return (a for a in this)
+
+    expected = (y for y in (a for a in this))
+    expected_uncomp = Uncompyled(expected)
+
+    outer = (y for y in nested())
+    outer_uncomp = Uncompyled(outer)
+    assert outer_uncomp.qst == expected_uncomp.qst
+
+    class Iter():
+        def __iter__(self):
+            return (a for a in this)
+    Iter = Iter()
+
+    outer = (y for y in Iter)
+    outer_uncomp = Uncompyled(outer)
+    outer_uncomp = Uncompyled(outer)
+    assert outer_uncomp.qst == expected_uncomp.qst

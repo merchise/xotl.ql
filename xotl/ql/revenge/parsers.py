@@ -23,7 +23,7 @@ from xoutil.collections import UserList
 
 import sys
 _py_version = sys.version_info
-from .eight import override, py27, py32, py3k, py33, py34, pypy
+from .eight import override, py27, py32, py3k, py33, py34, pypy   # noqa
 from .exceptions import ParserError as RevengeParserError
 
 try:
