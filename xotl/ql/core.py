@@ -21,8 +21,9 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
-from collections import MappingView
 from xoutil import Unset
+from xoutil.collections import ChainMap, MappingView
+
 
 from xotl.ql import interfaces
 
@@ -69,6 +70,7 @@ class QueryObject(object):
         if any(name in RESERVED_ARGUMENTS for name in kwargs):
             raise TypeError('Invalid keyword argument')
         self.__dict__.update(kwargs)
+        self._names = _frame.chainmap
 
     def get_name(self, name):
         res = self._frame.f_locals.get(name, Unset)
@@ -78,6 +80,10 @@ class QueryObject(object):
             return res
         else:
             raise NameError(name)
+
+    @property
+    def names(self):
+        return AccesableMappingView(self._names)
 
 
 def get_query_object(generator, **kwargs):
@@ -172,8 +178,20 @@ class Frame(object):
         self.f_globals = AccesableMappingView(globals)
         self.f_builtins = AccesableMappingView(builtins)
 
+    @property
+    def chainmap(self):
+        return ChainMap(self.f_locals, self.f_globals, self.f_builtins)
+
 
 class AccesableMappingView(MappingView):
+    def __contains__(self, key):
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
     def __getitem__(self, key):
         return self._mapping[key]
 

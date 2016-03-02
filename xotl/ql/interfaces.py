@@ -74,6 +74,13 @@ class QueryObject(Interface):
                           'slice value should be consistent with that of '
                           'Python own slice type.')
 
+    names = Attribute(
+        'names',
+        'A MappingView for the names the query has access.  This MappingView '
+        ' should be extended so that direct access to keys is possible. '
+        'See `get_name`:method:'
+    )
+
     def limit_by(self, limit):
         '''Return a new query object limited by limit.
 
@@ -84,7 +91,7 @@ class QueryObject(Interface):
     def offset(self, offset):
         '''Return a new query object with a new offset.'''
 
-    def get(self, name):
+    def get_name(self, name):
         '''Give the value for the `name`.
 
         Queries are defined in a scope where they could access any name

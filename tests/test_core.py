@@ -73,7 +73,7 @@ global_sentinel = 12
 
 
 def test_names():
-    from xotl.ql.core import get_predicate_object
+    from xotl.ql.core import get_predicate_object, normalize_query, this
 
     def f(a=100):
         return lambda y: global_sentinel < y < a
@@ -97,3 +97,4 @@ def test_names():
 
     q = normalize_query(x for x in this)
     assert q.get_name('.0') is this
+    assert '.0' in q.names
