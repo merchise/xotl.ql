@@ -12,7 +12,7 @@
 #
 # Created on 2015-11-05
 
-'''The Query Syxtax Tree.
+'''The Query Syntax Tree.
 
 '''
 
