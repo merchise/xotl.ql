@@ -97,4 +97,7 @@ def test_names():
 
     q = normalize_query(x for x in this)
     assert q.get_name('.0') is this
-    assert '.0' in q.names
+    assert '.0' in q.locals
+    assert 'x' not in q.locals
+    assert 'global_sentinel' in q.globals
+    assert '1qwwee' not in q.globals

@@ -74,10 +74,15 @@ class QueryObject(Interface):
                           'slice value should be consistent with that of '
                           'Python own slice type.')
 
-    names = Attribute(
-        'names',
-        'A MappingView for the names the query has access.  This MappingView '
-        ' should be extended so that direct access to keys is possible. '
+    locals = Attribute(
+        'locals',
+        'A MappingView for the locals in the query scope. '
+        'See `get_name`:method:'
+    )
+
+    globals = Attribute(
+        'globals',
+        'A MappingView for the globals in the query scope.'
         'See `get_name`:method:'
     )
 
@@ -91,12 +96,15 @@ class QueryObject(Interface):
     def offset(self, offset):
         '''Return a new query object with a new offset.'''
 
-    def get_name(self, name):
+    def get_name(self, name, only_globals=False):
         '''Give the value for the `name`.
 
         Queries are defined in a scope where they could access any name
         (e.g. variables).  The translator may need to access the value of such
         names.
+
+        Get name will prefer locals over globals unless `only_globals` is
+        True.
 
         '''
 
