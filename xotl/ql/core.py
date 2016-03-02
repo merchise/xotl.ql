@@ -22,7 +22,7 @@ from __future__ import (division as _py3_division,
 
 
 from xoutil import Unset
-from xoutil.collections import MappingView
+from collections import MappingView, Mapping
 
 
 from xotl.ql import interfaces
@@ -167,7 +167,7 @@ def thesefy(target):
 
     class new_meta(type(target)):
         def __iter__(self):
-            return self
+            return (x for x in this if isinstance(x, self))
 
         def next(self):
             raise StopIteration
@@ -185,7 +185,7 @@ class Frame(object):
         self.f_builtins = AccesableMappingView(builtins)
 
 
-class AccesableMappingView(MappingView):
+class AccesableMappingView(MappingView, Mapping):
     def __contains__(self, key):
         try:
             self[key]
@@ -199,6 +199,9 @@ class AccesableMappingView(MappingView):
 
     def get(self, key, default=None):
         return self._mapping.get(key, default)
+
+    def __iter__(self):
+        return iter(self._mapping)
 
 
 def _get_closure(obj):
