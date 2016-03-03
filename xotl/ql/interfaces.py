@@ -176,6 +176,9 @@ class QueryTranslator(Interface):
          ...     def __iter__(self):
          ...         return self()
 
+       However this may hurt some extensions.  For instance, below we describe
+       a couple of possible extensions for translators and plans which are not
+       easily implemented in a single unit of code.
 
     '''
     def __call__(self, query, **kwargs):
@@ -195,3 +198,37 @@ class QueryTranslator(Interface):
 
         '''
         pass
+
+
+class QueryTranslatorExplainExtension(QueryTranslator):
+    '''This interface documents optional-methods for query translators that
+    are deemed required to provide interactive access to the translator.
+
+    '''
+
+    def explain(self, query, **kwargs):
+        '''Prints information about how the query might be translated/executed.
+
+        The signature *should* allow the same arguments as the `__call__`
+        method of translators.
+
+        '''
+
+
+class QueryExecutionPlanExplainExtension(QueryExecutionPlan):
+    def explain(self):
+        '''Prints information about this plan of execution.
+
+        The details of the information are specific to the kind of plan.
+
+        '''
+
+
+class QueryDebugger(QueryTranslator):
+    '''A translator with debugging capabilities.
+
+    '''
+    def debug(self, query, **kwargs):
+        '''Enter a interactive session of debugging the provided query.
+
+        '''
