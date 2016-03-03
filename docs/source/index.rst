@@ -3,31 +3,27 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the *pythonic* query language!
-=========================================
+``xotl.ql`` |release| documentation
+===================================
 
-.. note:: This is the documentation of the development branch.
+This package provides *facilities* to implement query languages in python.
+The query language is based on Python's generator expression.  A query in this
+language looks like this::
 
-   This branch contains an undergoing restatement of its implementation.  The
-   intermediate language (previously seen as an AST) is been `re-evaluated
-   <monads>`:ref:.
+    >>> from xotl.ql.core import parse_query, this
 
+    >>> query = parse_query(
+    ...    child
+    ...    for parent in this
+    ...    if parent.children and parent.age > 32
+    ...    for child in parent.children
+    ...    if child.age < 6
+    ... )
 
-This package provides an implementation of a query language for Python.
-The query language is based on Python's generator expression.  A query
-in this language looks like this::
+The result of the :class:`~xotl.ql.core.parse_query` callable is a
+:term:`query object` that "describes" at the syntactical level the
+:term:`query expression` above.
 
-    >>> from xotl.ql import these, this
-
-    >>> query = these(child
-    ...               for parent in this
-    ...               if parent.children and parent.age > 32
-    ...               for child in parent.children
-    ...               if child.age < 6)
-
-The result of the :class:`~xotl.ql.core.these` callable is a :term:`query
-object` that "describes" at the syntactical level the :term:`query expression`
-above.
 
 What's new in this release?
 ---------------------------
