@@ -188,6 +188,7 @@ class Cons(Type):
         def _iter():
             yield self.x
             yield self.xs
+
         if self.x is not Undefined:
             return _iter()
         else:
@@ -632,7 +633,7 @@ def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
                 else:
                     g = exprs[0]
                     if isinstance(g, generator):
-                        # MC [e | x <- q]  = map (lambda x: MC e) (MC q)
+                        # MC [e | x <- q]  = map (λx. MC e) (MC q)
                         return Call(
                             Call(
                                 qst.Name(map, qst.Load()),
