@@ -133,3 +133,15 @@ def test_all_pred():
     result3 = set(plan3())
 
     assert result1 == result2 == result3
+
+    query = get_query_object(
+        parent
+        for parent in Person
+        if parent.children
+        if sum(child.age for child in parent.children) > 60
+    )
+    plan = _TestPlan(query)
+    result = list(plan())
+    assert denia in result
+    assert pedro in result
+    assert len(result) == 2

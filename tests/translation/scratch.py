@@ -1,29 +1,3 @@
-def test_all_pred_cont():
-    # query = these(
-    #     parent
-    #     for parent in Person
-    #     if parent.children
-    #     if all(parent.name.startswith('Manu'), parent.age > 30))
-
-    # dict_update_new(kwargs, dict(only='test_translate.*'))
-    # plan = naive_translation(query, **kwargs)
-    # with pytest.raises(SyntaxError):
-    #     result = list(plan())
-
-    query = get_query_object(
-        parent
-        for parent in Person
-        if parent.children
-        if sum(child.age for child in parent.children) > 60)
-
-    dict_update_new(kwargs, dict(only='test_translate.*'))
-    plan = naive_translation(query, **kwargs)
-    result = list(plan())
-    assert denia in result
-    assert pedro in result
-    assert len(result) == 2
-
-
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new
