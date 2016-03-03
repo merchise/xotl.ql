@@ -15,11 +15,28 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
+from xoutil.modules import modulemethod
 
-class ExecPlan(object):
-    # The map, join, zero, and unit are provided for tests.
+from xotl.ql.core import get_query_object
+from xotl.ql.interfaces import QueryObject
+
+
+@modulemethod
+def __call__(self, query, **kwargs):
+    return self.NaivePythonExecutionPlan(query, **kwargs)
+
+
+@modulemethod
+def explain(self, query, **kwargs):
+    self.NaivePythonExecutionPlan(query, **kwargs).explain()
+
+
+class NaivePythonExecutionPlan(object):
     def __init__(self, query, map=None, join=None, zero=None, unit=None):
+        # The map, join, zero, and unit are provided for tests.
         from ._monads import _mc
+        if not isinstance(query, QueryObject):
+            query = get_query_object(query)
         self.query = query
         self.map = '__x_map_%s' % id(self) if not map else map
         self.join = '__x_join_%s' % id(self) if not join else join
@@ -87,9 +104,8 @@ class ExecPlan(object):
         )
 
     def _do_plan(self, what):
-        from xotl.ql.interfaces import QueryObject
         if isinstance(what, QueryObject):
-            return ExecPlan(
+            return NaivePythonExecutionPlan(
                 what,
                 map=self.map,
                 join=self.join,
@@ -103,7 +119,8 @@ class ExecPlan(object):
         return self()
 
 
-class _TestPlan(ExecPlan):
+class _TestPlan(NaivePythonExecutionPlan):
+    # A plan that fixes
     def __init__(self, query):
         super(_TestPlan, self).__init__(
             query,
