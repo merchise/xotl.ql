@@ -158,3 +158,40 @@ class QueryExecutionPlan(Interface):
 
         '''
         return self()
+
+
+class QueryTranslator(Interface):
+    '''A query translator.
+
+    .. note:: Since Python classes are callable, you may implement a
+       translator/execution plan in a single class::
+
+         >>> class ExecutionPlan(object):
+         ...     def __init__(self, query, **kwargs):
+         ...         pass
+         ...
+         ...     def __call__(self, **options):
+         ...         pass
+         ...
+         ...     def __iter__(self):
+         ...         return self()
+
+
+    '''
+    def __call__(self, query, **kwargs):
+        '''Return an execution plan for the given `query`.
+
+        :param query: The query to be translated.  Translators must allow this
+                       object to be either a `query expression` or a `query
+                       object` that complies with the interface
+                       `QueryObject`:class:.
+
+        Translators are allowed to provide other keyword-only arguments.
+        Translators' authors are encouraged to properly document those
+        arguments.
+
+        :return: The query execution plan.
+        :rtype: `QueryExecutionPlan`:class:
+
+        '''
+        pass
