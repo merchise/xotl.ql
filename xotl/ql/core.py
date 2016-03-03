@@ -21,6 +21,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+import types
 from xoutil import Unset
 from collections import MappingView, Mapping
 
@@ -193,12 +194,12 @@ def thesefy(target):
 
 class Frame(object):
     def __init__(self, locals, globals, builtins):
-        self.f_locals = AccesableMappingView(locals)
-        self.f_globals = AccesableMappingView(globals)
-        self.f_builtins = AccesableMappingView(builtins)
+        self.f_locals = _FrameView(locals)
+        self.f_globals = _FrameView(globals)
+        self.f_builtins = _FrameView(builtins)
 
 
-class AccesableMappingView(MappingView, Mapping):
+class _FrameView(MappingView, Mapping):
     def __contains__(self, key):
         try:
             self[key]
@@ -208,17 +209,18 @@ class AccesableMappingView(MappingView, Mapping):
             return True
 
     def __getitem__(self, key):
-        return self._mapping[key]
+        res = self._mapping[key]
+        return sub_query_or_value(res) if key == '.0' else res
 
     def get(self, key, default=None):
-        return self._mapping.get(key, default)
+        res = self._mapping.get(key, default)
+        return sub_query_or_value(res) if key == '.0' else res
 
     def __iter__(self):
         return iter(self._mapping)
 
 
 def _get_closure(obj):
-    import types
     assert isinstance(obj, types.FunctionType)
     if obj.__closure__:
         return {
@@ -227,3 +229,10 @@ def _get_closure(obj):
         }
     else:
         return {}
+
+
+def sub_query_or_value(v):
+    if isinstance(v, types.GeneratorType) and v.gi_code.co_name == '<genexpr>':
+        return get_query_object(v)
+    else:
+        return v
