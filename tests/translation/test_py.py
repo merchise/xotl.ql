@@ -19,6 +19,8 @@ from .metamodel import get_birth_date
 from .model import Person, Place
 
 from xotl.ql.core import this
+from xotl.ql.core import get_query_object
+from xotl.ql.translation.py import _TestPlan
 
 
 # TODO:  Make this fixtures
@@ -82,16 +84,52 @@ manolito = Person(name='Manuel Vázquez Piñero',
 # a production module, but a proof of concept for translation from xotl.ql
 # as a language.
 #
-def test_all_pred(**kwargs):
-    from xotl.ql.core import get_query_object
-    from xotl.ql.translation.py import ExecPlan
+def test_nested_genexprs_with_thesefy():
+    from xotl.ql.revenge import Uncompyled
+
+    expected = (p for p in (x for x in this if isinstance(x, Person)))
+    expected_uncomp = Uncompyled(expected)
+
+    outer = (p for p in Person)
+    outer_uncomp = Uncompyled(outer)
+    assert outer_uncomp.qst == expected_uncomp.qst
+
+    # Although semantically equiv, some sort of unimplemented transformation
+    # of the previous is needed.
+    # another = (p for p in this if isinstance(p, Person))
+
+
+def test_all_pred():
     query = get_query_object(
         parent
         for parent in this
-        if isinstance(parent, Person) and parent.children
+        if isinstance(parent, Person)
+        if parent.children
     )
-    plan = ExecPlan(query, **kwargs)
-    result = list(plan())
-    assert elsa in result
-    assert papi in result
-    assert manolito not in result
+    plan1 = _TestPlan(query)
+    result1 = set(plan1())
+    assert elsa in result1
+    assert papi in result1
+    assert manolito not in result1
+    assert result1 == set(plan1()), 'Plan should be reusable'
+
+    query = get_query_object(
+        parent
+        for parent in (x for x in this if isinstance(x, Person))
+        if parent.children
+    )
+    plan2 = _TestPlan(query)
+    result2 = set(plan2())
+    assert elsa in result2
+    assert papi in result2
+    assert manolito not in result2
+
+    query = get_query_object(
+        parent
+        for parent in Person
+        if parent.children
+    )
+    plan3 = _TestPlan(query)
+    result3 = set(plan3())
+
+    assert result1 == result2 == result3
