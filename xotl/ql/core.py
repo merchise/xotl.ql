@@ -121,6 +121,9 @@ def get_query_object(generator, **kwargs):
     )
 
 
+parse_query = get_query_object
+
+
 def get_predicate_object(func, **kwargs):
     from xotl.ql.revenge import Uncompyled
     uncompiled = Uncompyled(func)
