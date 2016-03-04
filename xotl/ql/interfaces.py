@@ -15,6 +15,13 @@
 and some internal interfaces as well.
 
 
+Notice that we only aim for documentation of the types and not
+implementation.
+
+We also explicitly divide the type of the objects from the type of object
+constructors.  Given that types in Python are callable the type of object
+constructors can be provided via the `__init__` method.
+
 '''
 
 from __future__ import (division as _py3_division,
@@ -236,5 +243,55 @@ class QueryDebugger(QueryTranslator):
     '''
     def debug(self, query, **kwargs):
         '''Enter a interactive session of debugging the provided query.
+
+        '''
+
+
+class QueryObjectType(Interface):
+    '''A QueryObject factory.
+
+    '''
+    def __call__(self, qst, frame, **kwargs):
+        '''Return an instance of a `QueryObject`:class:.
+
+        :param qst: The Query Syntax Tree.  It will become the attribute
+               `QueryObject.qst`:attr:.
+
+        :param frame: An instance of a `Frame`:class: object.  This should be
+               used to provide the values of the attributes
+               `QueryObject.locals`:attr: and `QueryObject.globals`:attr: and
+               also to implement the method `QueryObject.get_name`:method:.
+
+        Different implementations of the `QueryObject` may required or support
+        additional keyword arguments.  For instance, the type of a
+        `PartionableQueryObject`:class: may allow for a `partition` argument.
+
+        '''
+
+
+class Frame(Interface):
+    '''A object that represents a Python stack frame.
+
+    This is an unavoidable requirement consequence of the `query
+    expression`:term: being a generator object that may access names which are
+    not known to the translator.
+
+    The attributes f_locals and f_globals are required to be mappings (usually
+    immutable) or mapping views that give access to the values of locals and
+    globals of a stack frame.
+
+    '''
+    f_locals = Attribute('f_locals')
+    f_globals = Attribute('f_locals')
+
+
+class FrameType(Interface):
+    '''A Frame factory.
+    '''
+    def __call__(self, locals, globals):
+        '''Return a instance of a `Frame`:class: object.
+
+        :param locals: A mapping that provide access to locals.
+        :param globals: A mapping that provide access to globals.
 
         '''
