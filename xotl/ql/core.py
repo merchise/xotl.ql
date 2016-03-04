@@ -122,6 +122,8 @@ def get_query_object(generator, **kwargs):
 
 
 parse_query = get_query_object
+# Alias to the old API.
+these = get_query_object
 
 
 def get_predicate_object(func, **kwargs):
@@ -133,9 +135,6 @@ def get_predicate_object(func, **kwargs):
         predicate=func,
         **kwargs
     )
-
-# Alias to the old API.
-these = get_query_object
 
 
 def normalize_query(which, **kwargs):
