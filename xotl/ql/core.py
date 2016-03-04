@@ -65,12 +65,16 @@ RESERVED_ARGUMENTS = (
 
 
 class QueryObject(object):
+    frame_type = 'xotl.ql.core.Frame'
+
     def __init__(self, qst, _frame, **kwargs):
         self.qst = qst
         self._frame = _frame
         if any(name in RESERVED_ARGUMENTS for name in kwargs):
             raise TypeError('Invalid keyword argument')
-        self.__dict__.update(kwargs)
+        self.expression = kwargs.pop('expression', None)
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
 
     def get_name(self, name, only_globals=False):
         if not only_globals:
@@ -93,16 +97,22 @@ class QueryObject(object):
         return self._frame.f_globals
 
 
-def get_query_object(generator, **kwargs):
+def get_query_object(generator,
+                     query_type='xotl.ql.core.QueryObject',
+                     frame_type=None,
+                     **kwargs):
     '''Get the query object from a query expression.
 
     '''
+    from ._util import import_object
     from xotl.ql.revenge import Uncompyled
     uncompiled = Uncompyled(generator)
     gi_frame = generator.gi_frame
-    return QueryObject(
+    QueryObjectType = import_object(query_type)
+    FrameType = import_object(frame_type or QueryObjectType.frame_type)
+    return QueryObjectType(
         uncompiled.qst,
-        Frame(gi_frame.f_locals, gi_frame.f_globals, gi_frame.f_builtins),
+        FrameType(gi_frame.f_locals, gi_frame.f_globals),
         expression=generator,
         **kwargs
     )
@@ -113,12 +123,16 @@ parse_query = get_query_object
 these = get_query_object
 
 
-def get_predicate_object(func, **kwargs):
-    from xotl.ql.revenge import Uncompyled
+def get_predicate_object(func, predicate_type='xotl.ql.core.QueryObject',
+                         frame_type=None, **kwargs):
+    from ._util import import_object
+    from .revenge import Uncompyled
     uncompiled = Uncompyled(func)
-    return QueryObject(
+    PredicateClass = import_object(predicate_type)
+    FrameClass = import_object(frame_type or PredicateClass.frame_type)
+    return PredicateClass(
         uncompiled.qst,
-        Frame(_get_closure(func), func.__globals__, {}),
+        FrameClass(_get_closure(func), func.__globals__),
         predicate=func,
         **kwargs
     )
@@ -128,8 +142,10 @@ def normalize_query(which, **kwargs):
     '''Ensure a query object.
 
     If `which` is a query expression (more precisely a generator object) it is
-    passed to `get_query_object`:func:.  Otherwise it should be a query
-    object.
+    passed to `get_query_object`:func: along with all keyword arguments.
+
+    If `which` is not a query expression it must be a `query object`:term:,
+    other types are a TypeError.
 
     '''
     from types import GeneratorType
@@ -182,10 +198,12 @@ def thesefy(target):
 
 
 class Frame(object):
-    def __init__(self, locals, globals, builtins):
+    def __init__(self, locals, globals, **kwargs):
+        self.auto_expand_subqueries = kwargs.pop('auto_expand_subqueries',
+                                                 True)
         self.f_locals = _FrameView(locals)
         self.f_globals = _FrameView(globals)
-        self.f_builtins = _FrameView(builtins)
+        self.f_locals.owner = self.f_globals.owner = self
 
 
 class _FrameView(MappingView, Mapping):
@@ -199,11 +217,17 @@ class _FrameView(MappingView, Mapping):
 
     def __getitem__(self, key):
         res = self._mapping[key]
-        return sub_query_or_value(res) if key == '.0' else res
+        if self.owner.auto_expand_subqueries and key == '.0':
+            return sub_query_or_value(res)
+        else:
+            return res
 
     def get(self, key, default=None):
         res = self._mapping.get(key, default)
-        return sub_query_or_value(res) if key == '.0' else res
+        if self.owner.auto_expand_subqueries and key == '.0':
+            return sub_query_or_value(res)
+        else:
+            return res
 
     def __iter__(self):
         return iter(self._mapping)

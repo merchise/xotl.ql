@@ -14,9 +14,7 @@
 '''Interfaces that describe the major types used in the Query Language API,
 and some internal interfaces as well.
 
-
-Notice that we only aim for documentation of the types and not
-implementation.
+Notice that we only aim for documentation of the types and not implementation.
 
 We also explicitly divide the type of the objects from the type of object
 constructors.  Given that types in Python are callable the type of object
@@ -267,6 +265,12 @@ class QueryObjectType(Interface):
         `PartionableQueryObject`:class: may allow for a `partition` argument.
 
         '''
+
+    frame_type = Attribute(
+        'frame_type',
+        'Either a `FrameType`:class: object or the fully qualified name of '
+        'such an object.  This object is used '
+    )
 
 
 class Frame(Interface):
