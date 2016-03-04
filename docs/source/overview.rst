@@ -91,7 +91,7 @@ simply pass a query to it to obtain a `query execution plan`:term:::
 
 Query execution plans are iterable::
 
-  >>> for which in query:
+  >>> for which in query:          # doctest: +SKIP
   ...    print(which)
 
 
