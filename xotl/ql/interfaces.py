@@ -69,10 +69,6 @@ class QueryObject(Interface):
 
     '''
     qst = Attribute('qst', 'The Query Syntax Tree')
-    partition = Attribute('partition', 'A slice indicating how much to fetch '
-                          'from the data store.  The interpretation of this '
-                          'slice value should be consistent with that of '
-                          'Python own slice type.')
 
     locals = Attribute(
         'locals',
@@ -86,16 +82,6 @@ class QueryObject(Interface):
         'See `get_name`:method:'
     )
 
-    def limit_by(self, limit):
-        '''Return a new query object limited by limit.
-
-        If this query object already has a limit it will be ignore.
-
-        '''
-
-    def offset(self, offset):
-        '''Return a new query object with a new offset.'''
-
     def get_name(self, name, only_globals=False):
         '''Give the value for the `name`.
 
@@ -107,6 +93,26 @@ class QueryObject(Interface):
         True.
 
         '''
+
+
+class PartionableQueryObject(QueryObject):
+    def limit_by(self, limit):
+        '''Return a new query object limited by limit.
+
+        If this query object already has a limit it will be ignore.
+
+        '''
+
+    def offset(self, offset):
+        '''Return a new query object with a new offset.'''
+
+    partition = Attribute(
+        'partition',
+        'A slice indicating how much to fetch '
+        'from the data store.  The interpretation of this '
+        'slice value should be consistent with that of '
+        'Python own slice type.'
+    )
 
 
 class QueryExecutionPlan(Interface):
