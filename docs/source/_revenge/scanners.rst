@@ -79,10 +79,11 @@ expressions are also out the question cause they can only occur within the
 body of a non-lambda function (i.e, not an expression).
 
 The following are all valid basic expressions along with the disassembled
-byte-code:
+byte-code [#doctest]_:
 
 - ``a``::
 
+    >>> import dis
     >>> dis.dis(compile('a', '', 'eval'))
       1           0 LOAD_NAME                0 (a)
                   3 RETURN_VALUE
@@ -98,14 +99,14 @@ byte-code:
 
 - ``a(b[c**e/2:d], *y, **kw).at``::
 
-    >>> dis.dis(compile('a(b[c**e/2:d], *y, **kw).at', '', 'eval'))
+    >>> dis.dis(compile('a(b[c**e/2:d], *y, **kw).at', '', 'eval'))  # doctest: +SKIP
       1           0 LOAD_NAME                0 (a)
                   3 LOAD_NAME                1 (b)
                   6 LOAD_NAME                2 (c)
                   9 LOAD_NAME                3 (e)
                  12 BINARY_POWER
                  13 LOAD_CONST               0 (2)
-                 16 BINARY_TRUE_DIVIDE
+                 16 BINARY_DIVIDE
                  17 LOAD_NAME                4 (d)
                  20 SLICE+3
                  21 LOAD_NAME                5 (y)
@@ -161,22 +162,22 @@ For instance, the simplest conditional expression "``a if x else y``", in
 Python 2.7 and 3.4 compiles to::
 
   >>> dis.dis(compile('a if x else y', '', 'eval'))
-     1           0 LOAD_NAME                0 (b)
+     1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       10
                  6 LOAD_NAME                1 (a)
                  9 RETURN_VALUE
-           >>   10 LOAD_NAME                2 (c)
+           >>   10 LOAD_NAME                2 (y)
                 13 RETURN_VALUE
 
 
 In Pypy 2.7.3::
 
-  >>> dis.dis(compile('a if x else y', '', 'eval'))
-     1           0 LOAD_NAME                0 (b)
+  >>> dis.dis(compile('a if x else y', '', 'eval'))  # doctest: +SKIP
+     1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       12
                  6 LOAD_NAME                1 (a)
                  9 JUMP_FORWARD             3 (to 15)
-           >>   12 LOAD_NAME                2 (c)
+           >>   12 LOAD_NAME                2 (y)
            >>   15 RETURN_VALUE
 
 The difference is the 9th offset, where Python uses a ``RETURN_VALUE``, Pypy
@@ -216,9 +217,9 @@ with the required ``RETURN_VALUE``::
    1           0 LOAD_NAME                0 (x1)
                3 POP_JUMP_IF_FALSE       12
                6 LOAD_NAME                1 (a1)
-               9 JUMP_FORWARD             3 (to 15)   ;; <---- Problematic
+               9 JUMP_FORWARD             3 (to 15)
          >>   12 LOAD_NAME                2 (y1)
-         >>   15 POP_JUMP_IF_FALSE       22           ;; <---- Problematic
+         >>   15 POP_JUMP_IF_FALSE       22
               18 LOAD_NAME                3 (a)
               21 RETURN_VALUE
          >>   22 LOAD_NAME                4 (y2)
@@ -233,7 +234,7 @@ conditional expression with non-conditional ones as in::
      1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       12
                  6 LOAD_NAME                1 (a)
-                 9 JUMP_FORWARD             3 (to 15)  ;; <- not RETURN_VALUE
+                 9 JUMP_FORWARD             3 (to 15)
            >>   12 LOAD_NAME                2 (y)
            >>   15 LOAD_CONST               0 (1)
                 18 BINARY_ADD
@@ -938,6 +939,13 @@ API of the module
 .. autofunction:: normalize_pypy_conditional
 
 .. autoclass:: Token
+
+
+Footnotes
+=========
+
+.. [#doctest]  Many of the examples on this document won't look the same when
+   you execute them on different versions or implementations of Python.
 
 
 .. _uncompyle2: https://github.com/mvaled/uncompyle2
