@@ -12,14 +12,8 @@ model`.  The result of translating a query is a :term:`query execution plan`.
 for translation.  `xotl.ql` does not provide production quality translators,
 but other packages are planned to have implementation of translators.
 Nevertheless, the module :mod:`xotl.ql.translation.py` provides an
-implementation of *naive* translator that matches the Python object model and
-fetches objects from the current process memory.
-
-.. note:: This section is mostly relevant for translation authors only.
-
-   It contains details that are not important for application writers.
-   However, application writers might profit from these notes in order to
-   better understand possible exceptions they are facing.
+implementation of a *naive* translator that matches the Python object model
+and fetches objects from the current process memory.
 
 
 General requirements about translators
@@ -40,7 +34,7 @@ Translators must allow the reuse of execution plans; i.e. once a query is
 translated you may execute the plan several times to fetch the objects that
 matches the query at the time the plan is executed.
 
-This way one may use the translator only once per query and then reuse plan
+This way you may use the translator only once per query and then reuse plan
 for several calls to retrieve objects.
 
 This does not mean that each time you execute the plan it will return the same
@@ -59,10 +53,7 @@ Translators authors are encouraged to provide as much documentation as
 necessary, so that application writers have the guidance they need for writing
 queries.
 
-.. warning:: Documentation in flux.
-
-
-We feel the following information is *required* in order for a translator
+The following information is *required* in order for a translator
 documentation be complete:
 
 - A list of the supported expression operations.  For instance, a translator
@@ -76,3 +67,17 @@ documentation be complete:
 
 - Documentation of functions, classes applications writers may use to access
   the translator functionality directly if they have to.
+
+.. seealso:: The documentation for the module `xotl.ql.translation.py`:mod:.
+
+
+Writing translators
+===================
+
+Writing a translator is much like writing a compiler.  You get a query syntax
+tree and you need to produce a program that operates according a well
+established semantics.  In this regard, writing a translator involves giving
+denotational and/or operational semantics for the queries.
+
+In this section we provide some pointers to this task, but fail to be
+comprehensive.  As an example you may
