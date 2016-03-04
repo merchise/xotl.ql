@@ -17,7 +17,7 @@ from __future__ import (division as _py3_division,
 
 from xoutil.modules import modulemethod
 
-from xotl.ql.core import get_query_object
+from xotl.ql.core import normalize_query
 from xotl.ql.interfaces import QueryObject
 
 
@@ -35,9 +35,7 @@ class NaivePythonExecutionPlan(object):
     def __init__(self, query, map=None, join=None, zero=None, unit=None):
         # The map, join, zero, and unit are provided for tests.
         from ._monads import _mc
-        if not isinstance(query, QueryObject):
-            query = get_query_object(query)
-        self.query = query
+        self.query = normalize_query(query)
         self.map = '__x_map_%s' % id(self) if not map else map
         self.join = '__x_join_%s' % id(self) if not join else join
         self.zero = '__x_zero_%s' % id(self) if not zero else zero
