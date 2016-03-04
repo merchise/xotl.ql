@@ -281,8 +281,19 @@ class Frame(Interface):
     globals of a stack frame.
 
     '''
-    f_locals = Attribute('f_locals')
-    f_globals = Attribute('f_locals')
+    f_locals = Attribute(
+        'f_locals',
+        'A mapping of the locals of this frame.  Though not required '
+        'this could be a mapping view provided it has the mapping '
+        'interface.'
+    )
+
+    f_globals = Attribute(
+        'f_globals',
+        'A mapping of the globals of this frame.  Though not required '
+        'this could be a mapping view provided it has the mapping '
+        'interface.'
+    )
 
 
 class FrameType(Interface):
