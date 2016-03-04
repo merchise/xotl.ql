@@ -35,7 +35,7 @@ class NaivePythonExecutionPlan(object):
     def __init__(self, query, map=None, join=None, zero=None, unit=None):
         # The map, join, zero, and unit are provided for tests.
         from ._monads import _mc
-        self.query = normalize_query(query)
+        self.query = query = normalize_query(query)
         self.map = '__x_map_%s' % id(self) if not map else map
         self.join = '__x_join_%s' % id(self) if not join else join
         self.zero = '__x_zero_%s' % id(self) if not zero else zero
