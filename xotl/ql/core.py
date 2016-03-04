@@ -68,7 +68,6 @@ class QueryObject(object):
     def __init__(self, qst, _frame, **kwargs):
         self.qst = qst
         self._frame = _frame
-        self.partition = None
         if any(name in RESERVED_ARGUMENTS for name in kwargs):
             raise TypeError('Invalid keyword argument')
         self.__dict__.update(kwargs)
@@ -92,18 +91,6 @@ class QueryObject(object):
     @property
     def globals(self):
         return self._frame.f_globals
-
-    def limit_by(self, limit):
-        '''Return a new query object limited by limit.
-
-        If this query object already has a limit it will be ignore.
-
-        '''
-        raise NotImplementedError
-
-    def offset(self, offset):
-        '''Return a new query object with a new offset.'''
-        raise NotImplementedError
 
 
 def get_query_object(generator, **kwargs):
