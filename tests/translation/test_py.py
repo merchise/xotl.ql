@@ -16,11 +16,11 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_imports)
 
 from .metamodel import get_birth_date
-from .model import Person, Place
+from .model import Person, Place, Entity
 
 from xotl.ql.core import this
 from xotl.ql.core import get_query_object
-from xotl.ql.translation.py import _TestPlan
+from xotl.ql.translation.py import _TestPlan as translate
 
 
 # TODO:  Make this fixtures
@@ -106,7 +106,7 @@ def test_all_pred():
         if isinstance(parent, Person)
         if parent.children
     )
-    plan1 = _TestPlan(query)
+    plan1 = translate(query)
     result1 = set(plan1())
     assert elsa in result1
     assert papi in result1
@@ -118,7 +118,7 @@ def test_all_pred():
         for parent in (x for x in this if isinstance(x, Person))
         if parent.children
     )
-    plan2 = _TestPlan(query)
+    plan2 = translate(query)
     result2 = set(plan2())
     assert elsa in result2
     assert papi in result2
@@ -129,7 +129,7 @@ def test_all_pred():
         for parent in Person
         if parent.children
     )
-    plan3 = _TestPlan(query)
+    plan3 = translate(query)
     result3 = set(plan3())
 
     assert result1 == result2 == result3
@@ -140,8 +140,30 @@ def test_all_pred():
         if parent.children
         if sum(child.age for child in parent.children) > 60
     )
-    plan = _TestPlan(query)
+    plan = translate(query)
     result = list(plan())
     assert denia in result
     assert pedro in result
     assert len(result) == 2
+
+
+def test_naive_plan_no_join():
+    select_old_entities = get_query_object(
+        who
+        for who in Entity
+        if who.name.startswith('Manuel')
+    )
+    plan = translate(select_old_entities)
+    result = list(plan())
+    assert manu in result
+    assert manolito in result
+    assert yade not in result
+
+
+def test_itertools_with_this():
+    enumerated = translate(
+        (index, who) for (index, who) in enumerate(this)
+        if isinstance(who, Person) and who.name.startswith('Manuel')
+    )
+    result = set(enumerated)
+    assert result
