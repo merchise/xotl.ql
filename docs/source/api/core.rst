@@ -9,6 +9,14 @@
 The module `xotl.ql.core`:mod: provide the high level API for obtaining a
 `query object`:term: from a `query expression`:term:.
 
+.. data:: this
+
+   This is an object whose meaning is the *entire universe of objects* when
+   used as a generator inside a query expression.  Its precise semantics
+   varies with the `object model`:term:.  The documentation of `query
+   translators <query translator>`:term: must give the precise meaning of this
+   object.
+
 .. autofunction:: get_query_object
 
    This function expects a `query expression`:term: in the form of a generator
@@ -98,7 +106,6 @@ The module `xotl.ql.core`:mod: provide the high level API for obtaining a
 
       .. warning:: Notice this will use the default query object type and
          frame type.
-
 
       Example::
 
