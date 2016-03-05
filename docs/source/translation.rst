@@ -68,7 +68,8 @@ documentation be complete:
 - Documentation of functions, classes applications writers may use to access
   the translator functionality directly if they have to.
 
-.. seealso:: The documentation for the module `xotl.ql.translation.py`:mod:.
+.. seealso:: The documentation for the module `xotl.ql.translation.py`:mod: as
+   an example.
 
 
 Writing translators

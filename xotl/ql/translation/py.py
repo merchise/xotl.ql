@@ -28,6 +28,14 @@ def __call__(self, query, **kwargs):
 
 @modulemethod
 def explain(self, query, **kwargs):
+    '''Print information about how the query is processed.
+
+    This function actually translates the query into a plan and explains the
+    plan.
+
+    .. seealso:: `NaivePythonExecutionPlan.explain`:method:
+
+    '''
     self.NaivePythonExecutionPlan(query, **kwargs).explain()
 
 
