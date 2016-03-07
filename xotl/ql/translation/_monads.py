@@ -19,12 +19,6 @@ implemented by target query engines."  Therefore, the following implementation
 of such operators are not designed to provide an efficient representation of
 those algorithms and data structures.
 
-The purpose of this is module is two-fold:
-
-a) Provide an intermediate language for queries.
-
-b) Provide a basic (testable) implementation of the intermediate language.
-
 In this algebra the query ``(x for x in this if predicate(x))`` would be
 represented as::
 
@@ -175,12 +169,10 @@ class Cons(Type):
         x, xs = self.x, self.xs
         if x is not Undefined and xs is not Undefined:
             raise TypeError('Fully qualified Cons')
-        if x is Undefined and args:
-            x = args[0]
-            args = args[1:]
-        if xs is Undefined and args:
-            xs = args[0]
-            args = args[1:]
+        if args:
+            x, args = args[0], args[1:]
+        if args:
+            xs, args = args[0], args[1:]
         assert not args
         return Cons(x, xs)
 
@@ -672,6 +664,9 @@ def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
             assert False
 
     return qst.ensure_compilable(_mc_routine(stree))
+
+# The Monad Compiler.
+mcompile = _mc
 
 
 def _make_arguments(*names):
