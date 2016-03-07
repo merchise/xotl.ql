@@ -97,7 +97,9 @@ class PyASTNode(object):
                     val, f, d = grandchildren[i]
                     if isinstance(val, (list, tuple)):
                         j = len(val)
-                        grandchildren[i:i+1] = [(v, f + '[]', d) for v in val]
+                        grandchildren[i:i+1] = [
+                            (v, f + '[%d]' % k, d) for k, v in enumerate(val)
+                        ]
                         i += j
                     else:
                         i += 1
