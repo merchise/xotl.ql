@@ -608,16 +608,15 @@ Any = Foldr(operator.or_, False)
 # MC [e | p ]       =   if MC p then (MC [e| ]) else Zero()
 # MC [e | q, p]     =   join(MC [MC [e| p]| q])
 # MC e              =   e   # other cases
-
-# * Since in Python you may assign several targets at once we extend this rule
-#   to match the following pattern::
 #
-#   MC [e | x1, x2, ..., xn <- q]     = map (λx1, x2, ..., xn. MC e)(MC q)
+# [*] Since in Python you may assign several targets at once we extend this
+#     rule to match the following pattern::
 #
-
+#   MC [e | x1, x2, ..., xn <- q] = map (λx1, x2, ..., xn. MC e)(MC q)
+#
 # MC is a denotational semantics of the comprehension syntax in the sense it
 # assigns a meaning to every comprehension expression.
-
+#
 # NOTE: Since MC implies building 'lambdas' we split the algorithm in a
 # syntactical transformation from generators to function calls, and then
 # compile the function-calls syntax and execute it to the get the actual
@@ -626,11 +625,11 @@ Any = Foldr(operator.or_, False)
 # This, in fact, it's quite helpful: We transform a query syntax tree to a
 # function-calling (by function names) program: so the function 'Map' does not
 # need to be the Map type defined in this module, but any callable with the
-# same signature.  So 'Map' could be defined as 'lambda f:lambda l: map(f, l)'
-# using the builtin 'map' function -- provided the other constructors produce
-# type-compatible values.  See ExecPlan in module 'py.py'.
+# same signature.  So 'Map' could be defined as
+# 'lambda f: lambda l: map(f, l)' using the builtin 'map' function -- provided
+# the other constructors produce type-compatible values.  See the module
+# 'py.py'.
 #
-
 def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
     def Call(f, a=None):
         from xotl.ql import qst
