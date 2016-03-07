@@ -15,6 +15,7 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_imports)
 
+import pytest
 
 from xotl.ql.core import this
 from xotl.ql.core import get_query_object
@@ -88,6 +89,7 @@ def test_all_pred(**kwargs):
     assert len(result) == 2
 
 
+@pytest.mark.xfail()
 def test_full_monad_plan():
     test_all_pred(use_own_monads=True)
 
@@ -105,6 +107,7 @@ def test_naive_plan_no_join():
     assert yade not in result
 
 
+@pytest.mark.xfail()
 def test_itertools_with_this():
     enumerated = translate(
         (index, who) for (index, who) in enumerate(this)
