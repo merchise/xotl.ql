@@ -22,7 +22,10 @@ _py3 = sys.version_info >= (3, 0)
 
 import operator
 from xoutil import Undefined
-from xotl.ql.translation._monads import Empty, Join, Map, Unit, Cons, Foldr
+from xotl.ql.translation._monads import (
+    Empty, Join, Map, Unit, Cons, Foldr,
+    LazyCons
+)
 
 
 def test_empty():
@@ -30,6 +33,17 @@ def test_empty():
         'Undefined is NOT an Empty collection'
     assert Empty() is Empty(), 'Empty should be a singleton'
     assert isinstance(Empty(), Empty), 'Empty() is an Empty collection'
+
+
+def test_interating_partial_cons_should_fail():
+    for ConsType in (LazyCons, Cons):
+        A1 = ConsType(1)
+        try:
+            head, tail = A1
+        except TypeError:
+            pass
+        else:
+            assert False, 'Partial cons should not be iterable'
 
 
 def test_simple_query():

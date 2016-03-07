@@ -86,7 +86,63 @@ class Empty(Type):
     __nonzero__ = __bool__
 
 
-class Cons(Type):
+class _BaseCons(object):
+    @staticmethod
+    def _head(collection):
+        def _inner():
+            i = iter(collection)
+            yield next(i)
+            try:
+                peek = next(i)
+            except StopIteration:
+                yield Empty()
+            else:
+                from itertools import chain
+                yield chain((peek, ), (x for x in i))
+        if not isinstance(collection, Empty):
+            return _inner()
+        else:
+            raise ValueError('Cannot extract the head of an empty collection.')
+
+    def __bool__(self):
+        return bool(self.x)
+    __nonzero__ = __bool__
+
+    def __call__(self, *args):
+        if not args:
+            return self
+        x, xs = self.x, self.xs
+        if x is not Undefined and xs is not Undefined:
+            raise TypeError('Fully qualified Cons')
+        if args:
+            x, args = args[0], args[1:]
+        if args:
+            xs, args = args[0], args[1:]
+        assert not args
+        return type(self)(x, xs)
+
+    def asiter(self):
+        assert self.xs is not Undefined and self.x is not Undefined
+        head, tail = self
+        yield head
+        while not isinstance(tail, Empty):
+            head, tail = tail
+            yield head
+
+    def aslist(self):
+        return list(self.asiter())
+
+    def asset(self):
+        return set(self.asiter())
+
+    def __repr__(self):
+        if self.xs is not Undefined:
+            return '%s(%r, %r)' % (type(self).__name__, self.x, self.xs)
+        else:
+            return '%s(%r)' % (type(self).__name__, self.x)
+
+
+class Cons(_BaseCons, Type):
     r'''The collection constructor "x : xs".
 
     The basic usage is::
@@ -116,27 +172,12 @@ class Cons(Type):
         >>> head, tail
         (1, Empty())
 
-        >>> head, tail = A1
-        Traceback
+        >>> head, tail = A1   # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        TypeError: Cons as a partial function cannot be iterated
 
     '''
-    @staticmethod
-    def _head(collection):
-        def _inner():
-            i = iter(collection)
-            yield next(i)
-            try:
-                peek = next(i)
-            except StopIteration:
-                yield Empty()
-            else:
-                from itertools import chain
-                yield chain((peek, ), (x for x in i))
-        if not isinstance(collection, Empty):
-            return _inner()
-        else:
-            raise ValueError('Cannot extract the head of an empty collection.')
-
     def __init__(self, *args):
         from collections import Iterable
         x, xs = Undefined, Undefined
@@ -159,52 +200,80 @@ class Cons(Type):
         else:
             self.xs = xs
 
-    def __bool__(self):
-        return bool(self.x)
-    __nonzero__ = __bool__
-
-    def __call__(self, *args):
-        if not args:
-            return self
-        x, xs = self.x, self.xs
-        if x is not Undefined and xs is not Undefined:
-            raise TypeError('Fully qualified Cons')
-        if args:
-            x, args = args[0], args[1:]
-        if args:
-            xs, args = args[0], args[1:]
-        assert not args
-        return Cons(x, xs)
-
     def __iter__(self):
         def _iter():
             yield self.x
             yield self.xs
 
-        if self.x is not Undefined:
+        if self.x is not Undefined and self.xs is not Undefined:
             return _iter()
         else:
             raise TypeError('Cons as a partial function cannot be iterated')
 
-    def asiter(self):
-        assert self.xs is not Undefined and self.x is not Undefined
-        head, tail = self
-        yield head
-        while not isinstance(tail, Empty):
-            head, tail = tail
-            yield head
 
-    def aslist(self):
-        return list(self.asiter())
+class LazyCons(_BaseCons, Type):
+    '''A Cons that does not iterate over its arguments until needed.
 
-    def asset(self):
-        return set(self.asiter())
+    `Cons`:class: can't represent a collection that exceeds the recursion
+    limit of the underlying representation.  LazyCons can represent such
+    collections::
 
-    def __repr__(self):
-        if self.xs is not Undefined:
-            return 'Cons(%r, %r)' % (self.x, self.xs)
+      >>> from xoutil.eight import range
+      >>> lc = LazyCons(1, range(10**6))
+      >>> lc
+      LazyCons(1, ...range(1000000))
+
+      >>> len(lc.aslist())
+      1000001
+
+    It may even represent unbounded collections::
+
+       >>> import itertools
+       >>> lc = LazyCons(1, itertools.count(2))
+       >>> lc
+       LazyCons(1, count(2))
+
+    However you must be careful while iterating over such as collection::
+
+       >>> len(list(itertools.takewhile(lambda x: x < 100, lc.asiter())))
+       101
+
+    .. warning:: LazyCons is not provided for performance or efficiency.
+
+       Like all the objects in this module, LazyCons is not meant to be used
+       in production but to test expectations about the execution plans you
+       may be using based on monads comprehensions.
+
+       We needed a lazy version of Cons in out the
+       `xotl.ql.translation.py`:mod: module
+
+    '''
+    def __init__(self, *args):
+        x, xs = Undefined, Undefined
+        if args:
+            x, args = args[0], args[1:]
+        if args:
+            xs, args = args[0], args[1:]
+        assert not args
+        self.x = x
+        self.xs = xs
+
+    def __iter__(self):
+        def _iter():
+            yield self.x
+            i = iter(self.xs)
+            try:
+                head = next(i)
+                yield LazyCons(head, i)
+            except StopIteration:
+                yield Empty()
+
+        if self.x is not Undefined and self.xs is not Undefined:
+            return _iter()
         else:
-            return 'Cons(%r)' % self.x
+            raise TypeError(
+                'LazyCons as a partial function cannot be iterated'
+            )
 
 
 # Quote:
@@ -215,7 +284,6 @@ class Cons(Type):
 #   be independent of the actual construction of its argument.
 #
 #   -- [QLFunc]_
-
 class Foldr(Type):
     '''The structural recursion operator.'''
     # foldr                ::  (a -> B -> B) -> B -> T a -> B
