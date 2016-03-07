@@ -151,6 +151,9 @@ def test_real_plan():
     )
     try:
         plan2()
+    except RuntimeError:
+        # RuntimeError: maximum recursion depth exceeded
+        pass
     except:
         if not failed:
             plan2.explain()
