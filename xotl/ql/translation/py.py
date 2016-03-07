@@ -115,6 +115,7 @@ class NaivePythonExecutionPlan(object):
                 use_ignores=use_ignores,
                 ascons=self.use_own_monads
             )
+
         return {
             name: (val if val is not this else universe())
             for name, val in other.items()
@@ -191,7 +192,11 @@ class PythonObjectsCollection(object):
         else:
             res = _iter_objects(use_ignores=self.use_ignores)
         if self.ascons:
-            return iter(Cons(res))
+            try:
+                head = next(res)
+            except StopIteration:
+                return Empty()
+            return Cons(head, list(res)).asiter()
         else:
             return res
 

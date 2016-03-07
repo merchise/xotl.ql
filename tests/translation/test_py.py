@@ -18,8 +18,17 @@ from __future__ import (division as _py3_division,
 import pytest
 
 from xotl.ql.core import this
-from xotl.ql.core import get_query_object
 from xotl.ql.translation.py import _TestPlan as translate
+
+from xotl.ql.translation._monads import (
+    # Rename so that names does not clash with internal names in the
+    # monadic plan in the test plan 'translate'.
+    Join as _Join,
+    Map as _Map,
+    Unit as _Unit,
+    Empty as _Empty,
+    Cons as _Cons
+)
 
 from .model import Person, Entity
 from .world import *    # noqa
@@ -94,13 +103,70 @@ def test_full_monad_plan():
     test_all_pred(use_own_monads=True)
 
 
+def test_real_plan():
+    plan = _Join(
+        _Join(
+            # function call like map(f)(collection)
+            (_Map(lambda parent:
+                  _Unit(_Unit(parent) if parent.children else _Empty())
+                  if isinstance(parent, Person) else _Empty()))
+            (
+                # in the real generated this is the name '.0'
+                _Cons(manu, [manolito, cuba, havana])
+            )
+        )
+    )
+    try:
+        plan()
+    except Exception as error:
+        failed = True
+    else:
+        error = None
+        failed = False
+
+    plan1 = translate(
+        (parent
+         for parent in _Cons(manu, [manolito, cuba, havana])
+         if isinstance(parent, Person)
+         if parent.children),
+        use_own_monads=True
+    )
+    try:
+        plan1()
+    except:
+        if not failed:
+            plan1.explain()
+            raise
+    else:
+        if failed:
+            plan1.explain()
+            raise error
+
+    plan2 = translate(
+        (parent
+         for parent in this
+         if isinstance(parent, Person)
+         if parent.children),
+        use_own_monads=True
+    )
+    try:
+        plan2()
+    except:
+        if not failed:
+            plan2.explain()
+            raise
+    else:
+        if failed:
+            plan2.explain()
+            raise error
+
+
 def test_naive_plan_no_join():
-    select_old_entities = get_query_object(
+    plan = translate(
         who
         for who in Entity
         if who.name.startswith('Manuel')
     )
-    plan = translate(select_old_entities)
     result = list(plan())
     assert manu in result
     assert manolito in result
