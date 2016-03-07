@@ -20,7 +20,7 @@ from xoutil.modules import modulemethod
 from xotl.ql.core import normalize_query
 from xotl.ql.interfaces import QueryObject
 
-from ._monads import mcompile, Cons, Map, Unit, Join, Empty
+from ._monads import mcompile, LazyCons, Map, Unit, Join, Empty
 
 
 @modulemethod
@@ -196,7 +196,7 @@ class PythonObjectsCollection(object):
                 head = next(res)
             except StopIteration:
                 return Empty()
-            return Cons(head, list(res)).asiter()
+            return iter(LazyCons(head, list(res)))
         else:
             return res
 
