@@ -40,7 +40,8 @@ class PyASTNode(object):
         i = 0
         # Explicitly deal with NameConstant None.
         if is_constant(self, None):
-            return other is None or is_constant(other, None) or other == LOAD_NONE
+            return other is None or is_constant(other, None) \
+                or other == LOAD_NONE
         elif is_constant(other, None):
             return self is None or self == LOAD_NONE
         attrs = self._fields

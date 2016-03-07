@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # test_qst
 # ---------------------------------------------------------------------
-# Copyright (c) 2015 Merchise Autrement and Contributors
+# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -11,6 +11,7 @@
 # package.
 #
 # Created on 2015-11-05
+# flake8: noqa
 
 
 from __future__ import (division as _py3_division,

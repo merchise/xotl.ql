@@ -1,4 +1,4 @@
-#  Copyright (c) 1998-2002, 2015 John Aycock
+#  Copyright (c) 1998-2016 John Aycock
 #
 #  Permission is hereby granted, free of charge, to any person obtaining
 #  a copy of this software and associated documentation files (the
@@ -18,6 +18,8 @@
 #  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 #  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# flake8: noqa
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,

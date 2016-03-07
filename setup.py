@@ -11,6 +11,7 @@
 #
 # Created on 2012-06-29
 
+# flake8: noqa
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print)

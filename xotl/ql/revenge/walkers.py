@@ -12,7 +12,8 @@
 #
 #  See main module for license.
 #
-#
+
+#  flake8: noqa
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -194,7 +195,10 @@ class QstBuilder(GenericASTTraversal, object):
             # Argument names are the first of co_varnames
             argcount = code.co_argcount
             varnames = code.co_varnames
-            args = [qst.Name(name, qst.Param()) for name in varnames[:argcount]]
+            args = [
+                qst.Name(name, qst.Param())
+                for name in varnames[:argcount]
+            ]
             if CODE_HAS_VARARG(code):
                 # This means the code uses the vararg and co_varnames contains
                 # that name.
@@ -583,7 +587,8 @@ class QstBuilder(GenericASTTraversal, object):
         right, left = children
         # Since BoolOps are 'collapsible': a and b and c collapse into a
         # single BoolOp
-        if isinstance(right, qst.pyast.BoolOp) and isinstance(right.op, qst.pyast.And):
+        if isinstance(right, qst.pyast.BoolOp) \
+           and isinstance(right.op, qst.pyast.And):
             # collapse
             right.values[0:0] = [left]
             return right
@@ -596,7 +601,8 @@ class QstBuilder(GenericASTTraversal, object):
         right, left = children
         # Since BoolOps are 'collapsible': a or b or c collapse into a
         # single BoolOp
-        if isinstance(right, qst.pyast.BoolOp) and isinstance(right.op, qst.pyast.Or):
+        if isinstance(right, qst.pyast.BoolOp) \
+           and isinstance(right.op, qst.pyast.Or):
             # collapse
             right.values[0:0] = [left]
             return right
@@ -717,7 +723,8 @@ class QstBuilder(GenericASTTraversal, object):
         ifs = []
         # items should have more than one item to have any ifs or
         # inner generators.
-        while len(items) > 1 and not isinstance(items[-1], qst.pyast.comprehension):
+        while len(items) > 1 and not isinstance(items[-1],
+                                                qst.pyast.comprehension):
             ifs.append(items.pop())
         self._stack.append(qst.comprehension(target, iterable, ifs))
         for which in reversed(items):

@@ -12,6 +12,8 @@
 #
 # Created on 2015-11-05
 
+from __future__ import absolute_import as _py3_abs_import
+
 
 class RevengeError(Exception):
     '''The base error for all revenge errors.'''

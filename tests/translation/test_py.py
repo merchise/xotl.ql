@@ -48,8 +48,6 @@ def test_all_pred(**kwargs):
          if parent.children),
         **kwargs
     )
-    import ipdb; ipdb.set_trace()    # TODO: Remove this
-
     result1 = set(plan1())
     assert elsa in result1
     assert papi in result1

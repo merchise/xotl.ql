@@ -1,3 +1,5 @@
+# flake8: noqa
+
 @pytest.mark.xfail(str("sys.version.find('PyPy') != -1"))
 def test_naive_plan_no_join(**kwargs):
     from xoutil.iterators import dict_update_new

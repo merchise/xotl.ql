@@ -97,7 +97,7 @@ def override(pred=True, default=None):
             return result
 
         if passed(pred):
-            target.override = lambda *a, **kw: override(default=target, *a, **kw)
+            target.override = lambda *a, **kw: override(default=target, *a, **kw)  # noqa
             return target
         else:
             return default or unimplemented
@@ -145,7 +145,8 @@ except ImportError:
 
         def __iter__(self):
             co = self.codeobj
-            return _get_instructions_bytes(co.co_code, co.co_varnames, co.co_names,
+            return _get_instructions_bytes(co.co_code, co.co_varnames,
+                                           co.co_names,
                                            co.co_consts, self._cell_names,
                                            self._linestarts,
                                            line_offset=self._line_offset)
@@ -261,9 +262,9 @@ except ImportError:
                 if op == EXTENDED_ARG:
                     extended_arg = arg*65536
                 #  Set argval to the dereferenced value of the argument when
-                #  availabe, and argrepr to the string representation of argval.
-                #    _disassemble_bytes needs the string repr of the
-                #    raw name index for LOAD_GLOBAL, LOAD_CONST, etc.
+                #  availabe, and argrepr to the string representation of
+                #  argval.  _disassemble_bytes needs the string repr of the
+                #  raw name index for LOAD_GLOBAL, LOAD_CONST, etc.
                 argval = arg
                 if op in hasconst:
                     argval, argrepr = _get_const_info(arg, constants)

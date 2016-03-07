@@ -460,7 +460,8 @@ class SortedCons(Type):
         if self.x is not Undefined:
             return _iter()
         else:
-            raise TypeError('SortedCons as a partial function cannot be iterated')
+            raise TypeError('SortedCons as a partial function cannot '
+                            'be iterated')
 
     def __call__(self, *args):
         x, xs = self.x, self.xs
