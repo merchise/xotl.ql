@@ -99,52 +99,56 @@ def test_nested_genexprs_with_thesefy():
     # another = (p for p in this if isinstance(p, Person))
 
 
-def test_all_pred():
-    query = get_query_object(
-        parent
-        for parent in this
-        if isinstance(parent, Person)
-        if parent.children
+def test_all_pred(**kwargs):
+    plan1 = translate(
+        (parent
+         for parent in this
+         if isinstance(parent, Person)
+         if parent.children),
+        **kwargs
     )
-    plan1 = translate(query)
     result1 = set(plan1())
     assert elsa in result1
     assert papi in result1
     assert manolito not in result1
     assert result1 == set(plan1()), 'Plan should be reusable'
 
-    query = get_query_object(
-        parent
-        for parent in (x for x in this if isinstance(x, Person))
-        if parent.children
+    plan2 = translate(
+        (parent
+         for parent in (x for x in this if isinstance(x, Person))
+         if parent.children),
+        **kwargs
     )
-    plan2 = translate(query)
     result2 = set(plan2())
     assert elsa in result2
     assert papi in result2
     assert manolito not in result2
 
-    query = get_query_object(
-        parent
-        for parent in Person
-        if parent.children
+    plan3 = translate(
+        (parent
+         for parent in Person
+         if parent.children),
+        **kwargs
     )
-    plan3 = translate(query)
     result3 = set(plan3())
 
     assert result1 == result2 == result3
 
-    query = get_query_object(
-        parent
-        for parent in Person
-        if parent.children
-        if sum(child.age for child in parent.children) > 60
+    plan = translate(
+        (parent
+         for parent in Person
+         if parent.children
+         if sum(child.age for child in parent.children) > 60),
+        **kwargs
     )
-    plan = translate(query)
     result = list(plan())
     assert denia in result
     assert pedro in result
     assert len(result) == 2
+
+
+def test_full_monad_plan():
+    test_all_pred(use_own_monads=True)
 
 
 def test_naive_plan_no_join():
