@@ -20,7 +20,7 @@ from __future__ import (division as _py3_division,
 
 
 import pytest
-from xotl.ql.revenge import qst
+from xotl.ql import qst
 
 from sys import version_info as _py_version
 

@@ -330,7 +330,7 @@ def test_real_pypy_normalization():
 
 
 def test_conditional_a_la_pypy():
-    from xotl.ql.revenge import qst
+    from xotl.ql import qst
     # >>> dis.dis(compile('x and a or y', '', 'eval'))
     #   1           0 LOAD_NAME                0 (x)
     #               3 JUMP_IF_FALSE_OR_POP     9
@@ -393,7 +393,7 @@ def test_embedded():
 
 class Alternatives(object):
     def __new__(cls, expr, alt):
-        from xotl.ql.revenge import qst
+        from xotl.ql import qst
         if not isinstance(alt, tuple):
             alt = (alt, )
         res = object.__new__(cls)
