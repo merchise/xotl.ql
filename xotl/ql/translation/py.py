@@ -20,6 +20,8 @@ from xoutil.modules import modulemethod
 from xotl.ql.core import normalize_query
 from xotl.ql.interfaces import QueryObject
 
+from ._monads import mcompile, Cons, Map, Unit, Join, Empty
+
 
 @modulemethod
 def __call__(self, query, **kwargs):
@@ -43,7 +45,6 @@ class NaivePythonExecutionPlan(object):
     def __init__(self, query, map=None, join=None, zero=None, unit=None,
                  use_own_monads=False):
         # The map, join, zero, and unit are provided for tests.
-        from ._monads import mcompile
         self.query = query = normalize_query(query)
         self.map = '__x_map_%s' % id(self) if not map else map
         self.join = '__x_join_%s' % id(self) if not join else join
@@ -84,7 +85,6 @@ class NaivePythonExecutionPlan(object):
     @property
     def operators(self):
         if self.use_own_monads:
-            from ._monads import Map, Join, Unit, Empty
             return {
                 self.map: Map,
                 self.join: Join,
@@ -191,7 +191,6 @@ class PythonObjectsCollection(object):
         else:
             res = _iter_objects(use_ignores=self.use_ignores)
         if self.ascons:
-            from ._monads import Cons
             return iter(Cons(res))
         else:
             return res
