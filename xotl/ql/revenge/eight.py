@@ -398,3 +398,79 @@ except ImportError:
                 if self.argrepr:
                     fields.append('(' + self.argrepr + ')')
             return ' '.join(fields).rstrip()
+
+    def _format_code_info(co):
+        lines = []
+        lines.append("Name:              %s" % co.co_name)
+        lines.append("Filename:          %s" % co.co_filename)
+        lines.append("Argument count:    %s" % co.co_argcount)
+        if hasattr(co, 'co_kwonlyargcount'):
+            lines.append("Kw-only arguments: %s" % co.co_kwonlyargcount)
+        lines.append("Number of locals:  %s" % co.co_nlocals)
+        lines.append("Stack size:        %s" % co.co_stacksize)
+        lines.append("Flags:             %s" % pretty_flags(co.co_flags))
+        if co.co_consts:
+            lines.append("Constants:")
+            for i_c in enumerate(co.co_consts):
+                lines.append("%4d: %r" % i_c)
+        if co.co_names:
+            lines.append("Names:")
+            for i_n in enumerate(co.co_names):
+                lines.append("%4d: %s" % i_n)
+        if co.co_varnames:
+            lines.append("Variable names:")
+            for i_n in enumerate(co.co_varnames):
+                lines.append("%4d: %s" % i_n)
+        if co.co_freevars:
+            lines.append("Free variables:")
+            for i_n in enumerate(co.co_freevars):
+                lines.append("%4d: %s" % i_n)
+        if co.co_cellvars:
+            lines.append("Cell variables:")
+            for i_n in enumerate(co.co_cellvars):
+                lines.append("%4d: %s" % i_n)
+        return "\n".join(lines)
+
+    COMPILER_FLAG_NAMES = {   # noqa
+        0x0001: "OPTIMIZED",
+        0x0002: "NEWLOCALS",
+        0x0004: "VARARGS",
+        0x0008: "VARKEYWORDS",
+        0x0010: "NESTED",
+        0x0020: "GENERATOR",
+
+        # The CO_NOFREE flag is set if there are no free or cell variables.
+        # This information is redundant, but it allows a single flag test
+        # to determine whether there is any extra work to be done when the
+        # call frame it setup.
+        0x0040: "NOFREE",
+
+        # Python 3.5.  We don't support them but they're for completion and
+        # possible work
+        0x0080: "COROUTINE",
+        0x0100: "ITERABLE_COROUTINE",
+
+        0x1000: "GENERATOR_ALLOWED",  # no used anymore
+
+        # Python 3 does not use the following
+        0x2000: "FUTURE_DIVISION",
+        0x4000: "FUTURE_ABSOLUTE_IMPORT",
+        0x8000: "FUTURE_WITH_STATEMENT",
+
+        0x10000: "FUTURE_PRINT_FUNCTION",
+        0x20000: "FUTURE_UNICODE_LITERALS",
+    }
+
+    def pretty_flags(flags):
+        """Return pretty representation of code flags."""
+        names = []
+        for i in range(32):
+            flag = 1 << i
+            if flags & flag:
+                names.append(COMPILER_FLAG_NAMES.get(flag, hex(flag)))
+                flags ^= flag
+                if not flags:
+                    break
+        else:
+            names.append(hex(flags))
+        return ", ".join(names)
