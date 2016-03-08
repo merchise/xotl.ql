@@ -135,29 +135,13 @@ class QueryExecutionPlan(Interface):
         '''Execution plans are callable.
 
         Return an `iterator`:term:.  The returned iterator must produce the
-        objects retrieved from the query.  Also it must not be confused with
-        other iterators returned and once exhausted it won't produce more
-        objects.
+        objects retrieved from the query.  Though the plan itself is reusable
+        and can be called several times, the iterator obtained from this
+        method will be exhausted.
 
         Translators are required to properly document the optional keyword
         arguments.  Positional arguments are not allowed.  All arguments must
         be optional.
-
-        .. note:: The restrictions on the returned iterator make it easy to
-           reason about it.  However obtaining a simple Cartesian product
-           would require a call to `itertools.tee`:func:::
-
-               >>> from xotl.ql import this
-               >>> from xotl.ql.translation.py import naive_translation
-               >>> query = naive_translation(which for which in this)
-
-               >>> from itertools import tee
-               >>> from xoutil.eight import zip
-               >>> product = zip(tee(query()))
-
-           Doing a simple ``zip(query(), query())`` would work without error
-           but between the first call to ``query()`` and the second the world
-           might have changed the returned objects would not be the same.
 
         '''
 
@@ -208,7 +192,6 @@ class QueryTranslator(Interface):
         :rtype: `QueryExecutionPlan`:class:
 
         '''
-        pass
 
 
 class QueryTranslatorExplainExtension(QueryTranslator):

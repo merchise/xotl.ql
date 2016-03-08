@@ -60,7 +60,7 @@ Internal representation
    would be True for sets and bags but not for lists.
 
    Cons support the extraction of head and tail we see in functional
-   languages::
+   languages:
 
      >>> from xotl.ql.translation._monads import Cons
      >>> head, tail = Cons(1, [2, 3])
@@ -71,13 +71,13 @@ Internal representation
      Cons(2, Cons(3, Empty()))
 
    Notice that unless you build the structure with `Cons` itself it may not be
-   well defined the value of the head::
+   well defined the value of the head:
 
      >>> _, (head, tail) = Cons(1, {128, 90})   # Is head 128 or 90?
 
    There's no direct support for walking the `Cons` besides its ability to
    extract the head and tail.  Walking is easily defined by recursion or
-   iteration::
+   iteration:
 
      >>> def walk(c):
      ...    h, t = c
@@ -91,17 +91,17 @@ Internal representation
 
    Any of the arguments may take the value be `xoutil.Undefined`:obj: to
    "partialize" the constructor.  Using this feature you may declare the
-   monadic Unit operator as::
+   monadic Unit operator as:
 
      >>> from xoutil import Undefined
      >>> Unit = Cons(Undefined, [])
 
-   And then use it like::
+   And then use it like:
 
      >>> Unit(1)
      Cons(1, Empty())
 
-   You can't walk a partial Cons::
+   You can't walk a partial Cons:
 
      >>> head, tail = Unit                             # doctest: +ELLIPSIS
      Traceback (most recent call last):
@@ -131,7 +131,7 @@ Internal representation
 
    The `foldr` operation is also known as the `reduce` function.  In fact
    ``Foldr(func, initial, coll)()`` returns the same result as
-   ``reduce(func, coll.asiter(), initial)``::
+   ``reduce(func, coll.asiter(), initial)``:
 
        >>> import operator
        >>> from xotl.ql.translation._monads import Foldr

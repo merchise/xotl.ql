@@ -49,7 +49,7 @@ class Empty(Type):
     def __new__(cls):
         '''Create the singleton instance of Empty.
 
-        The following are always True::
+        The following are always True:
 
           >>> Empty() is Empty()
           True
@@ -140,7 +140,7 @@ class _BaseCons(object):
 class Cons(_BaseCons, Type):
     r'''The collection constructor "x : xs".
 
-    The basic usage is::
+    The basic usage is:
 
        >>> Cons(1, [])
        Cons(1, Empty())
@@ -187,8 +187,9 @@ class LazyCons(_BaseCons, Type):
 
     `Cons`:class: can't represent a collection that exceeds the recursion
     limit of the underlying representation.  LazyCons can represent such
-    collections::
+    collections:
 
+      >>> from xotl.ql.translation._monads import LazyCons
       >>> from xoutil.eight import range
       >>> lc = LazyCons(1, range(10**6))
       >>> lc                                            # doctest: +ELLIPSIS
@@ -198,7 +199,7 @@ class LazyCons(_BaseCons, Type):
       1000001
 
     As with `Cons`:class: the standard operation is to extract head and tail.
-    The tail is always a `LazyCons`:class: instance::
+    The tail is always a `LazyCons`:class: instance:
 
        >>> head, tail = lc
        >>> head
@@ -207,14 +208,14 @@ class LazyCons(_BaseCons, Type):
        >>> tail                                         # doctest: +ELLIPSIS
        LazyCons(0, <range...iterator...>)
 
-    It may even represent unbounded collections::
+    It may even represent unbounded collections:
 
        >>> import itertools
        >>> lc = LazyCons(1, itertools.count(2))
        >>> lc
        LazyCons(1, count(2))
 
-    However you must be careful while iterating over such as collection::
+    However you must be careful while iterating over such as collection:
 
        >>> len(list(itertools.takewhile(lambda x: x < 100, lc.asiter())))
        99
@@ -327,8 +328,9 @@ class Operator(Type):
     Allows to represent the application of an operator deferring the
     application.
 
-    Useful to represent applications of an operator over a spine::
+    Useful to represent applications of an operator over a spine:
 
+       >>> from xotl.ql.translation._monads import Map, Operator
        >>> Mapper = Map(Operator(lambda x: x + 1))
 
     '''
@@ -356,24 +358,25 @@ class Union(Type):
     Unions are defined over `Cons`:class: instances.  Unions instances are
     callables that perform the union when called.
 
-    Creating a Union::
+    Creating a Union:
 
+      >>> from xotl.ql.translation._monads import Union, Cons
       >>> whole = Union(Cons(1, []), Cons(2, []))
       >>> whole
       Union(Cons(1, Empty()), Cons(2, Empty()))
 
-    Calling the union instance performs the union::
+    Calling the union instance performs the union:
 
       >>> whole()
       Cons(1, Cons(2, Empty()))
 
     A Union may be also be a partial by leaving one of its arguments
-    Undefined::
+    Undefined:
 
       >>> partial = Union(Undefined, Cons(1, []))
 
     Calling partial unions will return the same object is no arguments are
-    passed, or a performed union.
+    passed, or a performed union:
 
       >>> partial() is partial
       True
