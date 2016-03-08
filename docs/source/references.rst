@@ -52,9 +52,8 @@ foldr notation
    we see `(|\, z; \oplus\, |)`:math:
 
    We choose a notation that's easy to read in python code comments and
-   inlined documentation and not in the.  In this documents (specially the
-   parts extracted from source code) you'll see ``foldr z +`` and ``(z; +)``
-   instead.
+   inlined documentation.  In this documents (specially the parts extracted
+   from source code) you'll see ``foldr z +`` and ``(z; +)`` instead.
 
 .. [#monoids]
 
