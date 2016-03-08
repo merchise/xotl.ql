@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # setup
-#----------------------------------------------------------------------
-# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2012-2016 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -11,57 +11,103 @@
 #
 # Created on 2012-06-29
 
+# flake8: noqa
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print)
-                        # XXX: Don't put absolute imports in setup.py
 
-import os, sys
+import os
+import sys
+from setuptools import Command
+from setuptools.command.test import test as TestCommand
 from setuptools import setup, find_packages
+
+try:
+    execfile = execfile
+except NameError:
+    def execfile(filename):
+        'To run in Python 3'
+        import builtins
+        exec_ = getattr(builtins, 'exec')
+        with open(filename, "r") as f:
+            code = compile(f.read(), filename, 'exec')
+            return exec_(code, globals())
 
 # Import the version from the release module
 project_name = str('xotl.ql')
 _current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(_current_dir, 'xotl', 'ql'))
-from release import VERSION as version
+execfile(os.path.join(_current_dir, 'xotl', 'ql', 'release.py'))
 
-setup(name=project_name,
-      version=version,
-      description=("A pythonic query language, with similar goals as "
-                   "LINQ had for C#"),
-      long_description=open(os.path.join("docs", "readme.txt")).read(),
-      # Get more strings from
-      # http://pypi.python.org/pypi?:action=list_classifiers
-      classifiers=[
+version = VERSION  # noqa
+
+if RELEASE_TAG != '':   # noqa
+    dev_classifier = 'Development Status :: 4 - Beta'
+else:
+    dev_classifier = 'Development Status :: 5 - Production/Stable'
+
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.test_args)
+        sys.exit(errno)
+
+
+class PyShell(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def ensure_finalized(self):
+        pass
+
+    def run(self):
+        from IPython import start_ipython
+        start_ipython(argv=[''])
+
+setup(
+    name=project_name,
+    version=version,
+    description=("A pythonic query language, with similar goals as "
+                 "LINQ had for C#"),
+    long_description=open(
+        os.path.join(_current_dir, "docs", "readme.txt")).read(),
+    # Get more strings from
+    # http://pypi.python.org/pypi?:action=list_classifiers
+    classifiers=[
+        dev_classifier,
         "Programming Language :: Python",
-        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
-        "Operating System :: OS Independent",
         "Topic :: Database",
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-      ],
-      keywords=['query language', 'python', 'xotl'],
-      author='Merchise Autrement',
-      author_email='med.merchise@gmail.com',
-      url='http://github.com/merchise-autrement/',
-      license='GNU General Public License version 3 or later (GPLv3+)',
-      packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
-      namespace_packages=['xotl', ],
-      include_package_data=True,
-      zip_safe=False,
-      setup_requires=['setuptools', ],
-      install_requires=[
-          'xoutil>=1.4.0',
-          'zope.interface>=3.8.0',
-          'zope.component>=3.11.0',
-
-          # For documentation only. But it may be needed for ReadTheDocs
-          'repoze.sphinx.autointerface>=0.7.0',
-      ],
-      extras_requires={
-        'doc': ['docutils>=0.7',
-                'Sphinx>=1.0.7',
-                'repoze.sphinx.autointerface>=0.7.0']
-      }
-    )
+    ],
+    keywords=['query language', 'python', 'xotl'],
+    author='Merchise Autrement',
+    author_email='info@merchise.org',
+    url='http://github.com/merchise-autrement/',
+    license='GNU General Public License version 3 or later (GPLv3+)',
+    tests_require=['pytest'],
+    cmdclass={'test': PyTest,
+              'shell': PyShell},
+    packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+    namespace_packages=['xotl', ],
+    include_package_data=True,
+    zip_safe=False,
+    setup_requires=['setuptools', ],
+    install_requires=[
+        'xoutil>=1.7.0,<1.7.2',
+    ],
+    extras_require={
+        'doc': [
+            'docutils>=0.7',
+            'Sphinx>=1.0.7',
+        ]
+    }
+)

@@ -1,0 +1,6 @@
+include *.py *.cfg *.txt *.rst *.ini
+exclude .installed.cfg
+
+prune bin
+graft docs
+prune docs/build

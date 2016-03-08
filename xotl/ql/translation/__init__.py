@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-#----------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # xotl.ql.translation
-#----------------------------------------------------------------------
-# Copyright (c) 2012, 2013 Merchise Autrement and Contributors
+# ---------------------------------------------------------------------
+# Copyright (c) 2012-2016 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -23,29 +23,18 @@
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
-                        unicode_literals as _py3_unicode,
-                        absolute_import as _py3_abs_imports)
+                        absolute_import as _py3_abs_import)
 
-from xoutil.context import context
-from xoutil.proxy import UNPROXIFING_CONTEXT
-
-from zope.interface import Interface
-
-from xotl.ql.interfaces import (ITerm,
-                                IGeneratorToken,
-                                IExpressionTree,
-                                IQueryObject)
-
-__docstring_format__ = 'rst'
-__author__ = 'manu'
+from xotl.ql.interfaces import Interface
 
 
 class TranslationError(TypeError):
     '''A translation error.
 
-    Translators should issue this kind of exception if there is an error in the
-    query that impedes the translation. The query should not be retried if not
-    changed.
+    Translators should issue this kind of exception if there is an error in
+    the query that impedes the translation.
+
+    The query should not be retried if not changed.
 
     '''
 
@@ -58,9 +47,8 @@ def _instance_of(which):
 
     '''
     def accept(ob):
-        with context(UNPROXIFING_CONTEXT):
-            return isinstance(ob, which) or (issubclass(which, Interface) and
-                                             which.providedBy(ob))
+        return (isinstance(ob, which) or
+                (issubclass(which, Interface) and which.providedBy(ob)))
     return accept
 
 
@@ -70,271 +58,3 @@ def _is_instance_of(who, *types):
 
     '''
     return any(_instance_of(w)(who) for w in types)
-
-
-def cotraverse_expression(*expressions, **kwargs):
-    '''Coroutine that traverses expression trees an yields every node that
-    matched the `accept` predicate. If `accept` is None it defaults to accept
-    only :class:`~xotl.ql.interface.ITerm` instances that have a non-None
-    `name`.
-
-    :param expressions: Several :term:`expression tree` objects (or
-                        :term:`query objects <query object>`) to traverse.
-
-    :param accept: A function that is passed every node found the trees that
-                   must return True if the node should be yielded.
-
-    Coroutine behavior:
-
-    You may reintroduce both `expressions` and `accept` arguments by sending
-    messages to this coroutine. The message may be:
-
-    - A single callable value, which will replace `accept` immediately.
-
-    - A single non-callable value, which will be considered *another*
-      expression to process or (if it's a collection) several expressions.
-
-      Notice this won't make `cotraverse_expression` to stop considering all
-      the nodes from previous expressions.
-
-    - A tuple consisting in `(*expressions, accept)` that will be treated like
-      the previous case: expressions will be en-queued and accept will take
-      effect immediately.
-
-    - A dict that may have `exprs` and `accept` keys.
-
-    The default `accept` behavior is to catch all **named** :class:`ITerm`
-    instances in an expression. This might be useful to translators in order
-    optimize de query plan.
-
-    When introducing new expressions via messages to coroutine, it's guaranteed
-    that previous expressions will be traversed completely before the new
-    ones.
-
-    '''
-    is_expression = IExpressionTree.providedBy
-    def push(queues, items):
-        from xoutil.types import is_collection
-        is_queryobject = IQueryObject.providedBy
-        if not is_collection(items):
-            items = (items, )
-        for item in items:
-            if is_expression(item):
-                queues.append([item])
-            elif is_queryobject(item):
-                queues.extend([f] for f in item.filters)
-
-    from xoutil.objects import get_and_del_key
-    accept = get_and_del_key(kwargs, 'accept',
-                             default=lambda x: _instance_of(ITerm)(x) and x.name)
-    if kwargs != {}:
-        raise TypeError('Invalid signature for cotraverse_expression')
-    queues = []
-    with context(UNPROXIFING_CONTEXT):
-        push(queues, expressions)
-        while queues:
-            queue = queues.pop(0)
-            while queue:
-                current = queue.pop(0)
-                msg = None
-                if accept(current):
-                    msg = yield current
-                if is_expression(current):
-                    queue.extend(current.children)
-                    named_children = current.named_children
-                    queue.extend(named_children[key] for key in named_children)
-                if msg:
-                    exprs = None
-                    if callable(msg):
-                        accept = msg
-                    elif isinstance(msg, tuple):
-                        exprs, accept = msg[:-1], msg[-1]
-                    elif isinstance(msg, dict):
-                        exprs = msg.get('exprs', None)
-                        accept = msg.get('accept', accept)
-                    else:
-                        exprs = msg
-                    if exprs:
-                        push(queues, exprs)
-
-
-def cmp_terms(t1, t2, strict=False):
-    '''Compares two terms in a partial order.
-
-    This is a *partial* compare operator. A term `t1 < t2` if and only if `t1`
-    is in the parent-chain of `t2`.
-
-    If `strict` is False the comparison between expressions will be made with
-    the `eq` operation; otherwise `is` will be used.
-
-    If either `t1` or `t2` are generator tokens it's
-    :attr:`~xotl.ql.interfaces.IGeneratorToken.expression` is used instead.
-
-    Examples::
-
-        >>> from xotl.ql.core import this, these
-        >>> t1 = this('a').b.c
-        >>> t2 = this('b').b.c.d
-        >>> t3 = this('a').b
-
-        >>> cmp_terms(t1, t3)
-        1
-
-        # But if equivalence is False neither t1 < t3 nor t3 < t1 holds.
-        >>> cmp_terms(t1, t3, True)
-        0
-
-        # Since t1 and t2 have no comon ancestor, they are not ordered.
-        >>> cmp_terms(t1, t2)
-        0
-
-        >>> query = these((child, brother)
-        ...               for parent in this
-        ...               for child in parent.children
-        ...               for brother in parent.children
-        ...               if child is not brother)
-
-        >>> t1, t2, t3 = query.tokens
-
-        >>> cmp_terms(t1, t2)
-        -1
-
-        >>> cmp_terms(t2, t3)
-        0
-
-    '''
-    import operator
-    if not strict:
-        test = operator.eq
-    else:
-        test = operator.is_
-    with context(UNPROXIFING_CONTEXT):
-        if IGeneratorToken.providedBy(t1):
-            t1 = t1.expression
-        if IGeneratorToken.providedBy(t2):
-            t2 = t2.expression
-        if test(t1, t2):
-            return 0
-        else:
-            t = t1
-            while t and not test(t, t2):
-                t = t.parent
-            if t:
-                return 1
-            t = t2
-            while t and not test(t, t1):
-                t = t.parent
-            if t:
-                return -1
-            else:
-                return 0
-
-
-def get_term_path(term):
-    '''Returns a tuple of all the names in the path to a term.
-
-    For example::
-
-       >>> from xotl.ql import this
-       >>> get_term_path(this('p').a.b.c)
-       ('p', 'a', 'b', 'c')
-
-    The unnamed term ``this`` is treated specially by returning None. For
-    example::
-
-        >>> get_term_path(this.a)
-        (None, 'a')
-
-    '''
-    with context(UNPROXIFING_CONTEXT):
-        from xotl.ql.core import this
-        res = []
-        current = term
-        while current:
-            if current is not this:
-                res.insert(0, current.name)
-            else:
-                res.insert(0, None)
-            current = current.parent
-        return tuple(res)
-
-
-def get_term_signature(term):
-    '''Returns the path "signature" of a term (or token).
-
-    For a bound term the signature is the tuple ``(path of binding, path of
-    term)``; if the term is not bound this is the tuple ``((), path of the
-    term)``.
-
-    '''
-    if _is_instance_of(term, IGeneratorToken):
-        term = term.expression
-    with context(UNPROXIFING_CONTEXT):
-        binding = term.binding
-    if binding:
-        bpath = get_term_path(binding.expression)
-    else:
-        bpath = ()
-    return (bpath, get_term_path(term))
-
-
-def token_before_filter(tk, expr, strict=False):
-    '''Partial order (`<`) compare function between a token (or term) and an
-    expression.
-
-    A token *is before* an expression if it is (or is before of) the binding of
-    any of the terms in the expression.
-
-    `strict` has the same meaning as in :func:`cmp_terms`.
-
-    '''
-    with context(UNPROXIFING_CONTEXT):
-        def check(term):
-            if tk is term.binding:
-                return True
-            else:
-                return cmp_terms(tk, term.binding, strict) == -1
-        return any(check(term) for term in cotraverse_expression(expr))
-
-
-def cmp(a, b, strict=False):
-    '''Compare function between tokens and expressions.
-
-    The following rules are used to make this compare function *less* partial:
-
-    - When two terms are not orderable in the sense of :func:`cmp_terms`, they
-      are compared by its signature (see :func:`get_term_signature`).
-
-    - If token is not before than a filter in the sense of
-      :func:`token_before_filter`, then if it's before only if it's also before
-      any of the terms in the expression, otherwise the token is *after* the
-      expression. This means that a token and an expressions are never regarded
-      as equal.
-
-    - Any two expressions are considered equal.
-
-    `strict` has the same meaning as in :func:`cmp_terms`.
-
-    '''
-    from ..interfaces import IExpressionCapable
-    with context(UNPROXIFING_CONTEXT):
-        if _is_instance_of(a, ITerm, IGeneratorToken) and _is_instance_of(b, ITerm, IGeneratorToken):
-            res = cmp_terms(a, b, strict)
-            if res == 0:
-                a_sign, b_sign = get_term_signature(a), get_term_signature(b)
-                if a_sign < b_sign:
-                    res = -1
-                elif a_sign > b_sign:
-                    res = 1
-                else:
-                    res = 0
-            return res
-        elif _is_instance_of(a, ITerm, IGeneratorToken) and _is_instance_of(b, IExpressionCapable):
-            if token_before_filter(a, b, strict):
-                return -1
-            else:
-                return -1 if any(cmp(a, tk, strict) == -1 for tk in cotraverse_expression(b)) else 1
-        elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, ITerm, IGeneratorToken):
-            return -cmp(b, a, strict)
-        elif _is_instance_of(a, IExpressionCapable) and _is_instance_of(b, IExpressionCapable):
-            return 0

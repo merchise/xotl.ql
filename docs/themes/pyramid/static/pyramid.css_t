@@ -340,7 +340,8 @@ tt.xref {
 }
 
 
-table.footnote {
+table.footnote, table.citation {
    margin-bottom: 1em;
    line-height: 1.25em;
 }
+table.citation {border: 0}
