@@ -2,6 +2,13 @@
  From byte-code to a query syntax tree
 =======================================
 
+.. testsetup::
+
+   from xotl.ql.revenge.eight import py2k, py3k, py33, py34, py32, pypy
+   import dis
+   from xotl.ql.revenge.scanners import getscanner, xdis
+
+
 .. module:: xotl.ql.revenge
 .. role:: name
 
@@ -81,16 +88,17 @@ body of a non-lambda function (i.e, not an expression).
 The following are all valid basic expressions along with the disassembled
 byte-code [#doctest]_:
 
-- ``a``::
+- ``a``
 
-    >>> import dis
-    >>> dis.dis(compile('a', '', 'eval'))
-      1           0 LOAD_NAME                0 (a)
-                  3 RETURN_VALUE
+    .. doctest::
+
+       dis.dis(compile('a', '', 'eval'))
+       1           0 LOAD_NAME                0 (a)
+                   3 RETURN_VALUE
 
 - ``a + 1``::
 
-    >>> dis.dis(compile('a + 1', '', 'eval'))
+    dis.dis(compile('a + 1', '', 'eval'))
       1           0 LOAD_NAME                0 (a)
                   3 LOAD_CONST               0 (1)
                   6 BINARY_ADD
@@ -99,7 +107,7 @@ byte-code [#doctest]_:
 
 - ``a(b[c**e/2:d], *y, **kw).at``::
 
-    >>> dis.dis(compile('a(b[c**e/2:d], *y, **kw).at', '', 'eval'))  # doctest: +SKIP
+     dis.dis(compile('a(b[c**e/2:d], *y, **kw).at', '', 'eval'))  # doctest: +SKIP
       1           0 LOAD_NAME                0 (a)
                   3 LOAD_NAME                1 (b)
                   6 LOAD_NAME                2 (c)
@@ -161,7 +169,7 @@ the byte-code: they don't run straightforwardly from top to bottom.
 For instance, the simplest conditional expression "``a if x else y``", in
 Python 2.7 and 3.4 compiles to::
 
-  >>> dis.dis(compile('a if x else y', '', 'eval'))
+   dis.dis(compile('a if x else y', '', 'eval'))
      1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       10
                  6 LOAD_NAME                1 (a)
@@ -172,7 +180,7 @@ Python 2.7 and 3.4 compiles to::
 
 In Pypy 2.7.3::
 
-  >>> dis.dis(compile('a if x else y', '', 'eval'))  # doctest: +SKIP
+   dis.dis(compile('a if x else y', '', 'eval'))  # doctest: +SKIP
      1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       12
                  6 LOAD_NAME                1 (a)
@@ -213,7 +221,7 @@ else y1) else y2``.  Inspecting the actual byte-code we see there's an issue
 with the ``then_result`` inside the condition expression since it does not end
 with the required ``RETURN_VALUE``::
 
-  >>> dis.dis(compile('a if (a1 if x1 else y1) else y2', '', 'eval'))
+   dis.dis(compile('a if (a1 if x1 else y1) else y2', '', 'eval'))
    1           0 LOAD_NAME                0 (x1)
                3 POP_JUMP_IF_FALSE       12
                6 LOAD_NAME                1 (a1)
@@ -230,7 +238,7 @@ but let it in the top of the stack (TOS) to further inspection by the outer
 expression.  Surely we're going to see this pattern even when combining
 conditional expression with non-conditional ones as in::
 
-  >>> dis.dis(compile('(a if x else y) + 1', '', 'eval'))
+   dis.dis(compile('(a if x else y) + 1', '', 'eval'))
      1           0 LOAD_NAME                0 (x)
                  3 POP_JUMP_IF_FALSE       12
                  6 LOAD_NAME                1 (a)
@@ -280,7 +288,7 @@ sentence that returns an expression.
 Yet, those productions rules are not sufficient.  They alone would make these
 two programs produce the same AST::
 
-  >>> dis.dis(compile('a if x else (o if i else n)', '', 'eval'))
+   dis.dis(compile('a if x else (o if i else n)', '', 'eval'))
    1           0 LOAD_NAME                0 (x)
                3 POP_JUMP_IF_FALSE       10
                6 LOAD_NAME                1 (a)
@@ -292,7 +300,7 @@ two programs produce the same AST::
          >>   20 LOAD_NAME                4 (n)
               23 RETURN_VALUE
 
-  >>> dis.dis(compile('o if (a if x else i) else n', '', 'eval'))
+   dis.dis(compile('o if (a if x else i) else n', '', 'eval'))
     1           0 LOAD_NAME                0 (x)
                 3 POP_JUMP_IF_FALSE       12
                 6 LOAD_NAME                1 (a)
@@ -310,7 +318,7 @@ does) we can't distinguish between those two programs.  In fact those many
 because we're compiling the expression with ``'eval'``.  Otherwise, they only
 show up in lambdas::
 
-  >>> dis.dis(compile('a if x else (o if i else n)', '', 'exec'))
+   dis.dis(compile('a if x else (o if i else n)', '', 'exec'))
    1           0 LOAD_NAME                0 (x)
                3 POP_JUMP_IF_FALSE       12
                6 LOAD_NAME                1 (a)
@@ -324,7 +332,7 @@ show up in lambdas::
               28 LOAD_CONST               0 (None)
               31 RETURN_VALUE
 
-  >>> dis.dis(lambda: a if x else (o if i else n))
+   dis.dis(lambda: a if x else (o if i else n))
     1           0 LOAD_GLOBAL              0 (x)
                 3 POP_JUMP_IF_FALSE       10
                 6 LOAD_GLOBAL              1 (a)
@@ -347,14 +355,14 @@ Boolean expressions
 Boolean expressions produce byte-code that "short-circuit" the evaluation as
 soon as the result is known::
 
-  >>> dis.dis(compile('a and b', '', 'eval'))
+   dis.dis(compile('a and b', '', 'eval'))
     1           0 LOAD_NAME                0 (a)
                 3 JUMP_IF_FALSE_OR_POP     9
                 6 LOAD_NAME                1 (b)
           >>    9 RETURN_VALUE
 
 
-  >>> dis.dis(compile('a or b', '', 'eval'))
+   dis.dis(compile('a or b', '', 'eval'))
     1           0 LOAD_NAME                0 (a)
                 3 JUMP_IF_TRUE_OR_POP      9
                 6 LOAD_NAME                1 (b)
@@ -364,7 +372,7 @@ Here the `JUMP_IF_FALSE_OR_POP`:opcode: and `JUMP_IF_TRUE_OR_POP`:opcode: do
 the evaluation and stop it if the result is known.  However, when combined
 things change::
 
-  >>> dis.dis(compile('x and a or y', '', 'eval'))
+   dis.dis(compile('x and a or y', '', 'eval'))
     1           0 LOAD_NAME                0 (x)
                 3 POP_JUMP_IF_FALSE       12
                 6 LOAD_NAME                1 (a)
@@ -384,7 +392,7 @@ the ``JUMP_IF_FALSE_OR_POP``.
 We'll see that changing the precedence by grouping don't change the
 instructions but the target of the first jump::
 
-  >>> dis.dis(compile('x and (a or y)', '', 'eval'))
+   dis.dis(compile('x and (a or y)', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_NAME                0 (x)
                 3 JUMP_IF_FALSE_OR_POP    15
                 6 LOAD_NAME                1 (a)
@@ -398,7 +406,7 @@ interpret the byte-code.
 
 But first let's take more samples::
 
-  >>> dis.dis(compile('x and a and b', '', 'eval'))
+   dis.dis(compile('x and a and b', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_NAME                0 (x)
                 3 JUMP_IF_FALSE_OR_POP    15
                 6 LOAD_NAME                1 (a)
@@ -406,7 +414,7 @@ But first let's take more samples::
                12 LOAD_NAME                2 (b)
           >>   15 RETURN_VALUE
 
-  >>> dis.dis(compile('x or a or b', '', 'eval'))
+   dis.dis(compile('x or a or b', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_NAME                0 (x)
                 3 JUMP_IF_TRUE_OR_POP     15
                 6 LOAD_NAME                1 (a)
@@ -432,7 +440,7 @@ instructions for the other operand to the boolean operator.  The instruction
 just before the target is not necessarily the last instruction of the other
 operand, it may be another jump or `RETURN_VALUE` like in::
 
-  >>> dis.dis(compile('a and b or c', '', 'eval'))
+   dis.dis(compile('a and b or c', '', 'eval'))   # doctest: +SKIP
     1           0 LOAD_NAME                0 (a)
                 3 POP_JUMP_IF_FALSE       12
                 6 LOAD_NAME                1 (b)
@@ -459,8 +467,8 @@ it as we analyze further.
 In the simplest cases, it will be placed just before the
 `RETURN_VALUE`:opcode: at the end::
 
-  >>> from xotl.ql.revenge.scanners import xdis
-  >>> xdis(compile('a and b', '', 'eval'))
+   from xotl.ql.revenge.scanners import xdis
+   xdis(compile('a and b', '', 'eval'))   # doctest: +SKIP
    1         0 LOAD_NAME            a    (a)
              3 JUMP_IF_FALSE_OR_POP 9    (9)
              6 LOAD_NAME            b    (b)
@@ -471,7 +479,7 @@ For the sake of readability ``COME_FROM`` indicates the offset from which it
 is reached, it's virtual offset if composed of the offset of the target and an
 index -- since many jumps may target the same offset::
 
-  >>> xdis(compile('a or b or c', '', 'eval'))
+   xdis(compile('a or b or c', '', 'eval'))   # doctest: +SKIP
    1         0 LOAD_NAME            a    (a)
              3 JUMP_IF_TRUE_OR_POP  15   (15)
              6 LOAD_NAME            b    (b)
@@ -491,10 +499,10 @@ the second case we see that the first jumps spans over the second.
 ---
 
 ::
-  >>> def f4():
+   def f4():
   ...     return (a if x else y) if (b if z else c) else (d if o else p)
 
-  >>> dis.dis(compile('(a if x else y) if (b if z else c) else (d if o else p)', '', 'eval'))
+   dis.dis(compile('(a if x else y) if (b if z else c) else (d if o else p)', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_NAME                0 (z)
                 3 POP_JUMP_IF_FALSE       12
                 6 LOAD_NAME                1 (b)
@@ -514,11 +522,11 @@ the second case we see that the first jumps spans over the second.
           >>   44 LOAD_NAME                8 (p)
           >>   47 RETURN_VALUE
 
-  >>> def f5():
+   def f5():
   ...     if (b if z else c): return (a if x else y)
   ...     return (d if o else p)
 
-  >>> dis.dis(f5)
+   dis.dis(f5)    # doctest: +SKIP
     2           0 LOAD_GLOBAL              0 (z)
                 3 POP_JUMP_IF_FALSE       12
                 6 LOAD_GLOBAL              1 (b)
@@ -545,8 +553,8 @@ Just as we did before, we can perform a simple normalization step to always
 get the second program.  In fact, the scanner sees both programs as the same::
 
 
-  >>> from xotl.ql.revenge.scanners import xdis
-  >>> xdis(f4, native=True)
+   from xotl.ql.revenge.scanners import xdis
+   xdis(f4, native=True)                              # doctest: +SKIP
    2         0 LOAD_GLOBAL          z    (z)
              3 POP_JUMP_IF_FALSE    12   (12)
              6 LOAD_GLOBAL          b    (b)
@@ -657,7 +665,7 @@ instruction set.
 The program shown below produces two customized tokens ``<BUILD_LIST_3>`` and
 ``<BUILD_LIST_2>``::
 
-  >>> dis.dis(compile('[1, 2, 3] + [9, 0]', '', 'eval'))
+   dis.dis(compile('[1, 2, 3] + [9, 0]', '', 'eval'))
     1           0 LOAD_CONST               0 (1)
                 3 LOAD_CONST               1 (2)
                 6 LOAD_CONST               2 (3)
@@ -708,7 +716,7 @@ Generator expressions work by creating a nested function where the loops is
 actually done and call it immediately with the iterable as its single
 argument::
 
-  >>> dis.dis(compile('(a for a in this)', '', 'eval'))
+   dis.dis(compile('(a for a in this)', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_CONST               0 (<code object <genexpr> ...>)
                 3 MAKE_FUNCTION            0
                 6 LOAD_NAME                0 (this)
@@ -718,7 +726,7 @@ argument::
 
 A set comprehension is indistinguishable from a generator expression::
 
-  >>> dis.dis(compile('{a for a in this}', '', 'eval'))
+   dis.dis(compile('{a for a in this}', '', 'eval'))  # doctest: +SKIP
     1           0 LOAD_CONST               0 (<code object <setcomp> ...>)
                 3 MAKE_FUNCTION            0
                 6 LOAD_NAME                0 (this)
@@ -737,7 +745,7 @@ comprehension:  ``LOAD_GENEXPR``, ``LOAD_DICTCOM``, ``LOAD_SETCOMP`` and
 ``LOAD_LAMBDA``.  The last one is not related with comprehensions but is easy
 to show the similarity::
 
-  >>> dis.dis(compile('(lambda t: None)(this)', '', 'eval'))
+   dis.dis(compile('(lambda t: None)(this)', '', 'eval')) # doctest: +SKIP
     1           0 LOAD_CONST               0 (<code object <lambda> ...>)
                 3 MAKE_FUNCTION            0
                 6 LOAD_NAME                0 (this)
@@ -755,7 +763,7 @@ comprehensions::
 
 The nested function can be inspected::
 
-    >>> dis.dis(compile('(a for a in this)', '', 'eval').co_consts[0])
+     dis.dis(compile('(a for a in this)', '', 'eval').co_consts[0])
       1           0 LOAD_FAST                0 (.0)
             >>    3 FOR_ITER                11 (to 17)
                   6 STORE_FAST               1 (a)
@@ -910,7 +918,7 @@ Optimizations
 
   This is what happens for ``x and a or b`` and also for ``(x or a) and b``::
 
-    >>> dis.dis(compile('x and a or b', '', 'eval'))
+     dis.dis(compile('x and a or b', '', 'eval'))
       1           0 LOAD_NAME                0 (x)
                   3 POP_JUMP_IF_FALSE       12
                   6 LOAD_NAME                1 (a)
@@ -918,7 +926,7 @@ Optimizations
             >>   12 LOAD_NAME                2 (b)
             >>   15 RETURN_VALUE
 
-    >>> dis.dis(compile('(x or a) and b', '', 'eval'))
+     dis.dis(compile('(x or a) and b', '', 'eval'))
       1           0 LOAD_NAME                0 (x)
                   3 POP_JUMP_IF_TRUE        12
                   6 LOAD_NAME                1 (a)

@@ -33,21 +33,21 @@ except ImportError:
 
         Example::
 
-            celery.concurrency.processes.TaskPool
-                                        ^- class name
+            xotl.ql.core.QueryObject
+                        ^- class name
 
         or using ':' to separate module and symbol::
 
-            celery.concurrency.processes:TaskPool
+            xotl.ql.core:QueryObject
 
         Examples:
 
-            >>> import_object('celery.concurrency.processes.TaskPool')
-            <class 'celery.concurrency.processes.TaskPool'>
+            >>> import_object('xotl.ql.core.QueryObject')
+            <class 'xotl.ql.core.QueryObject'>
 
             # Does not try to look up non-string names.
-            >>> from celery.concurrency.processes import TaskPool
-            >>> import_object(TaskPool) is TaskPool
+            >>> from xotl.ql.core import QueryObject
+            >>> import_object(QueryObject) is QueryObject
             True
 
         """

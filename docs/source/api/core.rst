@@ -49,7 +49,7 @@ The module `xotl.ql.core`:mod: provide the high level API for obtaining a
            elt: <ast: Name>
               id: 'y'
               ctx: <ast: Load>
-           generators[]: <ast: comprehension>
+           generators[0]: <ast: comprehension>
               target: <ast: Name>
                  id: 'y'
                  ctx: <ast: Store>

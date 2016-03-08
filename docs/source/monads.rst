@@ -62,6 +62,7 @@ Internal representation
    Cons support the extraction of head and tail we see in functional
    languages::
 
+     >>> from xotl.ql.translation._monads import Cons
      >>> head, tail = Cons(1, [2, 3])
      >>> head
      1
@@ -77,16 +78,6 @@ Internal representation
    There's no direct support for walking the `Cons` besides its ability to
    extract the head and tail.  Walking is easily defined by recursion or
    iteration::
-
-     >>> def walk(c):
-     ...    h, t = c
-     ...    yield h
-     ...    if t:
-     ...        for i in walk(t):
-     ...            yield i
-
-     >>> list(walk(Cons(1, [2, 3])))
-     [1, 2, 3]
 
      >>> def walk(c):
      ...    h, t = c
@@ -109,6 +100,13 @@ Internal representation
 
      >>> Unit(1)
      Cons(1, Empty())
+
+   You can't walk a partial Cons::
+
+     >>> head, tail = Unit                             # doctest: +ELLIPSIS
+     Traceback (most recent call last):
+     ...
+     TypeError: Cons as a partial function cannot be iterated
 
 
 .. autoclass:: Foldr(operator, initial, collection)
@@ -136,9 +134,11 @@ Internal representation
    ``reduce(func, coll.asiter(), initial)``::
 
        >>> import operator
+       >>> from xotl.ql.translation._monads import Foldr
        >>> Foldr(operator.add, 0, Cons(1, [2]))()
        3
 
+       >>> from functools import reduce
        >>> reduce(operator.add, Cons(1, [2]).asiter(), 0)
        3
 
@@ -244,8 +244,9 @@ expressing ordering.  Other query languages like SQL do support them.
    `SortedCons`:class: won't sort a list.  It will simply "push" its first
    argument until it matches the `order` function::
 
-      >>> SortedCons('<')(49, Cons(30, Cons(50, Cons(10, [-1]))))
-      Cons(30, Cons(49, Cons(50, Cons(10, Cons(-1, Empty())))))
+     >>> from xotl.ql.translation._monads import SortedCons, Empty
+     >>> SortedCons('<')(49, Cons(30, Cons(50, Cons(10, [-1]))))
+     Cons(30, Cons(49, Cons(50, Cons(10, Cons(-1, Empty())))))
 
    Using `Foldr` we obtain a sort function::
 
@@ -268,10 +269,10 @@ expressing ordering.  Other query languages like SQL do support them.
 Large collections
 =================
 
-Although this module is not meant for execution of this operations, and thus
+Although this module is not meant for execution of these operations, and thus
 truly large collections are out the question, we have a `LazyCons`:class:
 class that allows to represent large collections.  However, the current
-definition of `Foldr`:class: makes unpractical to really work with them.
+definition of `Foldr`:class: makes it unpractical to really work with them.
 
 .. autoclass:: LazyCons(x, xs)
 

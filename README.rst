@@ -1,22 +1,25 @@
 The *pythonic* query language
 =============================
 
-This package provides an implementation of a query language for Python.  The
-query language is based on Python's generator expression.  A query in this
+This package provides a library for implementing query languages for Python.
+The syntax is based on Python's generator expression.  A query in this
 language looks like this::
 
-    >>> from xotl.ql import these, this
+    >>> from xotl.ql.core import this, get_query_object
 
-    >>> query = these(child
-    ...               for parent in this
-    ...               if parent.children and parent.age > 32
-    ...               for child in parent.children
-    ...               if child.age < 6)
+    >>> query = get_query_object(
+    ...    child
+    ...    for parent in this
+    ...    if parent.children and parent.age > 32
+    ...    for child in parent.children
+    ...    if child.age < 6
+    ... )
 
 The resultant `query` is an object that "describes" at the syntactical level
 the query expression above.
 
 Full documentation kept at `Read the doc <http://xotl-ql.readthedocs.org/>`_.
+
 
 How to contribute
 -----------------

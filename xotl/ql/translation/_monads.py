@@ -148,30 +148,6 @@ class Cons(_BaseCons, Type):
     That builds the collection with a single element, the `Empty()` being the
     empty collection.
 
-    You may also let any its arguments Undefined and that will create a
-    partial::
-
-        >>> from xoutil import Undefined
-        >>> A1 = Cons(1, Undefined)
-
-        >>> A1
-        Cons(1)
-
-        >>> A1(Cons(2, []))
-        Cons(1, Cons(2, Empty()))
-
-    You may extract the head and tail for non-partials Cons::
-
-        >>> head, tail = A1([])
-
-        >>> head, tail
-        (1, Empty())
-
-        >>> head, tail = A1   # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-        ...
-        TypeError: Cons as a partial function cannot be iterated
-
     '''
     def __init__(self, *args):
         from collections import Iterable
@@ -215,11 +191,21 @@ class LazyCons(_BaseCons, Type):
 
       >>> from xoutil.eight import range
       >>> lc = LazyCons(1, range(10**6))
-      >>> lc
-      LazyCons(1, ...range(1000000))
+      >>> lc                                            # doctest: +ELLIPSIS
+      LazyCons(1, ...range(...1000000))
 
       >>> len(lc.aslist())
       1000001
+
+    As with `Cons`:class: the standard operation is to extract head and tail.
+    The tail is always a `LazyCons`:class: instance::
+
+       >>> head, tail = lc
+       >>> head
+       1
+
+       >>> tail                                         # doctest: +ELLIPSIS
+       LazyCons(0, <range...iterator...>)
 
     It may even represent unbounded collections::
 
@@ -231,7 +217,7 @@ class LazyCons(_BaseCons, Type):
     However you must be careful while iterating over such as collection::
 
        >>> len(list(itertools.takewhile(lambda x: x < 100, lc.asiter())))
-       101
+       99
 
     .. warning:: LazyCons is not provided for performance or efficiency.
 
