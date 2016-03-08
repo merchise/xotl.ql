@@ -12,17 +12,12 @@
 #
 # Created on 2015-10-15
 
-'''Monads comprehensions as a intermediate query language representation.
+'''Monad comprehensions.
 
-As noted in [QLFunc]_ algebra operators are an "abstraction of the algorithms
-implemented by target query engines."  Therefore, the following implementation
-of such operators are not designed to provide an efficient representation of
-those algorithms and data structures.
-
-In this algebra the query ``(x for x in this if predicate(x))`` would be
-represented as::
-
-   Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
+.. warning:: As noted in [QLFunc]_ algebra operators are an "abstraction of
+   the algorithms implemented by target query engines."  Therefore, the
+   following implementation of such operators are not designed to provide an
+   efficient representation of those algorithms and data structures.
 
 '''
 

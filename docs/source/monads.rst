@@ -1,7 +1,7 @@
 .. _monads:
 
 ======================
- Monads Comprehension
+ Monad Comprehensions
 ======================
 
 .. automodule:: xotl.ql.translation._monads
@@ -46,7 +46,8 @@ Internal representation
 
    This is an *abstract* representation of the "|x:xs|" operation as referred
    in [QLFunc]_.  It's not meant to be efficient or to be used as true
-   collection for Python programs.
+   collection for Python programs.  It will recursively build all 'Cons' when
+   instantiated so it may hit the maximum recursion depth very soon.
 
    The `xs` must be a *collection* or another `Cons` object.  If a collection
    is passed it will be converted to a `Cons` object.
@@ -110,7 +111,7 @@ Internal representation
      Cons(1, Empty())
 
 
-.. class:: Foldr(operator, initial, collection)
+.. autoclass:: Foldr(operator, initial, collection)
 
    `foldr` is defined by:
 
@@ -140,6 +141,33 @@ Internal representation
 
        >>> reduce(operator.add, Cons(1, [2]).asiter(), 0)
        3
+
+   `Foldr`:class: instances have the following attributes:
+
+   .. attribute:: operator
+
+      The operator applied in each step of the computation.
+
+   .. attribute:: arg
+
+      The initial value `z`.
+
+   .. attribute:: collection
+
+      The collection of values.
+
+   Any of the attributes can be `~xoutil.Undefined`:obj: to make the instance
+   a partial definition.
+
+   Calling a non-partial `Foldr`:class: instance traverses recursively the
+   collection and applies the given operator.  If the collection is large
+   enough this may hit the maximum recursion limit.
+
+   Calling a partial `Foldr`:class: instance returns another `Foldr`:class:
+   instance if not enough arguments were provided in order to render it
+   non-partial.  If enough arguments are provided it behaves as if it were a
+   non-partial.  This makes it easy to build 'functions' based on the first
+   two arguments as in ``all = Foldr(operator.and, True)``.
 
    As noted in [QLFunc]_ the `Cons`:class: operator (|:|) needs to be further
    specified for *set* and *bags*.  Also the "|+|" infix operator needs to be
@@ -172,17 +200,17 @@ the "right" position assuming `xs` is already sorted.
       :^\tau_< \quad & :: & \alpha \rightarrow \tau\alpha \rightarrow \tau\alpha \\
       \\
       x :^\tau_< [] & = & x :^\tau [] \\
-      x :^\tau_< (y :^\tau_< ys)  & = & {\bf if}\, x < y\,\,
-                                        {\bf then}\, x :^\tau (y :^\tau ys)\,\,
-                                        {\bf else}\, y :^\tau (x :^\tau_< ys)
+      x :^\tau_< (y :^\tau ys)  & = & {\bf if}\, x < y\,\,
+                                      {\bf then}\, x :^\tau (y :^\tau ys)\,\,
+                                      {\bf else}\, y :^\tau (x :^\tau_< ys)
    \end{eqnarray}
 
 .. equations above are like:
 
-   `:<`                  :: a -> [a] -> [a]
+   `:<`               :: a -> [a] -> [a]
 
-   x `:<` []             =  x : []
-   x `:<` (y `:<` ys)    =  if x < y then x : (y : ys) else y : (x `:<` ys)
+   x `:<` []          =  x : []
+   x `:<` (y : ys)    =  if x < y then x : (y : ys) else y : (x `:<` ys)
 
 
 Now sorting can be achieved by:
@@ -236,6 +264,16 @@ expressing ordering.  Other query languages like SQL do support them.
 .. |:<| replace:: `:^{\tau}_{\small <}`:math:
 .. |:>| replace:: `:^\tau_>`:math:
 
+
+Large collections
+=================
+
+Although this module is not meant for execution of this operations, and thus
+truly large collections are out the question, we have a `LazyCons`:class:
+class that allows to represent large collections.  However, the current
+definition of `Foldr`:class: makes unpractical to really work with them.
+
+.. autoclass:: LazyCons(x, xs)
 
 
 Memento for mathematical terms
