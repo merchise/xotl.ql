@@ -109,9 +109,9 @@ class _BaseCons(object):
         x, xs = self.x, self.xs
         if x is not Undefined and xs is not Undefined:
             raise TypeError('Fully qualified Cons')
-        if args:
+        if x is Undefined and args:
             x, args = args[0], args[1:]
-        if args:
+        if xs is Undefined and args:
             xs, args = args[0], args[1:]
         assert not args
         return type(self)(x, xs)
