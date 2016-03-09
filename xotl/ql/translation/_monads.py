@@ -509,7 +509,7 @@ class SortedCons(Type):
         def _iter():
             yield self.x
             yield self.xs
-        if self.x is not Undefined:
+        if self.x is not Undefined and self.xs is not Undefined:
             return _iter()
         else:
             raise TypeError('SortedCons as a partial function cannot '
