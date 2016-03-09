@@ -472,18 +472,16 @@ class _Mapper(object):
         return Cons(self.f(x), xs)
 
 
+# map f xs = foldr (λx, xs. f(x) : xs) [] xs
 Map = lambda f: Foldr(_Mapper(f), Empty())
 Join = Foldr(Union, Empty())
 
-from operator import le, lt, gt, ge
-
 _orders = {
-    '<': lt,
-    '<=': le,
-    '>': gt,
-    '>=': ge,
+    '<': operator.lt,
+    '<=': operator.le,
+    '>': operator.gt,
+    '>=': operator.ge,
 }
-del le, lt, gt, ge
 
 
 class SortedCons(Type):
