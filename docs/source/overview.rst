@@ -4,9 +4,9 @@
 Overview
 ========
 
-The main goal of `xotl.ql` is to provide a *facilities* that allow writing
-queries in a *pythonic way*.  In this regard, `xotl.ql` has a similar outlook
-that LINQ queries have in C#.
+The main goal of `xotl.ql` is to provide *tools* that allow writing queries in
+a *pythonic way*.  In this regard, `xotl.ql` has a similar outlook that LINQ
+queries have in C#.
 
 A `query expression`:term: takes the form of a Python generator expression::
 
@@ -20,7 +20,8 @@ More complex queries are allowed, for instance::
 
   >>> parents = (parent
   ...            for parent in this
-  ...            if parent.children and all(child.age > 10 for child in parent.children))
+  ...            if parent.children
+  ...            if all(child.age > 10 for child in parent.children))
 
 This would retrieve every "parent" whose children are all more than 10 years
 old (assuming `age` is measured in years).

@@ -37,6 +37,8 @@
 .. [MAPRED] Dean, Jeffrey and Ghemawat, Sanjay.  "MapReduce: Simplified Data
             Processing on Large Clusters".  Google Inc.  Available at ...
 
+.. [Hutton1999] Hutton, Graham.  "A tutorial on the universality and
+                expressiveness of fold".  University of Nottingham, UK.
 
 
 Notes
