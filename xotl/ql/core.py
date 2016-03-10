@@ -377,16 +377,48 @@ class SourceBuilder(ast.NodeVisitor):
         self.stack.append('{%s}' % setbody)
 
     def visit_ListComp(self, node):
-        raise NotImplementedError
+        self._visit_comp(node)
+        self.stack.append('[%s]' % self.stack.pop(-1))
 
     def visit_SetComp(self, node):
-        raise NotImplementedError
+        self._visit_comp(node)
+        self.stack.append('{%s}' % self.stack.pop(-1))
 
     def visit_DictComp(self, node):
-        raise NotImplementedError
+        self.visit(node.value)
+        self.visit(node.key)
+        pop = lambda: self.stack.pop(-1)
+        lines = ['%s: %s' % (pop(), pop())]
+        self._visit_generators(node)
+        lines.append(pop())
+        self.stack.append('{%s}' % ' '.join(lines))
 
     def visit_GeneratorExp(self, node):
-        raise NotImplementedError
+        self._visit_comp(node)
+        self.stack.append('(%s)' % self.stack.pop(-1))
+
+    def _visit_comp(self, node):
+        self.visit(node.elt)
+        pop = lambda: self.stack.pop(-1)
+        lines = [pop()]
+        self._visit_generators(node)
+        lines.append(pop())
+        self.stack.append(' '.join(lines))
+
+    def _visit_generators(self, node):
+        for comp in reversed(node.generators):
+            for if_ in reversed(comp.ifs):
+                self.visit(if_)
+            self.stack.append(len(comp.ifs))  # save the length of ifs [*]
+            self.visit(comp.iter)
+            self.visit(comp.target)
+        pop = lambda: self.stack.pop(-1)
+        lines = []
+        for _ in range(len(node.generators)):
+            lines.append('for %s in %s' % (pop(), pop()))
+            for if_ in range(pop()):  # [*] pop the length of ifs
+                lines.append('if %s' % pop())
+        self.stack.append(' '.join(lines))
 
     def visit_Yield(self, node):
         raise TypeError('Invalid node Yield')
