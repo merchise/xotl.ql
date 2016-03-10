@@ -10,9 +10,9 @@ This package provides *facilities* to implement query languages in python.
 The query language is based on Python's generator expression.  A query in this
 language looks like this::
 
-    >>> from xotl.ql.core import parse_query, this
+    >>> from xotl.ql.core import get_query_object, this
 
-    >>> query = parse_query(
+    >>> query = get_query_object(
     ...    child
     ...    for parent in this
     ...    if parent.children and parent.age > 32
@@ -20,7 +20,7 @@ language looks like this::
     ...    if child.age < 6
     ... )
 
-The result of the :class:`~xotl.ql.core.parse_query` callable is a
+The result of the :class:`~xotl.ql.core.get_query_object` callable is a
 :term:`query object` that "describes" at the syntactical level the
 :term:`query expression` above.
 

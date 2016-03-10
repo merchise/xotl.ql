@@ -119,7 +119,6 @@ def get_query_object(generator,
     )
 
 
-parse_query = get_query_object
 # Alias to the old API.
 these = get_query_object
 
