@@ -643,3 +643,11 @@ def test_nested_genexprs_ext_1():
     outer_uncomp = Uncompyled(outer)
     outer_uncomp = Uncompyled(outer)
     assert outer_uncomp.qst == expected_uncomp.qst
+
+
+def test_regression_listcomp_as_elt():
+    import ast
+    from xotl.ql.core import get_query_object, this
+    q = get_query_object([child for child in parent.children]
+                         for parent in this)
+    assert isinstance(q.qst.body.elt, ast.ListComp)
