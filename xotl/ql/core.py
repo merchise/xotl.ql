@@ -97,6 +97,11 @@ class QueryObject(object):
     def globals(self):
         return self._frame.f_globals
 
+    @property
+    def source(self):
+        builder = SourceBuilder()
+        return builder.get_source(self.qst)
+
 
 def get_query_object(generator,
                      query_type='xotl.ql.core.QueryObject',
