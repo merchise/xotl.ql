@@ -512,15 +512,11 @@ class QstBuilder(GenericASTTraversal, object):
         operator = self._ensure_child_token(node)
         return self._UNARY_OPS_QST_CLS[operator.name]()
 
-    n___unary_not = n_unary_op
-
     @pushtostack
     @take_two
     def n_unary_expr_exit(self, node, children=None):
         op, operand = children
         return qst.UnaryOp(op, operand)
-
-    n_unary_not_exit = n_unary_expr_exit
 
     _COMPARE_OPS_QST_CLS = {
         'in': qst.In,

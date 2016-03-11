@@ -180,8 +180,6 @@ class _InternalParser(GenericASTBuilder):
         expr ::= or
         expr ::= unary_expr
         expr ::= call_function
-        expr ::= unary_not
-        expr ::= unary_convert
         expr ::= binary_subscr
         expr ::= binary_subscr2
         expr ::= get_iter
@@ -206,13 +204,7 @@ class _InternalParser(GenericASTBuilder):
         unary_op ::= UNARY_POSITIVE
         unary_op ::= UNARY_NEGATIVE
         unary_op ::= UNARY_INVERT
-
-        # The ``__unary_not`` simply makes thing easier to implement in the
-        # walker of the syntax tree since creates the same depth as in
-        # unary_expr.
-
-        unary_not ::= expr __unary_not
-        __unary_not ::= UNARY_NOT
+        unary_op ::= UNARY_NOT
 
         binary_subscr ::= expr expr BINARY_SUBSCR
         binary_subscr2 ::= expr expr DUP_TOPX_2 BINARY_SUBSCR
