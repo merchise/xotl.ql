@@ -22,7 +22,7 @@ VERSION = '0.3.0'
 def dev_tag_installed():
     import pkg_resources
     try:
-        dist = pkg_resources.get_distribution('xotl')
+        dist = pkg_resources.get_distribution('xotl.ql')
         full_version = dist.version
         # FIX: Below line is not working anymore
         base = dist.parsed_version.base_version
