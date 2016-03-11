@@ -339,7 +339,7 @@ class _InternalParser(GenericASTBuilder):
         '''
 
     def p__comprehension(self, args):
-        '''Common comprehension structure in Python 2.7
+        '''Common comprehension structure.
 
         _comprehension ::= MAKE_FUNCTION_0 _comp_iterarable
                            GET_ITER CALL_FUNCTION_1
@@ -427,6 +427,13 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
+    # Since Python 3 list comprehension works the same as generator
+    # expressions, and set and dict comprehensions, i.e. the iterator is
+    # enclosed in a function.  The _comprehension production contains the core
+    # of such iterator.
+    #
+    # We expose the list comprehension in the list_comp_expr production in
+    # this case.  The `list_compr` is
     @p_list_comprehension.override(py3k)
     def p_list_comprehension(self, args):
         '''List comprehensions in Python 3.
@@ -436,8 +443,9 @@ class _InternalParser(GenericASTBuilder):
         list_compr_expr ::= _py_load_listcomp _comprehension
 
         expr ::= list_compr_expr
-        stmt ::= list_compr
+        stmt ::= list_compr RETURN_VALUE RETURN_LAST
 
+        _for  ::= FOR_ITER
         '''
 
     @override(pypy)

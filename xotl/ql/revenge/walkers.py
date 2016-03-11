@@ -34,7 +34,7 @@ from .scanners import Token
 from .tools import pushto, take, pop_until_sentinel
 from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
-from .eight import py3k as _py3, _py_version
+from .eight import py3k as _py3, py27 as _py27, _py_version
 
 
 minint = -sys.maxsize-1
@@ -648,7 +648,7 @@ class QstBuilder(GenericASTTraversal, object):
 
     # The comprehension stuff.
     #
-    # Since `comp_if` may deeply nested and intertwined with comp_ifnot,
+    # Since `comp_if` may be deeply nested and intertwined with comp_ifnot and
     # comp_for, but with a single comp_body at the very end, we simply need to
     # collect all the expressions inside the `comp_iter` and push the new if
     # expression to the stack.  But this is the default, the milestones are
@@ -832,6 +832,43 @@ class QstBuilder(GenericASTTraversal, object):
         )
         for item in reversed(items):
             self._stack.append(item)
+
+    @pushsentinel
+    def n_list_compr(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_list_compr_exit(self, node, children=None, items=None):
+        # This is different to the algorithm provided by _n_compfunc_exit
+        # since we get all the comprehensions: items will be
+        # ``[elt, ...comprehensions]``.
+        elt = items.pop(0)
+        comprehensions = items
+        result = qst.ListComp(elt, comprehensions)
+        if _py27:
+            return result
+        else:
+            # In Python we need to wrap this inside a qst.Expression since
+            # _n_walk_innerfunc expects it so
+            return qst.Expression(result)
+
+    if not _py27:
+        n__py_load_listcomp = _n_walk_innerfunc(islambda=False)
+
+        @pushsentinel
+        def n_list_compr_expr(self, node):
+            pass
+
+        n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
+
+    # list_for, list_if, list_if_not, lc_body share the same structure as its
+    # comp_* cousins.
+    n_list_for = n_comp_for
+    n_list_for_exit = n_comp_for_exit
+    n_list_if_not = n_comp_ifnot
+    n_list_if_not_exit = n_comp_ifnot_exit
+    n_lc_body_exit = n_comp_body_exit
 
     def _ensure_single_child(self, node, msg='%s must have a single child'):
         if '%s' in msg:
