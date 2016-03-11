@@ -616,8 +616,9 @@ LISTCOMPS = [
     '[(x, y) for x, y in this]',
     '[[a for a in b] for b in [x for x in this]]',
     'calling([a for a in this if a < y])',
+    '([child for child in parent.children] for parent in this)'
 ]
-#  _inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
+_inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
 
 
 def test_nested_genexprs_ext_1():
