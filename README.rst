@@ -29,6 +29,17 @@ may be helped.  If is code what you may apport; just fork this project make
 changes and place a pull request.
 
 
+Repository and tags
+-------------------
+
+All development is first integrated in the `develop` branch.  The `master`
+branch holds the last stable version.  Topic branches are suggested and merged
+to the `develop`.
+
+When a develop cycle ends we tag the `develop` branch with a simple 'x.y.z'
+version for the release of the cycle.  The tag in the `master` has prefix 'v'.
+
+
 What does xotl mean?
 --------------------
 

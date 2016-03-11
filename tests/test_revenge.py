@@ -434,6 +434,10 @@ def _inject_tests(exprs, fmt, wrap=lambda x: x):
         globals()[fmt % i] = _test
 
 
+def case(expr, alternatives):
+    return (expr, tuple(alternatives))
+
+
 BASIC_EXPRESSIONS = [
     'None',
     'Ellipsis',
@@ -522,11 +526,11 @@ _inject_tests(CONDITIONAL_EXPRESSIONS, 'test_conditional_expressions_%d')
 
 
 CONDITIONAL_EXPRESSIONS_FOLDED = [
-    # (expression, (alternatives...))
-    ('1 + 3', ('4', )),
+    case('1 + 3',
+         alternatives=['4', ]),
 
-    ('None and 1', ('None', )),
-    ('None and 1 or 3', ('3', )),
+    case('None and 1', alternatives=('None', )),
+    case('None and 1 or 3', alternatives=('3', )),
 ]
 _inject_tests(CONDITIONAL_EXPRESSIONS_FOLDED,
               'test_expressions_with_possible_folding_%d')
@@ -542,18 +546,23 @@ _inject_tests(NESTED_CONDITIONAL_EXPRS, 'test_nested_conditional_%d',
 
 
 GENEXPRS = [
-    ('(x for x in this if not p(x) if z(x))',
-     (
-         '(x for x in this if not p(x) and z(x))', )),
+    case(
+        '(x for x in this if not p(x) if z(x))',
+        alternatives=(
+            '(x for x in this if not p(x) and z(x))',
+        )
+    ),
 
     '(x for x in this if not p(x) or z(x))',
 
-    ('(x for x in this for y in x if p(y) if not q(x) if z(x))',
-     (
-         '(x for x in this for y in x if p(y) and not q(x) and z(x))',
-         '(x for x in this for y in x if p(y) if not q(x) and z(x))',
-         '(x for x in this for y in x if p(y) and not q(x) if z(x))',
-     )),
+    case(
+        '(x for x in this for y in x if p(y) if not q(x) if z(x))',
+        alternatives=(
+            '(x for x in this for y in x if p(y) and not q(x) and z(x))',
+            '(x for x in this for y in x if p(y) if not q(x) and z(x))',
+            '(x for x in this for y in x if p(y) and not q(x) if z(x))',
+        )
+    ),
 
     '((x, y) for x, y in this)',
     '((a for a in b) for b in (x for x in this))',
@@ -574,9 +583,12 @@ _inject_tests(GENEXPRS_NOT_PYPY, 'test_comprehensions_genexpr2_%d',
 DICTCOMPS = [
     '{k: v for k, v in this}',
 
-    ('{k: v for k, v in this if not p(k) and p(v)}',
-     (
-         '{k: v for k, v in this if not p(k) if p(v)}', ), ),
+    case(
+        '{k: v for k, v in this if not p(k) and p(v)}',
+        alternatives=(
+            '{k: v for k, v in this if not p(k) if p(v)}',
+        ),
+    ),
 
     '{s:f(s) for s in this if not p(s) or z(x)}',
     '{s:v for s in this if p(s) for v in this if not p(v)}',
@@ -585,10 +597,12 @@ DICTCOMPS = [
 _inject_tests(DICTCOMPS, 'test_comprehensions_dictcomp_%d')
 
 SETCOMPS = [
-    ('{s for s in this if not p(s) and z(x)}',
-     (
-         # alternatives
-         '{s for s in this if not p(s) if z(x)}', ),),
+    case(
+        '{s for s in this if not p(s) and z(x)}',
+        alternatives=(
+            '{s for s in this if not p(s) if z(x)}',
+        ),
+    ),
 
     '{s for s in this if not p(s) or z(x)}',
     '{s for s in this if s < y}',
@@ -604,10 +618,6 @@ _inject_tests(NESTED_GENEXPRS, 'test_nested_genexprs_%d')
 
 
 LISTCOMPS = [
-    ('[x for x in this if not p(x) if z(x)]',
-     (
-         '[x for x in this if not p(x) and z(x)]', )),
-
     '[x for x in this if not p(x) or z(x)]',
 
     '[x for x in this]',
@@ -616,8 +626,17 @@ LISTCOMPS = [
     '[(x, y) for x, y in this]',
     '[[a for a in b] for b in [x for x in this]]',
     'calling([a for a in this if a < y])',
+    '([child for child in parent.children] for parent in this)',
+
+    case(
+        '[x for x in this if not p(x) if z(x)]',
+        alternatives=(
+            '[x for x in this if not p(x) and z(x)]',
+        ),
+    ),
+
 ]
-#  _inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
+_inject_tests(LISTCOMPS, 'test_comprehensions_listcomp_%d')
 
 
 def test_nested_genexprs_ext_1():
@@ -643,3 +662,11 @@ def test_nested_genexprs_ext_1():
     outer_uncomp = Uncompyled(outer)
     outer_uncomp = Uncompyled(outer)
     assert outer_uncomp.qst == expected_uncomp.qst
+
+
+def test_regression_listcomp_as_elt():
+    import ast
+    from xotl.ql.core import get_query_object, this
+    q = get_query_object([child for child in parent.children]
+                         for parent in this)
+    assert isinstance(q.qst.body.elt, ast.ListComp)

@@ -24,7 +24,7 @@ import operator
 from xoutil import Undefined
 from xotl.ql.translation._monads import (
     Empty, Join, Map, Unit, Cons, Foldr,
-    LazyCons
+    LazyCons, SortedCons
 )
 
 
@@ -217,6 +217,22 @@ def test_mc_routine_5():
                 'Empty': lambda: [],
                 'Unit': lambda x: [x]})
     assert res == [8, 9, 10, 11, 12]
+
+
+def test_partial_sortedcons():
+    c = SortedCons('<', 1)
+    try:
+        head, tail = c
+    except TypeError:
+        pass
+    else:
+        assert False, 'Partial sorted cons are not iterable'
+
+    head, tail = c(Empty())
+    assert head == 1 and isinstance(tail, Empty)
+
+
+# helpers
 
 
 def Call(f, a=None):

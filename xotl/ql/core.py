@@ -21,6 +21,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+import ast
 import types
 from xoutil import Unset
 from collections import MappingView, Mapping
@@ -96,6 +97,11 @@ class QueryObject(object):
     def globals(self):
         return self._frame.f_globals
 
+    @property
+    def source(self):
+        builder = SourceBuilder()
+        return builder.get_source(self.qst)
+
 
 def get_query_object(generator,
                      query_type='xotl.ql.core.QueryObject',
@@ -118,7 +124,6 @@ def get_query_object(generator,
     )
 
 
-parse_query = get_query_object
 # Alias to the old API.
 these = get_query_object
 
@@ -249,3 +254,320 @@ def sub_query_or_value(v):
         return get_query_object(v)
     else:
         return v
+
+
+class SourceBuilder(ast.NodeVisitor):
+    def get_source(self, node):
+        stack = self.stack = []
+        self.visit(node)
+        assert len(stack) == 1, 'Remaining items %r at %r' % (stack, node)
+        return stack.pop()
+
+    def visit_And(self, node):
+        self.stack.append(' and ')
+
+    def visit_Or(self, node):
+        self.stack.append(' or ')
+
+    def visit_Name(self, node):
+        self.stack.append(node.id)
+
+    def visit_BoolOp(self, node):
+        self.visit(node.op)
+        for val in node.values:
+            self.visit(val)
+        exprs = []
+        for _ in range(len(node.values)):
+            exprs.insert(0, self.stack.pop(-1))
+        op = self.stack.pop(-1)
+        self.stack.append('(%s)' % op.join(exprs))
+
+    def visit_BinOp(self, node):
+        stack = self.stack
+        self.visit(node.op)
+        self.visit(node.right)
+        self.visit(node.left)
+        left = stack.pop(-1)
+        right = stack.pop(-1)
+        op = stack.pop(-1)
+        stack.append('(%s%s%s)' % (left, op, right))
+
+    def visit_Add(self, node):
+        self.stack.append(' + ')
+
+    def visit_Sub(self, node):
+        self.stack.append(' - ')
+
+    def visit_Mult(self, node):
+        self.stack.append(' * ')
+
+    def visit_Div(self, node):
+        self.stack.append(' / ')
+
+    def visit_Mod(self, node):
+        self.stack.append(' % ')
+
+    def visit_Pow(self, node):
+        self.stack.append(' ** ')
+
+    def visit_LShift(self, node):
+        self.stack.append(' << ')
+
+    def visit_RShift(self, node):
+        self.stack.append(' >> ')
+
+    def visit_BitOr(self, node):
+        self.stack.append(' | ')
+
+    def visit_BitAnd(self, node):
+        self.stack.append(' & ')
+
+    def visit_BitXor(self, node):
+        self.stack.append(' ^ ')
+
+    def visit_FloorDiv(self, node):
+        self.stack.append(' // ')
+
+    def visit_Num(self, node):
+        self.stack.append('%s' % node.n)
+
+    def visit_UnaryOp(self, node):
+        stack = self.stack
+        self.visit(node.op)
+        self.visit(node.operand)
+        operand = stack.pop(-1)
+        op = stack.pop(-1)
+        stack.append('(%s%s)' % (op, operand))
+
+    def visit_Invert(self, node):
+        self.stack.append('~')
+
+    def visit_Not(self, node):
+        self.stack.append('not ')
+
+    def visit_UAdd(self, node):
+        self.stack.append('+')
+
+    def visit_USub(self, node):
+        self.stack.append('-')
+
+    def visit_IfExp(self, node):
+        self.visit(node.orelse)
+        self.visit(node.test)
+        self.visit(node.body)
+        body = self.stack.pop(-1)
+        test = self.stack.pop(-1)
+        orelse = self.stack.pop(-1)
+        self.stack.append('(%s if %s else %s)' % (body, test, orelse))
+
+    def visit_Lambda(self, node):
+        raise NotImplementedError()
+
+    def visit_Dict(self, node):
+        # order does not really matter but I'm picky
+        for k, v in reversed(zip(node.keys, node.values)):
+            self.visit(v)
+            self.visit(k)
+        dictbody = ', '.join(
+            '%s: %s' % (self.stack.pop(-1), self.stack.pop(-1))
+            for _ in range(len(node.keys))
+        )
+        self.stack.append('{%s}' % dictbody)
+
+    def visit_Set(self, node):
+        for elt in reversed(node.elts):
+            self.visit(elt)
+        setbody = ', '.join(self.stack.pop(-1) for _ in range(len(node.elts)))
+        self.stack.append('{%s}' % setbody)
+
+    def visit_ListComp(self, node):
+        self._visit_comp(node)
+        self.stack.append('[%s]' % self.stack.pop(-1))
+
+    def visit_SetComp(self, node):
+        self._visit_comp(node)
+        self.stack.append('{%s}' % self.stack.pop(-1))
+
+    def visit_DictComp(self, node):
+        self.visit(node.value)
+        self.visit(node.key)
+        pop = lambda: self.stack.pop(-1)
+        lines = ['%s: %s' % (pop(), pop())]
+        self._visit_generators(node)
+        lines.append(pop())
+        self.stack.append('{%s}' % ' '.join(lines))
+
+    def visit_GeneratorExp(self, node):
+        self._visit_comp(node)
+        self.stack.append('(%s)' % self.stack.pop(-1))
+
+    def _visit_comp(self, node):
+        self.visit(node.elt)
+        pop = lambda: self.stack.pop(-1)
+        lines = [pop()]
+        self._visit_generators(node)
+        lines.append(pop())
+        self.stack.append(' '.join(lines))
+
+    def _visit_generators(self, node):
+        for comp in reversed(node.generators):
+            for if_ in reversed(comp.ifs):
+                self.visit(if_)
+            self.stack.append(len(comp.ifs))  # save the length of ifs [*]
+            self.visit(comp.iter)
+            self.visit(comp.target)
+        pop = lambda: self.stack.pop(-1)
+        lines = []
+        for _ in range(len(node.generators)):
+            lines.append('for %s in %s' % (pop(), pop()))
+            for if_ in range(pop()):  # [*] pop the length of ifs
+                lines.append('if %s' % pop())
+        self.stack.append(' '.join(lines))
+
+    def visit_Yield(self, node):
+        raise TypeError('Invalid node Yield')
+
+    def visit_Eq(self, node):
+        self.stack.append(' == ')
+
+    def visit_NotEq(self, node):
+        self.stack.append(' != ')
+
+    def visit_Lt(self, node):
+        self.stack.append(' < ')
+
+    def visit_LtE(self, node):
+        self.stack.append(' <= ')
+
+    def visit_Gt(self, node):
+        self.stack.append(' > ')
+
+    def visit_GtE(self, node):
+        self.stack.append(' >= ')
+
+    def visit_Is(self, node):
+        self.stack.append(' is ')
+
+    def visit_IsNot(self, node):
+        self.stack.append(' is not ')
+
+    def visit_In(self, node):
+        self.stack.append(' in ')
+
+    def visit_NotIn(self, node):
+        self.stack.append(' not in ')
+
+    def visit_Compare(self, node):
+        self.visit(node.left)
+        for op, expr in reversed(zip(node.ops, node.comparators)):
+            self.visit(expr)
+            self.visit(op)
+        right = ''.join(
+            # I assume each operator has spaces around it
+            '%s%s' % (self.stack.pop(-1), self.stack.pop(-1))
+            for _ in range(len(node.ops))
+        )
+        self.stack.append('%s%s' % (self.stack.pop(-1), right))
+
+    def visit_Call(self, node):
+        if node.kwargs:
+            self.visit(node.kwargs)
+        if node.starargs:
+            self.visit(node.starargs)
+        for kw in reversed(node.keywords):
+            self.visit(kw.value)
+            self.stack.append(kw.arg)
+        for arg in reversed(node.args):
+            self.visit(arg)
+        self.visit(node.func)
+        func = self.stack.pop(-1)
+        args = [self.stack.pop(-1) for _ in range(len(node.args))]
+        keywords = [
+            (self.stack.pop(-1), self.stack.pop(-1))
+            for _ in range(len(node.keywords))
+        ]
+        starargs = self.stack.pop(-1) if node.starargs else ''
+        kwargs = self.stack.pop(-1) if node.kwargs else ''
+        call = ', '.join(args)
+        if keywords:
+            if call:
+                call += ', '
+            call += ', '.join('%s=%s' % (k, v) for k, v in keywords)
+        if starargs:
+            if call:
+                call += ', '
+            call += '*%s' % starargs
+        if kwargs:
+            if call:
+                call += ', '
+            call += '**%s' % kwargs
+        self.stack.append('%s(%s)' % (func, call))
+
+    def visit_Str(self, node):
+        self.stack.append('%r' % node.s)
+
+    visit_Bytes = visit_Str
+
+    def visit_Repr(self, node):
+        raise NotImplementedError
+
+    def visit_Attribute(self, node):
+        self.visit(node.value)
+        self.stack.append('%s.%s' % (self.stack.pop(-1), node.attr))
+
+    def visit_Subscript(self, node):
+        self.visit(node.slice)
+        self.visit(node.value)
+        self.stack.append('%s[%s]' % (self.stack.pop(-1), self.stack.pop(-1)))
+
+    def visit_Ellipsis(self, node):
+        self.stack.append('...')
+
+    def visit_Slice(self, node):
+        if node.step:
+            self.visit(node.step)
+            step = self.stack.pop(-1)
+        else:
+            step = None
+        if node.upper:
+            self.visit(node.upper)
+            upper = self.stack.pop(-1)
+        else:
+            upper = None
+        if node.lower:
+            self.visit(node.lower)
+            lower = self.stack.pop(-1)
+        else:
+            lower = None
+        if lower:
+            res = '%s:' % lower
+        else:
+            res = ':'
+        if upper:
+            res += '%s' % upper
+        if step:
+            res += ':%s' % step
+        self.stack.append(res)
+
+    def visit_List(self, node):
+        for elt in reversed(node.elts):
+            self.visit(elt)
+        self.stack.append(
+            '[%s]' % ', '.join(
+                self.stack.pop(-1) for _ in range(len(node.elts))
+            )
+        )
+
+    def visit_Tuple(self, node):
+        for elt in reversed(node.elts):
+            self.visit(elt)
+        result = (
+            '(%s' % ', '.join(
+                self.stack.pop(-1) for _ in range(len(node.elts))
+            )
+        )
+        if len(node.elts) == 1:
+            result += ', )'
+        else:
+            result += ')'
+        self.stack.append(result)
