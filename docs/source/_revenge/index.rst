@@ -1,4 +1,6 @@
 .. _revenge:
+.. _inner-workings:
+
 ============================================
  Reverse Engineering using an Earley parser
 ============================================

@@ -1,0 +1,137 @@
+
+::
+   def f4():
+  ...     return (a if x else y) if (b if z else c) else (d if o else p)
+
+   dis.dis(compile('(a if x else y) if (b if z else c) else (d if o else p)', '', 'eval'))  # doctest: +SKIP
+    1           0 LOAD_NAME                0 (z)
+                3 POP_JUMP_IF_FALSE       12
+                6 LOAD_NAME                1 (b)
+                9 JUMP_FORWARD             3 (to 15)
+          >>   12 LOAD_NAME                2 (c)
+          >>   15 POP_JUMP_IF_FALSE       34
+               18 LOAD_NAME                3 (x)
+               21 POP_JUMP_IF_FALSE       30
+               24 LOAD_NAME                4 (a)
+               27 JUMP_ABSOLUTE           47
+          >>   30 LOAD_NAME                5 (y)
+               33 RETURN_VALUE
+          >>   34 LOAD_NAME                6 (o)
+               37 POP_JUMP_IF_FALSE       44
+               40 LOAD_NAME                7 (d)
+               43 RETURN_VALUE
+          >>   44 LOAD_NAME                8 (p)
+          >>   47 RETURN_VALUE
+
+   def f5():
+  ...     if (b if z else c): return (a if x else y)
+  ...     return (d if o else p)
+
+   dis.dis(f5)    # doctest: +SKIP
+    2           0 LOAD_GLOBAL              0 (z)
+                3 POP_JUMP_IF_FALSE       12
+                6 LOAD_GLOBAL              1 (b)
+                9 JUMP_FORWARD             3 (to 15)
+          >>   12 LOAD_GLOBAL              2 (c)
+          >>   15 POP_JUMP_IF_FALSE       32
+               18 LOAD_GLOBAL              3 (x)
+               21 POP_JUMP_IF_FALSE       28
+               24 LOAD_GLOBAL              4 (a)
+               27 RETURN_VALUE
+          >>   28 LOAD_GLOBAL              5 (y)
+               31 RETURN_VALUE
+    3     >>   32 LOAD_GLOBAL              6 (o)
+               35 POP_JUMP_IF_FALSE       42
+               38 LOAD_GLOBAL              7 (d)
+               41 RETURN_VALUE
+          >>   42 LOAD_GLOBAL              8 (p)
+               45 RETURN_VALUE
+
+The difference between the produced byte codes is that in the first program
+the offset 27 is a `JUMP_ABSOLUTE`:opcode: to the final `RETURN_VALUE`:opcode:
+whereas in the second program the offset 27 is *the* `RETURN_VALUE`:opcode:.
+Just as we did before, we can perform a simple normalization step to always
+get the second program.  In fact, the scanner sees both programs as the same::
+
+
+   from xotl.ql.revenge.scanners import xdis
+   xdis(f4, native=True)                              # doctest: +SKIP
+   2         0 LOAD_GLOBAL          z    (z)
+             3 POP_JUMP_IF_FALSE    12   (12)
+             6 LOAD_GLOBAL          b    (b)
+             9 JUMP_FORWARD         3    (to 15)
+       >>   12 LOAD_GLOBAL          c    (c)
+       >>   15 POP_JUMP_IF_FALSE    32   (32)
+            18 LOAD_GLOBAL          x    (x)
+            21 POP_JUMP_IF_FALSE    28   (28)
+            24 LOAD_GLOBAL          a    (a)
+            27 RETURN_VALUE
+       >>   28 LOAD_GLOBAL          y    (y)
+            31 RETURN_VALUE
+       >>   32 LOAD_GLOBAL          o    (o)
+            35 POP_JUMP_IF_FALSE    42   (42)
+            38 LOAD_GLOBAL          d    (d)
+            41 RETURN_VALUE
+       >>   42 LOAD_GLOBAL          p    (p)
+            45 RETURN_VALUE
+
+Yet we have missed another possible optimization: The ``JUMP_FORWARD`` at
+the 9th offset goes to a ``POP_JUMP_IF_FALSE``, so it can be replaced.  If we
+do so, the program will look like::
+
+   2         0 LOAD_GLOBAL          z    (z)
+             3 POP_JUMP_IF_FALSE    12   (12)
+             6 LOAD_GLOBAL          b    (b)
+             9 POP_JUMP_IF_FALSE    32   (to 32)
+       >>   12 LOAD_GLOBAL          c    (c)
+       >>   15 POP_JUMP_IF_FALSE    32   (32)
+            18 LOAD_GLOBAL          x    (x)
+            21 POP_JUMP_IF_FALSE    28   (28)
+            24 LOAD_GLOBAL          a    (a)
+            27 RETURN_VALUE
+       >>   28 LOAD_GLOBAL          y    (y)
+            31 RETURN_VALUE
+       >>   32 LOAD_GLOBAL          o    (o)
+            35 POP_JUMP_IF_FALSE    42   (42)
+            38 LOAD_GLOBAL          d    (d)
+            41 RETURN_VALUE
+       >>   42 LOAD_GLOBAL          p    (p)
+            45 RETURN_VALUE
+
+
+
+
+---
+
+
+Before throwing guesses about how well could we may do well by attempting to
+best understand the `scanner`__ from the `uncompyle2` package.
+
+Also a good case study would be the decompilation module of `Pony`_.
+
+__ https://github.com/mvaled/uncompyle2/blob/master/uncompyle2/Scanner.py
+
+
+One way to is provide clues about targets of jumps.  If we insert a `virtual
+code <virtual codes>`_ COME_FROM before any target those programs will differ.
+For ``x and (a or y)``, it'll be::
+
+    1           0 LOAD_NAME                0 (x)
+                3 JUMP_IF_FALSE_OR_POP    15
+                6 LOAD_NAME                1 (a)
+                9 JUMP_IF_TRUE_OR_POP     15
+               12 LOAD_NAME                2 (y)
+                  COME_FROM
+                  COME_FROM
+          >>   15 RETURN_VALUE
+
+For the ``x and a or y``::
+
+    1           0 LOAD_NAME                0 (x)
+                3 POP_JUMP_IF_FALSE       12
+                6 LOAD_NAME                1 (a)
+                9 JUMP_IF_TRUE_OR_POP     15
+                  COME_FROM
+          >>   12 LOAD_NAME                2 (y)
+                  COME_FROM
+          >>   15 RETURN_VALUE

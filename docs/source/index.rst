@@ -46,6 +46,7 @@ Core Contents:
    HISTORY
    credits
    license
+   known-issues
 
 Additional documents:
 ---------------------
