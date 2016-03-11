@@ -1,0 +1,3 @@
+---
+runtests:
+  script: tox -epy27,py34
