@@ -112,3 +112,6 @@ The module `xotl.ql.core`:mod: provide the high level API for obtaining a
 
          >>> query.locals['.0']  # doctest: +ELLIPSIS
          <xotl.ql.core.QueryObject...>
+
+
+.. autofunction:: thesefy(target, make_subquery=True)
