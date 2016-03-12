@@ -58,8 +58,6 @@ The module `xotl.ql.core`:mod: provide the high level API for obtaining a
                  ctx: <ast: Load>
 
    The sub-query ``(x for x in this)`` is simply encoded as a variable '.0'.
-   Provided
-
 
    If no `frame_type` is provided, use the attribute
    `~xotl.ql.interfaces.QueryObjectType.frame_type`:attr: of the query object

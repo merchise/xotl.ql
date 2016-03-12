@@ -4,20 +4,26 @@
 
 .. automodule:: xotl.ql.interfaces
 
-.. autoclass:: QueryObject
+.. autointerface:: QueryObject
    :members: qst, locals, globals, get_name
 
-.. autoclass:: QueryObjectType
-   :members: __call__
+.. autointerface:: QueryObjectType
+   :members: frame_type, __call__
 
-.. autoclass:: Frame
+.. autointerface:: Frame
    :members: f_locals, f_globals
 
-.. autoclass:: FrameType
+.. autointerface:: FrameType
    :members: __call__
 
-.. autoclass:: QueryTranslator
+.. autointerface:: QueryTranslator
    :members: __call__
 
-.. autoclass:: QueryExecutionPlan
+.. autointerface:: QueryExecutionPlan
    :members: query, __call__, __iter__
+
+.. autointerface:: QueryTranslatorExplainExtension
+   :members: explain
+
+.. autointerface:: QueryExecutionPlanExplainExtension
+   :members: explain

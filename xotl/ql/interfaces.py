@@ -27,17 +27,62 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
+import types
+from xoutil import inspect
+
 try:
     from xoutil.eight.meta import metaclass
 except ImportError:
     from xoutil.objects import metaclass
 
 
+class MemberDescription(object):
+    def __init__(self, val):
+        self.val = val
+
+    @property
+    def name(self):
+        return self.val.__name__
+
+    @property
+    def signature(self):
+        if not isinstance(self.val, Attribute):
+            positional = object()
+            spec = inspect.getfullargspec(self.val)
+            args = list(spec.args)
+            if args[0] == 'self':
+                args.pop(0)
+            defaults = list(spec.defaults or [])
+            if len(defaults) < len(args):
+                defaults[0:0] = [positional] * (len(args) - len(defaults))
+
+            return '(%s)' % ', '.join(
+                '%s' % arg if val is positional else '%s=%s' % (arg, val)
+                for arg, val in zip(args, defaults)
+            )
+        else:
+            return None
+
+    @property
+    def doc(self):
+        return self.val.__doc__
+
+
 class InterfaceType(type):
+    @property
+    def members(self):
+        return [attr for attr, val in self.__dict__.items()
+                if isinstance(val, (Attribute, types.FunctionType))]
+
+    def describe(self):
+        return (
+            (m.__name__, MemberDescription(m))
+            for attr in self.members
+            for m in (getattr(self, attr), )
+        )
+
     def __instancecheck__(self, instance):
-        import types
-        attrs = [attr for attr, val in self.__dict__.items()
-                 if isinstance(val, (Attribute, types.FunctionType))]
+        attrs = self.members
         res = True
         while res and attrs:
             attr = attrs.pop()
@@ -63,7 +108,7 @@ class Interface(metaclass(InterfaceType)):
 
 class Attribute(object):
     def __init__(self, name, doc):
-        self.name = name
+        self.name = self.__name__ = name
         self.__doc__ = doc
 
 
@@ -78,13 +123,13 @@ class QueryObject(Interface):
     locals = Attribute(
         'locals',
         'A MappingView for the locals in the query scope. '
-        'See `get_name`:method:'
+        'See `get_name`:meth:'
     )
 
     globals = Attribute(
         'globals',
-        'A MappingView for the globals in the query scope.'
-        'See `get_name`:method:'
+        'A MappingView for the globals in the query scope. '
+        'See `get_name`:meth:'
     )
 
     def get_name(self, name, only_globals=False):
@@ -134,10 +179,10 @@ class QueryExecutionPlan(Interface):
     def __call__(self, **kwargs):
         '''Execution plans are callable.
 
-        Return an `iterator`:term:.  The returned iterator must produce the
-        objects retrieved from the query.  Though the plan itself is reusable
-        and can be called several times, the iterator obtained from this
-        method will be exhausted.
+        Return an iterator.  The returned iterator must produce the objects
+        retrieved from the query.  Though the plan itself is reusable and can
+        be called several times, the iterator obtained from this method will
+        be exhausted.
 
         Translators are required to properly document the optional keyword
         arguments.  Positional arguments are not allowed.  All arguments must
@@ -232,6 +277,12 @@ class QueryObjectType(Interface):
     '''A QueryObject factory.
 
     '''
+    frame_type = Attribute(
+        'frame_type',
+        'An instance of `FrameType`:class: or the fully-qualified name of '
+        'such an instance.'
+    )
+
     def __call__(self, qst, frame, **kwargs):
         '''Return an instance of a `QueryObject`:class:.
 
@@ -241,7 +292,7 @@ class QueryObjectType(Interface):
         :param frame: An instance of a `Frame`:class: object.  This should be
                used to provide the values of the attributes
                `QueryObject.locals`:attr: and `QueryObject.globals`:attr: and
-               also to implement the method `QueryObject.get_name`:method:.
+               also to implement the method `QueryObject.get_name`:meth:.
 
         Different implementations of the `QueryObject` may required or support
         additional keyword arguments.  For instance, the type of a
