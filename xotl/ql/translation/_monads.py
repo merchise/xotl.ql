@@ -574,6 +574,12 @@ class InfinityType(object):
     def __neg__(self):
         return type(self)(-self.sign)
 
+    def __str__(self):
+        return '∞' if self.sign > 0 else '-∞'
+
+    def __repr__(self):
+        return 'Infinity' if self.sign > 0 else '-Infinity'
+
 Infinity = InfinityType(+1)
 
 Min = Foldr(lambda x, y: x if x < y else y, Infinity)
