@@ -16,7 +16,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 
-VERSION = '0.3.0'
+VERSION = '0.3.1'
 
 
 def dev_tag_installed():
