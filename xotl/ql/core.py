@@ -111,7 +111,7 @@ def get_query_object(generator,
     '''Get the query object from a query expression.
 
     '''
-    from ._util import import_object
+    from xotl.ql._util import import_object
     from xotl.ql.revenge import Uncompyled
     uncompiled = Uncompyled(generator)
     gi_frame = generator.gi_frame
