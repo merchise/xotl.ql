@@ -26,6 +26,7 @@ import types
 from xoutil import Unset
 from collections import MappingView, Mapping
 
+from xoutil.decorator.meta import decorator
 
 from xotl.ql import interfaces
 
@@ -110,7 +111,7 @@ def get_query_object(generator,
     '''Get the query object from a query expression.
 
     '''
-    from ._util import import_object
+    from xotl.ql._util import import_object
     from xotl.ql.revenge import Uncompyled
     uncompiled = Uncompyled(generator)
     gi_frame = generator.gi_frame
@@ -130,6 +131,9 @@ these = get_query_object
 
 def get_predicate_object(func, predicate_type='xotl.ql.core.QueryObject',
                          frame_type=None, **kwargs):
+    '''Get a predicate object from a predicate expression.
+
+    '''
     from ._util import import_object
     from .revenge import Uncompyled
     uncompiled = Uncompyled(func)
@@ -163,7 +167,8 @@ def normalize_query(which, **kwargs):
         return which
 
 
-def thesefy(target):
+@decorator
+def thesefy(target, make_subquery=True):
     '''Allow an object to participate in queries.
 
     Example as a wrapper::
@@ -182,20 +187,47 @@ def thesefy(target):
 
         query = (who for who in People)
 
-    If your classes already support the iterable protocol (i.e implement
-    ``__iter__``) this does nothing.
+    If `target` already support the iterable protocol (i.e implement
+    ``__iter__``), return it unchanged.
+
+    If `make_subquery` is True, then the query shown above will be equivalent
+    to::
+
+        query = (who for who in (x for x in this if isinstance(x, People)))
+
+    If `make_subquery` is False, `thesefy` injects an ``__iter__()`` that
+    simply returns the same object and a ``next()`` method that immediately
+    stops the iteration.
+
+    Notice that in order to use `make_subquery` you call `thesefy`:func: as a
+    decorator-returning function::
+
+        class Person(object):
+            pass
+
+        query = (x for x in thesefy(make_subquery=False)(Person))
+
+        # or simply as a decorator
+
+        @thesefy(make_subquery=False)
+        class Person(object):
+            pass
 
     '''
     if getattr(target, '__iter__', None):
         return target
 
     class new_meta(type(target)):
-        def __iter__(self):
-            return (x for x in this if isinstance(x, self))
+        if make_subquery:
+            def __iter__(self):
+                return (x for x in this if isinstance(x, self))
+        else:
+            def __iter__(self):
+                return self
 
-        def next(self):
-            raise StopIteration
-        __next__ = next
+            def next(self):
+                raise StopIteration
+            __next__ = next
 
     from xoutil.objects import copy_class
     new_class = copy_class(target, meta=new_meta)
@@ -571,3 +603,6 @@ class SourceBuilder(ast.NodeVisitor):
         else:
             result += ')'
         self.stack.append(result)
+
+
+del decorator

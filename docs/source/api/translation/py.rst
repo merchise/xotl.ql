@@ -3,8 +3,7 @@
 =====================================================
 
 This document servers a double purpose, it's both the documentation of the
-translator and also a an example on how other translators are to be
-documented.
+translator and also an example on how other translators are to be documented.
 
 
 Introduction
@@ -16,6 +15,7 @@ This module provides a simple and naive `query translator`:term: that uses the
 Python object space as its `object model`:term:.  This basically means the
 object model matches the Python data model.  You may use any built-in function
 and it will behave the same as in any Python program.
+
 
 Usage
 =====
@@ -84,11 +84,11 @@ Interpretation of ``this``
 The default interpretation of any occurrence of |this| as a generator inside a
 query expression is *the entire object space* in the current Python process.
 
-If `this` appears as a generator, or is used in a way that iteration occurs,
-all objects currently alive in the Python VM will be generated.  The actual
-objects generated are obtained using the function `gc.get_objects`:func:.  By
-default we omit objects which are instances of any type defined in the
-packages:
+If `this` appears as a generator, or is used in a way that iteration occurs
+[#hidden]_, all objects currently alive in the Python VM will be generated.
+The actual objects generated are obtained using the function
+`gc.get_objects`:func:.  By default we omit objects which are instances of any
+type defined in the packages:
 
 - ``xotl.ql``
 - ``xoutil``
@@ -117,3 +117,16 @@ This translator support the extensions describe by
 .. _py package: https://pypi.python.org/pypi/py
 
 .. |this| replace:: `~xotl.ql.core.this`:obj:
+
+
+.. [#hidden]  Currently this is not actually true.  It's easy to hide the
+   `this` object inside a function call, like in::
+
+     >>> from xotl.ql.core import this, get_query_object
+     >>> q = get_query_object(x for x in enumerate(this))
+
+   In such cases this translator will fail to properly retrieve this object
+   space.  This is current limitation of the byte-code translation phase.  In
+   order for this to work you must go through a little bit of pain::
+
+     >>> q = get_query_object()

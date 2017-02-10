@@ -98,3 +98,19 @@ def CODE_HAS_VARARG(code):
 
 def CODE_HAS_KWARG(code):
     return code.co_flags & 0x08
+
+
+def CO_GENERATOR(code):
+    return code.co_flags & 0x20
+
+
+def CO_NESTED(code):
+    return code.co_flags & 0x0010
+
+
+def CO_COROUTINE(code):
+    return code.co_flags & 0x0080
+
+
+def CO_ITERABLE_COROUTINE(code):
+    return code.co_flags & 0x0100

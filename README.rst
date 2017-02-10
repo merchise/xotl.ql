@@ -32,12 +32,13 @@ changes and place a pull request.
 Repository and tags
 -------------------
 
-All development is first integrated in the `develop` branch.  The `master`
-branch holds the last stable version.  Topic branches are suggested and merged
-to the `develop`.
+All development is first integrated in the `develop` branch |develop-status|.
+The `master` branch |master-status| holds the last stable version.  Topic
+branches are suggested and merged to the `develop`.
 
 When a develop cycle ends we tag the `develop` branch with a simple 'x.y.z'
 version for the release of the cycle.  The tag in the `master` has prefix 'v'.
+
 
 
 What does xotl mean?
@@ -47,3 +48,7 @@ The word "xotl" is a Nahuatl word that means foundation, base.  The `xotl`
 package comprises the foundation for building reliable systems: both
 frameworks, libraries and an object model that allows to build complex
 systems.
+
+
+.. |develop-status| image:: https://travis-ci.org/merchise/xotl.ql.svg?branch=develop
+.. |develop-status| image:: https://travis-ci.org/merchise/xotl.ql.svg?branch=master

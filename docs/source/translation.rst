@@ -81,4 +81,7 @@ established semantics.  In this regard, writing a translator involves giving
 denotational and/or operational semantics for the queries.
 
 In this section we provide some pointers to this task, but fail to be
-comprehensive.  As an example you may
+comprehensive.
+
+
+.. LocalWords: denotational

@@ -1,0 +1,3 @@
+---
+runtests:
+  script: tox --skip-missing-interpreters

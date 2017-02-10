@@ -1,4 +1,4 @@
-# Excerpts from cpython's sphinx extensions to better intergrate with is
+# Excerpts from cpython's sphinx extensions to better intergrate with its
 # documentation.
 
 from __future__ import absolute_import as _py3_abs_import

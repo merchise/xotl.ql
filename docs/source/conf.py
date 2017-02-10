@@ -46,7 +46,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.mathjax',
               'sphinx.ext.intersphinx',
               'sphinx.ext.ifconfig',
-              'pyspec', ]
+              'pyspec',
+              'autointerface',]
 
 
 if '/home/manu' in __file__:

@@ -6,8 +6,8 @@
 ``xotl.ql`` |release| documentation
 ===================================
 
-This package provides *facilities* to implement query languages in python.
-The query language is based on Python's generator expression.  A query in this
+This package provides *tools* to implement query languages in python.  The
+query language is based on Python's generator expression.  A query in this
 language looks like this::
 
     >>> from xotl.ql.core import get_query_object, this
@@ -46,6 +46,7 @@ Core Contents:
    HISTORY
    credits
    license
+   known-issues
 
 Additional documents:
 ---------------------

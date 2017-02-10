@@ -27,13 +27,11 @@ Release 0.2.0
   N_ARITY functions where not being properly handled.
 
   This was fixed actually by simplifying :class:`xotl.ql.core.QueryPart` to
-  implement the :ref:`target protocol <target-protocol>` to extract is
-  expressions.
+  implement the `target protocol` to extract is expressions.
 
 - Improves and updates documentation.
 
-- Provides a "wish list" for future releases in :ref:`Next releases goals
-  <next-releases-goals>`.
+- Provides a "wish list" for future releases in `Next releases goals`.
 
 
 2012/12/18 - Release 0.1.7

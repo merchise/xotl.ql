@@ -10,3 +10,5 @@ build/
 .*.cfg
 .tox/
 .cache/
+dist/
+.hypothesis/

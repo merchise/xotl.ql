@@ -22,7 +22,7 @@ Terms and glossary
       Refers to the low-level code into which the Python interpreter compiles
       the source code.
 
-      For instance, given the query expression (generator object)::
+      For instance, given the `query expression`:term: (generator object)::
 
         >>> from xotl.ql.core import this
         >>> query = (parent for parent in this)
@@ -45,13 +45,6 @@ Terms and glossary
 		   14 JUMP_ABSOLUTE            3
 	      >>   17 LOAD_CONST               0 (None)
 		   20 RETURN_VALUE
-
-   data set
-
-      An object that represents the result of executing a :term:`query`
-      against a defined :term:`storage`.  It should implement the interface
-      :class:`xotl.ql.interfaces.IDataSet`, which is quite flexible since it
-      only requires the data set to be iterable using the `next` protocol.
 
    object model
 
