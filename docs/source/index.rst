@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-``xotl.ql`` |release| documentation
-===================================
+A pythonic query language
+=========================
 
 This package provides *tools* to implement query languages in python.  The
 query language is based on Python's generator expression.  A query in this
