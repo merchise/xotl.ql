@@ -51,4 +51,5 @@ systems.
 
 
 .. |develop-status| image:: https://travis-ci.org/merchise/xotl.ql.svg?branch=develop
-.. |develop-status| image:: https://travis-ci.org/merchise/xotl.ql.svg?branch=master
+
+.. |master-status| image:: https://travis-ci.org/merchise/xotl.ql.svg?branch=master
