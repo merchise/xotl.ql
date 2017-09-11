@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # _monads
 # ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) 2015-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -28,9 +28,9 @@ from __future__ import (division as _py3_division,
 import operator
 
 from xoutil import Undefined
-from xotl.ql import qst
+from xoutil.infinity import Infinity
 
-from ._infinity import Infinity
+from xotl.ql import qst
 
 import sys
 _py_version = sys.version_info
