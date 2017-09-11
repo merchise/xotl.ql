@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # xotl.ql.core
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) 2012-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -111,7 +111,7 @@ def get_query_object(generator,
     '''Get the query object from a query expression.
 
     '''
-    from xotl.ql._util import import_object
+    from xotl.ql.tools import import_object
     from xotl.ql.revenge import Uncompyled
     uncompiled = Uncompyled(generator)
     gi_frame = generator.gi_frame
@@ -134,7 +134,7 @@ def get_predicate_object(func, predicate_type='xotl.ql.core.QueryObject',
     '''Get a predicate object from a predicate expression.
 
     '''
-    from ._util import import_object
+    from .tools import import_object
     from .revenge import Uncompyled
     uncompiled = Uncompyled(func)
     PredicateClass = import_object(predicate_type)
