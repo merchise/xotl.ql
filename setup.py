@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # setup
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) 2012-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -102,7 +102,7 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools', ],
     install_requires=[
-        'xoutil>=1.7.0,<1.7.2',
+        'xoutil>=1.7.7,<1.9',
     ],
     extras_require={
         'doc': [
