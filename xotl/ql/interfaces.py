@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------
 # xotl.ql.interfaces
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) 2012-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -123,16 +123,16 @@ class QueryObject(Interface):
     locals = Attribute(
         'locals',
         'A MappingView for the locals in the query scope. '
-        'See `get_name`:meth:'
+        'See `get_value`:meth:'
     )
 
     globals = Attribute(
         'globals',
         'A MappingView for the globals in the query scope. '
-        'See `get_name`:meth:'
+        'See `get_value`:meth:'
     )
 
-    def get_name(self, name, only_globals=False):
+    def get_value(self, name, only_globals=False):
         '''Give the value for the `name`.
 
         Queries are defined in a scope where they could access any name
@@ -292,7 +292,7 @@ class QueryObjectType(Interface):
         :param frame: An instance of a `Frame`:class: object.  This should be
                used to provide the values of the attributes
                `QueryObject.locals`:attr: and `QueryObject.globals`:attr: and
-               also to implement the method `QueryObject.get_name`:meth:.
+               also to implement the method `QueryObject.get_value`:meth:.
 
         Different implementations of the `QueryObject` may required or support
         additional keyword arguments.  For instance, the type of a

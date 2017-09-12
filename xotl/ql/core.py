@@ -24,6 +24,7 @@ from __future__ import (division as _py3_division,
 import ast
 import types
 from xoutil import Unset
+from xoutil.decorator import memoized_property
 from collections import MappingView, Mapping
 
 from xoutil.decorator.meta import decorator
@@ -62,7 +63,7 @@ this = Universe()
 
 
 RESERVED_ARGUMENTS = (
-    'limit', 'offset', 'groups', 'order', 'get_name', 'qst', '_frame'
+    'limit', 'offset', 'groups', 'order', 'get_value', 'qst', '_frame'
 )
 
 
@@ -78,7 +79,7 @@ class QueryObject(object):
         for attr, val in kwargs.items():
             setattr(self, attr, val)
 
-    def get_name(self, name, only_globals=False):
+    def get_value(self, name, only_globals=False):
         if not only_globals:
             res = self._frame.f_locals.get(name, Unset)
         else:
@@ -90,15 +91,15 @@ class QueryObject(object):
         else:
             raise NameError(name)
 
-    @property
+    @memoized_property
     def locals(self):
         return self._frame.f_locals
 
-    @property
+    @memoized_property
     def globals(self):
         return self._frame.f_globals
 
-    @property
+    @memoized_property
     def source(self):
         builder = SourceBuilder()
         return builder.get_source(self.qst)

@@ -16,7 +16,6 @@ from __future__ import (division as _py3_division,
                         unicode_literals as _py3_unicode,
                         absolute_import as _py3_abs_import)
 
-from xoutil import Unset
 from xotl.ql.core import this, Universe, normalize_query
 
 
@@ -60,13 +59,13 @@ def test_names():
 
     pred = get_predicate_object(f())
     assert pred.qst
-    assert pred.get_name('a') == 100
+    assert pred.get_value('a') == 100
 
     # Test that globals may change
     global global_sentinel
-    assert pred.get_name('global_sentinel') == global_sentinel
+    assert pred.get_value('global_sentinel') == global_sentinel
     global_sentinel = 90
-    assert pred.get_name('global_sentinel') == global_sentinel
+    assert pred.get_value('global_sentinel') == global_sentinel
 
     try:
         get_predicate_object(f)
@@ -76,7 +75,7 @@ def test_names():
         assert False
 
     q = normalize_query(x for x in this)
-    assert q.get_name('.0') is this
+    assert q.get_value('.0') is this
     assert '.0' in q.locals
     assert 'x' not in q.locals
     assert 'global_sentinel' in q.globals

@@ -5,7 +5,7 @@
 .. automodule:: xotl.ql.interfaces
 
 .. autointerface:: QueryObject
-   :members: qst, locals, globals, get_name
+   :members: qst, locals, globals, get_value
 
 .. autointerface:: QueryObjectType
    :members: frame_type, __call__
