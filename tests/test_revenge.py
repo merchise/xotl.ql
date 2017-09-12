@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # test_revenge
 # ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) 2015-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -16,12 +16,12 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
+import pytest
+
 import sys
 _py3 = sys.version_info >= (3, 0)
 _pypy = 'PyPy' in sys.version
 del sys
-
-import pytest
 
 
 def test_scanner_normalization_single_return():
@@ -659,7 +659,6 @@ def test_nested_genexprs_ext_1():
     Iter = Iter()
 
     outer = (y for y in Iter)
-    outer_uncomp = Uncompyled(outer)
     outer_uncomp = Uncompyled(outer)
     assert outer_uncomp.qst == expected_uncomp.qst
 

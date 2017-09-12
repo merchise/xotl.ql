@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # xotl.ql.tests.test_this
 # ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement
+# Copyright (c) 2012-2017 Merchise Autrement
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under
@@ -33,40 +33,20 @@ def test_this_iterable():
         assert False, 'this should be iterable'
 
 
-def _build_test(generator, names=None):
-    def test_expr():
+def test_queries():
+    queries = [
+        (e for e in this),
+        ((x for x in e) for e in this),
+        (e for e in (x for x in this)),
+        (e for e in this if e(y for y in this)),
+        (e for e in this if any(x for x in e)),
+        (x for x, y in this),
+        (x for x[1] in this),     # noqa
+        (x for x.y in this),      # noqa
+    ]
+    for generator in queries:
         query = normalize_query(generator)
         assert query.qst
-        if names:
-            for name, val in names.items():
-                if val is not Unset:
-                    val = query.get_name(name)
-                else:
-                    try:
-                        query.get_name(name)
-                    except:
-                        raise
-                    else:
-                        pass
-
-
-def _inject_tests(expressions, fmt, mark=lambda x: x):
-    for index, expr in enumerate(expressions):
-        test = mark(_build_test(expr))
-        globals()[fmt % index] = test
-
-
-QUERIES = [
-    (e for e in this),
-    ((x for x in e) for e in this),
-    (e for e in (x for x in this)),
-    (e for e in this if e(y for y in this)),
-    (e for e in this if any(x for x in e)),
-    (x for x, y in this),
-    (x for x[1] in this),     # noqa
-    (x for x.y in this),      # noqa
-]
-_inject_tests(QUERIES, 'test_query_%d')
 
 
 global_sentinel = 12

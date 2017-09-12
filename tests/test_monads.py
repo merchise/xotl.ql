@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # test_monads
 # ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) 2015-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -17,15 +17,16 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-import sys
-_py3 = sys.version_info >= (3, 0)
-
+import pytest
 import operator
 from xoutil import Undefined
 from xotl.ql.translation._monads import (
     Empty, Join, Map, Unit, Cons, Foldr,
     LazyCons, SortedCons
 )
+
+import sys
+_py3 = sys.version_info >= (3, 0)
 
 
 def test_empty():
@@ -38,12 +39,8 @@ def test_empty():
 def test_interating_partial_cons_should_fail():
     for ConsType in (LazyCons, Cons):
         A1 = ConsType(1)
-        try:
+        with pytest.raises(TypeError):
             head, tail = A1
-        except TypeError:
-            pass
-        else:
-            assert False, 'Partial cons should not be iterable'
 
 
 def test_simple_query():
@@ -221,12 +218,8 @@ def test_mc_routine_5():
 
 def test_partial_sortedcons():
     c = SortedCons('<', 1)
-    try:
+    with pytest.raises(TypeError):
         head, tail = c
-    except TypeError:
-        pass
-    else:
-        assert False, 'Partial sorted cons are not iterable'
 
     head, tail = c(Empty())
     assert head == 1 and isinstance(tail, Empty)

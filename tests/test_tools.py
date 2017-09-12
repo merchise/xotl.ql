@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # test_tools
 # ---------------------------------------------------------------------
-# Copyright (c) 2015 Merchise Autrement and Contributors
+# Copyright (c) 2015-2017 Merchise Autrement and Contributors
 # All rights reserved.
 #
 # This is free software; you can redistribute it and/or modify it under the
@@ -30,5 +30,11 @@ def test_freenames_detection_1():
 
 def test_freenames_detection_2():
     result = detect_names('(lambda x: lambda p, y=p(x): x + y)(x)')
-    expected = {'p', 'x'}
+    expected = {'p', 'x'}  # p is the free var at y=p(x), not the lambda arg.
+    assert result == expected
+
+    # The same test but make it clear that, the free `p` (here `f`) is not the
+    # same as the arg.
+    result = detect_names('(lambda x: lambda p, y=f(x): x + y)(x)')
+    expected = {'f', 'x'}
     assert result == expected
