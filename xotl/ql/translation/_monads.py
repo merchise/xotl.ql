@@ -440,7 +440,7 @@ class Intersection(Type):
         if b is Undefined and args:
             b, args = args[0], args[1:]
         assert not args, 'Too many arguments'
-        if a is Undefined or b in Undefined:
+        if a is Undefined or b is Undefined:
             return self
         elif isinstance(a, Empty) or isinstance(b, Empty):
             return Empty()
