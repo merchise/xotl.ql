@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.tests.test_translate
-# ---------------------------------------------------------------------
-# Copyright (c) 2013-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2013-01-29
+
+# flake8: noqa
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -20,7 +18,7 @@ import pytest
 from xotl.ql.core import this
 from xotl.ql.translation.py import _TestPlan as translate
 
-from xotl.ql.translation._monads import (
+from xotl.ql.translation.monads import (
     # Rename so that names does not clash with internal names in the
     # monadic plan in the test plan 'translate'.
     Join as _Join,

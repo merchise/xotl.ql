@@ -1,8 +1,7 @@
-# -*- encoding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.revenge
-# ---------------------------------------------------------------------
-# Copyright (c) 2014-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
 
@@ -96,14 +95,14 @@ class Uncompyled(object):
     def safe_qst(self):
         try:
             return self.qst
-        except:
+        except Exception:
             return None
 
     @property
     def safe_ast(self):
         try:
             return self.ast
-        except:
+        except Exception:
             return None
 
     @classmethod

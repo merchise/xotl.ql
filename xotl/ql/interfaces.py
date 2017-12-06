@@ -1,15 +1,11 @@
-# -*- encoding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.interfaces
-# ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on Aug 23, 2012
 
 '''Interfaces that describe the major types used in the Query Language API,
 and some internal interfaces as well.
@@ -123,16 +119,16 @@ class QueryObject(Interface):
     locals = Attribute(
         'locals',
         'A MappingView for the locals in the query scope. '
-        'See `get_name`:meth:'
+        'See `get_value`:meth:'
     )
 
     globals = Attribute(
         'globals',
         'A MappingView for the globals in the query scope. '
-        'See `get_name`:meth:'
+        'See `get_value`:meth:'
     )
 
-    def get_name(self, name, only_globals=False):
+    def get_value(self, name, only_globals=False):
         '''Give the value for the `name`.
 
         Queries are defined in a scope where they could access any name
@@ -292,7 +288,7 @@ class QueryObjectType(Interface):
         :param frame: An instance of a `Frame`:class: object.  This should be
                used to provide the values of the attributes
                `QueryObject.locals`:attr: and `QueryObject.globals`:attr: and
-               also to implement the method `QueryObject.get_name`:meth:.
+               also to implement the method `QueryObject.get_value`:meth:.
 
         Different implementations of the `QueryObject` may required or support
         additional keyword arguments.  For instance, the type of a

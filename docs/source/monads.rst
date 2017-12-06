@@ -4,7 +4,7 @@
  Monad Comprehensions
 ======================
 
-.. automodule:: xotl.ql.translation._monads
+.. automodule:: xotl.ql.translation.monads
 
 
 Algebra operator as abstractions

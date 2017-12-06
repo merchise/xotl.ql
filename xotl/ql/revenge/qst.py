@@ -1,16 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# qst
-# ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-11-05
 
 '''The Query Syntax Tree.
 
@@ -23,7 +18,9 @@ from __future__ import (division as _py3_division,
 
 from .eight import _py_version
 
+from xoutil.eight import _py3
 from xoutil.types import new_class
+
 import ast as pyast
 
 
@@ -137,7 +134,7 @@ __all__ = []
 _nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop,
           pyast.keyword, pyast.slice, pyast.operator, pyast.cmpop,
           pyast.comprehension, pyast.arguments, pyast.expr_context]
-from xoutil.eight import _py3
+
 if _py3:
     _nodes.append(pyast.arg)
 _current = 0

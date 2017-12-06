@@ -1,16 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# _monads
-# ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-10-15
 
 '''Monad comprehensions.
 
@@ -28,9 +23,9 @@ from __future__ import (division as _py3_division,
 import operator
 
 from xoutil import Undefined
-from xotl.ql import qst
+from xoutil.infinity import Infinity
 
-from ._infinity import Infinity
+from xotl.ql import qst
 
 import sys
 _py_version = sys.version_info
@@ -81,6 +76,15 @@ class Empty(Type):
         return False
     __nonzero__ = __bool__
 
+    def iter(self):
+        return iter([])
+
+    def list(self):
+        return list(self.iter())
+
+    def set(self):
+        return set(self.iter())
+
 
 class _BaseCons(object):
     @staticmethod
@@ -117,7 +121,7 @@ class _BaseCons(object):
         assert not args
         return type(self)(x, xs)
 
-    def asiter(self):
+    def iter(self):
         assert self.xs is not Undefined and self.x is not Undefined
         head, tail = self
         yield head
@@ -125,11 +129,11 @@ class _BaseCons(object):
             head, tail = tail
             yield head
 
-    def aslist(self):
-        return list(self.asiter())
+    def list(self):
+        return list(self.iter())
 
-    def asset(self):
-        return set(self.asiter())
+    def set(self):
+        return set(self.iter())
 
     def __repr__(self):
         if self.xs is not Undefined:
@@ -190,13 +194,13 @@ class LazyCons(_BaseCons, Type):
     limit of the underlying representation.  LazyCons can represent such
     collections:
 
-      >>> from xotl.ql.translation._monads import LazyCons
+      >>> from xotl.ql.translation.monads import LazyCons
       >>> from xoutil.eight import range
       >>> lc = LazyCons(1, range(10**6))
       >>> lc                                            # doctest: +ELLIPSIS
       LazyCons(1, ...range(...1000000))
 
-      >>> len(lc.aslist())
+      >>> len(lc.list())
       1000001
 
     As with `Cons`:class: the standard operation is to extract head and tail.
@@ -218,7 +222,7 @@ class LazyCons(_BaseCons, Type):
 
     However you must be careful while iterating over such as collection:
 
-       >>> len(list(itertools.takewhile(lambda x: x < 100, lc.asiter())))
+       >>> len(list(itertools.takewhile(lambda x: x < 100, lc.iter())))
        99
 
     .. warning:: LazyCons is not provided for performance or efficiency.
@@ -317,10 +321,10 @@ class Foldr(Type):
         else:
             z = Undefined
         if args:
-            l, args = args[0], args[1:]
+            ls, args = args[0], args[1:]
         else:
-            l = Undefined
-        return (operator, z, l, args)
+            ls = Undefined
+        return (operator, z, ls, args)
 
 
 class Operator(Type):
@@ -331,7 +335,7 @@ class Operator(Type):
 
     Useful to represent applications of an operator over a spine:
 
-       >>> from xotl.ql.translation._monads import Map, Operator
+       >>> from xotl.ql.translation.monads import Map, Operator
        >>> Mapper = Map(Operator(lambda x: x + 1))
 
     '''
@@ -361,7 +365,7 @@ class Union(Type):
 
     Creating a Union:
 
-      >>> from xotl.ql.translation._monads import Union, Cons
+      >>> from xotl.ql.translation.monads import Union, Cons
       >>> whole = Union(Cons(1, []), Cons(2, []))
       >>> whole
       Union(Cons(1, Empty()), Cons(2, Empty()))
@@ -418,7 +422,7 @@ class Union(Type):
         if self.xs is Undefined or self.ys is Undefined:
             raise TypeError('Partial union is not iterable')
         else:
-            return self().asiter()
+            return self().iter()
 
 
 class Intersection(Type):
@@ -429,6 +433,9 @@ class Intersection(Type):
     #
     # However we may find a use for this when translating.
     #
+    # NOTICE, as with most of this types is quite slow and not recommended to
+    # be actually executed.  A couple of small lists of 15 elements can take a
+    # lot of time to compute.
     def __init__(self, a=Undefined, b=Undefined):
         self.a = a
         self.b = b
@@ -438,14 +445,14 @@ class Intersection(Type):
         # [] ∩ b = []
         # a ∩ [] = []
         # (x: xs) ∩ (x: ys) = (x : xs ∩ ys)
-        # (x: xs) ∩ (y: ys) = xs ∩ (y: ys)
+        # (x: xs) ∩ (y: ys) = (xs ∩ (y: ys)) U ((x: xs) ∩ ys)
         a, b = self.a, self.b
         if a is Undefined and args:
             a, args = args[0], args[1:]
         if b is Undefined and args:
             b, args = args[0], args[1:]
         assert not args, 'Too many arguments'
-        if a is Undefined or b in Undefined:
+        if a is Undefined or b is Undefined:
             return self
         elif isinstance(a, Empty) or isinstance(b, Empty):
             return Empty()
@@ -455,7 +462,10 @@ class Intersection(Type):
             if x == y:
                 return Cons(x, Intersection(xs, ys)())
             else:
-                return Intersection(xs, b)()
+                return Union(
+                    Intersection(xs, b)(),
+                    Intersection(a, ys)()
+                )()
 
 
 # Monadic contructors
@@ -532,6 +542,7 @@ class SortedCons(Type):
             else:
                 return Cons(y, SortedCons(self.order, x, ys)())
 
+
 Min = Foldr(lambda x, y: x if x < y else y, Infinity)
 Max = Foldr(lambda x, y: x if x > y else y, -Infinity)
 Sum = lambda s, initial=0: Foldr(lambda x, y: x + y, initial, s)
@@ -539,36 +550,56 @@ All = Foldr(operator.and_, True)
 Any = Foldr(operator.or_, False)
 
 
-# Translation from comprehension syntax to monadic constructors
-#
-# MC [e | ]         =   Unit(MC e)
-# MC [e | x <- q]   =   map (λx. MC e) (MC q)                    [*]
-# MC [e | p ]       =   if MC p then (MC [e| ]) else Zero()
-# MC [e | q, p]     =   join(MC [MC [e| p]| q])
-# MC e              =   e   # other cases
-#
-# [*] Since in Python you may assign several targets at once we extend this
-#     rule to match the following pattern::
-#
-#   MC [e | x1, x2, ..., xn <- q] = map (λx1, x2, ..., xn. MC e)(MC q)
-#
-# MC is a denotational semantics of the comprehension syntax in the sense it
-# assigns a meaning to every comprehension expression.
-#
-# NOTE: Since MC implies building 'lambdas' we split the algorithm in a
-# syntactical transformation from generators to function calls, and then
-# compile the function-calls syntax and execute it to the get the actual
-# result.
-#
-# This, in fact, it's quite helpful: We transform a query syntax tree to a
-# function-calling (by function names) program: so the function 'Map' does not
-# need to be the Map type defined in this module, but any callable with the
-# same signature.  So 'Map' could be defined as
-# 'lambda f: lambda l: map(f, l)' using the builtin 'map' function -- provided
-# the other constructors produce type-compatible values.  See the module
-# 'py.py'.
-#
-def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
+def translate(source_tree, map='Map', unit='Unit', join='Join', zero='Empty'):
+    '''Translate a `source tree` (`~xotl.ql.revenge.qst`:mod:) to an AST of
+    function calls.
+
+    This is the MC algorithm explained in [QLFunc]_.  It's kind of a
+    denotational semantics of the comprehension sysntax in the sense it
+    assigns meaning (function call) to every comprehesion expression.
+
+    The function behaves as the following equations::
+
+      MC [e | ]                     =  Unit(MC e)
+      MC [e | x1, x2, ..., xn <- q] =  map (λx1, x2, ..., xn. MC e)(MC q)
+      MC [e | p ]                   =  if MC p then (MC [e| ]) else Zero()
+      MC [e | q, p]                 =  join(MC [MC [e| p]| q])
+      MC e                          =  e   # other cases
+
+    This function returns a *program* encoded in an AST of the function calls
+    with the names provided in arguments `map`, `zero`, `unit`, and `join`.
+    Also the ``X if C else Y``.
+
+    This means this function *translates* the QST another program that is only
+    composed of function calls (except for the last rule, which we explain
+    later).  When you *evaluate* the program, you must provide actual
+    callables for each name::
+
+      eval(translate(qst), dict(map=Map, ...))
+
+    .. warning:: You *should generate* the functions names in a way they don't
+       collide with QST provide names.
+
+    You must provide values for each function name `map`, `unit`, `zero`, and
+    `join`.  They must be type-compatible for the program to work.  A simple
+    (demonstration-only) set of functions is `Map`:func:, `Join`:func: ,
+    `Zero`:class:, and `Unit`:func: defined in this module.  But you can
+    provide different, yet similar ones.  Another viable set of functions may
+    be:
+
+      options = dict(
+        Map=lambda f: lambda q: iter(f(x) for x in execute_plan(q)),
+        Join=lambda lls: iter(x for l in lls for x in l),
+        Unit=lambda x: iter([x]),
+        Zero=lambda: iter([])
+      )
+
+    Notice there's some recursion because `map` calls `execute_plan` which is
+    function that takes executes the translation that leads to `q`.  You can
+    imagine it as equivalent to ``eval(translate(q), **options)()``.
+
+    '''
+
     def Call(f, a=None):
         from xotl.ql import qst
         if a:
@@ -669,10 +700,11 @@ def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
         else:
             assert False
 
-    return qst.ensure_compilable(_mc_routine(stree))
+    return qst.ensure_compilable(_mc_routine(source_tree))
+
 
 # The Monad Compiler.
-mcompile = _mc
+mcompile = translate
 
 
 def _make_arguments(*names):

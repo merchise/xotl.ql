@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# setup
-# ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2012-06-29
 
 # flake8: noqa
 
@@ -102,7 +98,7 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools', ],
     install_requires=[
-        'xoutil>=1.7.0,<1.7.2',
+        'xoutil>=1.7.7,<1.9',
     ],
     extras_require={
         'doc': [

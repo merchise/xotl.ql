@@ -1,15 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.translation.py
-# ---------------------------------------------------------------------
-# Copyright (c) 2013-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2013-04-03
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -20,7 +16,7 @@ from xoutil.modules import modulemethod
 from xotl.ql.core import normalize_query
 from xotl.ql.interfaces import QueryObject
 
-from ._monads import mcompile, LazyCons, Map, Unit, Join, Empty
+from .monads import mcompile, LazyCons, Map, Unit, Join, Empty
 
 
 @modulemethod
@@ -250,8 +246,12 @@ def _iter_classes(accept=None, use_ignores=False):
     '''
     import gc
     if use_ignores:
-        filterby = lambda x: not defined(x, _avoid_modules) and (
-            not accept or accept(x))
+        if accept:
+            def filterby(x):
+                return not defined(x, _avoid_modules) and accept(x)
+        else:
+            def filterby(x):
+                return not defined(x, _avoid_modules)
     else:
         filterby = accept
     return (ob for ob in gc.get_objects()

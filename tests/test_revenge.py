@@ -1,27 +1,22 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# test_revenge
-# ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-10-25
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
+import pytest
+
 import sys
 _py3 = sys.version_info >= (3, 0)
 _pypy = 'PyPy' in sys.version
 del sys
-
-import pytest
 
 
 def test_scanner_normalization_single_return():
@@ -361,15 +356,10 @@ def test_conditional_a_la_pypy():
     u = Uncompyled(code)
     assert u.safe_ast
     expected = qst.parse('x and a or y')
-    try:
-        assert u.qst == expected
-    except:
-        print(u.qst)
-        print(expected)
+    assert u.qst == expected
 
 
 def test_embedded():
-    import dis
     from xotl.ql.revenge import Uncompyled
 
     this = iter([])
@@ -377,18 +367,8 @@ def test_embedded():
         (a for a in this),    # noqa
     ]
     for expr in expressions:
-        try:
-            u = Uncompyled(expr.gi_code)
-            assert u.ast
-        except:
-            print()
-            print(expr)
-            dis.dis(expr.gi_code)
-            if u:
-                print(u.tokens)
-            if u and u.safe_ast:
-                print(u.safe_ast)
-            raise
+        u = Uncompyled(expr.gi_code)
+        assert u.ast
 
 
 class Alternatives(object):
@@ -659,7 +639,6 @@ def test_nested_genexprs_ext_1():
     Iter = Iter()
 
     outer = (y for y in Iter)
-    outer_uncomp = Uncompyled(outer)
     outer_uncomp = Uncompyled(outer)
     assert outer_uncomp.qst == expected_uncomp.qst
 
