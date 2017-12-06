@@ -1,7 +1,7 @@
 .. _pony:
-=====================
-Comparison with Pony_
-=====================
+======================
+ Comparison with Pony
+======================
 
 :Date: Tue Apr 30, 2013 (2013-04-30.)
 :Last Updated: Mon Nov 9, 2015 (2015-11-09)
