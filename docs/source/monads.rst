@@ -7,6 +7,12 @@
 .. automodule:: xotl.ql.translation.monads
 
 
+A denotational semantics for comprehensions
+===========================================
+
+.. autofunction:: translate
+
+
 Algebra operator as abstractions
 ================================
 

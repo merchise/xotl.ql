@@ -25,10 +25,12 @@ The result of the :class:`~xotl.ql.core.get_query_object` callable is a
 :term:`query expression` above.
 
 
+
 What's new in |release|?
 ------------------------
 
 .. include:: history/changes-0.3.0.rst
+.. include:: history/changes-0.4.0.rst
 
 
 
