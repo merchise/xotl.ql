@@ -11,7 +11,7 @@ At release |release|
   p(x) or z(x) or not h(x))`` fail to be recognized.
 
 
-- `~xotl.ql.core.this`:object: may be hidden from the `xotl.ql.revenge`:mod:
+- `~xotl.ql.core.this`:data: may be hidden from the `xotl.ql.revenge`:mod:
   machinery by 'enclosing' it inside a function::
 
     ((i, obj) for i, obj in enumerate(this))
