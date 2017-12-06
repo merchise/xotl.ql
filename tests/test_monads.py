@@ -16,11 +16,36 @@ import operator
 from xoutil import Undefined
 from xotl.ql.translation._monads import (
     Empty, Join, Map, Unit, Cons, Foldr,
-    LazyCons, SortedCons
+    LazyCons, SortedCons, Intersection, Union
 )
+
+from hypothesis import given, strategies as s, example
 
 import sys
 _py3 = sys.version_info >= (3, 0)
+
+small_sets = s.sets(s.integers(), min_size=1, average_size=10)
+
+
+@given(small_sets, small_sets)
+@example([1, 2], [2, 1])
+def test_intersection(i1, i2):
+    s1 = list(i1)
+    s2 = list(i2)
+    c1 = Cons(s1[0], s1[1:])
+    c2 = Cons(s2[0], s2[1:])
+    i = Intersection(c1, c2)()
+    assert c1.set() & c2.set() == i.set()
+
+
+@given(small_sets, small_sets)
+def test_union(i1, i2):
+    s1 = list(i1)
+    s2 = list(i2)
+    c1 = Cons(s1[0], s1[1:])
+    c2 = Cons(s2[0], s2[1:])
+    u = Union(c1, c2)()
+    assert c1.set() | c2.set() == u.set()
 
 
 def test_empty():
