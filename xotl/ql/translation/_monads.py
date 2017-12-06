@@ -76,6 +76,15 @@ class Empty(Type):
         return False
     __nonzero__ = __bool__
 
+    def iter(self):
+        return iter([])
+
+    def list(self):
+        return list(self.iter())
+
+    def set(self):
+        return set(self.iter())
+
 
 class _BaseCons(object):
     @staticmethod
