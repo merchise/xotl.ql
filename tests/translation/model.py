@@ -1,16 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# model
-# ---------------------------------------------------------------------
-# Copyright (c) 2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2016-03-02
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -48,6 +43,8 @@ class Place(Entity):
     located_in = TransitiveRelationDescriptor('located_in')
     foundation_date = date_property('_foundation_date')
     age = age_property('foundation_date')
+
+
 Place.located_in.target = Place
 
 
@@ -61,6 +58,7 @@ class Person(Entity):
     def __init__(self, **attrs):
         super(Person, self).__init__(**attrs)
         self.children = []  # ensure all persons has this attr
+
 
 Person.mother.target = Person
 Person.father.target = Person

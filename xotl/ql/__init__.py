@@ -1,15 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-# --------------------------------------------------
-# xotl.ql
-# --------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# -*- coding: utf-8 -*-
+# ---------------------------------------------------------------------
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on May 24, 2012
 
 '''A pythonic Query Language.
 

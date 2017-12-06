@@ -1,19 +1,12 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# test_qst
-# ---------------------------------------------------------------------
-# Copyright (c) 2015, 2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-11-05
 # flake8: noqa
-
-
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
@@ -35,7 +28,7 @@ def test_comparison():
 def test_none_eq():
     LOAD_NONE = qst.Name('None', qst.Load())
     # A top level None does not equal to LOAD_NONE
-    assert None != LOAD_NONE, 'A top-level cmp is not None'
+    assert None != LOAD_NONE, 'A top-level cmp is not None'  # noqa: E711
 
     # Yet when used as the argument for other structures they compare equal
     a = qst.Slice(None, None, None)

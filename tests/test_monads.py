@@ -1,17 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# test_monads
-# ---------------------------------------------------------------------
-# Copyright (c) 2015-2017 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-10-19
-
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -86,12 +80,7 @@ def test_mc_routine_1():
         )
     )
     result = _mc(genexpr, map='map', join='join', zero='empty', unit='unit')
-    try:
-        assert result.body == expected
-    except:
-        print(result)
-        print(expected)
-        raise
+    assert result.body == expected
 
     predicate = lambda x: 's' in x
     this = Cons('I should be in the result', ['But I cannot be'])
@@ -116,12 +105,7 @@ def test_mc_routine_2():
         Name('this', Load())
     )
     result = _mc(genexpr)
-    try:
-        assert result.body == expected
-    except:
-        print(result)
-        print(expected)
-        raise
+    assert result.body == expected
 
     this = Cons('I should be in the result', ['And me too'])
     res = eval(compile(result, '', 'eval'),
@@ -152,13 +136,7 @@ def test_mc_routine_4():
         )
     )
     result = _mc(genexpr)
-    try:
-        assert result.body == expected
-    except:
-        print(result.body)
-        print(expected)
-        assert str(result) == str(expected)
-        raise
+    assert result.body == expected
 
     # Map returns a Cons and Cons iters yielding x, xs not the items.  To
     # compile this we must make all a foldr, that easily defined by

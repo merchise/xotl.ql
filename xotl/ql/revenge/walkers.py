@@ -1,8 +1,7 @@
-# -*- encoding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.revenge.walkers
-# ---------------------------------------------------------------------
-# Copyright (c) 2014-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
 
@@ -906,7 +905,7 @@ class QstBuilder(GenericASTTraversal, object):
         depth = 0
         try:
             f = sys._getframe(3)
-        except:
+        except:  # noqa
             f = None
         try:
             while f is not None and res is None and depth < 4:
@@ -916,7 +915,7 @@ class QstBuilder(GenericASTTraversal, object):
                 depth += 1
                 f = f.f_back
             return res if res else 'This node'
-        except:
+        except:  # noqa
             return 'This node'
         finally:
             f = None

@@ -1,15 +1,11 @@
-# -*- encoding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.interfaces
-# ---------------------------------------------------------------------
-# Copyright (c) 2012-2017 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on Aug 23, 2012
 
 '''Interfaces that describe the major types used in the Query Language API,
 and some internal interfaces as well.

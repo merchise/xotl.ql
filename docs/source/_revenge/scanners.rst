@@ -205,7 +205,7 @@ proceed ignoring the differences.
 
 We may think then, conditionals might be recognized by the following rules::
 
-  conditional ::= condition_expression POR_JUMP_IF_FALSE
+  conditional ::= condition_expression POP_JUMP_IF_FALSE
                   then_result else_result
 
   then_result ::= returning_expression
@@ -260,7 +260,7 @@ And it means that ``expr`` should not be considered a standalone expression
 but that always occur inside a bigger structure, so if we change our rules
 to::
 
-  conditional          ::=  condition_expression POR_JUMP_IF_FALSE
+  conditional          ::=  condition_expression POP_JUMP_IF_FALSE
                             then_result else_result
 
   condition_expression ::=  expr

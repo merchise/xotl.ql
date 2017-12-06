@@ -1,16 +1,11 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# _monads
-# ---------------------------------------------------------------------
-# Copyright (c) 2015-2017 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under the
-# terms of the LICENCE attached (see LICENCE file) in the distribution
-# package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2015-10-15
 
 '''Monad comprehensions.
 
@@ -317,10 +312,10 @@ class Foldr(Type):
         else:
             z = Undefined
         if args:
-            l, args = args[0], args[1:]
+            ls, args = args[0], args[1:]
         else:
-            l = Undefined
-        return (operator, z, l, args)
+            ls = Undefined
+        return (operator, z, ls, args)
 
 
 class Operator(Type):
@@ -532,6 +527,7 @@ class SortedCons(Type):
             else:
                 return Cons(y, SortedCons(self.order, x, ys)())
 
+
 Min = Foldr(lambda x, y: x if x < y else y, Infinity)
 Max = Foldr(lambda x, y: x if x > y else y, -Infinity)
 Sum = lambda s, initial=0: Foldr(lambda x, y: x + y, initial, s)
@@ -670,6 +666,7 @@ def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
             assert False
 
     return qst.ensure_compilable(_mc_routine(stree))
+
 
 # The Monad Compiler.
 mcompile = _mc

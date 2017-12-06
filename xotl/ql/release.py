@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
-# xotl.ql.release
-# ---------------------------------------------------------------------
-# Copyright (c) 2012-2016 Merchise Autrement and Contributors
+# Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-# This is free software; you can redistribute it and/or modify it under
-# the terms of the LICENCE attached in the distribution package.
+# This is free software; you can do what the LICENCE file allows you to.
 #
-# Created on 2012-06-29
 
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
@@ -27,8 +23,9 @@ def dev_tag_installed():
         # FIX: Below line is not working anymore
         base = dist.parsed_version.base_version
         return full_version[len(base):]
-    except:
+    except Exception:
         return None
+
 
 RELEASE_TAG = dev_tag_installed() or ''
 
