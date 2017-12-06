@@ -112,7 +112,7 @@ class _BaseCons(object):
         assert not args
         return type(self)(x, xs)
 
-    def asiter(self):
+    def iter(self):
         assert self.xs is not Undefined and self.x is not Undefined
         head, tail = self
         yield head
@@ -120,11 +120,11 @@ class _BaseCons(object):
             head, tail = tail
             yield head
 
-    def aslist(self):
-        return list(self.asiter())
+    def list(self):
+        return list(self.iter())
 
-    def asset(self):
-        return set(self.asiter())
+    def set(self):
+        return set(self.iter())
 
     def __repr__(self):
         if self.xs is not Undefined:
@@ -191,7 +191,7 @@ class LazyCons(_BaseCons, Type):
       >>> lc                                            # doctest: +ELLIPSIS
       LazyCons(1, ...range(...1000000))
 
-      >>> len(lc.aslist())
+      >>> len(lc.list())
       1000001
 
     As with `Cons`:class: the standard operation is to extract head and tail.
@@ -213,7 +213,7 @@ class LazyCons(_BaseCons, Type):
 
     However you must be careful while iterating over such as collection:
 
-       >>> len(list(itertools.takewhile(lambda x: x < 100, lc.asiter())))
+       >>> len(list(itertools.takewhile(lambda x: x < 100, lc.iter())))
        99
 
     .. warning:: LazyCons is not provided for performance or efficiency.
@@ -413,7 +413,7 @@ class Union(Type):
         if self.xs is Undefined or self.ys is Undefined:
             raise TypeError('Partial union is not iterable')
         else:
-            return self().asiter()
+            return self().iter()
 
 
 class Intersection(Type):

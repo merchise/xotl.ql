@@ -43,13 +43,13 @@ def test_simple_query():
     predicate = lambda x: x % 2 == 0
     query = Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
     result = query()  # execute the query naively
-    assert result.aslist() == [x for x in range(1, 50) if predicate(x)]
+    assert result.list() == [x for x in range(1, 50) if predicate(x)]
 
 
 def test_foldr():
     from functools import reduce
     import operator
-    assert reduce(operator.add, Cons(1, [2]).asiter(), 0) == 3
+    assert reduce(operator.add, Cons(1, [2]).iter(), 0) == 3
     assert Foldr(operator.add, 0, Cons(1, [2]))() == 3
     assert reduce(Foldr(operator.add), Cons(1, [2])) == 3
 
@@ -87,7 +87,7 @@ def test_mc_routine_1():
     res = eval(compile(result, '', 'eval'),
                {'this': this, 'predicate': predicate, 'join': Join,
                 'map': Map, 'empty': Empty, 'unit': Unit})
-    assert res().aslist() == ['I should be in the result']
+    assert res().list() == ['I should be in the result']
 
 
 def test_mc_routine_2():
@@ -110,7 +110,7 @@ def test_mc_routine_2():
     this = Cons('I should be in the result', ['And me too'])
     res = eval(compile(result, '', 'eval'),
                {'this': this, 'Join': Join,
-                'Map': Map, 'Empty': Empty, 'Unit': Unit})().aslist()
+                'Map': Map, 'Empty': Empty, 'Unit': Unit})().list()
     assert res == ['I should be in the result', 'And me too']
 
 
