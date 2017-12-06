@@ -14,7 +14,7 @@ from __future__ import (division as _py3_division,
 import pytest
 import operator
 from xoutil import Undefined
-from xotl.ql.translation._monads import (
+from xotl.ql.translation.monads import (
     Empty, Join, Map, Unit, Cons, Foldr,
     LazyCons, SortedCons, Intersection, Union
 )
@@ -24,7 +24,8 @@ from hypothesis import given, strategies as s, example
 import sys
 _py3 = sys.version_info >= (3, 0)
 
-small_sets = s.sets(s.integers(), min_size=1, max_size=8)
+small_sets = s.sets(s.integers(min_value=0, max_value=100),
+                    min_size=1, max_size=8)
 
 
 @given(small_sets, small_sets)
@@ -82,8 +83,15 @@ def test_foldr():
 def test_mc_routine_1():
     from xotl.ql import qst
     from xotl.ql.revenge.qst import Name, IfExp, Load, Lambda
-    from xotl.ql.translation._monads import (
-        _mc, _make_arguments, Join, Map, Empty, Unit, Cons)
+    from xotl.ql.translation.monads import (
+        translate,
+        _make_arguments,
+        Join,
+        Map,
+        Empty,
+        Unit,
+        Cons
+    )
     genexpr = qst.parse('(x for x in this if predicate(x))')
     # MC [x | x <- this, predicate(x)]
     # = Join(Map(lambda x: Unit(x) if predicate(x) else Empty())(this))
@@ -104,7 +112,8 @@ def test_mc_routine_1():
             Name('this', Load())
         )
     )
-    result = _mc(genexpr, map='map', join='join', zero='empty', unit='unit')
+    result = translate(genexpr, map='map', join='join', zero='empty',
+                       unit='unit')
     assert result.body == expected
 
     predicate = lambda x: 's' in x
@@ -118,7 +127,7 @@ def test_mc_routine_1():
 def test_mc_routine_2():
     from xotl.ql import qst
     from xotl.ql.revenge.qst import Name, Load, Lambda
-    from xotl.ql.translation._monads import _mc, _make_arguments
+    from xotl.ql.translation.monads import translate, _make_arguments
     genexpr = qst.parse('(x for x in this)')
     # MC [x | x <- this] = Map(lambda x: x)(this)
     expected = Call(
@@ -129,7 +138,7 @@ def test_mc_routine_2():
         ),
         Name('this', Load())
     )
-    result = _mc(genexpr)
+    result = translate(genexpr)
     assert result.body == expected
 
     this = Cons('I should be in the result', ['And me too'])
@@ -142,7 +151,7 @@ def test_mc_routine_2():
 def test_mc_routine_4():
     from xotl.ql import qst
     from xotl.ql.revenge.qst import Name, Load, Lambda, Compare, In, Str
-    from xotl.ql.translation._monads import _mc, _make_arguments
+    from xotl.ql.translation.monads import translate, _make_arguments
     genexpr = qst.parse('all("s" in x for x in this)')
     # MC all(["s" in x | x <- this]) = all(Map(lambda x: 's' in x)(this))
     expected = Call(
@@ -160,7 +169,7 @@ def test_mc_routine_4():
             Name('this', Load())
         )
     )
-    result = _mc(genexpr)
+    result = translate(genexpr)
     assert result.body == expected
 
     # Map returns a Cons and Cons iters yielding x, xs not the items.  To
@@ -192,10 +201,10 @@ def test_mc_routine_4():
 
 def test_mc_routine_5():
     from xotl.ql import qst
-    from xotl.ql.translation._monads import _mc
+    from xotl.ql.translation.monads import translate
     this = list(range(10, 15)) + list(range(5, 10))
     genexpr = qst.parse('(x for x in this if 7 < x < 13)')
-    result = _mc(genexpr)
+    result = translate(genexpr)
     # In this test, we won't use our implementation of the monadic functions
     # but translate them directly to Python.
     res = eval(compile(result, '', 'eval'),
@@ -207,7 +216,7 @@ def test_mc_routine_5():
     assert res == [10, 11, 12, 8, 9]
 
     genexpr = qst.parse('sorted(x for x in this if 7 < x < 13)')
-    result = _mc(genexpr)
+    result = translate(genexpr)
     # In this test, we won't use our implementation of the monadic functions
     # but translate them directly to Python.
     res = eval(compile(result, '', 'eval'),

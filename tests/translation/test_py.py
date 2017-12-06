@@ -18,7 +18,7 @@ import pytest
 from xotl.ql.core import this
 from xotl.ql.translation.py import _TestPlan as translate
 
-from xotl.ql.translation._monads import (
+from xotl.ql.translation.monads import (
     # Rename so that names does not clash with internal names in the
     # monadic plan in the test plan 'translate'.
     Join as _Join,

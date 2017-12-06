@@ -194,7 +194,7 @@ class LazyCons(_BaseCons, Type):
     limit of the underlying representation.  LazyCons can represent such
     collections:
 
-      >>> from xotl.ql.translation._monads import LazyCons
+      >>> from xotl.ql.translation.monads import LazyCons
       >>> from xoutil.eight import range
       >>> lc = LazyCons(1, range(10**6))
       >>> lc                                            # doctest: +ELLIPSIS
@@ -335,7 +335,7 @@ class Operator(Type):
 
     Useful to represent applications of an operator over a spine:
 
-       >>> from xotl.ql.translation._monads import Map, Operator
+       >>> from xotl.ql.translation.monads import Map, Operator
        >>> Mapper = Map(Operator(lambda x: x + 1))
 
     '''
@@ -365,7 +365,7 @@ class Union(Type):
 
     Creating a Union:
 
-      >>> from xotl.ql.translation._monads import Union, Cons
+      >>> from xotl.ql.translation.monads import Union, Cons
       >>> whole = Union(Cons(1, []), Cons(2, []))
       >>> whole
       Union(Cons(1, Empty()), Cons(2, Empty()))
@@ -550,36 +550,56 @@ All = Foldr(operator.and_, True)
 Any = Foldr(operator.or_, False)
 
 
-# Translation from comprehension syntax to monadic constructors
-#
-# MC [e | ]         =   Unit(MC e)
-# MC [e | x <- q]   =   map (λx. MC e) (MC q)                    [*]
-# MC [e | p ]       =   if MC p then (MC [e| ]) else Zero()
-# MC [e | q, p]     =   join(MC [MC [e| p]| q])
-# MC e              =   e   # other cases
-#
-# [*] Since in Python you may assign several targets at once we extend this
-#     rule to match the following pattern::
-#
-#   MC [e | x1, x2, ..., xn <- q] = map (λx1, x2, ..., xn. MC e)(MC q)
-#
-# MC is a denotational semantics of the comprehension syntax in the sense it
-# assigns a meaning to every comprehension expression.
-#
-# NOTE: Since MC implies building 'lambdas' we split the algorithm in a
-# syntactical transformation from generators to function calls, and then
-# compile the function-calls syntax and execute it to the get the actual
-# result.
-#
-# This, in fact, it's quite helpful: We transform a query syntax tree to a
-# function-calling (by function names) program: so the function 'Map' does not
-# need to be the Map type defined in this module, but any callable with the
-# same signature.  So 'Map' could be defined as
-# 'lambda f: lambda l: map(f, l)' using the builtin 'map' function -- provided
-# the other constructors produce type-compatible values.  See the module
-# 'py.py'.
-#
-def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
+def translate(source_tree, map='Map', unit='Unit', join='Join', zero='Empty'):
+    '''Translate a `source tree` (`~xotl.ql.revenge.qst`:mod:) to an AST of
+    function calls.
+
+    This is the MC algorithm explained in [QLFunc]_.  It's kind of a
+    denotational semantics of the comprehension sysntax in the sense it
+    assigns meaning (function call) to every comprehesion expression.
+
+    The function behaves as the following equations::
+
+      MC [e | ]                     =  Unit(MC e)
+      MC [e | x1, x2, ..., xn <- q] =  map (λx1, x2, ..., xn. MC e)(MC q)
+      MC [e | p ]                   =  if MC p then (MC [e| ]) else Zero()
+      MC [e | q, p]                 =  join(MC [MC [e| p]| q])
+      MC e                          =  e   # other cases
+
+    This function returns a *program* encoded in an AST of the function calls
+    with the names provided in arguments `map`, `zero`, `unit`, and `join`.
+    Also the ``X if C else Y``.
+
+    This means this function *translates* the QST another program that is only
+    composed of function calls (except for the last rule, which we explain
+    later).  When you *evaluate* the program, you must provide actual
+    callables for each name::
+
+      eval(translate(qst), dict(map=Map, ...))
+
+    .. warning:: You *should generate* the functions names in a way they don't
+       collide with QST provide names.
+
+    You must provide values for each function name `map`, `unit`, `zero`, and
+    `join`.  They must be type-compatible for the program to work.  A simple
+    (demonstration-only) set of functions is `Map`:func:, `Join`:func: ,
+    `Zero`:class:, and `Unit`:func: defined in this module.  But you can
+    provide different, yet similar ones.  Another viable set of functions may
+    be:
+
+      options = dict(
+        Map=lambda f: lambda q: iter(f(x) for x in execute_plan(q)),
+        Join=lambda lls: iter(x for l in lls for x in l),
+        Unit=lambda x: iter([x]),
+        Zero=lambda: iter([])
+      )
+
+    Notice there's some recursion because `map` calls `execute_plan` which is
+    function that takes executes the translation that leads to `q`.  You can
+    imagine it as equivalent to ``eval(translate(q), **options)()``.
+
+    '''
+
     def Call(f, a=None):
         from xotl.ql import qst
         if a:
@@ -680,11 +700,11 @@ def _mc(stree, map='Map', unit='Unit', join='Join', zero='Empty'):
         else:
             assert False
 
-    return qst.ensure_compilable(_mc_routine(stree))
+    return qst.ensure_compilable(_mc_routine(source_tree))
 
 
 # The Monad Compiler.
-mcompile = _mc
+mcompile = translate
 
 
 def _make_arguments(*names):
