@@ -25,7 +25,7 @@ import sys
 _py3 = sys.version_info >= (3, 0)
 
 small_sets = s.sets(s.integers(min_value=0, max_value=100),
-                    min_size=1, max_size=8)
+                    min_size=1, max_size=4)
 
 
 @given(small_sets, small_sets)
