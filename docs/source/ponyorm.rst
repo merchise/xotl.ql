@@ -3,26 +3,26 @@
  Comparison with Pony
 ======================
 
-:Date: Tue Apr 30, 2013 (2013-04-30.)
+:Date: Tue Apr 30, 2013 (2013-04-30)
 :Last Updated: Mon Nov 9, 2015 (2015-11-09)
 :Document status: Final.
 :Author: Manuel Vázquez Acosta (`@mvaled`__)
-:Summary: Describes and compares PonyORM and xotl.ql.  Proposes to explore
+:Summary: Describes and compares PonyORM_ and xotl.ql.  Proposes to explore
           bytecode disassembling as way to implement `xotl.ql`.
 
 __ http://twitter.com/mvaled/
 
-Pony_ is an ORM_ implementation that shares our vision of writing queries
+Pony is an ORM_ implementation that shares our vision of writing queries
 using the generator expressions of Python.  Their queries look like::
 
    persons = select(p for p in Person if 'o' in p.name)
 
-The project seems to be started in 2006, but I have just discovered today.
-And I like some of the external features it exposes; like the use of the true
-logical ``and`` and ``or`` binary operators; and everything we have had to
-circumvent in `xotl.ql` so far.
+The project seems to be started in 2006, but I have just discovered today
+(2013-04-30).  And I like some of the external features it exposes; like the
+use of the true logical ``and`` and ``or`` binary operators; and everything we
+have had to circumvent in `xotl.ql` so far.
 
-In this document I would like to describe how Pony_ is different/similar to
+In this document I would like to describe how Pony is different/similar to
 `xotl.ql` and how they might influence our future work.
 
 
@@ -149,5 +149,6 @@ Footnotes
             if parent.age > 1 and parent.children)
 
 
-.. _Pony: http://ponyorm.com/
+.. _PonyORM: http://ponyorm.com/
+
 .. _ORM: http://en.wikipedia.org/wiki/Object-relational_mapping
