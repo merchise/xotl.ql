@@ -24,7 +24,7 @@ from hypothesis import given, strategies as s, example
 import sys
 _py3 = sys.version_info >= (3, 0)
 
-small_sets = s.sets(s.integers(), min_size=1, average_size=10)
+small_sets = s.sets(s.integers(), min_size=1, max_size=8)
 
 
 @given(small_sets, small_sets)

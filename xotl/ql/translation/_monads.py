@@ -433,6 +433,9 @@ class Intersection(Type):
     #
     # However we may find a use for this when translating.
     #
+    # NOTICE, as with most of this types is quite slow and not recommended to
+    # be actually executed.  A couple of small lists of 15 elements can take a
+    # lot of time to compute.
     def __init__(self, a=Undefined, b=Undefined):
         self.a = a
         self.b = b
@@ -442,7 +445,7 @@ class Intersection(Type):
         # [] ∩ b = []
         # a ∩ [] = []
         # (x: xs) ∩ (x: ys) = (x : xs ∩ ys)
-        # (x: xs) ∩ (y: ys) = xs ∩ (y: ys)
+        # (x: xs) ∩ (y: ys) = (xs ∩ (y: ys)) U ((x: xs) ∩ ys)
         a, b = self.a, self.b
         if a is Undefined and args:
             a, args = args[0], args[1:]
@@ -459,7 +462,10 @@ class Intersection(Type):
             if x == y:
                 return Cons(x, Intersection(xs, ys)())
             else:
-                return Intersection(xs, b)()
+                return Union(
+                    Intersection(xs, b)(),
+                    Intersection(a, ys)()
+                )()
 
 
 # Monadic contructors
