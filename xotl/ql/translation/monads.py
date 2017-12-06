@@ -22,7 +22,7 @@ from __future__ import (division as _py3_division,
 
 import operator
 
-from xoutil import Undefined
+from xoutil.symbols import Undefined
 from xoutil.infinity import Infinity
 
 from xotl.ql import qst

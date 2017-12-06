@@ -24,12 +24,8 @@ from __future__ import (division as _py3_division,
 
 
 import types
-from xoutil import inspect
-
-try:
-    from xoutil.eight.meta import metaclass
-except ImportError:
-    from xoutil.objects import metaclass
+from xoutil.future import inspect
+from xoutil.eight.meta import metaclass
 
 
 class MemberDescription(object):

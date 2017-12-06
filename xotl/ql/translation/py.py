@@ -118,7 +118,7 @@ class NaivePythonExecutionPlan(object):
         }
 
     def __call__(self, modules=None, use_ignores=True):
-        from xoutil.collections import ChainMap
+        from xoutil.future.collections import ChainMap
         return eval(
             self.compiled,
             # Don't split the globals and locals... Why?

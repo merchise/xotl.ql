@@ -20,7 +20,7 @@ from __future__ import (division as _py3_division,
 __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 
 from .spark import GenericASTBuilder
-from xoutil.collections import UserList
+from xoutil.future.collections import UserList
 
 import sys
 _py_version = sys.version_info

@@ -97,10 +97,7 @@ def _build_sentinel(f, node, name=None):
 #
 #   isinstance(node, ifsentence)
 
-try:
-    from xoutil.eight.meta import metaclass
-except ImportError:
-    from xoutil.objects import metaclass
+from xoutil.eight.meta import metaclass
 
 
 class SentenceSyntaxType(type):
@@ -934,7 +931,7 @@ class QstBuilder(GenericASTTraversal, object):
         :keyword noneInNames: Deprecated alias for `hasnone`.
 
         '''
-        from xoutil import Unset
+        from xoutil.symbols import Unset
         islambda = kwargs.pop('islambda', Unset)
         if islambda is Unset:
             islambda = kwargs.pop('isLambda', Unset)

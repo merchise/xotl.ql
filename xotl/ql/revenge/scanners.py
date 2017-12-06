@@ -300,7 +300,7 @@ class Instruction(object):
         return BaseInstruction(*tuple(self))
 
     def _asdict(self):
-        from xoutil.collections import OrderedDict
+        from xoutil.future.collections import OrderedDict
         return OrderedDict([
             (field, getattr(self, field))
             for field in BaseInstruction._fields
@@ -458,8 +458,8 @@ class Scanner(object):
         elif normalize is False:
             normalize = lambda x: x
         else:
-            from xoutil.functools import compose as _dot
-            normalize = _dot(*normalize)
+            from xoutil.fp.tools import compose
+            normalize = compose(*normalize)
         result = []
         customizations = {}
         # The 'jumps' is filled by the `detect_structure` closure function
@@ -781,7 +781,7 @@ except ImportError:
 
 
 def getscanner(version=None, get_current_thread=get_ident):
-    from xoutil import Unset
+    from xoutil.symbols import Unset
     if not version:
         from sys import version_info
         version = '.'.join(str(component) for component in version_info[:2])

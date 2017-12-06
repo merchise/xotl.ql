@@ -19,7 +19,7 @@ from __future__ import (division as _py3_division,
 from .eight import _py_version
 
 from xoutil.eight import _py3
-from xoutil.types import new_class
+from xoutil.future.types import new_class
 
 import ast as pyast
 
@@ -31,7 +31,7 @@ import ast as pyast
 #
 class PyASTNode(object):
     def __eq__(self, other):
-        from xoutil import Unset
+        from xoutil.symbols import Unset
         from operator import eq
         res = True
         i = 0
@@ -189,7 +189,7 @@ class SetAttributesVisitor(pyast.NodeVisitor):
         self.attrs = attrs
 
     def generic_visit(self, node):
-        from xoutil import Unset
+        from xoutil.symbols import Unset
         get = lambda a: getattr(node, a, Unset)
         for attr, val in self.attrs.items():
             if get(attr) is Unset:

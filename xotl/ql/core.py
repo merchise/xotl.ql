@@ -18,8 +18,8 @@ from __future__ import (division as _py3_division,
 
 import ast
 import types
-from xoutil import Unset
-from xoutil.decorator import memoized_property
+from xoutil.symbols import Unset
+from xoutil.objects import memoized_property
 from collections import MappingView, Mapping
 
 from xoutil.decorator.meta import decorator

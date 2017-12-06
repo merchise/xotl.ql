@@ -98,7 +98,7 @@ setup(
     zip_safe=False,
     setup_requires=['setuptools', ],
     install_requires=[
-        'xoutil>=1.7.7,<1.9',
+        'xoutil>=1.8.3,<1.9',
     ],
     extras_require={
         'doc': [

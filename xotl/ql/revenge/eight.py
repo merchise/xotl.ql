@@ -22,7 +22,7 @@ from __future__ import (division as _py3_division,
 
 import sys
 
-from xoutil import types
+from xoutil.future import types
 
 
 # Python predicates
@@ -104,10 +104,7 @@ def override(pred=True, default=None):
 try:
     from dis import Bytecode, Instruction, _Instruction
 except ImportError:
-    try:
-        from xoutil.params import keywordonly   # migrate
-    except ImportError:
-        keywordonly = lambda *names: lambda f: f
+    from xoutil.params import keywords_only
 
     def _ord(i):
         if isinstance(i, int):
@@ -125,7 +122,7 @@ except ImportError:
         instances.
 
         """
-        @keywordonly('first_line', 'current_offset')
+        @keywords_only
         def __init__(self, x, first_line=None, current_offset=None):
             self.codeobj = co = _get_code_object(x)
             if first_line is None:
@@ -338,7 +335,7 @@ except ImportError:
             argrepr = repr(argval)
         return argval, argrepr
 
-    from xoutil import collections
+    from xoutil.future import collections
 
     _Instruction = collections.namedtuple(
         "_Instruction",

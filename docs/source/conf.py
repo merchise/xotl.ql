@@ -284,7 +284,7 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'py': ('http://docs.python.org/', None),
-    # 'xoutil': ('http://xoutil.rtfd.org/en/latest/', None),
+    'xoutil': ('http://xoutil.readthedocs.io/en/latest/', None),
     'python': ('http://docs.python.org/', None)
 }
 intersphinx_cache_limit = 60

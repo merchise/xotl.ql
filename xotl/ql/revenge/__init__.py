@@ -20,7 +20,7 @@ from __future__ import (division as _py3_division,
                         absolute_import as _py3_abs_import)
 
 import types
-from xoutil.decorator import memoized_property
+from xoutil.objects import memoized_property
 
 #  We'll only support 2.7 and >=3.2,<3.5
 from sys import version_info as _py_version

@@ -13,7 +13,7 @@ from __future__ import (division as _py3_division,
 
 import pytest
 import operator
-from xoutil import Undefined
+from xoutil.symbols import Undefined
 from xotl.ql.translation.monads import (
     Empty, Join, Map, Unit, Cons, Foldr,
     LazyCons, SortedCons, Intersection, Union
