@@ -356,7 +356,7 @@ class QstBuilder(GenericASTTraversal, object):
         nkwargs = (val >> 8) & 0xFF
         if name.endswith('_KW'):
             kwargs = 1
-            name, _ = name.rsplit('_', 1)
+            name, _ = name.rsplit('_', 1)  # maybe CALL_FUNCTION_VAR_KW
         else:
             kwargs = None
         if name.endswith('_VAR'):
@@ -378,10 +378,12 @@ class QstBuilder(GenericASTTraversal, object):
             kws.append(items.pop())
         if starargs:
             starargs = items.pop()
+            args.append(qst.Starred(starargs, qst.Load()))
         if kwarg:
             kwarg = items.pop()
+            kws.append(qst.keyword(None, kwarg))
         assert not items
-        return qst.Call(func, args, kws, starargs, kwarg)
+        return qst.Call(func, args, kws)
 
     @pushtostack
     @take_one

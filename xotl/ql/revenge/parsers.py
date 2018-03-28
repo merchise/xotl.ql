@@ -563,10 +563,10 @@ class Parser(object):
         #    mklambda ::= {expr}^n LOAD_LAMBDA MAKE_FUNCTION_n
         #    mklambda ::= {expr}^n load_closure LOAD_LAMBDA MAKE_FUNCTION_n
         #
-        #    expr ::= expr {expr}^n CALL_FUNCTION_n
-        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
-        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
-        #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_KW_n
         #
         from xoutil.eight import _py3
         for k, v in list(customize.items()):
@@ -634,10 +634,14 @@ class Parser(object):
                         'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
                 na = (v & 0xff)           # positional parameters
                 nk = (v >> 8) & 0xff      # keyword parameters
-                # number of apply equiv arguments:
-                nak = (len(op) - len('CALL_FUNCTION')) // 3
-                rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
-                       + 'expr ' * nak + k
+                rule = 'call_function ::= expr ' + 'expr ' * na
+                if op in ('CALL_FUNTCION_VAR', 'CALL_FUNCTION_VAR_KW'):
+                    # Add the *arg
+                    rule += 'expr '
+                rule += 'kwarg ' * nk
+                if op in ('CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
+                    rule += 'expr '
+                rule += k
             elif op == 'BUILD_SLICE':
                 # since BUILD_SLICE can come in only two forms, it's already
                 # embedded in our grammar, so just ignore it.
