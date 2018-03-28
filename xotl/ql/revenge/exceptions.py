@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -6,8 +6,6 @@
 #
 # This is free software; you can do what the LICENCE file allows you to.
 #
-
-from __future__ import absolute_import as _py3_abs_import
 
 
 class RevengeError(Exception):

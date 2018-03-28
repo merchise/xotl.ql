@@ -1,21 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-#  Copyright (c) 2000-2002, 2017 by hartmut Goebel <h.goebel@crazy-compilers.com>
+#  Copyright (c) 2000-2017 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #  Copyright (c) 2005 by Dan Pascu <dan@windowmaker.org>
 #  Copyright (c) 1999 John Aycock
 #
 #  See main module for license.
 #
-
-# flake8: noqa
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
 
 __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 

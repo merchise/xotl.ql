@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -17,11 +17,6 @@ constructors.  Given that types in Python are callable the type of object
 constructors can be provided via the `__init__` method.
 
 '''
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 
 import types
 from xoutil.future import inspect

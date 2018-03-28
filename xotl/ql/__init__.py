@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -27,7 +27,5 @@ stores.
 
 '''
 
-from __future__ import absolute_import
 from .core import this, get_query_object, thesefy, normalize_query  # noqa
-
 from .revenge import qst   # noqa
