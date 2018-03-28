@@ -123,42 +123,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    def p_mapexpression_common(self, args):
-        '''Common rules for map expressions across all Python versions.
-
-        expr ::= mapexpr
-
-        kvlist ::= kvlist kv
-        kvlist ::=
-
-        '''
-
-    @override((2, 7) <= _py_version < (3, 5))
-    def p_mapexpression(self, args):
-        '''A map expression.
-
-        Dictionary literals are built by creating a fixed sized dictionary and
-        filling it with they values.
-
-        It starts with a BUILD_MAP followed by the list of (key, value).
-
-        .. _rules:
-
-        mapexpr ::= BUILD_MAP kvlist
-
-        # This is the only one I've witnessed.
-        kv3 ::= expr expr STORE_MAP
-
-
-        # Don't know yet when these are produced for kvlist.
-        kvlist ::= kvlist kv2
-        kvlist ::= kvlist kv3
-
-        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
-        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
-
-        '''
-
     def p_expr(self, args):
         '''The expression rules.
 
@@ -471,7 +435,7 @@ class _InternalParser(GenericASTBuilder):
         expr ::= dictcomp
         stmt ::= dictcomp_func
 
-        dictcomp_func ::= BUILD_MAP _comprehension_iter
+        dictcomp_func ::= BUILD_MAP_0 _comprehension_iter
                           FOR_ITER designator
                           comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
@@ -590,6 +554,7 @@ class Parser(object):
         #
         #    expr ::= {expr}^n BUILD_LIST_n
         #    expr ::= {expr}^n BUILD_TUPLE_n
+        #    expr ::= {expr expr}^n BUILD_MAP_n
         #
         #    unpack_list ::= UNPACK_LIST {expr}^n
         #    unpack ::= UNPACK_TUPLE {expr}^n
@@ -612,6 +577,8 @@ class Parser(object):
             op = k[:k.rfind('_')]
             if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
+            elif op == 'BUILD_MAP':
+                rule = 'build_map :: = ' + 'expr expr '*v + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':

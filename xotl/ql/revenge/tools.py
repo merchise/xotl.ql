@@ -79,6 +79,10 @@ def split(iterable, predicate):
     return true, false
 
 
+def even(n):
+    return n % 2 == 0
+
+
 def CODE_HAS_VARARG(code):
     return code.co_flags & 0x04
 

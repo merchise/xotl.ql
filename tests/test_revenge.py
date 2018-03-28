@@ -14,7 +14,6 @@ from __future__ import (division as _py3_division,
 import pytest
 
 import sys
-_py3 = sys.version_info >= (3, 0)
 _pypy = 'PyPy' in sys.version
 del sys
 
@@ -347,12 +346,8 @@ def test_conditional_a_la_pypy():
         Instruction(label='out',
                     opname='RETURN_VALUE')
     code = builder.code
-    if _py3:
-        code = types.CodeType(0, 0, 0, 3, 0, code, (), ('x', 'a', 'y'),
-                              (), '', '<module>', 1, b'')
-    else:
-        code = types.CodeType(0, 0, 3, 0, code, (), ('x', 'a', 'y'),
-                              (), '', '<module>', 1, '')
+    code = types.CodeType(0, 0, 0, 3, 0, code, (), ('x', 'a', 'y'),
+                          (), '', '<module>', 1, b'')
     u = Uncompyled(code)
     assert u.safe_ast
     expected = qst.parse('x and a or y')
@@ -483,9 +478,7 @@ BASIC_EXPRESSIONS_PY3 = [
     'a[:...]',
     'lambda *, a=1, b=2: a + b',
 ]
-_inject_tests(
-    BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d',
-    pytest.mark.skipif(not _py3, reason='Syntax only allowed in Python3'))
+_inject_tests(BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d')
 
 
 CONDITIONAL_EXPRESSIONS = [

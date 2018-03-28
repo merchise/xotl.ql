@@ -12,14 +12,7 @@
 #  See main module for license.
 #
 
-#  flake8: noqa
-
 import sys
-try:
-    from types import EllipsisType, IntType
-except ImportError:
-    EllipsisType = type(Ellipsis)
-    IntType = int
 
 from .spark import GenericASTTraversal
 from . import parsers, qst
@@ -31,7 +24,8 @@ from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
 from .eight import py3k as _py3, py27 as _py27, _py_version
 
-
+EllipsisType = type(Ellipsis)
+IntType = int
 minint = -sys.maxsize-1
 
 # Helper: decorators that push/take item to/from a stack.
@@ -399,18 +393,17 @@ class QstBuilder(GenericASTTraversal, object):
         return qst.keyword(token.argval, value)
 
     @pushsentinel
-    def n_mapexpr(self, node):
+    def n_build_map(self, node):
         pass
 
     @pushtostack
     @take_until_sentinel
-    def n_mapexpr_exit(self, node, children=None, items=None):
-        args = [], []  # keys, values
-        # For {a: b, c: d}, items will be [c, d, a, b]... Reversed is [b, a,
-        # d, c], so 0, 2, 4 ... are values, 1, 3, 5, ... are keys.
-        for i, which in enumerate(reversed(items)):
-            args[(i + 1) % 2].append(which)
-        return qst.Dict(*args)
+    def n_build_map_exit(self, node, children=None, items=None):
+        from .tools import split, even
+        from xoutil.fp.tools import compose, fst
+        opcode, nitems = self._ensure_custom_tk(node, 'BUILD_MAP')
+        keys, values = split(enumerate(items), compose(even, fst))
+        return qst.Dict([k for _, k in keys], [v for _, v in values])
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.

@@ -75,7 +75,7 @@ ensure_symbols('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW', )
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
 CUSTOMIZABLE = (
-    BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,                  # noqa
+    BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,       # noqa
     UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,                    # noqa
     CALL_FUNCTION_VAR, CALL_FUNCTION_KW,                              # noqa
     CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS                     # noqa
