@@ -22,12 +22,6 @@ from __future__ import (division as _py3_division,
 import types
 from xoutil.objects import memoized_property
 
-#  We'll only support 2.7 and >=3.2,<3.5
-from sys import version_info as _py_version
-assert _py_version >= (2, 7, 0) and (
-    not _py_version >= (3, 0) or (3, 2) <= _py_version < (3, 5))
-del _py_version
-
 from . import scanners, walkers
 from .scanners import getscanner   # noqa:  exported
 from .parsers import ParserError

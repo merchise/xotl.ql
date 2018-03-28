@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -14,30 +14,15 @@
 
 # flake8: noqa
 
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 __all__ = ['Token', 'Scanner', 'getscanner']
 
 import types
 import dis
 from array import array
-
-#  We'll only support 2.7 and >=3.2,<3.5
-from xoutil.eight import _py3, _py2, _pypy
-from sys import version_info as _py_version
-assert _py_version >= (2, 7, 0) and (
-    not _py_version >= (3, 0) or (3, 2) <= _py_version < (3, 5))
+from sys import intern  # Py3k
 
 # Py3.5 changes BUILD_MAP, adds BUILD_MAP_UNPACK, BUILD_MAP_UNPACK_WITH_CALL
-
-try:
-    from sys import intern  # Py3k
-except ImportError:
-    from __builtin__ import intern
-
-
+from .eight import pypy as _pypy
 from .exceptions import ScannerError, ScannerAssertionError  # noqa
 
 
@@ -51,20 +36,14 @@ globals().update(
 )
 
 
-if _py3:
-    PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
-    STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
-    DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
-    EXEC_STMT = None
-    DUP_TOPX = None
-
-if _py2:
-    DUP_TOP_TWO = None
+PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
+STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
+DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
+EXEC_STMT = None
+DUP_TOPX = None
 
 if not _pypy:
     BUILD_LIST_FROM_ARG = None
-
-del _py3, _py2, _pypy
 
 JUMP_IF_OR_POPs = (JUMP_IF_TRUE_OR_POP, JUMP_IF_FALSE_OR_POP)  # noqa
 POP_JUMP_IFs = (POP_JUMP_IF_TRUE, POP_JUMP_IF_FALSE)  # noqa
@@ -84,12 +63,20 @@ def jumps_on_true(x):
 def jumps_on_false(x):
     return x in (JUMP_IF_FALSE_OR_POP, POP_JUMP_IF_FALSE)
 
+def ensure_symbols(*syms, default=None):
+    'Ensure symbols are in the module\'s globals with value default'
+    gl = globals()
+    for sym in syms:
+        gl.setdefault(sym, default)
+
+ # Missing in Py3.6:
+ensure_symbols('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW', )
 
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
 CUSTOMIZABLE = (
     BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,                  # noqa
-    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION, MAKE_CLOSURE,      # noqa
+    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,                    # noqa
     CALL_FUNCTION_VAR, CALL_FUNCTION_KW,                              # noqa
     CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS                     # noqa
 )
