@@ -35,13 +35,6 @@ globals().update(
     {k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())}
 )
 
-
-PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
-STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
-DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
-EXEC_STMT = None
-DUP_TOPX = None
-
 if not _pypy:
     BUILD_LIST_FROM_ARG = None
 
@@ -75,10 +68,10 @@ ensure_symbols('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW', )
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
 CUSTOMIZABLE = (
-    BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,       # noqa
-    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,                    # noqa
-    CALL_FUNCTION_VAR, CALL_FUNCTION_KW,                              # noqa
-    CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS                     # noqa
+    BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,
+    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,
+    CALL_FUNCTION_VAR, CALL_FUNCTION_KW,
+    CALL_FUNCTION_VAR_KW, RAISE_VARARGS
 )
 
 

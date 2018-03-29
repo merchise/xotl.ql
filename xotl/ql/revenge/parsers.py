@@ -143,19 +143,13 @@ class _InternalParser(GenericASTBuilder):
         expr ::= unary_expr
         expr ::= call_function
         expr ::= binary_subscr
-        expr ::= binary_subscr2
         expr ::= get_iter
-        expr ::= slice0
-        expr ::= slice1
-        expr ::= slice2
-        expr ::= slice3
         expr ::= buildslice2
         expr ::= buildslice3
         expr ::= yield
 
 
         binary_expr ::=  expr expr binary_op
-
         binary_op ::= BINARY_ADD | BINARY_MULTIPLY | BINARY_AND | BINARY_OR |
                       BINARY_XOR | BINARY_SUBTRACT | BINARY_DIVIDE |
                       BINARY_TRUE_DIVIDE | BINARY_FLOOR_DIVIDE |
@@ -169,18 +163,10 @@ class _InternalParser(GenericASTBuilder):
         unary_op ::= UNARY_NOT
 
         binary_subscr ::= expr expr BINARY_SUBSCR
-        binary_subscr2 ::= expr expr DUP_TOPX_2 BINARY_SUBSCR
 
         load_attr ::= expr LOAD_ATTR
         get_iter ::= expr GET_ITER
-        slice0 ::= expr SLICE+0
-        slice0 ::= expr DUP_TOP SLICE+0
-        slice1 ::= expr expr SLICE+1
-        slice1 ::= expr expr DUP_TOPX_2 SLICE+1
-        slice2 ::= expr expr SLICE+2
-        slice2 ::= expr expr DUP_TOPX_2 SLICE+2
-        slice3 ::= expr expr expr SLICE+3
-        slice3 ::= expr expr expr DUP_TOPX_3 SLICE+3
+
         buildslice3 ::= expr expr expr BUILD_SLICE_3
         buildslice2 ::= expr expr BUILD_SLICE_2
 
@@ -563,7 +549,7 @@ class Parser(object):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':
                 rule = 'unpack_list ::= ' + k + ' designator'*v
-            elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
+            elif op in ('RAISE_VARARGS'):
                 # no need to add a rule
                 continue
             elif op == 'MAKE_FUNCTION':
