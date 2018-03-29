@@ -56,6 +56,7 @@ def jumps_on_true(x):
 def jumps_on_false(x):
     return x in (JUMP_IF_FALSE_OR_POP, POP_JUMP_IF_FALSE)
 
+
 def ensure_symbols(*syms, default=None):
     'Ensure symbols are in the module\'s globals with value default'
     gl = globals()
@@ -240,7 +241,8 @@ class Instruction:
         opcode = self.opcode
         if opcode in dis.hasjrel:
             assert self.argval == self.arg + self.size + self.offset, \
-                '%s != %s + %s + %s' % (self.argval, self.arg, self.size, self.offset)
+                '%s != %s + %s + %s' % (self.argval, self.arg, self.size,
+                                        self.offset)
             return self.argval
         else:
             assert opcode in dis.hasjabs
@@ -296,7 +298,7 @@ class Instruction:
     def __repr__(self):
         return repr(self._instruction)
 
-    __hash__ =  None   # we're are mutable, not suitable for keys.
+    __hash__ = None   # we're are mutable, not suitable for keys.
 
     def __eq__(self, other):
         from xoutil.objects import validate_attrs
@@ -339,7 +341,8 @@ class Token:
 
     @property
     def type(self):
-        # Several parts of the parser and walker assume a type attribute.  This is consistent with the type attribute for rules.
+        # Several parts of the parser and walker assume a type attribute.
+        # This is consistent with the type attribute for rules.
         return self.name
 
     __hash__ = None
@@ -514,7 +517,10 @@ class Scanner:
                     jumps[offset] = restricted
                     return
                 above_target = instructions[target_index-1]
-                if target > offset and above_target.opcode in CONDITIONAL_JUMPs or above_target.opcode == RETURN_VALUE:
+                above_opcode = above_target.opcode
+                above_is_condjump = above_opcode in CONDITIONAL_JUMPs
+                above_is_retval = above_target == RETURN_VALUE
+                if target > offset and above_is_condjump or above_is_retval:
                     # The instruction above the target is a conditional jump
                     # or a RETURN_VALUE, this a likely a nested conditional.
                     #
@@ -649,9 +655,9 @@ class Scanner:
             # if so, it's part of a larger conditional
             if (code[pre[target]] in CONDITIONAL_JUMPs) and (target > pos):
                 self.fixed_jumps[pos] = pre[target]
-                structs.append({'type':  'and/or',
+                structs.append({'type': 'and/or',
                                 'start': start,
-                                'end':   pre[target]})
+                                'end': pre[target]})
                 return
             # is this an `if and`
             if op == POP_JUMP_IF_FALSE:
@@ -663,7 +669,7 @@ class Scanner:
                 if match:
                     if code[pre[rtarget]] in UNCONDITIONAL_JUMPs \
                             and pre[rtarget] not in self.stmts \
-                            and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:
+                            and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:  # noqa
                         if code[pre[pre[rtarget]]] == JUMP_ABSOLUTE \
                                 and self.remove_mid_line_ifs([pos]) \
                                 and target == self.get_target(pre[pre[rtarget]]) \
@@ -672,9 +678,9 @@ class Scanner:
                             pass
                         elif code[pre[pre[rtarget]]] == RETURN_VALUE \
                                 and self.remove_mid_line_ifs([pos]) \
-                                and 1 == (len(set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
+                                and 1 == (len(set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]],
                                                              POP_JUMP_IFs, target))) \
-                                              | set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
+                                              | set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]],
                                                                                          POP_JUMP_IFs + (JUMP_ABSOLUTE, ), pre[rtarget], True))))):
                             pass
                         else:
@@ -734,18 +740,18 @@ class Scanner:
                     if if_end > start:
                         return
                 end = self.restrict_to_parent(if_end, parent)
-                structs.append({'type':  'if-then',
+                structs.append({'type': 'if-then',
                                 'start': start,
-                                'end':   pre[rtarget]})
+                                'end': pre[rtarget]})
                 self.not_continue.add(pre[rtarget])
                 if rtarget < end:
-                    structs.append({'type':  'if-else',
+                    structs.append({'type': 'if-else',
                                     'start': rtarget,
-                                    'end':   end})
+                                    'end': end})
             elif code[pre[rtarget]] == RETURN_VALUE:
-                structs.append({'type':  'if-then',
+                structs.append({'type': 'if-then',
                                 'start': start,
-                                'end':   rtarget})
+                                'end': rtarget})
                 self.return_end_ifs.add(pre[rtarget])
         elif op in JUMP_IF_OR_POPs:
             target = self.get_target(pos, op)
@@ -846,7 +852,7 @@ def keep_single_return(instructions):
     if last.opcode == RETURN_VALUE:
         builder = InstructionSetBuilder()
         lastlabel = label('previous-offset-%s' % last.offset)
-        l = len(instructions) - 1
+        l = len(instructions) - 1  # noqa: E741
         with builder() as Instruction:
             for index, inst in enumerate(instructions):
                 opname = inst.opname
@@ -913,6 +919,7 @@ def normalize_pypy_conditional(instructions):
                               is_jump_target=False)
         else:
             yield Instruction(i)
+
 
 def xdis(f, native=False, normalize=True):
     '''Utility for quickly inspected the tokens produced by the scanner.
