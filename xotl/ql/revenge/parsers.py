@@ -482,7 +482,9 @@ class _InternalParser(GenericASTBuilder):
 
         # `kwarg` is used by the customization engine when CALL_FUNCTION_* are
         # processed they are injected in the resultant `call_function` rule.
-        kwarg   ::= LOAD_CONST expr
+        kwarg         ::= LOAD_CONST expr
+        stararg_expr  ::= expr
+        kwarg_expr    ::= expr
 
         '''
 
@@ -610,10 +612,10 @@ class Parser(object):
                 rule = 'call_function ::= expr ' + 'expr ' * na
                 if op in ('CALL_FUNTCION_VAR', 'CALL_FUNCTION_VAR_KW'):
                     # Add the *arg
-                    rule += 'expr '
+                    rule += 'stararg_expr '
                 rule += 'kwarg ' * nk
                 if op in ('CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
-                    rule += 'expr '
+                    rule += 'kwarg_expr '
                 rule += k
             elif op == 'BUILD_SLICE':
                 # since BUILD_SLICE can come in only two forms, it's already

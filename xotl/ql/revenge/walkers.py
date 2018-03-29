@@ -373,15 +373,15 @@ class QstBuilder(GenericASTTraversal, object):
         args = []
         for _ in range(nargs):
             args.append(items.pop())
+        if starargs:
+            starargs = items.pop()
+            args.append(starargs)
         kws = []
         for _ in range(nkwargs):
             kws.append(items.pop())
-        if starargs:
-            starargs = items.pop()
-            args.append(qst.Starred(starargs, qst.Load()))
         if kwarg:
             kwarg = items.pop()
-            kws.append(qst.keyword(None, kwarg))
+            kws.append(kwarg)
         assert not items
         return qst.Call(func, args, kws)
 
@@ -393,6 +393,18 @@ class QstBuilder(GenericASTTraversal, object):
         # Since the name will be enclose in a qst.Name (per LOAD_CONST) we
         # need to unwrap it to build the `keyword`
         return qst.keyword(token.argval, value)
+
+    @pushtostack
+    @take_one
+    def n_stararg_expr_exit(self, node, children=None, items=None):
+        name, = children
+        return qst.Starred(name, qst.Load())
+
+    @pushtostack
+    @take_one
+    def n_kwarg_expr_exit(self, node, children=None, items=None):
+        val, = children
+        return qst.keyword(None, val)
 
     @pushsentinel
     def n_build_map(self, node):
