@@ -22,7 +22,7 @@ from array import array
 from sys import intern  # Py3k
 
 # Py3.5 changes BUILD_MAP, adds BUILD_MAP_UNPACK, BUILD_MAP_UNPACK_WITH_CALL
-from .eight import pypy as _pypy
+from .eight import pypy as _pypy, _py_version
 from .exceptions import ScannerError, ScannerAssertionError  # noqa
 
 
@@ -76,7 +76,7 @@ CUSTOMIZABLE = (
 
 
 from contextlib import contextmanager
-from .eight import Bytecode, Instruction as BaseInstruction
+from dis import Bytecode, Instruction as BaseInstruction
 
 
 class label:
@@ -239,7 +239,8 @@ class Instruction:
     def target(self):
         opcode = self.opcode
         if opcode in dis.hasjrel:
-            assert self.argval == self.arg + self.size + self.offset
+            assert self.argval == self.arg + self.size + self.offset, \
+                '%s != %s + %s + %s' % (self.argval, self.arg, self.size, self.offset)
             return self.argval
         else:
             assert opcode in dis.hasjabs
@@ -273,7 +274,10 @@ class Instruction:
     @property
     def size(self):
         import dis
-        return 1 if self.opcode < dis.HAVE_ARGUMENT else 3
+        if self.opcode < dis.HAVE_ARGUMENT:
+            return 1
+        else:
+            return 3 if _py_version < (3, 6) else 2
 
     @property
     def _instruction(self):
