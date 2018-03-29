@@ -599,9 +599,9 @@ def translate(source_tree, map='Map', unit='Unit', join='Join', zero='Empty'):
     def Call(f, a=None):
         from xotl.ql import qst
         if a:
-            return qst.Call(f, [a], [], None, None)
+            return qst.Call(f, [a], [])
         else:
-            return qst.Call(f, [], [], None, None)
+            return qst.Call(f, [], [])
 
     class generator:
         def __init__(self, target, iter):
