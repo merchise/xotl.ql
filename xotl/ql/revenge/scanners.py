@@ -79,7 +79,7 @@ from contextlib import contextmanager
 from .eight import Bytecode, Instruction as BaseInstruction
 
 
-class label(object):
+class label:
     '''Represent a named label in a instruction set building process.
 
     See `InstructionSetBuilder`:class: for details.
@@ -121,7 +121,7 @@ class label(object):
         return '<label: %s>' % self.name
 
 
-class InstructionSetBuilder(object):
+class InstructionSetBuilder:
     '''A helper to build a set of instructions.
 
     Usage::
@@ -203,7 +203,7 @@ class InstructionSetBuilder(object):
             instr.is_jump_target = instr.offset in targets
 
 
-class Instruction(object):
+class Instruction:
     def __init__(self, *args, **kwargs):
         if args and len(args) > 1 or kwargs:
             opname = kwargs.get('opname', None)
@@ -300,7 +300,7 @@ class Instruction(object):
                               force_equals=BaseInstruction._fields)
 
 
-class Token(object):
+class Token:
     """Class representing a byte-code token.
 
     A byte-code token is equivalent to the contents of one line
@@ -373,7 +373,7 @@ class Token(object):
         raise IndexError
 
 
-class Code(object):
+class Code:
     """Class for representing code-objects.
 
     This is similar to the original code object, but additionally
@@ -387,7 +387,7 @@ class Code(object):
         self._tokens, self._customize = scanner.disassemble(co, classname)
 
 
-class Structure(object):
+class Structure:
     def __init__(self, start, end, type_):
         self.start = start
         self.end = end
@@ -410,7 +410,7 @@ class Structure(object):
             return self.end
 
 
-class Scanner(object):
+class Scanner:
     def __init__(self, version, Token=Token):
         self.version = version
         from sys import version_info

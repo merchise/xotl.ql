@@ -102,7 +102,7 @@ class SentenceSyntaxType(type):
         checker = attrs.get('checknode', None)
         if checker and not isinstance(checker, classmethod):
             attrs['checknode'] = classmethod(checker)
-        return super(SentenceSyntaxType, cls).__new__(cls, name, bases, attrs)
+        return super().__new__(cls, name, bases, attrs)
 
     def __call__(cls, node):
         return isinstance(node, cls)
@@ -144,9 +144,9 @@ NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
 RETURN_NONE = AST('return_stmt', [NONE, Token('RETURN_VALUE')])
 
 
-class QstBuilder(GenericASTTraversal, object):
+class QstBuilder(GenericASTTraversal):
     def __init__(self, ast=None):
-        super(QstBuilder, self).__init__(ast)
+        super().__init__(ast)
         self._stack = []
 
     def stop(self, pop=True):

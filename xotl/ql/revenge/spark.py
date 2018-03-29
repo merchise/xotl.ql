@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ---------------------------------------------------------------------
+#  Modifications from Merchise Autrement.  Original notice:
+#
 #  Copyright (c) 1998-2016 John Aycock
 #
 #  Permission is hereby granted, free of charge, to any person obtaining
@@ -19,11 +24,6 @@
 #  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 #  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# flake8: noqa
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
 
 __version__ = 'SPARK-0.7 (pre-alpha-7) xotl.ql.revenge - 0.3.0'
 
@@ -46,13 +46,13 @@ def _namelist(instance):
 #
 #  Extracted from GenericParser and made global so that [un]picking works.
 #
-class _State(object):
+class _State:
     def __init__(self, stateno, items):
         self.T, self.complete, self.items = [], [], items
         self.stateno = stateno
 
 
-class GenericParser(object):
+class GenericParser:
     #
     #  An Earley parser, as per J. Earley, "An Efficient Context-Free Parsing
     #  Algorithm", CACM 13(2), pp. 94-102.  Also J. C. Earley, "An Efficient
@@ -687,7 +687,7 @@ class GenericParser(object):
 #
 class GenericASTBuilder(GenericParser):
     def __init__(self, AST, start):
-        GenericParser.__init__(self, start)
+        super().__init__(start)
         self.AST = AST
 
     def preprocess(self, rule, func):
@@ -724,7 +724,7 @@ class GenericASTTraversalPruningException(Exception):
     pass
 
 
-class GenericASTTraversal(object):
+class GenericASTTraversal:
     def __init__(self, ast):
         self.ast = ast
 

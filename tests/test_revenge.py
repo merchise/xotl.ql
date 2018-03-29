@@ -366,7 +366,7 @@ def test_embedded():
         assert u.ast
 
 
-class Alternatives(object):
+class Alternatives:
     def __new__(cls, expr, alt):
         from xotl.ql import qst
         if not isinstance(alt, tuple):

@@ -23,7 +23,7 @@ from .scanners import getscanner   # noqa:  exported
 from .parsers import ParserError
 
 
-class Uncompyled(object):
+class Uncompyled:
     '''A query object which is built from byte-code.
     '''
     def __init__(self, obj, version=None, get_current_thread=None,

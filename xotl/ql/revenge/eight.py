@@ -38,7 +38,7 @@ pypy = sys.version.find('PyPy') >= 0
 _py_version = sys.version_info
 
 
-class unimplemented(object):
+class unimplemented:
     '''Not implemented stub for `override`:func:.'''
     @staticmethod
     def override(pred):

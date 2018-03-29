@@ -23,7 +23,7 @@ from xoutil.future import inspect
 from xoutil.eight.meta import metaclass
 
 
-class MemberDescription(object):
+class MemberDescription:
     def __init__(self, val):
         self.val = val
 
@@ -78,7 +78,7 @@ class InterfaceType(type):
     __subclasscheck__ = __instancecheck__
 
 
-class Interface(metaclass(InterfaceType)):
+class Interface(metaclass=InterfaceType):
     '''Define an interface.
 
     Interfaces support a weak 'instance' test definition::
@@ -93,7 +93,7 @@ class Interface(metaclass(InterfaceType)):
     '''
 
 
-class Attribute(object):
+class Attribute:
     def __init__(self, name, doc):
         self.name = self.__name__ = name
         self.__doc__ = doc
@@ -193,7 +193,7 @@ class QueryTranslator(Interface):
     .. note:: Since Python classes are callable, you may implement a
        translator/execution plan in a single class::
 
-         >>> class ExecutionPlan(object):
+         >>> class ExecutionPlan:
          ...     def __init__(self, query, **kwargs):
          ...         pass
          ...

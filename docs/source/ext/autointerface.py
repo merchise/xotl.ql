@@ -33,7 +33,7 @@ class InterfaceDocumenter(autodoc.ClassDocumenter):
     member_order = 10
 
     def __init__(self, *args, **kwargs):
-        super(InterfaceDocumenter, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.options.show_inheritance = True
 
     @classmethod

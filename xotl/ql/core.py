@@ -22,7 +22,7 @@ from xoutil.decorator.meta import decorator
 from xotl.ql import interfaces
 
 
-class Universe(object):
+class Universe:
     '''The class of the `this`:obj: object.
 
     The `this` object is simply a name from which objects can be drawn in a
@@ -32,7 +32,7 @@ class Universe(object):
     def __new__(cls):
         res = getattr(cls, 'instance', None)
         if not res:
-            res = super(Universe, cls).__new__(cls)
+            res = super().__new__(cls)
             cls.instance = res
         return res
 
@@ -58,7 +58,7 @@ RESERVED_ARGUMENTS = (
 )
 
 
-class QueryObject(object):
+class QueryObject:
     frame_type = 'xotl.ql.core.Frame'
 
     def __init__(self, qst, _frame, **kwargs):
@@ -165,7 +165,7 @@ def thesefy(target, make_subquery=True):
 
     Example as a wrapper::
 
-        class People(object):
+        class People:
             # ...
             pass
 
@@ -174,7 +174,7 @@ def thesefy(target, make_subquery=True):
     Example as a decorator::
 
         @thesefy
-        class People(object):
+        class People:
             pass
 
         query = (who for who in People)
@@ -194,7 +194,7 @@ def thesefy(target, make_subquery=True):
     Notice that in order to use `make_subquery` you call `thesefy`:func: as a
     decorator-returning function::
 
-        class Person(object):
+        class Person:
             pass
 
         query = (x for x in thesefy(make_subquery=False)(Person))
@@ -202,7 +202,7 @@ def thesefy(target, make_subquery=True):
         # or simply as a decorator
 
         @thesefy(make_subquery=False)
-        class Person(object):
+        class Person:
             pass
 
     '''
@@ -226,7 +226,7 @@ def thesefy(target, make_subquery=True):
     return new_class
 
 
-class Frame(object):
+class Frame:
     def __init__(self, locals, globals, **kwargs):
         self.auto_expand_subqueries = kwargs.pop('auto_expand_subqueries',
                                                  True)

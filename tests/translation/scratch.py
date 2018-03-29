@@ -35,11 +35,11 @@ def test_ridiculous_join(**kwargs):
         assert pair in result
 
 
-class B(object):
+class B:
     a = [1, 2]
 
 
-class X(object):
+class X:
     def __init__(self):
         self.b = B()
 

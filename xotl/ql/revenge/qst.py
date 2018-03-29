@@ -24,7 +24,7 @@ import ast as pyast
 #
 #    qst.Name('a', qst.Load()) == qst.Name('b', qst.Load())
 #
-class PyASTNode(object):
+class PyASTNode:
     def __eq__(self, other):
         from xoutil.symbols import Unset
         from operator import eq
@@ -179,4 +179,4 @@ class SetAttributesVisitor(pyast.NodeVisitor):
         for attr, val in self.attrs.items():
             if get(attr) is Unset:
                 setattr(node, attr, val)
-        return super(SetAttributesVisitor, self).generic_visit(node)
+        return super().generic_visit(node)

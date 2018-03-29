@@ -30,7 +30,7 @@ except ImportError:
 class AST(UserList):
     def __init__(self, type, kids=[]):
         self.type = intern(str(type))
-        UserList.__init__(self, kids)
+        super().__init__(kids)
 
     def __getitem__(self, item):
         return self.data[item]
@@ -67,7 +67,7 @@ class AST(UserList):
 
 class ParserError(RevengeParserError):
     def __init__(self, token, offset, *args):
-        super(ParserError, self).__init__(token, offset, *args)
+        super().__init__(token, offset, *args)
         self.token = token
         self.offset = offset
 
@@ -83,7 +83,7 @@ class ParserError(RevengeParserError):
 
 class _InternalParser(GenericASTBuilder):
     def __init__(self):
-        GenericASTBuilder.__init__(self, AST, 'sstmt')
+        super().__init__(AST, 'sstmt')
         self.customized = {}
 
     def error(self, token):
@@ -502,7 +502,7 @@ class _InternalParser(GenericASTBuilder):
 nop = lambda self, args: None
 
 
-class Parser(object):
+class Parser:
     def __init__(self):
         self.parser = _InternalParser()
 
