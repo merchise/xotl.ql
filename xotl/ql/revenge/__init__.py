@@ -67,6 +67,7 @@ class Uncompyled(object):
             )
         except ParserError as error:
             # So the debugger print the locals
+            error.tokens = tokens
             raise error
         # Go down in the AST until the root has more than one children.
         while ast and len(ast) == 1:

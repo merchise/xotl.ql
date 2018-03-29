@@ -72,8 +72,13 @@ class ParserError(RevengeParserError):
         self.offset = offset
 
     def __str__(self):
-        return "Syntax error at or near `%r' token at offset %s" % \
-            (self.token, self.offset)
+        res = "Syntax error at or near `%r' token at offset %s" % \
+              (self.token, self.offset)
+        tokens = getattr(self, 'tokens', None)
+        if tokens:
+            res += '\nIn tokens:\n'
+            res += repr(tokens)
+        return res
 
 
 class _InternalParser(GenericASTBuilder):

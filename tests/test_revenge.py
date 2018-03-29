@@ -394,10 +394,12 @@ def _build_test(expr):
         sample = expr  # make local so that it appears in error reports.
         code = compile(sample, '', 'eval')
         expected = Alternatives(sample, alts)
+        print('>>> ', expr, ' <<<')
         u = Uncompyled(code)
         result = u.qst
         result_ = str(result)
-        assert expected == result
+        assert expected == result, \
+            'Expected: %s.\nResult: %s' % (expected, result)
         assert compile(result, '', 'eval')
         assert result_
     return test_expr
