@@ -1,7 +1,9 @@
 language: python
-python: 2.7
+python:
+  - 3.5
+  - 3.6
 env:
-  - TOX_ENV=py27
-  - TOX_ENV=py34
-install: echo   - pip install tox
-script: echo   - tox -e $TOX_ENV
+  - TOX_ENV=unit
+  - TOX_ENV=doctest
+install: pip install tox
+script: tox -e system-$TOX_ENV
