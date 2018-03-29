@@ -63,12 +63,25 @@ def ensure_symbols(*syms, default=None):
     for sym in syms:
         gl.setdefault(sym, default)
 
- # Missing in Py3.6:
+
+# Missing in Py3.6:
 ensure_symbols('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW', )
+
+
+# New in Python  3.6
+ensure_symbols('CALL_FUNCTION_EX', 'BUILD_CONST_KEY_MAP',
+               'BUILD_TUPLE_UNPACK_WITH_CALL', 'BUILD_CONST_KEY_MAP',
+               'BUILD_STRING', 'STORE_ANNOTATION', 'FORMAT_VALUE')
+
 
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
 CUSTOMIZABLE = (
+    BUILD_TUPLE_UNPACK,
+    BUILD_LIST_UNPACK,
+    BUILD_SET_UNPACK,
+    BUILD_MAP_UNPACK,
+    BUILD_MAP_UNPACK_WITH_CALL,
     BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,
     UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,
     CALL_FUNCTION_VAR, CALL_FUNCTION_KW,

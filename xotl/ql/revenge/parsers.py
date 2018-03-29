@@ -154,7 +154,7 @@ class _InternalParser(GenericASTBuilder):
                       BINARY_XOR | BINARY_SUBTRACT | BINARY_DIVIDE |
                       BINARY_TRUE_DIVIDE | BINARY_FLOOR_DIVIDE |
                       BINARY_MODULO | BINARY_LSHIFT | BINARY_RSHIFT |
-                      BINARY_POWER
+                      BINARY_POWER | BINARY_MATRIX_MULTIPLY
 
         unary_expr ::= expr unary_op
         unary_op ::= UNARY_POSITIVE
