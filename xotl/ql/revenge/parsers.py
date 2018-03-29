@@ -18,7 +18,7 @@ from xoutil.future.collections import UserList
 
 import sys
 _py_version = sys.version_info
-from .eight import override, py27, py32, py3k, py33, py34, pypy   # noqa
+from .eight import override, py3k, pypy   # noqa
 from .exceptions import ParserError as RevengeParserError
 
 try:
@@ -260,17 +260,6 @@ class _InternalParser(GenericASTBuilder):
     # Python 3 with the second LOAD_CONST.  This way the rules for the bigger
     # structures remain stable across Python versions.
     #
-
-    @override(_py_version < (3, 3))
-    def p__py_loads(self, args):
-        '''
-        _py_load_genexpr   ::= LOAD_GENEXPR
-        _py_load_lambda    ::= LOAD_LAMBDA
-        _py_load_dictcomp  ::= LOAD_DICTCOMP
-        _py_load_setcomp   ::= LOAD_SETCOMP
-        '''
-
-    @p__py_loads.override(_py_version >= (3, 3))
     def p__py_loads(self, args):
         '''
         _py_load_genexpr ::= LOAD_GENEXPR LOAD_CONST
@@ -284,13 +273,6 @@ class _InternalParser(GenericASTBuilder):
         '''In Python 3.2+ list comprehensions are also wrapped
         inside a function.
 
-        _py_load_listcomp ::= LOAD_LISTCOMP
-
-        '''
-
-    @p__py_load_listcomp.override(_py_version >= (3, 3))
-    def p__py_load_listcomp(self, args):
-        '''
         _py_load_listcomp ::= LOAD_LISTCOMP LOAD_CONST
 
         '''
@@ -376,14 +358,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    @override(py27)
-    def p_list_comprehension(self, args):
-        '''List comprehensions in Python 2.7 are 'exposed'.
-
-        expr ::= list_compr
-
-        '''
-
     # Since Python 3 list comprehension works the same as generator
     # expressions, and set and dict comprehensions, i.e. the iterator is
     # enclosed in a function.  The _comprehension production contains the core
@@ -391,7 +365,6 @@ class _InternalParser(GenericASTBuilder):
     #
     # We expose the list comprehension in the list_comp_expr production in
     # this case.  The `list_compr` is
-    @p_list_comprehension.override(py3k)
     def p_list_comprehension(self, args):
         '''List comprehensions in Python 3.
 

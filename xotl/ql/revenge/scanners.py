@@ -134,7 +134,7 @@ class InstructionSetBuilder(object):
     Usage::
 
         builder = InstructionSetBuilder()
-        with builder() as Intruction:
+        with builder() as Instruction:
             Instruction(opcode='LOAD_NAME', arg=0, argval='x')
 
     Features:
@@ -181,7 +181,7 @@ class InstructionSetBuilder(object):
         '''Return the byte-code for the current set of instructions.'''
         res = array('B')
         for i in self:
-            res.fromstring(i.code)
+            res.frombytes(i.code)
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
 
@@ -273,7 +273,7 @@ class Instruction(object):
         else:
             bytes_ = [self.opcode]
         res = array('B')
-        res.fromstring(''.join(chr(b) for b in bytes_))
+        res.extend(bytes_)
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
 

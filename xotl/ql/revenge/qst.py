@@ -128,12 +128,9 @@ class PyASTNode(object):
 __all__ = []
 _nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop,
           pyast.keyword, pyast.slice, pyast.operator, pyast.cmpop,
-          pyast.comprehension, pyast.arguments, pyast.expr_context]
+          pyast.comprehension, pyast.arguments, pyast.expr_context, pyast.arg]
 
-if _py3:
-    _nodes.append(pyast.arg)
 _current = 0
-
 while _current < len(_nodes):
     _node = _nodes[_current]
     _more = _node.__subclasses__()  # Don't place this after the new class.
@@ -151,15 +148,7 @@ while _current < len(_nodes):
 
 # This None as a name.  Only use this for comparison, not as a return value.
 LOAD_NONE = Name('None', Load())   # noqa
-if _py_version >= (3, 4):
-    NONE_CT = NameConstant(None)        # noqa
-else:
-    NONE_CT = None
-
-    # Declares the NameConstant object with an impossible value so that tests
-    # for it in __eq__ above don't fail under Python <3.4.
-    class NameConstant(object):
-        value = object()
+NONE_CT = NameConstant(None)        # noqa
 
 
 def is_constant(which, value):
