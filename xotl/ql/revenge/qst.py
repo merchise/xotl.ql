@@ -146,6 +146,20 @@ while _current < len(_nodes):
         _nodes.extend(_more)
     _current += 1
 
+if (3, 6) <= _py_version:
+    # In Python 3.6+:
+    #
+    #      comprehension = (expr target, expr iter, expr* ifs, int is_async)
+    #
+    # I don't think this async stuff will impact the byte-code of a normal
+    # query-like comprehension.
+    #
+    class comprehension(comprehension):  # noqa
+        def __init__(self, *args):
+            if 0 < len(args) < 4:
+                args += (False, )
+            super().__init__(*args)
+
 
 # This None as a name.  Only use this for comparison, not as a return value.
 LOAD_NONE = Name('None', Load())   # noqa
