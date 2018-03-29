@@ -137,8 +137,9 @@ while _current < len(_nodes):
 
     globals()['_PyAst_%s' % _node.__name__] = _node
     # Has a constructor create the class for comparing
-    globals()[_node.__name__] = new_class(_node.__name__,
-                                          bases=(PyASTNode, _node))
+    globals()[_node.__name__] = cls = new_class(_node.__name__,
+                                                bases=(_node, PyASTNode))
+    cls.__module__ = 'qst'
     __all__.append(_node.__name__)
 
     if _more:
