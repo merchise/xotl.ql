@@ -488,10 +488,19 @@ BASIC_EXPRESSIONS_PY3 = [
     'a[:...]',
     'lambda *, a=1, b=2: a + b',
 
-    '{**a, b: 1, **c}',
-    '[*a, c, *b]',
-    '(*a, c, *b)',
-    '{*s, 1, *c}',
+    '{**a, **c}',
+    case('{**a, b: 1, **{d: 1}, **c()}',
+         alternatives=[
+             '{**a, **{b: 1}, **{d: 1}, **c()}',
+             '{**a, **{b: 1}, d: 1, **c()}',
+         ]),
+    # Notice that this is slightly different from the one before.
+    case('{**a, b: 1, d: 1, **c()}', alternatives=['{**a, **{b: 1, d: 1}, **c()}']),
+
+    '[*a, *b]',
+    case('[*a, c, *b, *[1,], *f()]', alternatives=['[*a, *(c, ), *b, *[1,], *f()]']),
+    case('(*a, c, *b, *[1,], *f())', alternatives=['(*a, *(c, ), *b, *[1,], *f())']),
+    case('{*a, c, *b, *[1,], *f()}', alternatives=['{*a, *(c, ), *b, *[1,], *f()}']),
 ]
 _inject_tests(BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d')
 
