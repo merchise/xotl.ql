@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2018-03-29.  Release 0.5.0
+--------------------------
+
+.. include:: history/changes-0.5.0.rst
+
+
 Unreleased. Release 0.4.0
 -------------------------
 

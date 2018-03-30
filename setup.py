@@ -97,7 +97,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     setup_requires=['setuptools', ],
-    python_requires='>=3.5',
+    python_requires='==3.5',
     install_requires=[
         'xoutil>=2.0',
     ],
