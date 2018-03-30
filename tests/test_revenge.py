@@ -469,7 +469,7 @@ BASIC_EXPRESSIONS = [
 
     'a[1] + list(b)',
 
-    '{a: b,\n c: d}',
+    case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
     'lambda x, y=1, *args, **kw: x + y',
     '(lambda x: x)(y)',
 ]

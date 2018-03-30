@@ -413,11 +413,22 @@ class QstBuilder(GenericASTTraversal):
     @pushtostack
     @take_until_sentinel
     def n_build_map_exit(self, node, children=None, items=None):
+        # `items` holds the keys and values mixed. From the BUILD_MAP doc:
+        #
+        #     Pushes a new dictionary object onto the stack.  Pops ``2 *
+        #     count`` items so that the dictionary holds *count* entries:
+        #     ``{..., TOS3: TOS2, TOS1: TOS}``.
+        #
+        # For `{a: b, c: d}` we get items like ``[<d>, <c>, <b>, <a>]``.  So,
+        # an even index is a value, odds are keys.
         from .tools import split, even
         from xoutil.fp.tools import compose, fst
         opcode, nitems = self._ensure_custom_tk(node, 'BUILD_MAP')
-        keys, values = split(enumerate(items), compose(even, fst))
-        return qst.Dict([k for _, k in keys], [v for _, v in values])
+        values, keys = split(enumerate(items), compose(even, fst))
+        return qst.Dict(
+            [k for _, k in reversed(keys)],
+            [v for _, v in reversed(values)]
+        )
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.
