@@ -111,7 +111,6 @@ class _InternalParser(GenericASTBuilder):
     # The `yield_atom` is not supported by this grammar since it must occur
     # within a generator definition.
     #
-
     def p_atoms(self):
         '''The atoms are the most basic element of an expression.
 
@@ -136,6 +135,7 @@ class _InternalParser(GenericASTBuilder):
         expr ::= binary_expr
         expr ::= binary_expr_na
         expr ::= build_list
+        expr ::= build_map
         expr ::= cmp
         expr ::= and
         expr ::= and2
@@ -548,7 +548,7 @@ class Parser:
             elif op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
             elif op == 'BUILD_MAP':
-                rule = 'build_map :: = ' + 'expr expr '*v + k
+                rule = 'build_map ::= ' + 'expr expr '*v + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':
@@ -577,13 +577,6 @@ class Parser:
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
-                if _py3:
-                    # self.add_rule(
-                    #     'list ::= %s load_closure _py_load_dictcomp %s expr '
-                    #     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
-                    #     nop
-                    # )
-                    pass
                 rule = None
             elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
                         'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
