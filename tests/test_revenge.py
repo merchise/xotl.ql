@@ -481,6 +481,11 @@ BASIC_EXPRESSIONS_PY3 = [
     '...',   # Ellipsis
     'a[:...]',
     'lambda *, a=1, b=2: a + b',
+
+    '{**a, b: 1, **c}',
+    '[*a, c, *b]',
+    '(*a, c, *b)',
+    '{*s, 1, *c}',
 ]
 _inject_tests(BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d')
 

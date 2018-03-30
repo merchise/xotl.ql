@@ -378,6 +378,17 @@ class QstBuilder(GenericASTTraversal):
         )
 
     @pushsentinel
+    def n_build_map_unpack(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_map_unpack_exit(self, node, children=None, items=None):
+        values = list(reversed(items))
+        keys = [None] * len(values)
+        return qst.Dict(keys, values)
+
+    @pushsentinel
     def n_build_const_key_map(self, node):
         pass
 
