@@ -50,7 +50,6 @@ def MAKE_FUNCTION(self, op, k, v):
 
 @MAKE_FUNCTION.override((3, 6) <= _py_version)
 def MAKE_FUNCTION(self, op, k, v):
-    # TODO:
     # MAKE_FUNCTION (argc)
     #
     # Pushes a new function object on the stack.  From bottom
@@ -66,4 +65,14 @@ def MAKE_FUNCTION(self, op, k, v):
     #   making a closure
     # * the code associated with the function (at TOS1)
     # * the :term:`qualified name` of the function (at TOS)
-    pass
+    posargs = 'expr ' if v & 0x01 else ''
+    kwargs = 'expr ' if v & 0x02 else ''
+    andict = 'expr ' if v & 0x04 else ''
+    cells = 'expr ' if v & 0x08 else ''
+    rule = 'mklambda ::= {posargs}{kwargs}{andict}{cells} _py_load_lambda ' + k
+    return rule.format(
+        posargs=posargs,
+        kwargs=kwargs,
+        andict=andict,
+        cells=cells
+    )
