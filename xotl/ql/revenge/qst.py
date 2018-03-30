@@ -10,13 +10,9 @@
 '''The Query Syntax Tree.
 
 '''
-
-from .eight import _py_version
-
-from xoutil.eight import _py3
-from xoutil.future.types import new_class
-
 import ast as pyast
+from xoutil.future.types import new_class
+from .eight import _py_version
 
 
 # For each AST class in the Python ast module we build a new one here that
@@ -163,12 +159,12 @@ if (3, 6) <= _py_version:
 
 # This None as a name.  Only use this for comparison, not as a return value.
 LOAD_NONE = Name('None', Load())   # noqa
-NONE_CT = NameConstant(None)        # noqa
+NONE_CT = NameConstant(None)       # noqa
 
 
 def is_constant(which, value):
     'Test if which is a NameConstant for `value`.'
-    return isinstance(which, NameConstant) and which.value is value
+    return isinstance(which, NameConstant) and which.value is value  # noqa
 
 
 def parse(source, filename='<unknown>', mode='eval'):

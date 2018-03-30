@@ -12,6 +12,8 @@ lint:
     - merchise_lint3
   tags:
     - merchise-lint3
+  only:
+    - branches
 
 run all tests (if needed):
   stage: test

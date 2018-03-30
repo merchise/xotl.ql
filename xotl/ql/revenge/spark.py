@@ -526,30 +526,30 @@ class GenericParser:
             if ttype is not None:
                 k = self.edges.get((state, ttype), None)
                 if k is not None:
-                    #self.add(next, (k, parent), i+1, ptr)
-                    #INLINED --v
+                    # self.add(next, (k, parent), i+1, ptr)
+                    # INLINED --v
                     new = (k, parent)
                     key = (new, i+1)
                     if new not in next:
                         self.links[key] = []
                         next.append(new)
                     self.links[key].append((ptr, None))
-                    #INLINED --^
-                    #nk = self.goto(k, None)
+                    # INLINED --^
+                    # nk = self.goto(k, None)
                     nk = self.edges.get((k, None), None)
                     if nk is not None:
-                        #self.add(next, (nk, i+1))
-                        #INLINED --v
+                        # self.add(next, (nk, i+1))
+                        # INLINED --v
                         new = (nk, i+1)
                         if new not in next:
                             next.append(new)
-                        #INLINED --^
+                        # INLINED --^
             else:
                 add = self.gotoST(state, token)
                 for k in add:
                     if k is not None:
                         self.add(next, (k, parent), i+1, ptr)
-                        #nk = self.goto(k, None)
+                        # nk = self.goto(k, None)
                         nk = self.edges.get((k, None), None)
                         if nk is not None:
                             self.add(next, (nk, i+1))
@@ -561,30 +561,30 @@ class GenericParser:
                 lhs, rhs = rule
                 for pitem in sets[parent]:
                     pstate, pparent = pitem
-                    #k = self.goto(pstate, lhs)
+                    # k = self.goto(pstate, lhs)
                     k = self.edges.get((pstate, lhs), None)
                     if k is not None:
                         why = (item, i, rule)
                         pptr = (pitem, parent)
-                        #self.add(cur, (k, pparent),
+                        # self.add(cur, (k, pparent),
                         #        i, pptr, why)
-                        #INLINED --v
+                        # INLINED --v
                         new = (k, pparent)
                         key = (new, i)
                         if new not in cur:
                             self.links[key] = []
                             cur.append(new)
                         self.links[key].append((pptr, why))
-                        #INLINED --^
-                        #nk = self.goto(k, None)
+                        # INLINED --^
+                        # nk = self.goto(k, None)
                         nk = self.edges.get((k, None), None)
                         if nk is not None:
-                            #self.add(cur, (nk, i))
-                            #INLINED --v
+                            # self.add(cur, (nk, i))
+                            # INLINED --v
                             new = (nk, i)
                             if new not in cur:
                                 cur.append(new)
-                            #INLINED --^
+                            # INLINED --^
 
     def predecessor(self, key, causal):
         for p, c in self.links[key]:
@@ -609,7 +609,6 @@ class GenericParser:
             rule = self.ambiguity(self.newrules[nt])
         else:
             rule = self.newrules[nt][0]
-        #print rule
 
         rhs = rule[1]
         attr = [None] * len(rhs)
@@ -628,7 +627,6 @@ class GenericParser:
         rule = choices[0]
         if len(choices) > 1:
             rule = self.ambiguity(choices)
-        #print rule
 
         rhs = rule[1]
         attr = [None] * len(rhs)
@@ -640,7 +638,6 @@ class GenericParser:
                     attr[i] = tokens[k-1]
                     key = (item, k)
                     item, k = self.predecessor(key, None)
-            #elif self.isnullable(sym):
             elif self._NULLABLE == sym[0:len(self._NULLABLE)]:
                 attr[i] = self.deriveEpsilon(sym)
             else:
@@ -691,8 +688,8 @@ class GenericASTBuilder(GenericParser):
         self.AST = AST
 
     def preprocess(self, rule, func):
-        rebind = lambda lhs, self=self: \
-                 lambda args, lhs=lhs, self=self: self.buildASTNode(args, lhs)
+        def rebind(lhs, self=self):
+            return lambda args, lhs=lhs, self=self: self.buildASTNode(args, lhs)
         lhs, rhs = rule
         return rule, rebind(lhs)
 
@@ -797,8 +794,9 @@ def get_closure(p, *starts):
 
 def get_graphivz_script(p, *starts):
     lines = ['digraph G {']
-    for head, tail in get_grammar_arrows(p, start):
-        lines.append('{head} -> {tail};'.format(head=head, tail=tail))
+    for start in starts:
+        for head, tail in get_grammar_arrows(p, start):
+            lines.append('{head} -> {tail};'.format(head=head, tail=tail))
     lines.append('}')
     return '\n'.join(lines)
 
