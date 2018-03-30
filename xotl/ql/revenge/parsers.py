@@ -583,7 +583,7 @@ class Parser:
                 na = (v & 0xff)           # positional parameters
                 nk = (v >> 8) & 0xff      # keyword parameters
                 rule = 'call_function ::= expr ' + 'expr ' * na
-                if op in ('CALL_FUNTCION_VAR', 'CALL_FUNCTION_VAR_KW'):
+                if op in ('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW'):
                     # Add the *arg
                     rule += 'stararg_expr '
                 rule += 'kwarg ' * nk
