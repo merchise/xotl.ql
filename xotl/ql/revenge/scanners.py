@@ -290,10 +290,14 @@ class Instruction:
     @property
     def size(self):
         import dis
-        if self.opcode < dis.HAVE_ARGUMENT:
-            return 1
+        if _py_version < (3, 6):
+            return 1 if self.opcode < dis.HAVE_ARGUMENT else 3
         else:
-            return 3 if _py_version < (3, 6) else 2
+            # versionchanged:: 3.6
+            #
+            # Use 2 bytes for each instruction. Previously the number of bytes
+            # varied by instruction.
+            return 2
 
     @property
     def _instruction(self):
