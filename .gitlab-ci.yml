@@ -1,14 +1,10 @@
 ---
-variables:
-  PROJECT_NAME: xotl.ql
-
 stages:
   - test
   - check
   - build
   - publish
   - tweet
-  - clean
 
 lint:
   stage: test
@@ -20,7 +16,7 @@ lint:
 run all tests (if needed):
   stage: test
   script:
-    - git show --oneline --name-only $CI_COMMIT_SHA | grep \.py$ && tox --skip-missing-interpreters || echo "Skip running test... no Python file touched in $CI_COMMIT_REF_NAME ($CI_COMMIT_SHA)"
+    - if git show --oneline --name-only $CI_COMMIT_SHA | grep \.py$; then tox -e3.5-unit-3.5-doctest --skip-missing-interpreters; fi
   tags:
     - python
     - virtualenv
@@ -71,8 +67,8 @@ publish_locally:
     GIT_STRATEGY: none
   stage: publish
   script:
-    - ssh manu@gestion.lahavane.com "mkdir -p Repos/$PROJECT_NAME"
-    - scp dist/* manu@gestion.lahavane.com:Repos/$PROJECT_NAME/
+    - ssh manu@gestion.lahavane.com "mkdir -p Repos/$CI_PROJECT_NAME"
+    - scp dist/* manu@gestion.lahavane.com:Repos/$CI_PROJECT_NAME/
   tags:
     - repo.lahavane.com
   only:
@@ -83,7 +79,7 @@ publish_locally:
     - build binary distribution
   environment:
     name: repo.lahavane.com
-    url: http://repo.lahavane.com/pypi/$PROJECT_NAME
+    url: http://repo.lahavane.com/pypi/$CI_PROJECT_NAME
 
 
 publish in pypi:
@@ -102,14 +98,14 @@ publish in pypi:
     - build binary distribution
   environment:
     name: pypi
-    url: https://pypi.python.org/pypi/$PROJECT_NAME
+    url: https://pypi.python.org/pypi/$CI_PROJECT_NAME
 
 brag about new release in twitter:
   variables:
     GIT_STRATEGY: none
   stage: tweet
   script:
-    - twitter set "New version $CI_COMMIT_REF_NAME of $PROJECT_NAME -- https://pypi.python.org/pypi/$PROJECT_NAME"
+    - twitter set "New version $CI_COMMIT_REF_NAME of xotl.ql -- https://pypi.python.org/pypi/xotl.ql"
   tags:
     - twitter
   only:
@@ -121,7 +117,7 @@ build documentation:
   stage: build
   script:
     - mkdir -p envs
-    - virtualenv -p python3 envs/$CI_COMMIT_SHA
+    - virtualenv -p `which python3` envs/$CI_COMMIT_SHA
     - source envs/$CI_COMMIT_SHA/bin/activate
     - pip install sphinx sphinx-rtd-theme
     - pip install -e .
@@ -131,12 +127,12 @@ build documentation:
   artifacts:
     paths:
       - $CI_PROJECT_NAME-$CI_COMMIT_SHA.tar.bz2
-    expire_in: 4 hours
+    expire_in: 4 days
   tags:
     - virtualenv
   only:
     - tags
-    - branches
+    - master
 
 publish in our rtd:
   variables:
@@ -155,21 +151,7 @@ publish in our rtd:
     - build documentation
   environment:
     name: docs.lahavane.com
-    url: http://docs.lahavane.com/$PROJECT_NAME/$CI_COMMIT_REF_NAME
+    url: http://docs.lahavane.com/$CI_PROJECT_NAME/$CI_COMMIT_REF_NAME
   only:
     - tags
-    - branches
-
-clean_build:
-  variables:
-    GIT_STRATEGY: none
-  stage: clean
-  script:
-    - rm -f dist/*
-  tags:
-    - python
-  when: always
-  allow_failure: true
-  dependencies:
-    - build source distribution
-    - build binary distribution
+    - master
