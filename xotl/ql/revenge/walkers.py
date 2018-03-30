@@ -90,52 +90,6 @@ def _build_sentinel(f, node, name=None):
 from xoutil.eight.meta import metaclass
 
 
-class SentenceSyntaxType(type):
-    def __instancecheck__(cls, instance):
-        if isinstance(instance, (Token, AST)):
-            checker = getattr(cls, 'checknode', None)
-            if checker:
-                return checker(instance)
-        return False
-
-    def __new__(cls, name, bases, attrs):
-        checker = attrs.get('checknode', None)
-        if checker and not isinstance(checker, classmethod):
-            attrs['checknode'] = classmethod(checker)
-        return super().__new__(cls, name, bases, attrs)
-
-    def __call__(cls, node):
-        return isinstance(node, cls)
-
-
-class SyntaxElement(metaclass(SentenceSyntaxType)):
-    def checknode(cls, node):
-        return True
-
-
-class Sentence(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'stmt'
-
-
-class Expression(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'expr'
-
-
-class Suite(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'stmts'
-
-
-class isifsentence(Sentence):
-    def checknode(cls, node):
-        try:
-            return node == 'ifstmt' and node[1][0] == 'return_if_stmt'
-        except (TypeError, IndexError):
-            return False
-
-
 # Some ASTs used for comparing code fragments (like 'return None' at
 # the end of functions).
 NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
