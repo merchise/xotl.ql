@@ -471,7 +471,6 @@ class QstBuilder(GenericASTTraversal):
     @pushsentinel
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
-        import ipdb; ipdb.set_trace()    # TODO: Remove this
         # See customs.MAKE_FUNCTION
         hasposargs = bool(argc & 0x01)
         haskwargs = bool(argc & 0x02)
@@ -483,7 +482,6 @@ class QstBuilder(GenericASTTraversal):
     @pushtostack
     @take_until_sentinel
     def n_mklambda_exit(self, node, children=None, items=None):
-        import ipdb; ipdb.set_trace()    # TODO: Remove this
         hasposargs, haskwargs, hasandict, hascells = self._stack.pop()
         if hasposargs:
             posargs = items.pop()
