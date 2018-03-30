@@ -790,6 +790,32 @@ class QstBuilder(GenericASTTraversal):
         return cls(list(reversed(items)), *args)
 
     @pushsentinel
+    def n_build_list_unpack(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_list_unpack_exit(self, node, children=None, items=None):
+        opcode, _ = self._ensure_custom_tk(
+            node,
+            ('BUILD_LIST_UNPACK', 'BUILD_SET_UNPACK', 'BUILD_TUPLE_UNPACK')
+        )
+        if opcode == 'BUILD_LIST_UNPACK':
+            cls = qst.List
+            args = (qst.Load(), )
+        elif opcode == 'BUILD_SET_UNPACK':
+            cls = qst.Set
+            args = ()
+        else:
+            assert opcode == 'BUILD_TUPLE_UNPACK'
+            cls = qst.Tuple
+            args = (qst.Load(), )
+        return cls(
+            [qst.Starred(i, qst.Load()) for i in reversed(items)],
+            *args
+        )
+
+    @pushsentinel
     def n_comp_ifnotor(self, node):
         pass
 

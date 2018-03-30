@@ -134,7 +134,7 @@ class _InternalParser(GenericASTBuilder):
         expr ::= load_attr
         expr ::= binary_expr
         expr ::= binary_expr_na
-        expr ::= build_list
+        expr ::= build_list | build_list_unpack
         expr ::= build_map
         expr ::= build_map_unpack
         expr ::= build_const_key_map
@@ -548,6 +548,8 @@ class Parser:
                 rule = method(self, op, k, v)
             elif op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
+            elif op in ('BUILD_LIST_UNPACK', 'BUILD_TUPLE_UNPACK', 'BUILD_SET_UNPACK'):
+                rule = 'build_list_unpack ::= ' + 'expr '*v + k
             elif op == 'BUILD_MAP':
                 rule = 'build_map ::= ' + 'expr expr '*v + k
             elif op == 'BUILD_MAP_UNPACK':
