@@ -390,6 +390,7 @@ class QstBuilder(GenericASTTraversal):
     # function for lambda and comprehensions.
     n__py_load_lambda = _n_walk_innerfunc(islambda=True)
 
+    @override((3, 5) <= _py_version < (3, 6))
     @pushsentinel
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
@@ -398,6 +399,7 @@ class QstBuilder(GenericASTTraversal):
         nkwonly = (argc >> 8) & 0xFF
         self._stack.append((defaults, nkwonly))
 
+    @override((3, 5) <= _py_version < (3, 6))
     @pushtostack
     @take_until_sentinel
     def n_mklambda_exit(self, node, children=None, items=None):
@@ -423,6 +425,39 @@ class QstBuilder(GenericASTTraversal):
         arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
                                   kwarg, defaults)
         return qst.Lambda(arguments, body)
+
+    @n_mklambda.override((3, 6) <= _py_version)
+    @pushsentinel
+    def n_mklambda(self, node, children=None):
+        _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
+        import ipdb; ipdb.set_trace()    # TODO: Remove this
+        # See customs.MAKE_FUNCTION
+        hasposargs = bool(argc & 0x01)
+        haskwargs = bool(argc & 0x02)
+        hasandict = bool(argc & 0x04)
+        hascells = bool(argc & 0x08)
+        self._stack.append((hasposargs, haskwargs, hasandict, hascells))
+
+    @n_mklambda_exit.override((3, 6) <= _py_version)
+    @pushtostack
+    @take_until_sentinel
+    def n_mklambda_exit(self, node, children=None, items=None):
+        import ipdb; ipdb.set_trace()    # TODO: Remove this
+        hasposargs, haskwargs, hasandict, hascells = self._stack.pop()
+        if hasposargs:
+            posargs = items.pop()
+        else:
+            posargs = None
+        if haskwargs:
+            kwargs = items.pop()
+        else:
+            kwargs = None
+        # Annotations are not possible (inlined) in lambdas, we don't bother.
+        assert not hasandict
+        if hascells:
+            cells = items.pop()
+        else:
+            cells = None
 
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
