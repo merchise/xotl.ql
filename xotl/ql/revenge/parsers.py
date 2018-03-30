@@ -535,13 +535,17 @@ class Parser:
         #    call_function ::= expr {expr}^n CALL_FUNCTION_KW_n
         #
         from xoutil.eight import _py3
+        from . import customs
         for k, v in list(customize.items()):
             # avoid adding the same rule twice to this parser
             if k in self.customized:
                 continue
             self.customized[k] = None
             op = k[:k.rfind('_')]
-            if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
+            method = getattr(customs, op, None)
+            if method:
+                rule = method(self, op, k, v)
+            elif op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
             elif op == 'BUILD_MAP':
                 rule = 'build_map :: = ' + 'expr expr '*v + k
@@ -552,21 +556,6 @@ class Parser:
             elif op in ('RAISE_VARARGS'):
                 # no need to add a rule
                 continue
-            elif op == 'MAKE_FUNCTION':
-                if _py3:
-                    ndefaults = v & 0xFF
-                    nkwonly = (v >> 8) & 0xFF
-                    nannotations = (v >> 16) & 0x7FFF
-                    assert nannotations == 0
-                else:
-                    ndefaults = v
-                    nkwonly = 0
-                self.add_rule(
-                    'mklambda ::= %s %s _py_load_lambda %s' % (
-                        'expr ' * ndefaults, 'kwarg ' * nkwonly, k),
-                    nop
-                )
-                rule = None
             elif op == 'MAKE_CLOSURE':
                 self.add_rule(
                     'mklambda ::= %s load_closure _py_load_lambda %s' % (
