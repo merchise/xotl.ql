@@ -455,6 +455,12 @@ BASIC_EXPRESSIONS = [
     'a.attr.b[2:3]',
     'a.attr.b[a[s]:n[l]:s[t]]',
 
+    '{"a": 1, "b": c, "d": 1 + c}',
+]
+_inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
+
+
+FUNCTION_CALLS_EXPRS = [
     'c()',
     'c(a)',
     'c(b=1)',
@@ -472,10 +478,8 @@ BASIC_EXPRESSIONS = [
     case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
     'lambda x, y=1, *args, **kw: x + y',
     '(lambda x: x)(y)',
-
-    '{"a": 1, "b": c, "d": 1 + c}',
 ]
-_inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
+_inject_tests(FUNCTION_CALLS_EXPRS, 'test_funcalls_expressions_%d')
 
 BASIC_EXPRESSIONS_PY3 = [
     '...',   # Ellipsis
