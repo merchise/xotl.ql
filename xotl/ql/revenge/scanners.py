@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -14,30 +14,15 @@
 
 # flake8: noqa
 
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 __all__ = ['Token', 'Scanner', 'getscanner']
 
 import types
 import dis
 from array import array
-
-#  We'll only support 2.7 and >=3.2,<3.5
-from xoutil.eight import _py3, _py2, _pypy
-from sys import version_info as _py_version
-assert _py_version >= (2, 7, 0) and (
-    not _py_version >= (3, 0) or (3, 2) <= _py_version < (3, 5))
+from sys import intern  # Py3k
 
 # Py3.5 changes BUILD_MAP, adds BUILD_MAP_UNPACK, BUILD_MAP_UNPACK_WITH_CALL
-
-try:
-    from sys import intern  # Py3k
-except ImportError:
-    from __builtin__ import intern
-
-
+from .eight import pypy as _pypy, _py_version
 from .exceptions import ScannerError, ScannerAssertionError  # noqa
 
 
@@ -50,21 +35,8 @@ globals().update(
     {k.replace('+', '_'): v for (k, v) in list(dis.opmap.items())}
 )
 
-
-if _py3:
-    PRINT_ITEM = PRINT_ITEM_TO = PRINT_NEWLINE = PRINT_NEWLINE_TO = None
-    STORE_SLICE_0 = STORE_SLICE_1 = STORE_SLICE_2 = STORE_SLICE_3 = None
-    DELETE_SLICE_0 = DELETE_SLICE_1 = DELETE_SLICE_2 = DELETE_SLICE_3 = None
-    EXEC_STMT = None
-    DUP_TOPX = None
-
-if _py2:
-    DUP_TOP_TWO = None
-
 if not _pypy:
     BUILD_LIST_FROM_ARG = None
-
-del _py3, _py2, _pypy
 
 JUMP_IF_OR_POPs = (JUMP_IF_TRUE_OR_POP, JUMP_IF_FALSE_OR_POP)  # noqa
 POP_JUMP_IFs = (POP_JUMP_IF_TRUE, POP_JUMP_IF_FALSE)  # noqa
@@ -85,21 +57,44 @@ def jumps_on_false(x):
     return x in (JUMP_IF_FALSE_OR_POP, POP_JUMP_IF_FALSE)
 
 
+def ensure_symbols(*syms, default=None):
+    'Ensure symbols are in the module\'s globals with value default'
+    gl = globals()
+    for sym in syms:
+        gl.setdefault(sym, default)
+
+
+# Missing in Py3.6:
+ensure_symbols('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW', )
+
+
+# New in Python  3.6
+ensure_symbols('CALL_FUNCTION_EX', 'BUILD_CONST_KEY_MAP',
+               'BUILD_TUPLE_UNPACK_WITH_CALL', 'BUILD_CONST_KEY_MAP',
+               'BUILD_STRING', 'STORE_ANNOTATION', 'FORMAT_VALUE')
+
+
 # The byte-codes that need to be customized cause they take a variable
 # number of stack objects.
 CUSTOMIZABLE = (
-    BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,                  # noqa
-    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION, MAKE_CLOSURE,      # noqa
-    CALL_FUNCTION_VAR, CALL_FUNCTION_KW,                              # noqa
-    CALL_FUNCTION_VAR_KW, DUP_TOPX, RAISE_VARARGS                     # noqa
+    BUILD_TUPLE_UNPACK,
+    BUILD_LIST_UNPACK,
+    BUILD_SET_UNPACK,
+    BUILD_MAP_UNPACK,
+    BUILD_MAP_UNPACK_WITH_CALL,
+    BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,
+    BUILD_CONST_KEY_MAP,
+    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,
+    CALL_FUNCTION_VAR, CALL_FUNCTION_KW,
+    CALL_FUNCTION_VAR_KW, RAISE_VARARGS
 )
 
 
 from contextlib import contextmanager
-from .eight import Bytecode, Instruction as BaseInstruction
+from dis import Bytecode, Instruction as BaseInstruction
 
 
-class label(object):
+class label:
     '''Represent a named label in a instruction set building process.
 
     See `InstructionSetBuilder`:class: for details.
@@ -141,13 +136,13 @@ class label(object):
         return '<label: %s>' % self.name
 
 
-class InstructionSetBuilder(object):
+class InstructionSetBuilder:
     '''A helper to build a set of instructions.
 
     Usage::
 
         builder = InstructionSetBuilder()
-        with builder() as Intruction:
+        with builder() as Instruction:
             Instruction(opcode='LOAD_NAME', arg=0, argval='x')
 
     Features:
@@ -194,7 +189,7 @@ class InstructionSetBuilder(object):
         '''Return the byte-code for the current set of instructions.'''
         res = array('B')
         for i in self:
-            res.fromstring(i.code)
+            res.frombytes(i.code)
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
 
@@ -223,7 +218,7 @@ class InstructionSetBuilder(object):
             instr.is_jump_target = instr.offset in targets
 
 
-class Instruction(object):
+class Instruction:
     def __init__(self, *args, **kwargs):
         if args and len(args) > 1 or kwargs:
             opname = kwargs.get('opname', None)
@@ -259,7 +254,9 @@ class Instruction(object):
     def target(self):
         opcode = self.opcode
         if opcode in dis.hasjrel:
-            assert self.argval == self.arg + self.size + self.offset
+            assert self.argval == self.arg + self.size + self.offset, \
+                '%s != %s + %s + %s' % (self.argval, self.arg, self.size,
+                                        self.offset)
             return self.argval
         else:
             assert opcode in dis.hasjabs
@@ -286,14 +283,17 @@ class Instruction(object):
         else:
             bytes_ = [self.opcode]
         res = array('B')
-        res.fromstring(''.join(chr(b) for b in bytes_))
+        res.extend(bytes_)
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
 
     @property
     def size(self):
         import dis
-        return 1 if self.opcode < dis.HAVE_ARGUMENT else 3
+        if self.opcode < dis.HAVE_ARGUMENT:
+            return 1
+        else:
+            return 3 if _py_version < (3, 6) else 2
 
     @property
     def _instruction(self):
@@ -312,7 +312,7 @@ class Instruction(object):
     def __repr__(self):
         return repr(self._instruction)
 
-    __hash__ =  None   # we're are mutable, not suitable for keys.
+    __hash__ = None   # we're are mutable, not suitable for keys.
 
     def __eq__(self, other):
         from xoutil.objects import validate_attrs
@@ -320,7 +320,7 @@ class Instruction(object):
                               force_equals=BaseInstruction._fields)
 
 
-class Token(object):
+class Token:
     """Class representing a byte-code token.
 
     A byte-code token is equivalent to the contents of one line
@@ -355,7 +355,8 @@ class Token(object):
 
     @property
     def type(self):
-        # Several parts of the parser and walker assume a type attribute.  This is consistent with the type attribute for rules.
+        # Several parts of the parser and walker assume a type attribute.
+        # This is consistent with the type attribute for rules.
         return self.name
 
     __hash__ = None
@@ -393,7 +394,7 @@ class Token(object):
         raise IndexError
 
 
-class Code(object):
+class Code:
     """Class for representing code-objects.
 
     This is similar to the original code object, but additionally
@@ -407,7 +408,7 @@ class Code(object):
         self._tokens, self._customize = scanner.disassemble(co, classname)
 
 
-class Structure(object):
+class Structure:
     def __init__(self, start, end, type_):
         self.start = start
         self.end = end
@@ -430,7 +431,7 @@ class Structure(object):
             return self.end
 
 
-class Scanner(object):
+class Scanner:
     def __init__(self, version, Token=Token):
         self.version = version
         from sys import version_info
@@ -530,7 +531,10 @@ class Scanner(object):
                     jumps[offset] = restricted
                     return
                 above_target = instructions[target_index-1]
-                if target > offset and above_target.opcode in CONDITIONAL_JUMPs or above_target.opcode == RETURN_VALUE:
+                above_opcode = above_target.opcode
+                above_is_condjump = above_opcode in CONDITIONAL_JUMPs
+                above_is_retval = above_target == RETURN_VALUE
+                if target > offset and above_is_condjump or above_is_retval:
                     # The instruction above the target is a conditional jump
                     # or a RETURN_VALUE, this a likely a nested conditional.
                     #
@@ -665,9 +669,9 @@ class Scanner(object):
             # if so, it's part of a larger conditional
             if (code[pre[target]] in CONDITIONAL_JUMPs) and (target > pos):
                 self.fixed_jumps[pos] = pre[target]
-                structs.append({'type':  'and/or',
+                structs.append({'type': 'and/or',
                                 'start': start,
-                                'end':   pre[target]})
+                                'end': pre[target]})
                 return
             # is this an `if and`
             if op == POP_JUMP_IF_FALSE:
@@ -679,7 +683,7 @@ class Scanner(object):
                 if match:
                     if code[pre[rtarget]] in UNCONDITIONAL_JUMPs \
                             and pre[rtarget] not in self.stmts \
-                            and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:
+                            and self.restrict_to_parent(self.get_target(pre[rtarget]), parent) == rtarget:  # noqa
                         if code[pre[pre[rtarget]]] == JUMP_ABSOLUTE \
                                 and self.remove_mid_line_ifs([pos]) \
                                 and target == self.get_target(pre[pre[rtarget]]) \
@@ -688,9 +692,9 @@ class Scanner(object):
                             pass
                         elif code[pre[pre[rtarget]]] == RETURN_VALUE \
                                 and self.remove_mid_line_ifs([pos]) \
-                                and 1 == (len(set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
+                                and 1 == (len(set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]],
                                                              POP_JUMP_IFs, target))) \
-                                              | set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]], \
+                                              | set(self.remove_mid_line_ifs(self.rem_or(start, pre[pre[rtarget]],
                                                                                          POP_JUMP_IFs + (JUMP_ABSOLUTE, ), pre[rtarget], True))))):
                             pass
                         else:
@@ -750,18 +754,18 @@ class Scanner(object):
                     if if_end > start:
                         return
                 end = self.restrict_to_parent(if_end, parent)
-                structs.append({'type':  'if-then',
+                structs.append({'type': 'if-then',
                                 'start': start,
-                                'end':   pre[rtarget]})
+                                'end': pre[rtarget]})
                 self.not_continue.add(pre[rtarget])
                 if rtarget < end:
-                    structs.append({'type':  'if-else',
+                    structs.append({'type': 'if-else',
                                     'start': rtarget,
-                                    'end':   end})
+                                    'end': end})
             elif code[pre[rtarget]] == RETURN_VALUE:
-                structs.append({'type':  'if-then',
+                structs.append({'type': 'if-then',
                                 'start': start,
-                                'end':   rtarget})
+                                'end': rtarget})
                 self.return_end_ifs.add(pre[rtarget])
         elif op in JUMP_IF_OR_POPs:
             target = self.get_target(pos, op)
@@ -862,7 +866,7 @@ def keep_single_return(instructions):
     if last.opcode == RETURN_VALUE:
         builder = InstructionSetBuilder()
         lastlabel = label('previous-offset-%s' % last.offset)
-        l = len(instructions) - 1
+        l = len(instructions) - 1  # noqa: E741
         with builder() as Instruction:
             for index, inst in enumerate(instructions):
                 opname = inst.opname
@@ -929,6 +933,7 @@ def normalize_pypy_conditional(instructions):
                               is_jump_target=False)
         else:
             yield Instruction(i)
+
 
 def xdis(f, native=False, normalize=True):
     '''Utility for quickly inspected the tokens produced by the scanner.

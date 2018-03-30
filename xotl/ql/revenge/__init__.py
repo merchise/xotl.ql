@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -15,25 +15,15 @@
 #
 #
 
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 import types
 from xoutil.objects import memoized_property
-
-#  We'll only support 2.7 and >=3.2,<3.5
-from sys import version_info as _py_version
-assert _py_version >= (2, 7, 0) and (
-    not _py_version >= (3, 0) or (3, 2) <= _py_version < (3, 5))
-del _py_version
 
 from . import scanners, walkers
 from .scanners import getscanner   # noqa:  exported
 from .parsers import ParserError
 
 
-class Uncompyled(object):
+class Uncompyled:
     '''A query object which is built from byte-code.
     '''
     def __init__(self, obj, version=None, get_current_thread=None,
@@ -77,6 +67,7 @@ class Uncompyled(object):
             )
         except ParserError as error:
             # So the debugger print the locals
+            error.tokens = tokens
             raise error
         # Go down in the AST until the root has more than one children.
         while ast and len(ast) == 1:

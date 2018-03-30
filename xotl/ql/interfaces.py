@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -18,17 +18,12 @@ constructors can be provided via the `__init__` method.
 
 '''
 
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
-
 import types
 from xoutil.future import inspect
 from xoutil.eight.meta import metaclass
 
 
-class MemberDescription(object):
+class MemberDescription:
     def __init__(self, val):
         self.val = val
 
@@ -83,7 +78,7 @@ class InterfaceType(type):
     __subclasscheck__ = __instancecheck__
 
 
-class Interface(metaclass(InterfaceType)):
+class Interface(metaclass=InterfaceType):
     '''Define an interface.
 
     Interfaces support a weak 'instance' test definition::
@@ -98,7 +93,7 @@ class Interface(metaclass(InterfaceType)):
     '''
 
 
-class Attribute(object):
+class Attribute:
     def __init__(self, name, doc):
         self.name = self.__name__ = name
         self.__doc__ = doc
@@ -198,7 +193,7 @@ class QueryTranslator(Interface):
     .. note:: Since Python classes are callable, you may implement a
        translator/execution plan in a single class::
 
-         >>> class ExecutionPlan(object):
+         >>> class ExecutionPlan:
          ...     def __init__(self, query, **kwargs):
          ...         pass
          ...

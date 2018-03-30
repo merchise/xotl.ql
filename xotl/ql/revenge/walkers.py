@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -12,18 +12,7 @@
 #  See main module for license.
 #
 
-#  flake8: noqa
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 import sys
-try:
-    from types import EllipsisType, IntType
-except ImportError:
-    EllipsisType = type(Ellipsis)
-    IntType = int
 
 from .spark import GenericASTTraversal
 from . import parsers, qst
@@ -35,7 +24,8 @@ from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
 from .eight import py3k as _py3, py27 as _py27, _py_version
 
-
+EllipsisType = type(Ellipsis)
+IntType = int
 minint = -sys.maxsize-1
 
 # Helper: decorators that push/take item to/from a stack.
@@ -100,52 +90,6 @@ def _build_sentinel(f, node, name=None):
 from xoutil.eight.meta import metaclass
 
 
-class SentenceSyntaxType(type):
-    def __instancecheck__(cls, instance):
-        if isinstance(instance, (Token, AST)):
-            checker = getattr(cls, 'checknode', None)
-            if checker:
-                return checker(instance)
-        return False
-
-    def __new__(cls, name, bases, attrs):
-        checker = attrs.get('checknode', None)
-        if checker and not isinstance(checker, classmethod):
-            attrs['checknode'] = classmethod(checker)
-        return super(SentenceSyntaxType, cls).__new__(cls, name, bases, attrs)
-
-    def __call__(cls, node):
-        return isinstance(node, cls)
-
-
-class SyntaxElement(metaclass(SentenceSyntaxType)):
-    def checknode(cls, node):
-        return True
-
-
-class Sentence(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'stmt'
-
-
-class Expression(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'expr'
-
-
-class Suite(SyntaxElement):
-    def checknode(cls, node):
-        return node == 'stmts'
-
-
-class isifsentence(Sentence):
-    def checknode(cls, node):
-        try:
-            return node == 'ifstmt' and node[1][0] == 'return_if_stmt'
-        except (TypeError, IndexError):
-            return False
-
-
 # Some ASTs used for comparing code fragments (like 'return None' at
 # the end of functions).
 NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
@@ -154,9 +98,9 @@ NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
 RETURN_NONE = AST('return_stmt', [NONE, Token('RETURN_VALUE')])
 
 
-class QstBuilder(GenericASTTraversal, object):
+class QstBuilder(GenericASTTraversal):
     def __init__(self, ast=None):
-        super(QstBuilder, self).__init__(ast)
+        super().__init__(ast)
         self._stack = []
 
     def stop(self, pop=True):
@@ -366,7 +310,7 @@ class QstBuilder(GenericASTTraversal, object):
         nkwargs = (val >> 8) & 0xFF
         if name.endswith('_KW'):
             kwargs = 1
-            name, _ = name.rsplit('_', 1)
+            name, _ = name.rsplit('_', 1)  # maybe CALL_FUNCTION_VAR_KW
         else:
             kwargs = None
         if name.endswith('_VAR'):
@@ -383,15 +327,17 @@ class QstBuilder(GenericASTTraversal, object):
         args = []
         for _ in range(nargs):
             args.append(items.pop())
+        if starargs:
+            starargs = items.pop()
+            args.append(starargs)
         kws = []
         for _ in range(nkwargs):
             kws.append(items.pop())
-        if starargs:
-            starargs = items.pop()
         if kwarg:
             kwarg = items.pop()
+            kws.append(kwarg)
         assert not items
-        return qst.Call(func, args, kws, starargs, kwarg)
+        return qst.Call(func, args, kws)
 
     @pushtostack
     @take_one
@@ -402,19 +348,51 @@ class QstBuilder(GenericASTTraversal, object):
         # need to unwrap it to build the `keyword`
         return qst.keyword(token.argval, value)
 
+    @pushtostack
+    @take_one
+    def n_stararg_expr_exit(self, node, children=None, items=None):
+        name, = children
+        return qst.Starred(name, qst.Load())
+
+    @pushtostack
+    @take_one
+    def n_kwarg_expr_exit(self, node, children=None, items=None):
+        val, = children
+        return qst.keyword(None, val)
+
     @pushsentinel
-    def n_mapexpr(self, node):
+    def n_build_map(self, node):
         pass
 
     @pushtostack
     @take_until_sentinel
-    def n_mapexpr_exit(self, node, children=None, items=None):
-        args = [], []  # keys, values
-        # For {a: b, c: d}, items will be [c, d, a, b]... Reversed is [b, a,
-        # d, c], so 0, 2, 4 ... are values, 1, 3, 5, ... are keys.
-        for i, which in enumerate(reversed(items)):
-            args[(i + 1) % 2].append(which)
-        return qst.Dict(*args)
+    def n_build_map_exit(self, node, children=None, items=None):
+        # `items` holds the keys and values mixed. From the BUILD_MAP doc:
+        #
+        #     Pushes a new dictionary object onto the stack.  Pops ``2 *
+        #     count`` items so that the dictionary holds *count* entries:
+        #     ``{..., TOS3: TOS2, TOS1: TOS}``.
+        #
+        # For `{a: b, c: d}` we get items like ``[<d>, <c>, <b>, <a>]``.  So,
+        # an even index is a value, odds are keys.
+        from .tools import split, even
+        from xoutil.fp.tools import compose, fst
+        opcode, nitems = self._ensure_custom_tk(node, 'BUILD_MAP')
+        values, keys = split(enumerate(items), compose(even, fst))
+        return qst.Dict(
+            [k for _, k in reversed(keys)],
+            [v for _, v in reversed(values)]
+        )
+
+    @pushsentinel
+    def n_build_const_key_map(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_const_key_map_exit(self, node, children=None, items=None):
+        import ipdb; ipdb.set_trace()    # TODO: Remove this
+        pass
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.

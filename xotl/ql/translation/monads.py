@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -16,10 +16,6 @@
 
 '''
 
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 import operator
 
 from xoutil.symbols import Undefined
@@ -33,7 +29,7 @@ _py3 = _py_version >= (3, 0)
 del sys
 
 
-class Type(object):
+class Type:
     'An algebra as a type.'
     pass
 
@@ -56,7 +52,7 @@ class Empty(Type):
         '''
         instance = getattr(cls, 'instance', None)
         if instance is None:
-            res = super(Empty, cls).__new__(cls)
+            res = super().__new__(cls)
             res.__init__()
             cls.instance = res
             return res
@@ -86,7 +82,7 @@ class Empty(Type):
         return set(self.iter())
 
 
-class _BaseCons(object):
+class _BaseCons:
     @staticmethod
     def _head(collection):
         def _inner():
@@ -473,7 +469,7 @@ Zero = Empty
 Unit = Cons(Undefined, Empty())
 
 
-class _Mapper(object):
+class _Mapper:
     # Simply wraps the function of a map, so that the original function is not
     # just a closure-accessible value, but exposed to the query translators.
     def __init__(self, f):
@@ -603,16 +599,16 @@ def translate(source_tree, map='Map', unit='Unit', join='Join', zero='Empty'):
     def Call(f, a=None):
         from xotl.ql import qst
         if a:
-            return qst.Call(f, [a], [], None, None)
+            return qst.Call(f, [a], [])
         else:
-            return qst.Call(f, [], [], None, None)
+            return qst.Call(f, [], [])
 
-    class generator(object):
+    class generator:
         def __init__(self, target, iter):
             self.target = target
             self.iter = iter
 
-    class genexpr(object):
+    class genexpr:
         def __init__(self, elt, *exprs):
             self.elt = elt
             self.exprs = exprs

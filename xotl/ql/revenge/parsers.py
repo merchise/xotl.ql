@@ -1,21 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
 # All rights reserved.
 #
-#  Copyright (c) 2000-2002, 2017 by hartmut Goebel <h.goebel@crazy-compilers.com>
+#  Copyright (c) 2000-2017 by hartmut Goebel <h.goebel@crazy-compilers.com>
 #  Copyright (c) 2005 by Dan Pascu <dan@windowmaker.org>
 #  Copyright (c) 1999 John Aycock
 #
 #  See main module for license.
 #
-
-# flake8: noqa
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
 
 __all__ = ['parse', 'AST', 'ParserError', 'Parser']
 
@@ -24,7 +18,7 @@ from xoutil.future.collections import UserList
 
 import sys
 _py_version = sys.version_info
-from .eight import override, py27, py32, py3k, py33, py34, pypy   # noqa
+from .eight import override, py3k, pypy   # noqa
 from .exceptions import ParserError as RevengeParserError
 
 try:
@@ -36,7 +30,7 @@ except ImportError:
 class AST(UserList):
     def __init__(self, type, kids=[]):
         self.type = intern(str(type))
-        UserList.__init__(self, kids)
+        super().__init__(kids)
 
     def __getitem__(self, item):
         return self.data[item]
@@ -73,18 +67,23 @@ class AST(UserList):
 
 class ParserError(RevengeParserError):
     def __init__(self, token, offset, *args):
-        super(ParserError, self).__init__(token, offset, *args)
+        super().__init__(token, offset, *args)
         self.token = token
         self.offset = offset
 
     def __str__(self):
-        return "Syntax error at or near `%r' token at offset %s" % \
-            (self.token, self.offset)
+        res = "Syntax error at or near `%r' token at offset %s" % \
+              (self.token, self.offset)
+        tokens = getattr(self, 'tokens', None)
+        if tokens:
+            res += '\nIn tokens:\n'
+            res += repr(tokens)
+        return res
 
 
 class _InternalParser(GenericASTBuilder):
     def __init__(self):
-        GenericASTBuilder.__init__(self, AST, 'sstmt')
+        super().__init__(AST, 'sstmt')
         self.customized = {}
 
     def error(self, token):
@@ -112,7 +111,6 @@ class _InternalParser(GenericASTBuilder):
     # The `yield_atom` is not supported by this grammar since it must occur
     # within a generator definition.
     #
-
     def p_atoms(self):
         '''The atoms are the most basic element of an expression.
 
@@ -129,42 +127,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    def p_mapexpression_common(self, args):
-        '''Common rules for map expressions across all Python versions.
-
-        expr ::= mapexpr
-
-        kvlist ::= kvlist kv
-        kvlist ::=
-
-        '''
-
-    @override((2, 7) <= _py_version < (3, 5))
-    def p_mapexpression(self, args):
-        '''A map expression.
-
-        Dictionary literals are built by creating a fixed sized dictionary and
-        filling it with they values.
-
-        It starts with a BUILD_MAP followed by the list of (key, value).
-
-        .. _rules:
-
-        mapexpr ::= BUILD_MAP kvlist
-
-        # This is the only one I've witnessed.
-        kv3 ::= expr expr STORE_MAP
-
-
-        # Don't know yet when these are produced for kvlist.
-        kvlist ::= kvlist kv2
-        kvlist ::= kvlist kv3
-
-        kv ::= DUP_TOP expr ROT_TWO expr STORE_SUBSCR
-        kv2 ::= DUP_TOP expr expr ROT_THREE STORE_SUBSCR
-
-        '''
-
     def p_expr(self, args):
         '''The expression rules.
 
@@ -173,6 +135,8 @@ class _InternalParser(GenericASTBuilder):
         expr ::= binary_expr
         expr ::= binary_expr_na
         expr ::= build_list
+        expr ::= build_map
+        expr ::= build_const_key_map
         expr ::= cmp
         expr ::= and
         expr ::= and2
@@ -180,24 +144,18 @@ class _InternalParser(GenericASTBuilder):
         expr ::= unary_expr
         expr ::= call_function
         expr ::= binary_subscr
-        expr ::= binary_subscr2
         expr ::= get_iter
-        expr ::= slice0
-        expr ::= slice1
-        expr ::= slice2
-        expr ::= slice3
         expr ::= buildslice2
         expr ::= buildslice3
         expr ::= yield
 
 
         binary_expr ::=  expr expr binary_op
-
         binary_op ::= BINARY_ADD | BINARY_MULTIPLY | BINARY_AND | BINARY_OR |
                       BINARY_XOR | BINARY_SUBTRACT | BINARY_DIVIDE |
                       BINARY_TRUE_DIVIDE | BINARY_FLOOR_DIVIDE |
                       BINARY_MODULO | BINARY_LSHIFT | BINARY_RSHIFT |
-                      BINARY_POWER
+                      BINARY_POWER | BINARY_MATRIX_MULTIPLY
 
         unary_expr ::= expr unary_op
         unary_op ::= UNARY_POSITIVE
@@ -206,18 +164,10 @@ class _InternalParser(GenericASTBuilder):
         unary_op ::= UNARY_NOT
 
         binary_subscr ::= expr expr BINARY_SUBSCR
-        binary_subscr2 ::= expr expr DUP_TOPX_2 BINARY_SUBSCR
 
         load_attr ::= expr LOAD_ATTR
         get_iter ::= expr GET_ITER
-        slice0 ::= expr SLICE+0
-        slice0 ::= expr DUP_TOP SLICE+0
-        slice1 ::= expr expr SLICE+1
-        slice1 ::= expr expr DUP_TOPX_2 SLICE+1
-        slice2 ::= expr expr SLICE+2
-        slice2 ::= expr expr DUP_TOPX_2 SLICE+2
-        slice3 ::= expr expr expr SLICE+3
-        slice3 ::= expr expr expr DUP_TOPX_3 SLICE+3
+
         buildslice3 ::= expr expr expr BUILD_SLICE_3
         buildslice2 ::= expr expr BUILD_SLICE_2
 
@@ -302,17 +252,6 @@ class _InternalParser(GenericASTBuilder):
     # Python 3 with the second LOAD_CONST.  This way the rules for the bigger
     # structures remain stable across Python versions.
     #
-
-    @override(_py_version < (3, 3))
-    def p__py_loads(self, args):
-        '''
-        _py_load_genexpr   ::= LOAD_GENEXPR
-        _py_load_lambda    ::= LOAD_LAMBDA
-        _py_load_dictcomp  ::= LOAD_DICTCOMP
-        _py_load_setcomp   ::= LOAD_SETCOMP
-        '''
-
-    @p__py_loads.override(_py_version >= (3, 3))
     def p__py_loads(self, args):
         '''
         _py_load_genexpr ::= LOAD_GENEXPR LOAD_CONST
@@ -326,13 +265,6 @@ class _InternalParser(GenericASTBuilder):
         '''In Python 3.2+ list comprehensions are also wrapped
         inside a function.
 
-        _py_load_listcomp ::= LOAD_LISTCOMP
-
-        '''
-
-    @p__py_load_listcomp.override(_py_version >= (3, 3))
-    def p__py_load_listcomp(self, args):
-        '''
         _py_load_listcomp ::= LOAD_LISTCOMP LOAD_CONST
 
         '''
@@ -418,14 +350,6 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    @override(py27)
-    def p_list_comprehension(self, args):
-        '''List comprehensions in Python 2.7 are 'exposed'.
-
-        expr ::= list_compr
-
-        '''
-
     # Since Python 3 list comprehension works the same as generator
     # expressions, and set and dict comprehensions, i.e. the iterator is
     # enclosed in a function.  The _comprehension production contains the core
@@ -433,7 +357,6 @@ class _InternalParser(GenericASTBuilder):
     #
     # We expose the list comprehension in the list_comp_expr production in
     # this case.  The `list_compr` is
-    @p_list_comprehension.override(py3k)
     def p_list_comprehension(self, args):
         '''List comprehensions in Python 3.
 
@@ -477,7 +400,7 @@ class _InternalParser(GenericASTBuilder):
         expr ::= dictcomp
         stmt ::= dictcomp_func
 
-        dictcomp_func ::= BUILD_MAP _comprehension_iter
+        dictcomp_func ::= BUILD_MAP_0 _comprehension_iter
                           FOR_ITER designator
                           comp_iter JUMP_BACK RETURN_VALUE RETURN_LAST
 
@@ -551,7 +474,9 @@ class _InternalParser(GenericASTBuilder):
 
         # `kwarg` is used by the customization engine when CALL_FUNCTION_* are
         # processed they are injected in the resultant `call_function` rule.
-        kwarg   ::= LOAD_CONST expr
+        kwarg         ::= LOAD_CONST expr
+        stararg_expr  ::= expr
+        kwarg_expr    ::= expr
 
         '''
 
@@ -578,7 +503,7 @@ class _InternalParser(GenericASTBuilder):
 nop = lambda self, args: None
 
 
-class Parser(object):
+class Parser:
     def __init__(self):
         self.parser = _InternalParser()
 
@@ -596,6 +521,7 @@ class Parser(object):
         #
         #    expr ::= {expr}^n BUILD_LIST_n
         #    expr ::= {expr}^n BUILD_TUPLE_n
+        #    expr ::= {expr expr}^n BUILD_MAP_n
         #
         #    unpack_list ::= UNPACK_LIST {expr}^n
         #    unpack ::= UNPACK_TUPLE {expr}^n
@@ -604,42 +530,34 @@ class Parser(object):
         #    mklambda ::= {expr}^n LOAD_LAMBDA MAKE_FUNCTION_n
         #    mklambda ::= {expr}^n load_closure LOAD_LAMBDA MAKE_FUNCTION_n
         #
-        #    expr ::= expr {expr}^n CALL_FUNCTION_n
-        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_n POP_TOP
-        #    expr ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n POP_TOP
-        #    expr ::= expr {expr}^n CALL_FUNCTION_KW_n POP_TOP
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n
+        #    call_function ::= expr {expr}^n CALL_FUNCTION_KW_n
         #
-        from xoutil.eight import _py3
+        from . import customs
         for k, v in list(customize.items()):
             # avoid adding the same rule twice to this parser
             if k in self.customized:
                 continue
             self.customized[k] = None
             op = k[:k.rfind('_')]
-            if op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
+            method = getattr(customs, op, None)
+            if method:
+                rule = method(self, op, k, v)
+            elif op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
+            elif op == 'BUILD_MAP':
+                rule = 'build_map ::= ' + 'expr expr '*v + k
+            elif op == 'BUILD_CONST_KEY_MAP':
+                rule = 'build_const_key_map ::= ' + 'expr ' * v + 'LOAD_CONST ' + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':
                 rule = 'unpack_list ::= ' + k + ' designator'*v
-            elif op in ('DUP_TOPX', 'RAISE_VARARGS'):
+            elif op in ('RAISE_VARARGS'):
                 # no need to add a rule
                 continue
-            elif op == 'MAKE_FUNCTION':
-                if _py3:
-                    ndefaults = v & 0xFF
-                    nkwonly = (v >> 8) & 0xFF
-                    nannotations = (v >> 16) & 0x7FFF
-                    assert nannotations == 0
-                else:
-                    ndefaults = v
-                    nkwonly = 0
-                self.add_rule(
-                    'mklambda ::= %s %s _py_load_lambda %s' % (
-                        'expr ' * ndefaults, 'kwarg ' * nkwonly, k),
-                    nop
-                )
-                rule = None
             elif op == 'MAKE_CLOSURE':
                 self.add_rule(
                     'mklambda ::= %s load_closure _py_load_lambda %s' % (
@@ -661,22 +579,19 @@ class Parser(object):
                     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
                     nop
                 )
-                if _py3:
-                    # self.add_rule(
-                    #     'list ::= %s load_closure _py_load_dictcomp %s expr '
-                    #     'GET_ITER CALL_FUNCTION_1' % ('expr '*v, k),
-                    #     nop
-                    # )
-                    pass
                 rule = None
             elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
                         'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
                 na = (v & 0xff)           # positional parameters
                 nk = (v >> 8) & 0xff      # keyword parameters
-                # number of apply equiv arguments:
-                nak = (len(op) - len('CALL_FUNCTION')) // 3
-                rule = 'call_function ::= expr ' + 'expr '*na + 'kwarg '*nk \
-                       + 'expr ' * nak + k
+                rule = 'call_function ::= expr ' + 'expr ' * na
+                if op in ('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW'):
+                    # Add the *arg
+                    rule += 'stararg_expr '
+                rule += 'kwarg ' * nk
+                if op in ('CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
+                    rule += 'kwarg_expr '
+                rule += k
             elif op == 'BUILD_SLICE':
                 # since BUILD_SLICE can come in only two forms, it's already
                 # embedded in our grammar, so just ignore it.

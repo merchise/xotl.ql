@@ -17,7 +17,7 @@ from .metamodel import get_age, get_birth_date
 
 
 def test_transitive():
-    class Place(object):
+    class Place:
         located_in = TransitiveRelationDescriptor('located_in')
 
         def __init__(self, **kwargs):
@@ -43,7 +43,7 @@ def test_transitive():
 
 
 def test_backref():
-    class Person(object):
+    class Person:
         mother = backref('mother', 'children')
         father = backref('father', 'children')
 

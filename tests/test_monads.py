@@ -243,6 +243,6 @@ def test_partial_sortedcons():
 def Call(f, a=None):
     from xotl.ql import qst
     if a:
-        return qst.Call(f, [a], [], None, None)
+        return qst.Call(f, [a], [])
     else:
-        return qst.Call(f, [], [], None, None)
+        return qst.Call(f, [], [])

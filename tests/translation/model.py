@@ -23,7 +23,7 @@ from .metamodel import (
 
 
 @thesefy
-class Entity(object):
+class Entity:
     def __init__(self, **attrs):
         for attr, val in attrs.items():
             setattr(self, attr, val)
@@ -36,7 +36,7 @@ class Entity(object):
                 nameof(type(self), inner=True, full=True),
                 safe_encode(name)))
         else:
-            return super(Entity, self).__repr__()
+            return super().__repr__()
 
 
 class Place(Entity):
@@ -56,7 +56,7 @@ class Person(Entity):
     father = backref('father', 'children')
 
     def __init__(self, **attrs):
-        super(Person, self).__init__(**attrs)
+        super().__init__(**attrs)
         self.children = []  # ensure all persons has this attr
 
 

@@ -14,7 +14,6 @@ from __future__ import (division as _py3_division,
 import pytest
 
 import sys
-_py3 = sys.version_info >= (3, 0)
 _pypy = 'PyPy' in sys.version
 del sys
 
@@ -347,12 +346,8 @@ def test_conditional_a_la_pypy():
         Instruction(label='out',
                     opname='RETURN_VALUE')
     code = builder.code
-    if _py3:
-        code = types.CodeType(0, 0, 0, 3, 0, code, (), ('x', 'a', 'y'),
-                              (), '', '<module>', 1, b'')
-    else:
-        code = types.CodeType(0, 0, 3, 0, code, (), ('x', 'a', 'y'),
-                              (), '', '<module>', 1, '')
+    code = types.CodeType(0, 0, 0, 3, 0, code, (), ('x', 'a', 'y'),
+                          (), '', '<module>', 1, b'')
     u = Uncompyled(code)
     assert u.safe_ast
     expected = qst.parse('x and a or y')
@@ -371,7 +366,7 @@ def test_embedded():
         assert u.ast
 
 
-class Alternatives(object):
+class Alternatives:
     def __new__(cls, expr, alt):
         from xotl.ql import qst
         if not isinstance(alt, tuple):
@@ -399,10 +394,12 @@ def _build_test(expr):
         sample = expr  # make local so that it appears in error reports.
         code = compile(sample, '', 'eval')
         expected = Alternatives(sample, alts)
+        print('>>> ', expr, ' <<<')
         u = Uncompyled(code)
         result = u.qst
         result_ = str(result)
-        assert expected == result
+        assert expected == result, \
+            'Expected: %s.\nResult: %s' % (expected, result)
         assert compile(result, '', 'eval')
         assert result_
     return test_expr
@@ -472,9 +469,11 @@ BASIC_EXPRESSIONS = [
 
     'a[1] + list(b)',
 
-    '{a: b,\n c: d}',
+    case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
     'lambda x, y=1, *args, **kw: x + y',
     '(lambda x: x)(y)',
+
+    '{"a": 1, "b": c, "d": 1 + c}',
 ]
 _inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
 
@@ -483,9 +482,7 @@ BASIC_EXPRESSIONS_PY3 = [
     'a[:...]',
     'lambda *, a=1, b=2: a + b',
 ]
-_inject_tests(
-    BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d',
-    pytest.mark.skipif(not _py3, reason='Syntax only allowed in Python3'))
+_inject_tests(BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d')
 
 
 CONDITIONAL_EXPRESSIONS = [

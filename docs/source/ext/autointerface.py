@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # This is taken from repoze.sphinx.autointerface and modified to suite our
 # needs
 
@@ -5,7 +8,6 @@ from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_import)
 
-import sys
 from sphinx.util.docstrings import prepare_docstring
 from sphinx.util import force_decode
 try:
@@ -15,13 +17,6 @@ except ImportError:
     from sphinx.domains.python import PyClasslike
 from sphinx.ext import autodoc
 from xotl.ql.interfaces import Interface, InterfaceType
-
-if sys.version_info[0] >= 3:
-    def u(s):
-        return s
-else:
-    def u(s):
-        return unicode(s, "unicode_escape")
 
 
 class InterfaceDesc(PyClasslike):
@@ -38,7 +33,7 @@ class InterfaceDocumenter(autodoc.ClassDocumenter):
     member_order = 10
 
     def __init__(self, *args, **kwargs):
-        super(InterfaceDocumenter, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.options.show_inheritance = True
 
     @classmethod
@@ -56,11 +51,10 @@ class InterfaceDocumenter(autodoc.ClassDocumenter):
             if base is not Interface
         ]
         if not self.doc_as_attr and self.options.show_inheritance and bases:
-            self.add_line(u(''), '<autodoc>')
-            bases = [u(':class:`%s.%s`') % (b.__module__, b.__name__)
+            self.add_line('', '<autodoc>')
+            bases = [':class:`%s.%s`' % (b.__module__, b.__name__)
                      for b in bases]
-            self.add_line(u('   Extends: %s') % ', '.join(bases),
-                          '<autodoc>')
+            self.add_line('   Extends: %s' % ', '.join(bases), '<autodoc>')
 
     def format_args(self):
         return ""
@@ -94,22 +88,21 @@ class InterfaceDocumenter(autodoc.ClassDocumenter):
             members.sort(key=keyfunc)
 
         for name, desc in members:
-            self.add_line(u(''), '<autointerface>')
+            self.add_line('', '<autointerface>')
             sig = desc.signature
             if sig is None:
-                self.add_line(u('.. attribute:: %s') % name, '<autointerface>')
+                self.add_line('.. attribute:: %s' % name, '<autointerface>')
             else:
-                self.add_line(u('.. method:: %s%s') % (name, sig),
-                              '<autointerface>')
+                self.add_line('.. method:: %s%s' % (name, sig), '<autointerface>')
             doc = desc.doc
             if doc:
-                self.add_line(u(''), '<autointerface>')
+                self.add_line('', '<autointerface>')
                 self.indent += self.content_indent
-                sourcename = u('docstring of %s.%s') % (self.fullname, name)
+                sourcename = 'docstring of %s.%s' % (self.fullname, name)
                 docstrings = [prepare_docstring(force_decode(doc, None))]
                 for i, line in enumerate(self.process_doc(docstrings)):
                     self.add_line(line, sourcename, i)
-                self.add_line(u(''), '<autointerface>')
+                self.add_line('', '<autointerface>')
                 self.indent = oldindent
 
 

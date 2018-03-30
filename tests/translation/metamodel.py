@@ -15,7 +15,7 @@ from xoutil.symbols import Unset
 
 
 # The following classes are just a simple Object Model
-class TransitiveRelationDescriptor(object):
+class TransitiveRelationDescriptor:
     '''A transitive relation.
 
     :param name:  The name of the attribute.  This must be same name of the
@@ -60,7 +60,7 @@ class TransitiveRelationDescriptor(object):
         setattr(instance, self.name, None)
 
 
-class backref(object):
+class backref:
     '''A back-reference descriptor.
 
     Allows to create back references.  When

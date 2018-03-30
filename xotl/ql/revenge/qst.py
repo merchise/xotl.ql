@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -10,11 +10,6 @@
 '''The Query Syntax Tree.
 
 '''
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
-
 
 from .eight import _py_version
 
@@ -29,7 +24,7 @@ import ast as pyast
 #
 #    qst.Name('a', qst.Load()) == qst.Name('b', qst.Load())
 #
-class PyASTNode(object):
+class PyASTNode:
     def __eq__(self, other):
         from xoutil.symbols import Unset
         from operator import eq
@@ -133,38 +128,42 @@ class PyASTNode(object):
 __all__ = []
 _nodes = [pyast.Expression, pyast.expr, pyast.boolop, pyast.unaryop,
           pyast.keyword, pyast.slice, pyast.operator, pyast.cmpop,
-          pyast.comprehension, pyast.arguments, pyast.expr_context]
+          pyast.comprehension, pyast.arguments, pyast.expr_context, pyast.arg]
 
-if _py3:
-    _nodes.append(pyast.arg)
 _current = 0
-
 while _current < len(_nodes):
     _node = _nodes[_current]
     _more = _node.__subclasses__()  # Don't place this after the new class.
 
     globals()['_PyAst_%s' % _node.__name__] = _node
     # Has a constructor create the class for comparing
-    globals()[_node.__name__] = new_class(_node.__name__,
-                                          bases=(PyASTNode, _node))
+    globals()[_node.__name__] = cls = new_class(_node.__name__,
+                                                bases=(_node, PyASTNode))
+    cls.__module__ = 'qst'
     __all__.append(_node.__name__)
 
     if _more:
         _nodes.extend(_more)
     _current += 1
 
+if (3, 6) <= _py_version:
+    # In Python 3.6+:
+    #
+    #      comprehension = (expr target, expr iter, expr* ifs, int is_async)
+    #
+    # I don't think this async stuff will impact the byte-code of a normal
+    # query-like comprehension.
+    #
+    class comprehension(comprehension):  # noqa
+        def __init__(self, *args):
+            if 0 < len(args) < 4:
+                args += (False, )
+            super().__init__(*args)
+
 
 # This None as a name.  Only use this for comparison, not as a return value.
 LOAD_NONE = Name('None', Load())   # noqa
-if _py_version >= (3, 4):
-    NONE_CT = NameConstant(None)        # noqa
-else:
-    NONE_CT = None
-
-    # Declares the NameConstant object with an impossible value so that tests
-    # for it in __eq__ above don't fail under Python <3.4.
-    class NameConstant(object):
-        value = object()
+NONE_CT = NameConstant(None)        # noqa
 
 
 def is_constant(which, value):
@@ -194,4 +193,4 @@ class SetAttributesVisitor(pyast.NodeVisitor):
         for attr, val in self.attrs.items():
             if get(attr) is Unset:
                 setattr(node, attr, val)
-        return super(SetAttributesVisitor, self).generic_visit(node)
+        return super().generic_visit(node)

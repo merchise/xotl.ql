@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ---------------------------------------------------------------------
 # Copyright (c) Merchise Autrement [~º/~] and Contributors
@@ -6,10 +6,6 @@
 #
 # This is free software; you can do what the LICENCE file allows you to.
 #
-
-from __future__ import (division as _py3_division,
-                        print_function as _py3_print,
-                        absolute_import as _py3_abs_import)
 
 from xoutil.modules import modulemethod
 
@@ -37,7 +33,7 @@ def explain(self, query, **kwargs):
     self.NaivePythonExecutionPlan(query, **kwargs).explain()
 
 
-class NaivePythonExecutionPlan(object):
+class NaivePythonExecutionPlan:
     def __init__(self, query, map=None, join=None, zero=None, unit=None,
                  use_own_monads=False):
         # The map, join, zero, and unit are provided for tests.
@@ -161,7 +157,7 @@ class NaivePythonExecutionPlan(object):
 class _TestPlan(NaivePythonExecutionPlan):
     # A plan that fixes
     def __init__(self, query, **kwargs):
-        super(_TestPlan, self).__init__(
+        super().__init__(
             query,
             map='Map',
             join='Join',
@@ -171,7 +167,7 @@ class _TestPlan(NaivePythonExecutionPlan):
         )
 
 
-class PythonObjectsCollection(object):
+class PythonObjectsCollection:
     '''Represent the entire collection of Python objects.'''
 
     def __init__(self, modules=None, use_ignores=True, ascons=False):
