@@ -1,11 +1,14 @@
+.. _known-issues:
+
 ==============
  Known issues
 ==============
 
-.. _known-issues-0.3.0:
+- Nested conditional expressions like::
 
-At release |release|
-====================
+    (a if x else y) if (b if z else c) else (d if o else p)
+
+  fail to be recognized.
 
 - Pypy support is not complete.  Expressions like ``(x for x in this if not
   p(x) or z(x) or not h(x))`` fail to be recognized.
