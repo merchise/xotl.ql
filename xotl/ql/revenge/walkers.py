@@ -384,6 +384,16 @@ class QstBuilder(GenericASTTraversal):
             [v for _, v in reversed(values)]
         )
 
+    @pushsentinel
+    def n_build_const_key_map(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_const_key_map_exit(self, node, children=None, items=None):
+        import ipdb; ipdb.set_trace()    # TODO: Remove this
+        pass
+
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.
     n__py_load_lambda = _n_walk_innerfunc(islambda=True)

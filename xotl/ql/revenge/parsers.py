@@ -136,6 +136,7 @@ class _InternalParser(GenericASTBuilder):
         expr ::= binary_expr_na
         expr ::= build_list
         expr ::= build_map
+        expr ::= build_const_key_map
         expr ::= cmp
         expr ::= and
         expr ::= and2
@@ -534,7 +535,6 @@ class Parser:
         #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n
         #    call_function ::= expr {expr}^n CALL_FUNCTION_KW_n
         #
-        from xoutil.eight import _py3
         from . import customs
         for k, v in list(customize.items()):
             # avoid adding the same rule twice to this parser
@@ -549,6 +549,8 @@ class Parser:
                 rule = 'build_list ::= ' + 'expr '*v + k
             elif op == 'BUILD_MAP':
                 rule = 'build_map ::= ' + 'expr expr '*v + k
+            elif op == 'BUILD_CONST_KEY_MAP':
+                rule = 'build_const_key_map ::= ' + 'expr ' * v + 'LOAD_CONST ' + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':

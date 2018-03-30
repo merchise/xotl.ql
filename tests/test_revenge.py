@@ -472,6 +472,8 @@ BASIC_EXPRESSIONS = [
     case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
     'lambda x, y=1, *args, **kw: x + y',
     '(lambda x: x)(y)',
+
+    '{"a": 1, "b": c, "d": 1 + c}',
 ]
 _inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
 
