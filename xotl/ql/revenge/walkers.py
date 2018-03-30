@@ -22,7 +22,7 @@ from .scanners import Token
 from .tools import pushto, take, pop_until_sentinel
 from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
-from .eight import py3k as _py3, py27 as _py27, _py_version
+from .eight import _py_version, override
 
 EllipsisType = type(Ellipsis)
 IntType = int
@@ -394,12 +394,8 @@ class QstBuilder(GenericASTTraversal):
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
         # Push both the amount of that will be in the stack the sentinel
-        if _py3:
-            defaults = argc & 0xFF
-            nkwonly = (argc >> 8) & 0xFF
-        else:
-            defaults = argc
-            nkwonly = 0
+        defaults = argc & 0xFF
+        nkwonly = (argc >> 8) & 0xFF
         self._stack.append((defaults, nkwonly))
 
     @pushtostack
@@ -420,22 +416,12 @@ class QstBuilder(GenericASTTraversal):
         args = [a for a in items.pop()]
         vararg = items.pop()
         kwarg = items.pop()
-        if _py3:
-            # Recast args (they were qst.Name) as qst.arg in Python 3
-            args = [qst.arg(arg.id, None) for arg in args]
-            if _py_version < (3, 4):
-                # Before Python 3,4 the vararg and kwarg were not enclosed
-                # inside qst.arg and their annotations followed them in the
-                # constructor.
-                arguments = qst.arguments(args, vararg, None, kwonly, kwarg,
-                                          None, defaults, kwdefaults)
-            else:
-                vararg = qst.arg(vararg, None) if vararg else None
-                kwarg = qst.arg(kwarg, None) if kwarg else None
-                arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
-                                          kwarg, defaults)
-        else:
-            arguments = qst.arguments(args, vararg, kwarg, defaults)
+        # Recast args (they were qst.Name) as qst.arg in Python 3
+        args = [qst.arg(arg.id, None) for arg in args]
+        vararg = qst.arg(vararg, None) if vararg else None
+        kwarg = qst.arg(kwarg, None) if kwarg else None
+        arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
+                                  kwarg, defaults)
         return qst.Lambda(arguments, body)
 
     _BINARY_OPS_QST_CLS = {
@@ -812,21 +798,15 @@ class QstBuilder(GenericASTTraversal):
         elt = items.pop(0)
         comprehensions = items
         result = qst.ListComp(elt, comprehensions)
-        if _py27:
-            return result
-        else:
-            # In Python we need to wrap this inside a qst.Expression since
-            # _n_walk_innerfunc expects it so
-            return qst.Expression(result)
+        return qst.Expression(result)
 
-    if not _py27:
-        n__py_load_listcomp = _n_walk_innerfunc(islambda=False)
+    n__py_load_listcomp = _n_walk_innerfunc(islambda=False)
 
-        @pushsentinel
-        def n_list_compr_expr(self, node):
-            pass
+    @pushsentinel
+    def n_list_compr_expr(self, node):
+        pass
 
-        n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
+    n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
 
     # list_for, list_if, list_if_not, lc_body share the same structure as its
     # comp_* cousins.
