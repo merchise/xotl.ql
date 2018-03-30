@@ -29,9 +29,12 @@ The result of the :class:`~xotl.ql.core.get_query_object` callable is a
 What's new in |release|?
 ------------------------
 
-.. include:: history/changes-0.3.0.rst
-.. include:: history/changes-0.4.0.rst
+.. note:: This release comprises the work of several unreleased versions.  The
+   changelog contains all items in reverse chronological order.
 
+.. include:: history/changes-0.5.0.rst
+.. include:: history/changes-0.4.0.rst
+.. include:: history/changes-0.3.0.rst
 
 
 Core Contents:

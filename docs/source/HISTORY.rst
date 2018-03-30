@@ -1,17 +1,22 @@
 Changelog
 =========
 
+Unreleased.  Release 0.6.0
+--------------------------
+
+.. include:: history/changes-0.6.0.rst
+
+
 2018-03-29.  Release 0.5.0
 --------------------------
 
+.. note:: This release comprises the work of several unreleased versions.  The
+   changelog contains all items in reverse chronological order.
+
 .. include:: history/changes-0.5.0.rst
-
-
-Unreleased. Release 0.4.0
--------------------------
-
-.. include:: history/changes-0.3.0.rst
 .. include:: history/changes-0.4.0.rst
+.. include:: history/changes-0.3.0.rst
+
 
 
 Release 0.2.1
