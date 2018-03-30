@@ -83,13 +83,6 @@ def _build_sentinel(f, node, name=None):
     return (name, node)
 
 
-# Helper classes and metaclass for doing some like::
-#
-#   isinstance(node, ifsentence)
-
-from xoutil.eight.meta import metaclass
-
-
 # Some ASTs used for comparing code fragments (like 'return None' at
 # the end of functions).
 NONE = AST('ret_expr', [AST('expr', [AST('literal', [Token('LOAD_CONST',
@@ -391,7 +384,6 @@ class QstBuilder(GenericASTTraversal):
     @pushtostack
     @take_until_sentinel
     def n_build_const_key_map_exit(self, node, children=None, items=None):
-        import ipdb; ipdb.set_trace()    # TODO: Remove this
         pass
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner

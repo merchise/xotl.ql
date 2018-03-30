@@ -20,7 +20,6 @@ constructors can be provided via the `__init__` method.
 
 import types
 from xoutil.future import inspect
-from xoutil.eight.meta import metaclass
 
 
 class MemberDescription:
