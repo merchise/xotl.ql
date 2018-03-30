@@ -480,13 +480,18 @@ FUNCTION_CALLS_EXPRS = [
 
     '(lambda x: x)(y)',
 ]
-_inject_tests(FUNCTION_CALLS_EXPRS, 'test_funcall_expressions_%d')
+_inject_tests(FUNCTION_CALLS_EXPRS, 'test_funcalls_expressions_%d')
 
 
 BASIC_EXPRESSIONS_PY3 = [
     '...',   # Ellipsis
     'a[:...]',
     'lambda *, a=1, b=2: a + b',
+
+    '{**a, b: 1, **c}',
+    '[*a, c, *b]',
+    '(*a, c, *b)',
+    '{*s, 1, *c}',
 ]
 _inject_tests(BASIC_EXPRESSIONS_PY3, 'test_basic_expression_py3only_%d')
 
