@@ -283,6 +283,36 @@ definition of `Foldr`:class: makes it unpractical to really work with them.
 .. autoclass:: LazyCons(x, xs)
 
 
+Provided functions
+==================
+
+.. function:: Map(f)
+
+   Returns a map of `f`.  The result is another function that iterates over a
+   collection `xs` applying `f` to each term.  It's defined as::
+
+     Map = lambda f: Foldr(_Mapper(f), Empty())
+
+   ``_Mapper`` is just a wrapper around `f`.
+
+.. function:: Join(xs, ys)
+
+   Joins `xs` and `ys` together.  Defined as::
+
+     Join = Foldr(Union, Empty())
+
+.. function:: Unit(x)
+
+   Returns the collection containing `x`.  It's like ``[x]``.  Defined as::
+
+     Unit = Cons(Undefined, Empty())
+
+.. function:: Zero()
+
+   An alias for `Empty`:class:
+
+
+
 Memento for mathematical terms
 ==============================
 

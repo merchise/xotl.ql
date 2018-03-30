@@ -579,9 +579,9 @@ def translate(source_tree, map='Map', unit='Unit', join='Join', zero='Empty'):
     You must provide values for each function name `map`, `unit`, `zero`, and
     `join`.  They must be type-compatible for the program to work.  A simple
     (demonstration-only) set of functions is `Map`:func:, `Join`:func: ,
-    `Zero`:class:, and `Unit`:func: defined in this module.  But you can
+    `Zero`:func:, and `Unit`:func: defined in this module.  But you can
     provide different, yet similar ones.  Another viable set of functions may
-    be:
+    be::
 
       options = dict(
         Map=lambda f: lambda q: iter(f(x) for x in execute_plan(q)),
