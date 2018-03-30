@@ -378,6 +378,47 @@ class QstBuilder(GenericASTTraversal):
         )
 
     @pushsentinel
+    def n_build_map_unpack(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_build_map_unpack_exit(self, node, children=None, items=None):
+        values = list(reversed(items))
+        keys = [None] * len(values)
+        # NOTE.  Parsing '{**a, b:1, **c, **{d: 1}}' in Python 3.5 yields to a
+        # different AST than the one we produce here:
+        #
+        #   Expression(
+        #     body=Dict(
+        #        keys=[None, Name(id='b', ctx=Load()), None, None],
+        #        values=[Name(id='a', ctx=Load()),
+        #                Num(n=1),
+        #                Name(id='c', ctx=Load()),
+        #                Dict(keys=[Name(id='d', ctx=Load())], values=[Num(n=1)]
+        #   )]))
+        #
+        # Notice that key 'b' gets inlined in the Dict, but `**{d: 1}` is
+        # get as key=None and the value is a whole Dict.  But the byte-code
+        # pattern is the same in both cases:
+        #
+        # >>> xdis(compile('{**a, b: 1, **c, **{d: 1}}', '<>' , 'eval'))
+        #  1         0 LOAD_NAME            a    (a)
+        #            3 LOAD_NAME            b    (b)  <-- B
+        #            6 LOAD_CONST           1    (1)
+        #            9 BUILD_MAP_1          1    (1)
+        #           12 LOAD_NAME            c    (c)
+        #           15 LOAD_NAME            d    (d)  <-- D
+        #           18 LOAD_CONST           1    (1)
+        #           21 BUILD_MAP_1          1    (1)
+        #           24 BUILD_MAP_UNPACK_4   4    (4)
+        #           27 RETURN_VALUE
+        #
+        # Therefore, we cannot differentiate those cases, and simply treat
+        # `b: 1` the same as other values.
+        return qst.Dict(keys, values)
+
+    @pushsentinel
     def n_build_const_key_map(self, node):
         pass
 
