@@ -7,6 +7,12 @@ Unreleased.  Release 0.6.0
 .. include:: history/changes-0.6.0.rst
 
 
+2018-03-30.  Release 0.5.1
+--------------------------
+
+.. include:: history/changes-0.5.1.rst
+
+
 2018-03-29.  Release 0.5.0
 --------------------------
 
