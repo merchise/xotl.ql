@@ -73,13 +73,9 @@ def take_until_sentinel(f, name=None):
 
 
 def _build_sentinel(f, node, name=None):
+    from xoutil.string import cut_any_prefix, cut_suffix
     name = name if name else f.__name__
-    if name.startswith('n_'):
-        name = name[2:]
-    elif name.startswith('_n_'):
-        name = name[3:]
-    if name.endswith('_exit'):
-        name = name[:-5]
+    name = cut_suffix(cut_any_prefix(name, 'n_', '_n_'), '_exit')
     return (name, node)
 
 
