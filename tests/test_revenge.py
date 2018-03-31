@@ -466,17 +466,21 @@ _inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
 
 
 FUNCTION_CALLS_EXPRS = [
-    'c()',
-    'c(a)',
-    'c(b=1)',
-    'c(*args)',
-    'c(**kwargs)',
-    'c(*args, **kwargs)',
+    'f()',
+    'f()()',
+    'f(a)',
+    'f(a=0, b=1, c=2)',
+    'f(x, a=0, b=1, c=2)',
+    'f(*args)',
+    'f(**kwargs)',
+    'f(*args, **kwargs)',
 
-    'c(b=bb(a, i, *a, **kws))(a)',
+    case('f(a, b=0, *args, **kwargs)',
+         ['f(*(a,), *args, **{"b": 0}, **kwargs)']),
 
-    'c(a, b=1, *args, **kwargs)',
-    'c(a, b=1, *tuple(args), **dict(kwargs))',
+    'f(b=f2(a, *args, **kws))(a)',
+
+    'f(a, b=1, *tuple(args), **dict(kwargs))',
 
     '(lambda x: x)(y)',
 ]
