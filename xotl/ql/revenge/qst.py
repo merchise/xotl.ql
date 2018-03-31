@@ -22,8 +22,8 @@ from .eight import _py_version
 #
 class PyASTNode:
     def __eq__(self, other):
-        from xoutil.symbols import Unset
         from operator import eq
+        Unset = object()  # xoutil's Unset is equal to 0!
         res = True
         i = 0
         # Explicitly deal with NameConstant None.
