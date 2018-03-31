@@ -82,11 +82,21 @@ CUSTOMIZABLE = (
     BUILD_SET_UNPACK,
     BUILD_MAP_UNPACK,
     BUILD_MAP_UNPACK_WITH_CALL,
-    BUILD_MAP, BUILD_LIST, BUILD_TUPLE, BUILD_SET, BUILD_SLICE,
+    BUILD_TUPLE_UNPACK_WITH_CALL,
+    BUILD_MAP,
+    BUILD_LIST,
+    BUILD_TUPLE,
+    BUILD_SET,
+    BUILD_SLICE,
     BUILD_CONST_KEY_MAP,
-    UNPACK_SEQUENCE, MAKE_FUNCTION, CALL_FUNCTION,
-    CALL_FUNCTION_VAR, CALL_FUNCTION_KW,
-    CALL_FUNCTION_VAR_KW, RAISE_VARARGS
+    UNPACK_SEQUENCE,
+    MAKE_FUNCTION,
+    CALL_FUNCTION,
+    CALL_FUNCTION_VAR,
+    CALL_FUNCTION_KW,
+    CALL_FUNCTION_VAR_KW,
+    CALL_FUNCTION_EX,
+    RAISE_VARARGS,
 )
 
 
@@ -609,8 +619,10 @@ class Scanner:
                        offset="%s_%d" %
                        (offset, index)))
 
-        def customize(instruction):
-            opname, arg = instruction.opname, instruction.arg
+        def customize(instruction, arg=None):
+            opname = instruction.opname
+            if arg is None:
+                arg = instruction.arg
             opname = '%s_%d' % (opname, arg)
             customizations[opname] = arg
             instruction.opname = opname

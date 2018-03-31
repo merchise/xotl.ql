@@ -109,9 +109,6 @@ class QstBuilder(GenericASTTraversal):
             # qst.Lambda, the values of the `defaults` are to be complete by
             # the n_mklamdbda_exit.
             from . import Uncompyled
-            # Notice the node[0], in Python 3.3+ node will have two items, the
-            # LOAD_LAMBDA and the LOAD_CONST, previous versions won't have the
-            # second.
             load_lambda = node[0]
             code = load_lambda.argval
             hasnone = 'None' in code.co_names
@@ -381,6 +378,116 @@ class QstBuilder(GenericASTTraversal):
                 return [e for elt in node.value.elts for e in self._unpack_star_if_needed(elt)]
         return [node]
 
+    @pushsentinel
+    def n_call_function36(self, node):
+        # I don't need anything special for this.  The collected items will be
+        # the function and positional arguments.
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_exit(self, node, children=None, items=None):
+        func = items.pop()
+        return qst.Call(func, items, [])
+
+    @pushsentinel
+    def n_call_function36_kw(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_kw_exit(self, node, children=None, items=None):
+        func = items.pop()
+        kwnames = items.pop(0)
+        kwargs = [
+            qst.keyword(e.s, v)
+            for e, v in zip(kwnames.elts, reversed(items[:len(kwnames.elts)]))
+        ]
+        return qst.Call(func, items[len(kwargs):], kwargs)
+
+    @pushsentinel
+    def n_call_function36_ex(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_ex_exit(self, node, children=None, items=None):
+        #
+        # The are actually two main pattern rules possible:
+        #
+        #     call_function36_ex ::= expr _fn_ex_args CALL_FUNCTION_EX_n
+        #     call_function36_ex ::= expr _fn_ex_args _fn_ex_kwargs CALL_FUNCTION_EX_n
+        #
+        # This opcode shows up in function calls with a ``*args`` and/or
+        # ``**kw`` argument.  Function calls without any of them use
+        # CALL_FUNCTION or CALL_FUNCTION_KW.
+        #
+        # In general _fn_ex_args and _fn_ex_kwargs are expressions.  Python
+        # uses _UNPACK_WITH_CALL opcodes only when mix normal arguments with
+        # starred ones.
+        #
+        # `kwargs_rule` will be either the empty list (first rule) or a list
+        # containing a single list of kwargs.
+        *kwargs_rule, args, func = items
+        kwargs, = kwargs_rule if kwargs_rule else [[]]
+        return qst.Call(func, args, kwargs)
+
+    @pushsentinel
+    def n__fn_ex_args(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n__fn_ex_args_exit(self, node, children=None, items=None):
+        # See also `n_call_function36_ex_exit`.
+        #
+        # BUILD_TUPLE_UNPACK_WITH_CALL is only present when we mix normal
+        # positional arguments and var-positional arguments or have several
+        # var-positional arguments, e.g f(x, *xs), f(*x, *y).  The compiler
+        # wraps positional arguments in a Tuple, any other type construction
+        # must be starred.
+        #
+        # If BUILD_TUPLE_UNPACK_WITH_CALL is not present positional arguments
+        # are given in a Tuple unless they're just `*args`.
+        #
+        def _star_if_needed(item):
+            if isinstance(item, qst.Tuple):
+                return item.elts
+            else:
+                return [qst.Starred(item, qst.Load())]
+
+        token = node[-1][-1]  # _fn_ex_args -> expr -> _tuple_unpack?
+        op, _ = self._extract_custom_tk(token, 'BUILD_TUPLE_UNPACK_WITH_CALL')
+        assert op or len(items) == 1
+        return [x for it in reversed(items) for x in _star_if_needed(it)]
+
+    @pushsentinel
+    def n__fn_ex_kwargs(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n__fn_ex_kwargs_exit(self, node, children=None, items=None):
+        # See also `n_call_function36_ex_exit`, and _n_fn_ex_args. This method
+        # follows a very similar reasoning.
+        def _extract(item):
+            if isinstance(item, qst.Dict):
+                return zip(
+                    (k.s if isinstance(k, qst.Str) else k for k in item.keys),
+                    item.values
+                )
+            else:
+                return [(None, item)]
+
+        token = node[-1][-1]  # _fn_ex_kwargs -> expr -> _map_unpack?
+        op, _ = self._extract_custom_tk(token, 'BUILD_MAP_UNPACK_WITH_CALL')
+        assert op or len(items) == 1
+        return [
+            qst.keyword(k, v)
+            for it in reversed(items)
+            for k, v in _extract(it)
+        ]
+
     @pushtostack
     @take_one
     def n_kwarg_exit(self, node, children=None):
@@ -474,7 +581,15 @@ class QstBuilder(GenericASTTraversal):
     @pushtostack
     @take_until_sentinel
     def n_build_const_key_map_exit(self, node, children=None, items=None):
-        pass
+        keys, *values = items
+        return qst.Dict(
+            [qst.Str(k) for k in keys],
+            [val for val in reversed(values)]
+        )
+
+    @pushtostack
+    def n__const_keys_exit(self, node, children=None):
+        return node[-1].argval
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.
@@ -521,31 +636,34 @@ class QstBuilder(GenericASTTraversal):
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
         # See customs.MAKE_FUNCTION
-        hasposargs = bool(argc & 0x01)
-        haskwargs = bool(argc & 0x02)
-        hasandict = bool(argc & 0x04)
+        hasposdefaults = bool(argc & 0x01)
+        haskwdefaults = bool(argc & 0x02)
+        hasannotations = bool(argc & 0x04)
         hascells = bool(argc & 0x08)
-        self._stack.append((hasposargs, haskwargs, hasandict, hascells))
+        self._stack.append(
+            (hasposdefaults, haskwdefaults, hasannotations, hascells)
+        )
 
     @n_mklambda_exit.override((3, 6) <= _py_version)
     @pushtostack
     @take_until_sentinel
     def n_mklambda_exit(self, node, children=None, items=None):
-        hasposargs, haskwargs, hasandict, hascells = self._stack.pop()
-        if hasposargs:
-            posargs = items.pop()
+        hasposdefaults, haskwdefaults, hasannotations, hascells = self._stack.pop()
+        if hasposdefaults:
+            posdefaults = items.pop()
         else:
-            posargs = None
-        if haskwargs:
-            kwargs = items.pop()
+            posdefaults = None
+        if haskwdefaults:
+            kwdefaults = items.pop()
         else:
-            kwargs = None
+            kwdefaults = None
         # Annotations are not possible (inlined) in lambdas, we don't bother.
-        assert not hasandict
+        assert not hasannotations
         if hascells:
-            cells = items.pop()
-        else:
-            cells = None
+            # I don't know what to do with cells
+            items.pop()
+        body = items.pop()
+        args, vararg, kwarg = items  # see _n_walk_innerfunc
 
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,
@@ -866,7 +984,7 @@ class QstBuilder(GenericASTTraversal):
     def n_build_list_unpack_exit(self, node, children=None, items=None):
         opcode, _ = self._ensure_custom_tk(
             node,
-            ('BUILD_LIST_UNPACK', 'BUILD_SET_UNPACK', 'BUILD_TUPLE_UNPACK')
+            ('BUILD_LIST_UNPACK', 'BUILD_SET_UNPACK', 'BUILD_TUPLE_UNPACK',)
         )
         if opcode == 'BUILD_LIST_UNPACK':
             cls = qst.List
@@ -980,9 +1098,11 @@ class QstBuilder(GenericASTTraversal):
         assert isinstance(res, Token), msg
         return res
 
-    def _extract_custom_tk(self, node, prefixes):
+    def _extract_custom_tk(self, node, prefixes, strict=False):
         tk = node[-1]
-        assert isinstance(tk, Token)
+        if not isinstance(tk, Token):
+            assert not strict
+            return None, None
         if not isinstance(prefixes, (list, tuple)):
             prefixes = [prefixes, ]
         found = next(
@@ -997,7 +1117,7 @@ class QstBuilder(GenericASTTraversal):
             return None, None
 
     def _ensure_custom_tk(self, node, prefixes):
-        opcode, custom = self._extract_custom_tk(node, prefixes)
+        opcode, custom = self._extract_custom_tk(node, prefixes, strict=True)
         if opcode is not None:
             return opcode, int(custom)
         else:
