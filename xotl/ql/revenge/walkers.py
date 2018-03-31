@@ -927,7 +927,7 @@ class QstBuilder(GenericASTTraversal):
         assert isinstance(res, Token), msg
         return res
 
-    def _ensure_custom_tk(self, node, prefixes):
+    def _extract_custom_tk(self, node, prefixes):
         tk = node[-1]
         assert isinstance(tk, Token)
         if not isinstance(prefixes, (list, tuple)):
@@ -939,6 +939,13 @@ class QstBuilder(GenericASTTraversal):
         )
         if found:
             opcode, custom = found
+            return opcode, int(custom)
+        else:
+            return None, None
+
+    def _ensure_custom_tk(self, node, prefixes):
+        opcode, custom = self._extract_custom_tk(node, prefixes)
+        if opcode is not None:
             return opcode, int(custom)
         else:
             assert False
