@@ -540,8 +540,6 @@ class Parser:
                 rule = 'build_map ::= ' + 'expr expr '*v + k
             elif op in ('BUILD_MAP_UNPACK'):
                 rule = 'build_map_unpack ::= ' + 'expr '*v + k
-            elif op == 'BUILD_MAP_UNPACK_WITH_CALL':
-                rule = '_map_unpack ::= ' + 'expr '*v + k
             elif op == 'BUILD_CONST_KEY_MAP':
                 rule = 'build_const_key_map ::= ' + 'expr ' * v + '_const_keys ' + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):

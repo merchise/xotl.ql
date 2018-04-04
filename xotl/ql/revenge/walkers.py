@@ -321,7 +321,7 @@ class QstBuilder(GenericASTTraversal):
             kws.append(items.pop())
         if kwarg:
             kwarg = items.pop()
-            kws.append(kwarg)
+            kws.extend(reversed(kwarg))
         assert not items
         return qst.Call(func, args, kws)
 
@@ -503,11 +503,22 @@ class QstBuilder(GenericASTTraversal):
         name, = children
         return qst.Starred(name, qst.Load())
 
+    @pushsentinel
+    def n_kwarg_expr(self, node):
+        pass
+
     @pushtostack
-    @take_one
+    @take_until_sentinel
     def n_kwarg_expr_exit(self, node, children=None, items=None):
-        val, = children
-        return qst.keyword(None, val)
+        def make_kw(it):
+            if isinstance(it, qst.Dict):
+                return [
+                    qst.keyword(key.s if isinstance(key, qst.Str) else key, val)
+                    for key, val in zip(it.keys, it.values)
+                ]
+            else:
+                return [qst.keyword(None, it)]
+        return [keyword for item in items for keyword in make_kw(item)]
 
     @pushsentinel
     def n_build_map(self, node):

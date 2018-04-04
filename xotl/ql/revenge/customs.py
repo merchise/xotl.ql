@@ -143,3 +143,9 @@ def CALL_FUNCTION_EX(self, opcode, token, argc):
     varkwarg = 1 if argc & 0x01 else 0
     rule = 'call_function36_ex ::= expr _fn_ex_args ' + '_fn_ex_kwargs ' * varkwarg + token
     return rule
+
+
+def BUILD_MAP_UNPACK_WITH_CALL(self, opcode, token, count):
+    if _py_version < (3, 6):
+        count = count & 0xFF
+    return '_map_unpack ::= ' + 'expr ' * count + token
