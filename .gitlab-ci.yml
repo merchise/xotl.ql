@@ -18,9 +18,10 @@ lint:
 run all tests (if needed):
   stage: test
   script:
-    - if git show --oneline --name-only $CI_COMMIT_SHA | grep \.py$; then tox -e3.5-unit-3.5-doctest --skip-missing-interpreters; fi
+    - if git show --oneline --name-only $CI_COMMIT_SHA | grep \.py$; then tox -e{3.5,3.6}-unit,3.5-doctest; fi
   tags:
-    - python
+    - python3.5
+    - python3.6
     - virtualenv
     - tox
   only:
