@@ -121,23 +121,23 @@ class QstBuilder(GenericASTTraversal):
             # Argument names are the first of co_varnames
             argcount = code.co_argcount
             varnames = code.co_varnames
+            posargs, varnames = varnames[:argcount], varnames[argcount:]
+            # I'm truly guessing here: varnames will be (...pos args...,
+            # [kwonly args], [*args], [**kwargs]).
+            if CODE_HAS_KWARG(code):
+                *varnames, kwargsname = varnames
+            else:
+                kwargsname = None
+            if CODE_HAS_VARARG(code):
+                *varnames, argsname = varnames
+            else:
+                argsname = None
+            kwonlyvars = varnames
             args = [
                 qst.Name(name, qst.Param())
-                for name in varnames[:argcount]
+                for name in posargs
             ]
-            if CODE_HAS_VARARG(code):
-                # This means the code uses the vararg and co_varnames contains
-                # that name.
-                vararg = varnames[argcount]
-                argcount += 1
-            else:
-                vararg = None
-            if CODE_HAS_KWARG(code):
-                kwarg = varnames[argcount]
-                argcount += 1
-            else:
-                kwarg = None
-            self._stack.extend([args, vararg, kwarg])
+            self._stack.extend([args, kwonlyvars, argsname, kwargsname])
             self.prune()
         return _walk_innerfunc
 
@@ -632,6 +632,7 @@ class QstBuilder(GenericASTTraversal):
             kwdefaults.append(kw.value)
         body = items.pop()
         args = [a for a in items.pop()]
+        items.pop()  # drop the names of kwonly arguments
         vararg = items.pop()
         kwarg = items.pop()
         # Recast args (they were qst.Name) as qst.arg in Python 3
@@ -661,20 +662,31 @@ class QstBuilder(GenericASTTraversal):
     def n_mklambda_exit(self, node, children=None, items=None):
         hasposdefaults, haskwdefaults, hasannotations, hascells = self._stack.pop()
         if hasposdefaults:
-            posdefaults = items.pop()
+            posdefaults = items.pop().elts
         else:
-            posdefaults = None
+            posdefaults = []
         if haskwdefaults:
-            kwdefaults = items.pop()
+            kwdefaults = items.pop().values
         else:
-            kwdefaults = None
+            kwdefaults = []
         # Annotations are not possible (inlined) in lambdas, we don't bother.
         assert not hasannotations
         if hascells:
             # I don't know what to do with cells
             items.pop()
         body = items.pop()
-        args, vararg, kwarg = items  # see _n_walk_innerfunc
+        # See _n_walk_innerfunc
+        args = [qst.arg(arg.id, None) for arg in items.pop()]
+        kwonly = [qst.arg(kw, None) for kw in items.pop()]
+        vararg = items.pop()
+        if vararg:
+            vararg = qst.arg(vararg, None)
+        kwarg = items.pop()
+        if kwarg:
+            kwarg = qst.arg(kwarg, None)
+        arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
+                                  kwarg, posdefaults)
+        return qst.Lambda(arguments, body)
 
     _BINARY_OPS_QST_CLS = {
         'BINARY_ADD': qst.Add,

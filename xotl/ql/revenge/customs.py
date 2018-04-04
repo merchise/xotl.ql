@@ -29,8 +29,8 @@ def MAKE_FUNCTION(self, op, k, v):
 
     * ``(argc >> 16) & 0x7FFF`` parameter annotation objects
 
-    * a tuple listing the parameter names for the annotations (only if there are
-     ony annotation objects)
+    * a tuple listing the parameter names for the annotations (only if there
+     are any annotation objects)
 
     * the code associated with the function (at TOS1)
 
