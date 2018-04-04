@@ -391,10 +391,12 @@ def _build_test(expr):
 
     def test_expr():
         from xotl.ql.revenge import Uncompyled
+        from xotl.ql.revenge.scanners import xdis
         sample = expr  # make local so that it appears in error reports.
         code = compile(sample, '', 'eval')
         expected = Alternatives(sample, alts)
         print('>>> ', expr, ' <<<')
+        xdis(compile(expr, '<>', 'eval'))
         u = Uncompyled(code)
         result = u.qst
         result_ = str(result)
@@ -479,10 +481,18 @@ FUNCTION_CALLS_EXPRS = [
     'f(*args)',
     'f(**kwargs)',
     'f(*args, **kwargs)',
+    'f(a, **kwargs)',
+    'f(b=1, *args)',
+    'f(a0, a1, *args0, a2, a3, *args1)',
 
-    case('f(a, b=0, *args, **kwargs)',
-         ['f(*(a,), *args, **{"b": 0}, **kwargs)']),
+    # Some slightly convoluted cases for the sake of completeness
+    case('f(a0, a1, *[*args, a2, *[a3, *args1]])',
+         alternatives=['f(a0, a1, *args, a2, a3, *args1)']),
+    case('f(a0, a1, *[*args, a2, *(a3, *args1)])',
+         alternatives=['f(a0, a1, *args, a2, a3, *args1)']),
 
+    'f(b0=0, b1=1, **kwargs0, b2=2, **kwargs2)',
+    'f(a0, a1, *args0, a2, b0=0, *args1, **kwargs0, b1=1, **kwargs1)',
     'f(b=f2(a, *args, **kws))(a)',
 
     'f(a, b=1, *tuple(args), **dict(kwargs))',

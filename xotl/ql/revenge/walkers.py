@@ -318,7 +318,7 @@ class QstBuilder(GenericASTTraversal):
             args.append(items.pop())
         if starargs:
             starargs = items.pop()
-            args.append(starargs)
+            args.extend(self._unpack_star_if_needed(starargs))
         kws = []
         for _ in range(nkwargs):
             kws.append(items.pop())
@@ -327,6 +327,59 @@ class QstBuilder(GenericASTTraversal):
             kws.append(kwarg)
         assert not items
         return qst.Call(func, args, kws)
+
+    def _unpack_star_if_needed(self, node):
+        '''Unpack ``Starred -> (List|Tuple)`` into the collection's elements.
+
+        The expressions:
+
+        - ``f(a0, a1, *args0, a2, a3, *args1)``, and
+        - ``f(a0, a1, *[*args0, a2, *a3, *args1])``
+
+        Compile to the same byte-code::
+
+           1         0 LOAD_NAME            f    (f)
+                     3 LOAD_NAME            a0   (a0)
+                     6 LOAD_NAME            a1   (a1)
+                     9 LOAD_NAME            args0 (args0)
+                    12 LOAD_NAME            a2   (a2)
+                    15 LOAD_NAME            a3   (a3)
+                    18 BUILD_TUPLE_2        2    (2)
+                    21 LOAD_NAME            args1 (args1)
+                    24 BUILD_LIST_UNPACK_3  3    (3)
+                    27 CALL_FUNCTION_VAR_2  2    (2 positional, 0 keyword pair)
+                    30 RETURN_VALUE
+
+        Since `CALL_FUNCTION_VAR[_KW] <CALL_FUNCTION_VAR>`:opcode: will always
+        take the variable-positional arguments from a single stack item, only
+        the simplest case `f(..., *args)` won't be wrapped into a starred
+        list.
+
+        Other semantically equivalent cases like ``f(a0, a1, *[*args0, a2,
+        *[a3, *args1]])`` don't produce the same byte-code, but we consider
+        that we can also unpack the deeply nested ``*[...]`` parts as well.
+
+        This method takes a `node`, if it's a qst.Starred and its value is a
+        qst.List or qst.Tuple replaces the top-level node for the list of
+        elements.  Each element is recursively inspected to find in further
+        unpacking is possible.  If `node` is not a qst.Starred return
+        ``[node]``.
+
+        This method always returns a list of nodes.
+
+        Note that this method doesn't find ``Starred -> List`` pattern at *any
+        possible* depth in the QST but only for direct elements of another
+        ``Starred -> List``.  If, for instance, `node` is a ``List -> Starred
+        -> List``, return just ``[node]``.
+
+        :param starargs:  The `qst.Starred` node to unpack.
+        :returns: The list of the possibly unpacked QST nodes.
+
+        '''
+        if isinstance(node, qst.Starred):
+            if isinstance(node.value, (qst.List, qst.Tuple)):
+                return [e for elt in node.value.elts for e in self._unpack_star_if_needed(elt)]
+        return [node]
 
     @pushtostack
     @take_one
