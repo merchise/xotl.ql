@@ -7,6 +7,8 @@
 # This is free software; you can do what the LICENCE file allows you to.
 #
 
+from xoutil.modules import moduleproperty
+
 
 def pushto(attr):
     '''Makes a method push is result to `self.<attr>`.
@@ -105,3 +107,28 @@ def CO_COROUTINE(code):
 
 def CO_ITERABLE_COROUTINE(code):
     return code.co_flags & 0x0100
+
+
+@moduleproperty
+def WORDS_BIGENDIAN(self):
+    '''True if opcode is the high-byte of each bytecode.
+
+    See the file Python/wordcode_helpers.h.  There the PACKOPARG is defined
+    depending on how Python was configured.
+    '''
+    # Since lambda: None is
+    #
+    #   0  LOAD_CONST       None
+    #   2  RETURN_VALUE
+    #
+    # We simply find the index of the in the code str
+    import dis
+    LOAD_CONST = dis.opmap['LOAD_CONST']
+    return (lambda: None).__code__.co_code.index(LOAD_CONST) == 0
+
+
+def PACKOPARG(opcode, oparg):
+    if not WORDS_BIGENDIAN:  # XXX: WHY the `not`?
+        return (opcode << 8) | oparg
+    else:
+        return (oparg << 8) | opcode

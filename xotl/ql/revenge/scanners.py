@@ -22,8 +22,9 @@ from array import array
 from sys import intern  # Py3k
 
 # Py3.5 changes BUILD_MAP, adds BUILD_MAP_UNPACK, BUILD_MAP_UNPACK_WITH_CALL
-from .eight import pypy as _pypy, _py_version
+from .eight import pypy as _pypy, _py_version, override
 from .exceptions import ScannerError, ScannerAssertionError  # noqa
+from .tools import PACKOPARG
 
 
 HAVE_ARGUMENT = dis.HAVE_ARGUMENT
@@ -272,15 +273,8 @@ class Instruction:
             assert opcode in dis.hasjabs
             return self.argval
 
-    @property
-    def code(self):
-        '''Return the code string for this instruction.
-
-        .. note:: If the opcode contains an argument which is bigger than the
-           available two bytes, the opcode will be prepended by an
-           EXTENDED_ARG.
-
-        '''
+    @override(_py_version < (3, 6))
+    def _get_code(self):
         if self.opcode >= dis.HAVE_ARGUMENT:
             arg = self.arg
             bytes_ = []
@@ -296,6 +290,35 @@ class Instruction:
         res.extend(bytes_)
         tobytes = getattr(res, 'tobytes', res.tostring)
         return tobytes()
+
+    @_get_code.override((3, 6) <= _py_version)
+    def _get_code(self):
+        if self.opcode >= dis.HAVE_ARGUMENT:
+            arg = self.arg
+        else:
+            arg = 0
+        bytes_ = []
+        # extended = arg >> 16
+        # if extended:
+        #     bytes_ = [dis.EXTENDED_ARG, extended & 0xFF, extended >> 8]
+        # else:
+        #     bytes_ = []
+        bytes_.append(PACKOPARG(self.opcode, arg))
+        res = array('H')
+        res.extend(bytes_)
+        tobytes = getattr(res, 'tobytes', res.tostring)
+        return tobytes()
+
+    @property
+    def code(self):
+        '''Return the code string for this instruction.
+
+        .. note:: If the opcode contains an argument which is bigger than the
+           available two bytes, the opcode will be prepended by an
+           EXTENDED_ARG.
+
+        '''
+        return self._get_code()
 
     @property
     def size(self):
