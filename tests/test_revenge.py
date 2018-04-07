@@ -132,7 +132,7 @@ def test_scanner_normalization():
                     arg=10, argval=10, argrepr='',
                     starts_line=None),
         Instruction(opname='LOAD_NAME', arg=1,
-                    argval='a', argrepr='a', offset=6,
+                    argval='a', argrepr='a',
                     starts_line=None),
         Instruction(opname='RETURN_VALUE',
                     arg=None, argval=None, argrepr='',
