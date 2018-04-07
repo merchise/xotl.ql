@@ -15,6 +15,7 @@ import pytest
 
 import sys
 _pypy = 'PyPy' in sys.version
+_py_version = sys.version_info
 del sys
 
 
@@ -147,6 +148,8 @@ def test_scanner_normalization():
     assert res == expected
 
 
+@pytest.mark.xfail(_py_version >= (3, 6),
+                   reason='Non-critical for Python 3.6')
 def test_pypy_normalization():
     from xotl.ql.revenge.scanners import Instruction, LOAD_NAME
     from xotl.ql.revenge.scanners import POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE
