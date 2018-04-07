@@ -217,10 +217,10 @@ class InstructionSetBuilder:
                 instr.argrepr = ''
                 targets.append(arg)
             elif instr.opcode in dis.hasjrel and isinstance(instr.arg, label):
-                target = instrs[self.labels[instr.arg]].offset
-                instr.arg = arg = target - 3 - instr.offset
-                instr.argval = target
-                instr.argrepr = 'to %d' % target
+                target = instrs[self.labels[instr.arg]]
+                instr.arg = arg = target.offset - instr.size - instr.offset
+                instr.argval = target.offset
+                instr.argrepr = 'to %d' % target.offset
                 targets.append(target)
             elif instr.opcode in dis.hasjrel or instr.opcode in dis.hasjabs:
                 targets.append(instr.target)
