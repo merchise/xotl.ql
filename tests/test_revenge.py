@@ -479,6 +479,7 @@ FUNCTION_CALLS_EXPRS = [
     'f()',
     'f()()',
     'f(a)',
+    'f(x, x1, x2)',
     'f(a=0, b=1, c=2)',
     'f(x, a=0, b=1, c=2)',
     'f(*args)',
@@ -566,9 +567,9 @@ _inject_tests(NESTED_CONDITIONAL_EXPRS, 'test_nested_conditional_%d',
 
 GENEXPRS = [
     case(
-        '(x for x in this if not p(x) if z(x))',
+        '(x for x in this if not p(x, x1, x2) if z(x, x1, x2))',
         alternatives=(
-            '(x for x in this if not p(x) and z(x))',
+            '(x for x in this if not p(x, x1, x2) and z(x, x1, x2))',
         )
     ),
 

@@ -388,7 +388,7 @@ class QstBuilder(GenericASTTraversal):
     @take_until_sentinel
     def n_call_function36_exit(self, node, children=None, items=None):
         func = items.pop()
-        return qst.Call(func, items, [])
+        return qst.Call(func, list(reversed(items)), [])
 
     @pushsentinel
     def n_call_function36_kw(self, node):
