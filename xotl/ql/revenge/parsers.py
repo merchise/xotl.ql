@@ -134,22 +134,28 @@ class _InternalParser(GenericASTBuilder):
         expr ::= load_attr
         expr ::= binary_expr
         expr ::= binary_expr_na
-        expr ::= build_list | build_list_unpack
-        expr ::= build_map
-        expr ::= build_map_unpack
+        expr ::= build_list | build_list_unpack | _tuple_unpack
+        expr ::= build_map | build_map_unpack | _map_unpack
         expr ::= build_const_key_map
         expr ::= cmp
         expr ::= and
         expr ::= and2
         expr ::= or
         expr ::= unary_expr
-        expr ::= call_function
+        expr ::= call_function | call_function36 | call_function36_kw |
+                 call_function36_ex
         expr ::= binary_subscr
         expr ::= get_iter
         expr ::= buildslice2
         expr ::= buildslice3
         expr ::= yield
 
+        # CALL_FUNCTION_EX rules so that we can rebuild the call-signature.
+        _fn_ex_args ::= expr
+        _fn_ex_kwargs ::= expr
+
+        # Trap the const keys of the build_const_key_map
+        _const_keys  ::= LOAD_CONST
 
         binary_expr ::=  expr expr binary_op
         binary_op ::= BINARY_ADD | BINARY_MULTIPLY | BINARY_AND | BINARY_OR |
@@ -243,30 +249,13 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
-    # MAKE_FUNCTION changed from Python 2 to Python 3.  In Python 2 it's
-    # preceded only by the LOAD_CONST that contains the function code.  Since
-    # Python 3.3, a second LOAD_CONST with the name of the function is added.
-    #
-    # Since generator expressions, dict comprehensions, set comprehensions and
-    # lambdas use the MAKE_FUNCTION byte-code, we introduce a compatibility
-    # layer in our grammar.  The following ``_py_load_*`` are overridden in
-    # Python 3 with the second LOAD_CONST.  This way the rules for the bigger
-    # structures remain stable across Python versions.
-    #
     def p__py_loads(self, args):
         '''
-        _py_load_genexpr ::= LOAD_GENEXPR LOAD_CONST
+        _py_load_genexpr   ::= LOAD_GENEXPR LOAD_CONST
         _py_load_lambda    ::= LOAD_LAMBDA LOAD_CONST
         _py_load_dictcomp  ::= LOAD_DICTCOMP LOAD_CONST
         _py_load_setcomp   ::= LOAD_SETCOMP LOAD_CONST
-        '''
-
-    @override(py3k)
-    def p__py_load_listcomp(self, args):
-        '''In Python 3.2+ list comprehensions are also wrapped
-        inside a function.
-
-        _py_load_listcomp ::= LOAD_LISTCOMP LOAD_CONST
+        _py_load_listcomp  ::= LOAD_LISTCOMP LOAD_CONST
 
         '''
 
@@ -531,11 +520,6 @@ class Parser:
         #    mklambda ::= {expr}^n LOAD_LAMBDA MAKE_FUNCTION_n
         #    mklambda ::= {expr}^n load_closure LOAD_LAMBDA MAKE_FUNCTION_n
         #
-        #    call_function ::= expr {expr}^n CALL_FUNCTION_n
-        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_n
-        #    call_function ::= expr {expr}^n CALL_FUNCTION_VAR_KW_n
-        #    call_function ::= expr {expr}^n CALL_FUNCTION_KW_n
-        #
         from . import customs
         for k, v in list(customize.items()):
             # avoid adding the same rule twice to this parser
@@ -548,14 +532,16 @@ class Parser:
                 rule = method(self, op, k, v)
             elif op in ('BUILD_LIST', 'BUILD_TUPLE', 'BUILD_SET'):
                 rule = 'build_list ::= ' + 'expr '*v + k
-            elif op in ('BUILD_LIST_UNPACK', 'BUILD_TUPLE_UNPACK', 'BUILD_SET_UNPACK'):
+            elif op in ('BUILD_LIST_UNPACK', 'BUILD_TUPLE_UNPACK', 'BUILD_SET_UNPACK',):
                 rule = 'build_list_unpack ::= ' + 'expr '*v + k
+            elif op == 'BUILD_TUPLE_UNPACK_WITH_CALL':
+                rule = '_tuple_unpack ::= ' + 'expr '*v + k
             elif op == 'BUILD_MAP':
                 rule = 'build_map ::= ' + 'expr expr '*v + k
-            elif op == 'BUILD_MAP_UNPACK':
+            elif op in ('BUILD_MAP_UNPACK'):
                 rule = 'build_map_unpack ::= ' + 'expr '*v + k
             elif op == 'BUILD_CONST_KEY_MAP':
-                rule = 'build_const_key_map ::= ' + 'expr ' * v + 'LOAD_CONST ' + k
+                rule = 'build_const_key_map ::= ' + 'expr ' * v + '_const_keys ' + k
             elif op in ('UNPACK_TUPLE', 'UNPACK_SEQUENCE'):
                 rule = 'unpack ::= ' + k + ' designator'*v
             elif op == 'UNPACK_LIST':
@@ -585,18 +571,6 @@ class Parser:
                     nop
                 )
                 rule = None
-            elif op in ('CALL_FUNCTION', 'CALL_FUNCTION_VAR',
-                        'CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
-                na = (v & 0xff)           # positional parameters
-                nk = (v >> 8) & 0xff      # keyword parameters
-                rule = 'call_function ::= expr ' + 'expr ' * na
-                if op in ('CALL_FUNCTION_VAR', 'CALL_FUNCTION_VAR_KW'):
-                    # Add the *arg
-                    rule += 'stararg_expr '
-                rule += 'kwarg ' * nk
-                if op in ('CALL_FUNCTION_VAR_KW', 'CALL_FUNCTION_KW'):
-                    rule += 'kwarg_expr '
-                rule += k
             elif op == 'BUILD_SLICE':
                 # since BUILD_SLICE can come in only two forms, it's already
                 # embedded in our grammar, so just ignore it.

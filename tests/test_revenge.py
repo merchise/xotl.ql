@@ -15,6 +15,7 @@ import pytest
 
 import sys
 _pypy = 'PyPy' in sys.version
+_py_version = sys.version_info
 del sys
 
 
@@ -132,7 +133,7 @@ def test_scanner_normalization():
                     arg=10, argval=10, argrepr='',
                     starts_line=None),
         Instruction(opname='LOAD_NAME', arg=1,
-                    argval='a', argrepr='a', offset=6,
+                    argval='a', argrepr='a',
                     starts_line=None),
         Instruction(opname='RETURN_VALUE',
                     arg=None, argval=None, argrepr='',
@@ -147,6 +148,8 @@ def test_scanner_normalization():
     assert res == expected
 
 
+@pytest.mark.xfail(_py_version >= (3, 6),
+                   reason='Non-critical for Python 3.6')
 def test_pypy_normalization():
     from xotl.ql.revenge.scanners import Instruction, LOAD_NAME
     from xotl.ql.revenge.scanners import POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE
@@ -391,10 +394,12 @@ def _build_test(expr):
 
     def test_expr():
         from xotl.ql.revenge import Uncompyled
+        from xotl.ql.revenge.scanners import xdis
         sample = expr  # make local so that it appears in error reports.
         code = compile(sample, '', 'eval')
         expected = Alternatives(sample, alts)
         print('>>> ', expr, ' <<<')
+        xdis(compile(expr, '<>', 'eval'))
         u = Uncompyled(code)
         result = u.qst
         result_ = str(result)
@@ -455,31 +460,51 @@ BASIC_EXPRESSIONS = [
     'a.attr.b[2:3]',
     'a.attr.b[a[s]:n[l]:s[t]]',
 
+    'a[1] + list(b)',
+
+    case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
+
     '{"a": 1, "b": c, "d": 1 + c}',
 ]
 _inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
 
 
+LAMBDA_EXPRESSIONS = [
+    'lambda x, y=1, *args, d=1, **kw: x + y + cell',
+]
+_inject_tests(LAMBDA_EXPRESSIONS, 'test_lambda_expressions_%d')
+
+
 FUNCTION_CALLS_EXPRS = [
-    'c()',
-    'c(a)',
-    'c(b=1)',
-    'c(*args)',
-    'c(**kwargs)',
-    'c(*args, **kwargs)',
+    'f()',
+    'f()()',
+    'f(a)',
+    'f(x, x1, x2)',
+    'f(a=0, b=1, c=2)',
+    'f(x, a=0, b=1, c=2)',
+    'f(*args)',
+    'f(**kwargs)',
+    'f(*args, **kwargs)',
+    'f(a, **kwargs)',
+    'f(b=1, *args)',
+    'f(a0, a1, *args0, a2, a3, *args1)',
 
-    'c(b=bb(a, i, *a, **kws))(a)',
+    # Some slightly convoluted cases for the sake of completeness
+    case('f(a0, a1, *[*args, a2, *[a3, *args1]])',
+         alternatives=['f(a0, a1, *args, a2, a3, *args1)']),
+    case('f(a0, a1, *[*args, a2, *(a3, *args1)])',
+         alternatives=['f(a0, a1, *args, a2, a3, *args1)']),
 
-    'c(a, b=1, *args, **kwargs)',
-    'c(a, b=1, *tuple(args), **dict(kwargs))',
+    'f(b0=0, b1=1, **kwargs0, b2=2, **kwargs2)',
+    'f(a0, a1, *args0, a2, b0=0, *args1, **kwargs0, b1=1, **kwargs1)',
+    'f(b=f2(a, *args, **kws))(a)',
 
-    'a[1] + list(b)',
+    'f(a, b=1, *tuple(args), **dict(kwargs))',
 
-    case('{a: b,\n c: d}', alternatives=['{c: d,\n a: b}']),
-    'lambda x, y=1, *args, **kw: x + y',
     '(lambda x: x)(y)',
 ]
 _inject_tests(FUNCTION_CALLS_EXPRS, 'test_funcalls_expressions_%d')
+
 
 BASIC_EXPRESSIONS_PY3 = [
     '...',   # Ellipsis
@@ -542,9 +567,9 @@ _inject_tests(NESTED_CONDITIONAL_EXPRS, 'test_nested_conditional_%d',
 
 GENEXPRS = [
     case(
-        '(x for x in this if not p(x) if z(x))',
+        '(x for x in this if not p(x, x1, x2) if z(x, x1, x2))',
         alternatives=(
-            '(x for x in this if not p(x) and z(x))',
+            '(x for x in this if not p(x, x1, x2) and z(x, x1, x2))',
         )
     ),
 

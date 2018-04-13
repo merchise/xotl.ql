@@ -38,16 +38,6 @@ pypy = sys.version.find('PyPy') >= 0
 _py_version = sys.version_info
 
 
-class unimplemented:
-    '''Not implemented stub for `override`:func:.'''
-    @staticmethod
-    def override(pred):
-        return override(pred=pred)
-
-    def __init__(self, *args, **kwargs):
-        raise TypeError
-
-
 def override(pred=True, default=None):
     '''Allow overriding of `target`.
 
@@ -94,6 +84,24 @@ def override(pred=True, default=None):
         else:
             return default or unimplemented
     return deco
+
+
+class _stub:
+    @staticmethod
+    def override(pred):
+        return override(pred=pred)
+
+
+class unimplemented(_stub):
+    '''Not implemented stub for `override`:func:.'''
+    def __init__(self, *args, **kwargs):
+        raise TypeError
+
+
+class nothing(_stub):
+    'A do nothing stub for `override`:func:.'
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 # Python 2 port for dis.Bytecode and Instruction...

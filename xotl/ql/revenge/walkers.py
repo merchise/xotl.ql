@@ -22,7 +22,7 @@ from .scanners import Token
 from .tools import pushto, take, pop_until_sentinel
 from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
-from .eight import py3k as _py3, py27 as _py27, _py_version
+from .eight import _py_version, override
 
 EllipsisType = type(Ellipsis)
 IntType = int
@@ -73,13 +73,9 @@ def take_until_sentinel(f, name=None):
 
 
 def _build_sentinel(f, node, name=None):
+    from xoutil.string import cut_any_prefix, cut_suffix
     name = name if name else f.__name__
-    if name.startswith('n_'):
-        name = name[2:]
-    elif name.startswith('_n_'):
-        name = name[3:]
-    if name.endswith('_exit'):
-        name = name[:-5]
+    name = cut_suffix(cut_any_prefix(name, 'n_', '_n_'), '_exit')
     return (name, node)
 
 
@@ -113,9 +109,6 @@ class QstBuilder(GenericASTTraversal):
             # qst.Lambda, the values of the `defaults` are to be complete by
             # the n_mklamdbda_exit.
             from . import Uncompyled
-            # Notice the node[0], in Python 3.3+ node will have two items, the
-            # LOAD_LAMBDA and the LOAD_CONST, previous versions won't have the
-            # second.
             load_lambda = node[0]
             code = load_lambda.argval
             hasnone = 'None' in code.co_names
@@ -128,23 +121,23 @@ class QstBuilder(GenericASTTraversal):
             # Argument names are the first of co_varnames
             argcount = code.co_argcount
             varnames = code.co_varnames
+            posargs, varnames = varnames[:argcount], varnames[argcount:]
+            # I'm truly guessing here: varnames will be (...pos args...,
+            # [kwonly args], [*args], [**kwargs]).
+            if CODE_HAS_KWARG(code):
+                *varnames, kwargsname = varnames
+            else:
+                kwargsname = None
+            if CODE_HAS_VARARG(code):
+                *varnames, argsname = varnames
+            else:
+                argsname = None
+            kwonlyvars = varnames
             args = [
                 qst.Name(name, qst.Param())
-                for name in varnames[:argcount]
+                for name in posargs
             ]
-            if CODE_HAS_VARARG(code):
-                # This means the code uses the vararg and co_varnames contains
-                # that name.
-                vararg = varnames[argcount]
-                argcount += 1
-            else:
-                vararg = None
-            if CODE_HAS_KWARG(code):
-                kwarg = varnames[argcount]
-                argcount += 1
-            else:
-                kwarg = None
-            self._stack.extend([args, vararg, kwarg])
+            self._stack.extend([args, kwonlyvars, argsname, kwargsname])
             self.prune()
         return _walk_innerfunc
 
@@ -322,15 +315,183 @@ class QstBuilder(GenericASTTraversal):
             args.append(items.pop())
         if starargs:
             starargs = items.pop()
-            args.append(starargs)
+            args.extend(self._unpack_star_if_needed(starargs))
         kws = []
         for _ in range(nkwargs):
             kws.append(items.pop())
         if kwarg:
             kwarg = items.pop()
-            kws.append(kwarg)
+            kws.extend(reversed(kwarg))
         assert not items
         return qst.Call(func, args, kws)
+
+    def _unpack_star_if_needed(self, node):
+        '''Unpack ``Starred -> (List|Tuple)`` into the collection's elements.
+
+        The expressions:
+
+        - ``f(a0, a1, *args0, a2, a3, *args1)``, and
+        - ``f(a0, a1, *[*args0, a2, *a3, *args1])``
+
+        Compile to the same byte-code::
+
+           1         0 LOAD_NAME            f    (f)
+                     3 LOAD_NAME            a0   (a0)
+                     6 LOAD_NAME            a1   (a1)
+                     9 LOAD_NAME            args0 (args0)
+                    12 LOAD_NAME            a2   (a2)
+                    15 LOAD_NAME            a3   (a3)
+                    18 BUILD_TUPLE_2        2    (2)
+                    21 LOAD_NAME            args1 (args1)
+                    24 BUILD_LIST_UNPACK_3  3    (3)
+                    27 CALL_FUNCTION_VAR_2  2    (2 positional, 0 keyword pair)
+                    30 RETURN_VALUE
+
+        Since `CALL_FUNCTION_VAR[_KW] <CALL_FUNCTION_VAR>`:opcode: will always
+        take the variable-positional arguments from a single stack item, only
+        the simplest case `f(..., *args)` won't be wrapped into a starred
+        list.
+
+        Other semantically equivalent cases like ``f(a0, a1, *[*args0, a2,
+        *[a3, *args1]])`` don't produce the same byte-code, but we consider
+        that we can also unpack the deeply nested ``*[...]`` parts as well.
+
+        This method takes a `node`, if it's a qst.Starred and its value is a
+        qst.List or qst.Tuple replaces the top-level node for the list of
+        elements.  Each element is recursively inspected to find in further
+        unpacking is possible.  If `node` is not a qst.Starred return
+        ``[node]``.
+
+        This method always returns a list of nodes.
+
+        Note that this method doesn't find ``Starred -> List`` pattern at *any
+        possible* depth in the QST but only for direct elements of another
+        ``Starred -> List``.  If, for instance, `node` is a ``List -> Starred
+        -> List``, return just ``[node]``.
+
+        :param starargs:  The `qst.Starred` node to unpack.
+        :returns: The list of the possibly unpacked QST nodes.
+
+        '''
+        if isinstance(node, qst.Starred):
+            if isinstance(node.value, (qst.List, qst.Tuple)):
+                return [e for elt in node.value.elts for e in self._unpack_star_if_needed(elt)]
+        return [node]
+
+    @pushsentinel
+    def n_call_function36(self, node):
+        # I don't need anything special for this.  The collected items will be
+        # the function and positional arguments.
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_exit(self, node, children=None, items=None):
+        func = items.pop()
+        return qst.Call(func, list(reversed(items)), [])
+
+    @pushsentinel
+    def n_call_function36_kw(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_kw_exit(self, node, children=None, items=None):
+        func = items.pop()
+        kwnames = items.pop(0)
+        kwargs = [
+            qst.keyword(e.s, v)
+            for e, v in zip(kwnames.elts, reversed(items[:len(kwnames.elts)]))
+        ]
+        return qst.Call(func, items[len(kwargs):], kwargs)
+
+    @pushsentinel
+    def n_call_function36_ex(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n_call_function36_ex_exit(self, node, children=None, items=None):
+        #
+        # The are actually two main pattern rules possible:
+        #
+        #     call_function36_ex ::= expr _fn_ex_args CALL_FUNCTION_EX_n
+        #     call_function36_ex ::= expr _fn_ex_args _fn_ex_kwargs CALL_FUNCTION_EX_n
+        #
+        # This opcode shows up in function calls with a ``*args`` and/or
+        # ``**kw`` argument.  Function calls without any of them use
+        # CALL_FUNCTION or CALL_FUNCTION_KW.
+        #
+        # In general _fn_ex_args and _fn_ex_kwargs are expressions.  Python
+        # uses _UNPACK_WITH_CALL opcodes only when mix normal arguments with
+        # starred ones.
+        #
+        # `kwargs_rule` will be either the empty list (first rule) or a list
+        # containing a single list of kwargs.
+        *kwargs_rule, args, func = items
+        kwargs, = kwargs_rule if kwargs_rule else [[]]
+        return qst.Call(func, args, kwargs)
+
+    @pushsentinel
+    def n__fn_ex_args(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n__fn_ex_args_exit(self, node, children=None, items=None):
+        # See also `n_call_function36_ex_exit`.
+        #
+        # BUILD_TUPLE_UNPACK_WITH_CALL is only present when we mix normal
+        # positional arguments and var-positional arguments or have several
+        # var-positional arguments, e.g f(x, *xs), f(*x, *y).  The compiler
+        # wraps positional arguments in a Tuple, any other type construction
+        # must be starred.
+        #
+        # If BUILD_TUPLE_UNPACK_WITH_CALL is not present positional arguments
+        # are given in a Tuple unless they're just `*args`.
+        #
+        def _star_if_needed(item):
+            if isinstance(item, qst.Tuple):
+                return item.elts
+            else:
+                return [qst.Starred(item, qst.Load())]
+
+        token = node[-1][-1]  # _fn_ex_args -> expr -> _tuple_unpack?
+        op, _ = self._extract_custom_tk(token, 'BUILD_TUPLE_UNPACK_WITH_CALL')
+        assert op or len(items) == 1
+        return [
+            arg
+            for item in reversed(items)
+            for starred in _star_if_needed(item)
+            for arg in self._unpack_star_if_needed(starred)
+        ]
+
+    @pushsentinel
+    def n__fn_ex_kwargs(self, node):
+        pass
+
+    @pushtostack
+    @take_until_sentinel
+    def n__fn_ex_kwargs_exit(self, node, children=None, items=None):
+        # See also `n_call_function36_ex_exit`, and _n_fn_ex_args. This method
+        # follows a very similar reasoning.
+        def _extract(item):
+            if isinstance(item, qst.Dict):
+                return zip(
+                    (k.s if isinstance(k, qst.Str) else k for k in item.keys),
+                    item.values
+                )
+            else:
+                return [(None, item)]
+
+        token = node[-1][-1]  # _fn_ex_kwargs -> expr -> _map_unpack?
+        op, _ = self._extract_custom_tk(token, 'BUILD_MAP_UNPACK_WITH_CALL')
+        assert op or len(items) == 1
+        return [
+            qst.keyword(k, v)
+            for it in reversed(items)
+            for k, v in _extract(it)
+        ]
 
     @pushtostack
     @take_one
@@ -347,11 +508,22 @@ class QstBuilder(GenericASTTraversal):
         name, = children
         return qst.Starred(name, qst.Load())
 
+    @pushsentinel
+    def n_kwarg_expr(self, node):
+        pass
+
     @pushtostack
-    @take_one
+    @take_until_sentinel
     def n_kwarg_expr_exit(self, node, children=None, items=None):
-        val, = children
-        return qst.keyword(None, val)
+        def make_kw(it):
+            if isinstance(it, qst.Dict):
+                return [
+                    qst.keyword(key.s if isinstance(key, qst.Str) else key, val)
+                    for key, val in zip(it.keys, it.values)
+                ]
+            else:
+                return [qst.keyword(None, it)]
+        return [keyword for item in items for keyword in make_kw(item)]
 
     @pushsentinel
     def n_build_map(self, node):
@@ -425,24 +597,30 @@ class QstBuilder(GenericASTTraversal):
     @pushtostack
     @take_until_sentinel
     def n_build_const_key_map_exit(self, node, children=None, items=None):
-        pass
+        keys, *values = items
+        return qst.Dict(
+            [qst.Str(k) for k in keys],
+            [val for val in reversed(values)]
+        )
+
+    @pushtostack
+    def n__const_keys_exit(self, node, children=None):
+        return node[-1].argval
 
     # The _n_walk_innerfunc builds method that pushes the body of the inner
     # function for lambda and comprehensions.
     n__py_load_lambda = _n_walk_innerfunc(islambda=True)
 
+    @override((3, 5) <= _py_version < (3, 6))
     @pushsentinel
     def n_mklambda(self, node, children=None):
         _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
         # Push both the amount of that will be in the stack the sentinel
-        if _py3:
-            defaults = argc & 0xFF
-            nkwonly = (argc >> 8) & 0xFF
-        else:
-            defaults = argc
-            nkwonly = 0
+        defaults = argc & 0xFF
+        nkwonly = (argc >> 8) & 0xFF
         self._stack.append((defaults, nkwonly))
 
+    @override((3, 5) <= _py_version < (3, 6))
     @pushtostack
     @take_until_sentinel
     def n_mklambda_exit(self, node, children=None, items=None):
@@ -459,24 +637,60 @@ class QstBuilder(GenericASTTraversal):
             kwdefaults.append(kw.value)
         body = items.pop()
         args = [a for a in items.pop()]
+        items.pop()  # drop the names of kwonly arguments
         vararg = items.pop()
         kwarg = items.pop()
-        if _py3:
-            # Recast args (they were qst.Name) as qst.arg in Python 3
-            args = [qst.arg(arg.id, None) for arg in args]
-            if _py_version < (3, 4):
-                # Before Python 3,4 the vararg and kwarg were not enclosed
-                # inside qst.arg and their annotations followed them in the
-                # constructor.
-                arguments = qst.arguments(args, vararg, None, kwonly, kwarg,
-                                          None, defaults, kwdefaults)
-            else:
-                vararg = qst.arg(vararg, None) if vararg else None
-                kwarg = qst.arg(kwarg, None) if kwarg else None
-                arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
-                                          kwarg, defaults)
+        # Recast args (they were qst.Name) as qst.arg in Python 3
+        args = [qst.arg(arg.id, None) for arg in args]
+        vararg = qst.arg(vararg, None) if vararg else None
+        kwarg = qst.arg(kwarg, None) if kwarg else None
+        arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
+                                  kwarg, defaults)
+        return qst.Lambda(arguments, body)
+
+    @n_mklambda.override((3, 6) <= _py_version)
+    @pushsentinel
+    def n_mklambda(self, node, children=None):
+        _, argc = self._ensure_custom_tk(node, 'MAKE_FUNCTION')
+        # See customs.MAKE_FUNCTION
+        hasposdefaults = bool(argc & 0x01)
+        haskwdefaults = bool(argc & 0x02)
+        hasannotations = bool(argc & 0x04)
+        hascells = bool(argc & 0x08)
+        self._stack.append(
+            (hasposdefaults, haskwdefaults, hasannotations, hascells)
+        )
+
+    @n_mklambda_exit.override((3, 6) <= _py_version)
+    @pushtostack
+    @take_until_sentinel
+    def n_mklambda_exit(self, node, children=None, items=None):
+        hasposdefaults, haskwdefaults, hasannotations, hascells = self._stack.pop()
+        if hasposdefaults:
+            posdefaults = items.pop().elts
         else:
-            arguments = qst.arguments(args, vararg, kwarg, defaults)
+            posdefaults = []
+        if haskwdefaults:
+            kwdefaults = items.pop().values
+        else:
+            kwdefaults = []
+        # Annotations are not possible (inlined) in lambdas, we don't bother.
+        assert not hasannotations
+        if hascells:
+            # I don't know what to do with cells
+            items.pop()
+        body = items.pop()
+        # See _n_walk_innerfunc
+        args = [qst.arg(arg.id, None) for arg in items.pop()]
+        kwonly = [qst.arg(kw, None) for kw in items.pop()]
+        vararg = items.pop()
+        if vararg:
+            vararg = qst.arg(vararg, None)
+        kwarg = items.pop()
+        if kwarg:
+            kwarg = qst.arg(kwarg, None)
+        arguments = qst.arguments(args, vararg, kwonly, kwdefaults,
+                                  kwarg, posdefaults)
         return qst.Lambda(arguments, body)
 
     _BINARY_OPS_QST_CLS = {
@@ -798,7 +1012,7 @@ class QstBuilder(GenericASTTraversal):
     def n_build_list_unpack_exit(self, node, children=None, items=None):
         opcode, _ = self._ensure_custom_tk(
             node,
-            ('BUILD_LIST_UNPACK', 'BUILD_SET_UNPACK', 'BUILD_TUPLE_UNPACK')
+            ('BUILD_LIST_UNPACK', 'BUILD_SET_UNPACK', 'BUILD_TUPLE_UNPACK',)
         )
         if opcode == 'BUILD_LIST_UNPACK':
             cls = qst.List
@@ -879,21 +1093,15 @@ class QstBuilder(GenericASTTraversal):
         elt = items.pop(0)
         comprehensions = items
         result = qst.ListComp(elt, comprehensions)
-        if _py27:
-            return result
-        else:
-            # In Python we need to wrap this inside a qst.Expression since
-            # _n_walk_innerfunc expects it so
-            return qst.Expression(result)
+        return qst.Expression(result)
 
-    if not _py27:
-        n__py_load_listcomp = _n_walk_innerfunc(islambda=False)
+    n__py_load_listcomp = _n_walk_innerfunc(islambda=False)
 
-        @pushsentinel
-        def n_list_compr_expr(self, node):
-            pass
+    @pushsentinel
+    def n_list_compr_expr(self, node):
+        pass
 
-        n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
+    n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
 
     # list_for, list_if, list_if_not, lc_body share the same structure as its
     # comp_* cousins.
@@ -918,9 +1126,11 @@ class QstBuilder(GenericASTTraversal):
         assert isinstance(res, Token), msg
         return res
 
-    def _ensure_custom_tk(self, node, prefixes):
+    def _extract_custom_tk(self, node, prefixes, strict=False):
         tk = node[-1]
-        assert isinstance(tk, Token)
+        if not isinstance(tk, Token):
+            assert not strict
+            return None, None
         if not isinstance(prefixes, (list, tuple)):
             prefixes = [prefixes, ]
         found = next(
@@ -930,6 +1140,13 @@ class QstBuilder(GenericASTTraversal):
         )
         if found:
             opcode, custom = found
+            return opcode, int(custom)
+        else:
+            return None, None
+
+    def _ensure_custom_tk(self, node, prefixes):
+        opcode, custom = self._extract_custom_tk(node, prefixes, strict=True)
+        if opcode is not None:
             return opcode, int(custom)
         else:
             assert False

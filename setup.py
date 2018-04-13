@@ -25,8 +25,8 @@ except NameError:
         'To run in Python 3'
         import builtins
         exec_ = getattr(builtins, 'exec')
-        with open(filename, "r") as f:
-            code = compile(f.read(), filename, 'exec')
+        with open(filename, "rb") as f:
+            code = compile(f.read().decode('utf-8'), filename, 'exec')
             return exec_(code, globals())
 
 # Import the version from the release module
@@ -97,7 +97,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     setup_requires=['setuptools', ],
-    python_requires='>=3.5,<3.6',
+    python_requires='>=3.5,<3.7',
     install_requires=[
         'xoutil>=2.0',
     ],
