@@ -459,7 +459,12 @@ class QstBuilder(GenericASTTraversal):
         token = node[-1][-1]  # _fn_ex_args -> expr -> _tuple_unpack?
         op, _ = self._extract_custom_tk(token, 'BUILD_TUPLE_UNPACK_WITH_CALL')
         assert op or len(items) == 1
-        return [x for it in reversed(items) for x in _star_if_needed(it)]
+        return [
+            arg
+            for item in reversed(items)
+            for starred in _star_if_needed(item)
+            for arg in self._unpack_star_if_needed(starred)
+        ]
 
     @pushsentinel
     def n__fn_ex_kwargs(self, node):
