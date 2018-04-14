@@ -1,5 +1,5 @@
-Contributors and acknowlegment
-==============================
+Contributors and acknowledgement
+================================
 
 The following are the main contributors so far to this release:
 
@@ -9,4 +9,3 @@ The following are the main contributors so far to this release:
 - `Medardo Rodríquez <http://twitter.org/merchise/>`_ provided most of the
   conceptual framework, came with the idea of using comprehension syntax and
   has mentored the programmer.
-
