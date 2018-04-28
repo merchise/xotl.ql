@@ -47,9 +47,20 @@ def take(n, attr, kwargname):
 
 
 def pop_n(stack, n):
-    items = []
-    for _ in range(n):
-        items.append(stack.pop())
+    '''Pop n items from the stack.
+
+    If there are less than `n` items in the stack, raise an IndexError.
+
+    The items are returned in pop-order: if stack is ``[1, 2, 3, 4]`` and `n`
+    is 2, the result would be ``[4, 3]``.
+
+    '''
+    if len(stack) < n:
+        stack[:] = []  # Just in case some try/except
+        raise IndexError('Popping too many items from the stack')
+    items = stack[-n:]
+    del stack[-n:]
+    items.reverse()
     return items
 
 
@@ -63,11 +74,12 @@ def pop_until_sentinel(stack, sentinel):
     IndexError.
 
     '''
-    item, items = None, []
-    while item != sentinel:
-        item = stack.pop()
-        if item != sentinel:
-            items.append(item)
+    try:
+        pos = lastindex(stack, sentinel)
+    except ValueError:
+        raise IndexError
+    items = pop_n(stack, len(stack) - pos)
+    items.pop()  # this is the sentinel
     return items
 
 
@@ -176,3 +188,25 @@ def PACKOPARG(opcode, oparg):
         return (opcode << 8) | oparg
     else:
         return (oparg << 8) | opcode
+
+
+def lastindex(lst, which):
+    '''Finds the last occurrence of `which` in the list.
+
+    If `which` is not in the list, raise an ValueError.  This is equivalent
+    to::
+
+       len(lst) - list(reversed(lst)).index(which)
+
+    But we the algorithm we use doesn't make a reversed copy of `lst`.
+
+    '''
+    pos = lst.index(which)
+    # pos, holds the first occurrence, lets find other and break when there
+    # are no more:
+    while True:
+        try:
+            pos = lst.index(which, pos + 1)
+        except ValueError:
+            break
+    return pos
