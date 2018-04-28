@@ -19,7 +19,13 @@ from . import parsers, qst
 from .parsers import AST
 from .scanners import Token
 
-from .tools import pushto, take, pop_until_sentinel
+from .tools import (
+    take,
+    pop_until_sentinel,
+    pushtostack,
+    pushsentinel,
+    take_until_sentinel,
+)
 from .tools import CODE_HAS_KWARG, CODE_HAS_VARARG
 
 from .eight import _py_version, override
@@ -33,51 +39,6 @@ take_n = lambda n: take(n, '_stack', 'children')
 take_one = take_n(1)
 take_two = take_n(2)
 take_three = take_n(3)
-
-
-def pushtostack(f):
-    @pushto('_stack')
-    def inner(self, *args, **kw):
-        return f(self, *args, **kw)
-    return inner
-
-
-def pushsentinel(f, name=None):
-    '''Decorator that pushes a sentinel to the stack.
-
-    The sentinel will be pushed *after* the execution of the decorated
-    function.
-
-    '''
-    def inner(self, node):
-        sentinel = _build_sentinel(f, node, name)
-        result = f(self, node)
-        self._stack.append(sentinel)
-        return result
-    return inner
-
-
-def take_until_sentinel(f, name=None):
-    '''Decorator that pops items until it founds the proper sentinel.
-
-    The decorated functions is expected to allow a keyword argument 'items'
-    that will contain the items popped.
-
-    '''
-    def inner(self, node, **kwargs):
-        sentinel = _build_sentinel(f, node, name)
-        items = pop_until_sentinel(self._stack, sentinel)
-        kwargs['items'] = items
-        return f(self, node, **kwargs)
-    return inner
-
-
-def _build_sentinel(f, node, name=None):
-    from xoutil.string import cut_any_prefix, cut_suffix
-    name = name if name else f.__name__
-    name = cut_suffix(cut_any_prefix(name, 'n_', '_n_'), '_exit')
-    return (name, node)
-
 
 # Some ASTs used for comparing code fragments (like 'return None' at
 # the end of functions).
