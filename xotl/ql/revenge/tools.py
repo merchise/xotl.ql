@@ -193,44 +193,11 @@ def PACKOPARG(opcode, oparg):
 def lastindex(lst, which):
     '''Finds the last occurrence of `which` in the list.
 
-    If `which` is not in the list, raise an ValueError.  This is equivalent
-    to::
-
-       len(lst) - list(reversed(lst)).index(which)
-
-    But we the algorithm we use doesn't make a reversed copy of `lst`.
+    If `which` is not in the list, raise an ValueError.
 
     '''
-    # This algorithm chases the `which` by first inspecting lst later half.
-    # If it's not there, then we fall the earlier half of it.  The idea is
-    # that if many instances of `which` appear in the list, we should find the
-    # one closest to the end.  The worst case is which being at either the
-    # start or end of the list.
-    #
-    # The previous algorithm searched possibly the entire list finding the
-    # first occurrence of `which`.
-    #
-    if not lst:
-        raise ValueError
-    start, end = 0, len(lst) - 1
-    middle = (start + end)//2
+    lst.reverse()
     try:
-        pos = lst.index(which, middle, end + 1)
-        start = pos + 1
-    except ValueError:
-        pos = lst.index(which, start, middle)
-        start, end = pos + 1, middle - 1
-    # Now, look for `which` on the higher half where the current instance was
-    # found.
-    while start <= end:
-        middle = (start + end)//2
-        try:
-            pos = lst.index(which, middle, end + 1)
-            start = pos + 1
-        except ValueError:
-            try:
-                pos = lst.index(which, start, middle)
-                start, end = pos + 1, middle - 1
-            except ValueError:
-                break  # :( It won't make any sense to keep looking.
-    return pos
+        return len(lst) - lst.index(which) - 1
+    finally:
+        lst.reverse()

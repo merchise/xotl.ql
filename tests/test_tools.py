@@ -49,7 +49,7 @@ lists_and_index = int_lists.map(
 def test_lastindex(arg):
     lst, index = arg
     which = lst[index]
-    assert lastindex(lst, which) == _evident_findlast(lst, which)
+    assert lastindex(lst, which) == _obvious_findlast(lst, which)
 
 
 @given(int_lists)
@@ -62,13 +62,8 @@ def test_lastindex_misses(lst):
         assert False
 
 
-def _evident_findlast(lst, which):
-    pos = lst.index(which)
-    # pos, holds the first occurrence, lets find other and break when there
-    # are no more:
-    while True:
-        try:
-            pos = lst.index(which, pos + 1)
-        except ValueError:
-            break
-    return pos
+def _obvious_findlast(lst, which):
+    for i in reversed(range(len(lst))):
+        if lst[i] == which:
+            return i
+    raise ValueError
