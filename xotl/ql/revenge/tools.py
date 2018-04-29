@@ -51,6 +51,8 @@ def pop_n(stack, n):
 
     If there are less than `n` items in the stack, raise an IndexError.
 
+    .. note:: Code that catches the IndexError, will see the stack empty.
+
     The items are returned in pop-order: if stack is ``[1, 2, 3, 4]`` and `n`
     is 2, the result would be ``[4, 3]``.
 
@@ -171,6 +173,7 @@ def WORDS_BIGENDIAN(self):
 
     See the file Python/wordcode_helpers.h.  There the PACKOPARG is defined
     depending on how Python was configured.
+
     '''
     # Since lambda: None is
     #
