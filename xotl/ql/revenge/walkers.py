@@ -54,7 +54,8 @@ class QstBuilder(GenericASTTraversal):
         self._stack = []
 
     def stop(self, pop=True):
-        assert len(self._stack) == 1
+        assert len(self._stack) == 1, \
+            'Things (%d) are being left in the stack %r' % (len(self._stack), self._stack)
         if not pop:
             return self._stack[-1]
         else:
@@ -592,7 +593,7 @@ class QstBuilder(GenericASTTraversal):
             defaults.append(items.pop())
         kwonly = []
         kwdefaults = []
-        for i in range(nkwonly):
+        for _ in range(nkwonly):
             kw = items.pop()   # we get a qst.keyword
             kwonly.append(qst.arg(kw.arg, None))
             kwdefaults.append(kw.value)
@@ -1063,6 +1064,63 @@ class QstBuilder(GenericASTTraversal):
         pass
 
     n_list_compr_expr_exit = _n_comp_exit('list_compr_expr')
+
+    @pushsentinel
+    def n_formatted_string(self, node):
+        pass
+
+    # A single formatting expression does not have the BUILD_STRING and
+    # it would be a *naked* FORMAT_VALUE to the eyes of our parser, we
+    # wrap all FormattedValue within a JoinedStr and
+    # n_formatted_string_exit unwraps them.
+
+    @pushtostack
+    @take_until_sentinel
+    def n_formatted_string_exit(self, node, children=None, items=None):
+        def unwrap(item):
+            if isinstance(item, qst.JoinedStr):
+                values = item.values
+                if len(values) == 1 and isinstance(values[0], qst.FormattedValue):
+                    return values[0]
+            return item
+        return qst.JoinedStr([unwrap(item) for item in reversed(items)])
+
+    @pushtostack
+    @take_one
+    def n__format_value_exit(self, node, children=None, items=None):
+        expr, = children
+        conversion = self._compute_format_value_conversion(node)
+        return qst.JoinedStr([qst.FormattedValue(expr, conversion, None)])
+
+    @pushtostack
+    @take_two
+    def n__format_value_spec_exit(self, node, children=None, items=None):
+        spec, expr = children
+        conversion = self._compute_format_value_conversion(node)
+        return qst.JoinedStr([
+            qst.FormattedValue(expr, conversion, qst.JoinedStr([spec]))
+        ])
+
+    def _compute_format_value_conversion(self, node):
+        # From compile.c:
+        #
+        #   switch (e->v.FormattedValue.conversion) {
+        #   case 's': oparg = FVC_STR;   break;
+        #   case 'r': oparg = FVC_REPR;  break;
+        #   case 'a': oparg = FVC_ASCII; break;
+        #   case -1:  oparg = FVC_NONE;  break;
+        #
+        # So, from flags (token.arg) we can get the conversion back.
+        flags = node[-1].arg
+        conversion = flags & 0x03
+        if conversion == 0x01:
+            return ord('s')
+        elif conversion == 0x02:
+            return ord('r')
+        elif conversion == 0x03:
+            return ord('a')
+        else:
+            return -1
 
     # list_for, list_if, list_if_not, lc_body share the same structure as its
     # comp_* cousins.

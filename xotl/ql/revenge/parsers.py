@@ -396,6 +396,23 @@ class _InternalParser(GenericASTBuilder):
 
         '''
 
+    @override((3, 6) <= _py_version)
+    def p_fstrings(self, args):
+        '''Support for Python 3.6's f-strings.
+
+        # formatted_string is customized with BUILD_STRING
+        expr ::= formatted_string
+
+        expr ::= _format_value | _format_value_spec
+
+        # The scanner transforms the real FORMAT_VALUE into these variants
+        # according to the instruction's flag.
+
+        _format_value ::= expr FORMAT_VALUE
+        _format_value_spec ::= expr expr FORMAT_VALUE_WITH_SPEC
+
+        '''
+
     def p_grammar(self, args):
         '''The top-level grammar.
 
