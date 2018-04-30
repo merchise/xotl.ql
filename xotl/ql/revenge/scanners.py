@@ -98,6 +98,7 @@ CUSTOMIZABLE = (
     CALL_FUNCTION_VAR_KW,
     CALL_FUNCTION_EX,
     RAISE_VARARGS,
+    BUILD_STRING,
 )
 
 
@@ -660,6 +661,12 @@ class Scanner:
                 emit_come_from(offset, j, k)
             if opcode in CUSTOMIZABLE:
                 customize(instruction)
+            if opcode == FORMAT_VALUE:
+                # See the documentation of `dis.FORMAT_VALUE`
+                flags = instruction.arg
+                has_spec = flags & 0x04 == 0x04
+                if has_spec:
+                    instruction.opname += '_WITH_SPEC'
             if opcode == JUMP_ABSOLUTE:  # noqa
                 if instruction.argval < instruction.offset:
                     # Make JUMP_ABSOLUTE to a previous offset a JUMP_BACK.

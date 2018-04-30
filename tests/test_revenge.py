@@ -469,6 +469,16 @@ BASIC_EXPRESSIONS = [
 _inject_tests(BASIC_EXPRESSIONS, 'test_basic_expressions_%d')
 
 
+if _py_version >= (3, 6):
+    PY36_BASIC_EXPRESSIONS = [
+        'f""',
+        'f"{x}"',
+        'f"{x} {a!r} {b:+f} {c!s:^30}"',
+        'f"{a(b) + y * (c if d < e < f > g else z)}"',
+    ]
+    _inject_tests(PY36_BASIC_EXPRESSIONS, 'test_py36_basic_expressions_%d')
+
+
 LAMBDA_EXPRESSIONS = [
     'lambda x, y=1, *args, d=1, **kw: x + y + cell',
 ]

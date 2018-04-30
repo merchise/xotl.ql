@@ -149,3 +149,8 @@ def BUILD_MAP_UNPACK_WITH_CALL(self, opcode, token, count):
     if _py_version < (3, 6):
         count = count & 0xFF
     return '_map_unpack ::= ' + 'expr ' * count + token
+
+
+@override((3, 6) <= _py_version)
+def BUILD_STRING(self, opcode, token, count):
+    return 'formatted_string ::= ' + 'expr ' * count + token
