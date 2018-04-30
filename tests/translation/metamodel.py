@@ -135,6 +135,12 @@ def date_property(internal_attr_name):
 
 # So that ages are stable in tests
 def get_birth_date(age, today=None):
+    '''Get the birth-date for someone of a given `age`.
+
+    `today` is the date when that someone turned that age.  If None, defaults
+    to `datetime.today`:meth:.
+
+    '''
     from datetime import datetime, timedelta
     if today is None:
         today = datetime.today()
@@ -150,6 +156,14 @@ def get_birth_date(age, today=None):
 
 
 def get_age(birthdate, today=None):
+    '''Gets the age of someone born on `birthdate`.
+
+    Return the age that someone has at `today`.  `today` defaults to
+    `datetime.today`:meth:.
+
+    The age is given in years (with descimals).
+
+    '''
     from datetime import datetime
     if today is None:
         today = datetime.today()
@@ -167,6 +181,7 @@ def age_property(start_attr_name, end_attr_name=None, age_attr_name=None):
                           of the event. If None, each time `age` is calculated
                           `today` is used as the end date.
     :returns: The age in years (using 365.25 days per year).
+
     '''
     @property
     def age(self):

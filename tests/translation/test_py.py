@@ -7,8 +7,6 @@
 # This is free software; you can do what the LICENCE file allows you to.
 #
 
-# flake8: noqa
-
 from __future__ import (division as _py3_division,
                         print_function as _py3_print,
                         absolute_import as _py3_abs_imports)
@@ -29,7 +27,8 @@ from xotl.ql.translation.monads import (
 )
 
 from .model import Person, Entity
-from .world import *    # noqa
+from .world import elsa, papi, manolito, denia, pedro, cuba, havana, yade
+from .world import manu
 
 
 #
@@ -131,7 +130,7 @@ def test_real_plan():
     )
     try:
         plan1()
-    except:
+    except:  # noqa
         if not failed:
             plan1.explain()
             raise
@@ -152,7 +151,7 @@ def test_real_plan():
     except RuntimeError:
         # RuntimeError: maximum recursion depth exceeded
         pass
-    except:
+    except:  # noqa
         if not failed:
             plan2.explain()
             raise
