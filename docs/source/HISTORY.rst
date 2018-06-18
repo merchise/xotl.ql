@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Unreleased.  Release 0.6.0
+2018-06-18.  Release 0.6.0
 --------------------------
 
 .. include:: history/changes-0.6.0.rst
